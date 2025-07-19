@@ -1,0 +1,261 @@
+# Database Migration Configuration
+# PostgreSQL migration settings for Ollama Distributed
+
+database:
+  # Connection Configuration
+  connection:
+    host: "${DATABASE_HOST:-localhost}"
+    port: "${DATABASE_PORT:-5432}"
+    database: "${DATABASE_NAME:-ollama_distributed}"
+    username: "${DATABASE_USERNAME:-ollama}"
+    password: "${DATABASE_PASSWORD}"
+    ssl_mode: "${DATABASE_SSL_MODE:-require}"
+    max_connections: "${DATABASE_MAX_CONNECTIONS:-100}"
+    connection_timeout: "${DATABASE_CONNECTION_TIMEOUT:-30s}"
+    idle_timeout: "${DATABASE_IDLE_TIMEOUT:-60s}"
+    max_lifetime: "${DATABASE_MAX_LIFETIME:-3600s}"
+  
+  # Migration Configuration
+  migrations:
+    # Migration directory
+    directory: "./migrations"
+    
+    # Migration table name
+    table: "schema_migrations"
+    
+    # Lock timeout for migrations
+    lock_timeout: "300s"
+    
+    # Migration timeout
+    migration_timeout: "600s"
+    
+    # Dry run mode
+    dry_run: false
+    
+    # Backup before migration
+    backup_before_migration: true
+    
+    # Rollback on failure
+    rollback_on_failure: true
+  
+  # Connection Pool Settings
+  pool:
+    min_connections: 10
+    max_connections: 100
+    acquire_timeout: "30s"
+    max_lifetime: "1h"
+    idle_timeout: "30m"
+    health_check_period: "1m"
+  
+  # Performance Settings
+  performance:
+    # Query timeout
+    query_timeout: "30s"
+    
+    # Statement cache size
+    statement_cache_size: 1000
+    
+    # Prepared statement cache
+    enable_prepared_statements: true
+    
+    # Query logging
+    log_queries: false
+    log_slow_queries: true
+    slow_query_threshold: "1s"
+
+# Migration Schema Templates
+migration_templates:
+  # Create table template
+  create_table: |
+    -- Migration: {migration_name}
+    -- Created: {timestamp}
+    
+    BEGIN;
+    
+    CREATE TABLE IF NOT EXISTS {table_name} (
+        id BIGSERIAL PRIMARY KEY,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    );
+    
+    -- Add indexes
+    CREATE INDEX IF NOT EXISTS idx_{table_name}_created_at ON {table_name}(created_at);
+    CREATE INDEX IF NOT EXISTS idx_{table_name}_updated_at ON {table_name}(updated_at);
+    
+    COMMIT;
+  
+  # Add column template
+  add_column: |
+    -- Migration: {migration_name}
+    -- Created: {timestamp}
+    
+    BEGIN;
+    
+    ALTER TABLE {table_name} 
+    ADD COLUMN IF NOT EXISTS {column_name} {column_type};
+    
+    COMMIT;
+  
+  # Create index template
+  create_index: |
+    -- Migration: {migration_name}
+    -- Created: {timestamp}
+    
+    BEGIN;
+    
+    CREATE INDEX CONCURRENTLY IF NOT EXISTS {index_name} 
+    ON {table_name}({columns});
+    
+    COMMIT;
+
+# Initial Schema Migrations
+initial_migrations:
+  - name: "001_create_nodes_table"
+    description: "Create nodes table for cluster management"
+    sql: |
+      CREATE TABLE IF NOT EXISTS nodes (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          name VARCHAR(255) NOT NULL UNIQUE,
+          region VARCHAR(100) NOT NULL,
+          zone VARCHAR(100) NOT NULL,
+          environment VARCHAR(50) NOT NULL,
+          status VARCHAR(50) NOT NULL DEFAULT 'initializing',
+          last_heartbeat TIMESTAMP WITH TIME ZONE,
+          metadata JSONB,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+      
+      CREATE INDEX idx_nodes_status ON nodes(status);
+      CREATE INDEX idx_nodes_region_zone ON nodes(region, zone);
+      CREATE INDEX idx_nodes_environment ON nodes(environment);
+      CREATE INDEX idx_nodes_last_heartbeat ON nodes(last_heartbeat);
+  
+  - name: "002_create_models_table"
+    description: "Create models table for model management"
+    sql: |
+      CREATE TABLE IF NOT EXISTS models (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          name VARCHAR(255) NOT NULL,
+          version VARCHAR(100) NOT NULL,
+          size_bytes BIGINT NOT NULL,
+          checksum VARCHAR(255) NOT NULL,
+          source_url TEXT,
+          metadata JSONB,
+          status VARCHAR(50) NOT NULL DEFAULT 'pending',
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          UNIQUE(name, version)
+      );
+      
+      CREATE INDEX idx_models_name ON models(name);
+      CREATE INDEX idx_models_status ON models(status);
+      CREATE INDEX idx_models_size ON models(size_bytes);
+  
+  - name: "003_create_inference_sessions_table"
+    description: "Create inference sessions table"
+    sql: |
+      CREATE TABLE IF NOT EXISTS inference_sessions (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          node_id UUID NOT NULL REFERENCES nodes(id),
+          model_id UUID NOT NULL REFERENCES models(id),
+          session_token VARCHAR(255) NOT NULL UNIQUE,
+          status VARCHAR(50) NOT NULL DEFAULT 'active',
+          started_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          ended_at TIMESTAMP WITH TIME ZONE,
+          metadata JSONB,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+      
+      CREATE INDEX idx_inference_sessions_node_id ON inference_sessions(node_id);
+      CREATE INDEX idx_inference_sessions_model_id ON inference_sessions(model_id);
+      CREATE INDEX idx_inference_sessions_status ON inference_sessions(status);
+      CREATE INDEX idx_inference_sessions_token ON inference_sessions(session_token);
+  
+  - name: "004_create_metrics_table"
+    description: "Create metrics table for monitoring"
+    sql: |
+      CREATE TABLE IF NOT EXISTS metrics (
+          id BIGSERIAL PRIMARY KEY,
+          node_id UUID REFERENCES nodes(id),
+          metric_name VARCHAR(255) NOT NULL,
+          metric_value DOUBLE PRECISION NOT NULL,
+          labels JSONB,
+          timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+      
+      CREATE INDEX idx_metrics_node_id ON metrics(node_id);
+      CREATE INDEX idx_metrics_name ON metrics(metric_name);
+      CREATE INDEX idx_metrics_timestamp ON metrics(timestamp);
+      CREATE INDEX idx_metrics_name_timestamp ON metrics(metric_name, timestamp);
+  
+  - name: "005_create_audit_logs_table"
+    description: "Create audit logs table"
+    sql: |
+      CREATE TABLE IF NOT EXISTS audit_logs (
+          id BIGSERIAL PRIMARY KEY,
+          user_id VARCHAR(255),
+          action VARCHAR(255) NOT NULL,
+          resource_type VARCHAR(100) NOT NULL,
+          resource_id VARCHAR(255),
+          details JSONB,
+          ip_address INET,
+          user_agent TEXT,
+          timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+      
+      CREATE INDEX idx_audit_logs_user_id ON audit_logs(user_id);
+      CREATE INDEX idx_audit_logs_action ON audit_logs(action);
+      CREATE INDEX idx_audit_logs_resource ON audit_logs(resource_type, resource_id);
+      CREATE INDEX idx_audit_logs_timestamp ON audit_logs(timestamp);
+
+# Backup Configuration
+backup:
+  # Backup directory
+  directory: "./backups/database"
+  
+  # Backup retention
+  retention:
+    daily: 7    # Keep daily backups for 7 days
+    weekly: 4   # Keep weekly backups for 4 weeks
+    monthly: 12 # Keep monthly backups for 12 months
+  
+  # Backup schedule
+  schedule:
+    # Full backup daily at 2 AM
+    full: "0 2 * * *"
+    
+    # Incremental backup every 6 hours
+    incremental: "0 */6 * * *"
+  
+  # Compression
+  compression:
+    enabled: true
+    algorithm: "gzip"
+    level: 6
+  
+  # Encryption
+  encryption:
+    enabled: true
+    key_file: "${BACKUP_ENCRYPTION_KEY_FILE}"
+    algorithm: "AES-256-GCM"
+
+# Recovery Configuration
+recovery:
+  # Point-in-time recovery
+  pitr:
+    enabled: true
+    wal_archive_directory: "./backups/wal"
+    recovery_target_time: ""  # Set during recovery
+  
+  # Recovery validation
+  validation:
+    enabled: true
+    test_queries:
+      - "SELECT COUNT(*) FROM nodes;"
+      - "SELECT COUNT(*) FROM models;"
+      - "SELECT COUNT(*) FROM inference_sessions;"
+  
+  # Recovery timeout
+  timeout: "3600s"  # 1 hour

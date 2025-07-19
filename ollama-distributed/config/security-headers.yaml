@@ -1,0 +1,92 @@
+# Security Headers Configuration
+# Production-ready HTTP security headers
+
+security_headers:
+  # Prevent clickjacking attacks
+  X-Frame-Options: "DENY"
+  
+  # Prevent MIME type sniffing
+  X-Content-Type-Options: "nosniff"
+  
+  # Enable XSS protection in older browsers
+  X-XSS-Protection: "1; mode=block"
+  
+  # Force HTTPS connections
+  Strict-Transport-Security: "max-age=31536000; includeSubDomains; preload"
+  
+  # Control referrer information
+  Referrer-Policy: "strict-origin-when-cross-origin"
+  
+  # Content Security Policy
+  Content-Security-Policy: |
+    default-src 'self';
+    script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net;
+    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+    img-src 'self' data: https:;
+    font-src 'self' https://fonts.gstatic.com;
+    connect-src 'self' wss: https:;
+    frame-ancestors 'none';
+    base-uri 'self';
+    form-action 'self';
+    upgrade-insecure-requests;
+  
+  # Permissions Policy (formerly Feature Policy)
+  Permissions-Policy: |
+    accelerometer=(),
+    camera=(),
+    geolocation=(),
+    gyroscope=(),
+    magnetometer=(),
+    microphone=(),
+    payment=(),
+    usb=()
+  
+  # DNS Prefetch Control
+  X-DNS-Prefetch-Control: "off"
+  
+  # Download Options for IE
+  X-Download-Options: "noopen"
+  
+  # Permitted Cross-Domain Policies
+  X-Permitted-Cross-Domain-Policies: "none"
+  
+  # Expect-CT for Certificate Transparency
+  Expect-CT: "max-age=86400, enforce"
+
+# CORS Configuration (Production)
+cors:
+  # Specific allowed origins (no wildcards in production)
+  allowed_origins:
+    - "https://app.ollama-distributed.com"
+    - "https://api.ollama-distributed.com"
+    - "https://admin.ollama-distributed.com"
+  
+  # Allowed HTTP methods
+  allowed_methods:
+    - "GET"
+    - "POST"
+    - "PUT"
+    - "DELETE"
+    - "OPTIONS"
+    - "HEAD"
+  
+  # Allowed headers
+  allowed_headers:
+    - "Authorization"
+    - "Content-Type"
+    - "X-Requested-With"
+    - "X-Request-ID"
+    - "X-Trace-ID"
+  
+  # Exposed headers
+  exposed_headers:
+    - "X-Request-ID"
+    - "X-RateLimit-Limit"
+    - "X-RateLimit-Remaining"
+    - "X-RateLimit-Reset"
+  
+  # Credentials support
+  allow_credentials: true
+  
+  # Max age for preflight cache
+  max_age: 3600

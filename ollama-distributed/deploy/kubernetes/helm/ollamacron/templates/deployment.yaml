@@ -1,0 +1,110 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ollamacron.fullname" . }}
+  labels:
+    {{- include "ollamacron.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.ollamacron.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "ollamacron.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "ollamacron.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "ollamacron.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.ollamacron.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.ollamacron.securityContext | nindent 12 }}
+          image: "{{ .Values.ollamacron.image.repository }}:{{ .Values.ollamacron.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.ollamacron.image.pullPolicy }}
+          command:
+            - ollamacron
+          args:
+            - server
+            - --config
+            - /etc/ollamacron/config.yaml
+          env:
+            {{- range .Values.ollamacron.env }}
+            - name: {{ .name }}
+              {{- if .value }}
+              value: {{ .value | quote }}
+              {{- else if .valueFrom }}
+              valueFrom:
+                {{- toYaml .valueFrom | nindent 16 }}
+              {{- end }}
+            {{- end }}
+            - name: OLLAMACRON_DATA_DIR
+              value: /app/data
+            - name: OLLAMACRON_LOG_DIR
+              value: /app/logs
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: p2p
+              containerPort: 9000
+              protocol: TCP
+            - name: metrics
+              containerPort: 9090
+              protocol: TCP
+            - name: health
+              containerPort: 8081
+              protocol: TCP
+          livenessProbe:
+            {{- toYaml .Values.ollamacron.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.ollamacron.readinessProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.ollamacron.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/ollamacron
+              readOnly: true
+            - name: data
+              mountPath: /app/data
+            - name: logs
+              mountPath: /app/logs
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "ollamacron.fullname" . }}-config
+        - name: data
+          {{- if .Values.ollamacron.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "ollamacron.fullname" . }}-data
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: logs
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+      {{- with .Values.ollamacron.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.ollamacron.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.ollamacron.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

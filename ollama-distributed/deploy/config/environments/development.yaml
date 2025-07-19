@@ -1,0 +1,95 @@
+# Development Environment Configuration
+# Optimized for local development and testing
+
+# Server configuration
+server:
+  bind: "127.0.0.1:8080"
+  tls:
+    enabled: false
+  cors:
+    enabled: true
+    allowed_origins: ["http://localhost:3000", "http://localhost:8080"]
+
+# P2P networking configuration
+p2p:
+  enabled: true
+  listen_addr: "/ip4/127.0.0.1/tcp/9000"
+  bootstrap_peers: []
+  connection_limits:
+    max_connections: 20
+    max_incoming: 10
+    max_outgoing: 10
+  discovery:
+    enabled: true
+    rendezvous: "ollamacron-dev-v1"
+
+# Model management configuration
+models:
+  cache_dir: "./data/models"
+  auto_pull: true
+  sync_interval: "1m"
+  retention:
+    max_size: "2GB"
+    max_age: "7d"
+
+# Distributed inference configuration
+inference:
+  load_balancing: "round_robin"
+  timeout: "120s"
+  max_concurrent_requests: 3
+  partitioning:
+    strategy: "layer_wise"
+    chunk_size: 500
+  fault_tolerance:
+    enabled: true
+    retry_attempts: 2
+    retry_delay: "2s"
+
+# Logging configuration
+logging:
+  level: "debug"
+  format: "text"
+  output: "./logs/ollamacron-dev.log"
+  rotation:
+    max_size: "10MB"
+    max_age: "3d"
+    max_backups: 3
+
+# Metrics configuration
+metrics:
+  enabled: true
+  bind: "127.0.0.1:9090"
+  interval: "10s"
+
+# Health check configuration
+health:
+  enabled: true
+  bind: "127.0.0.1:8081"
+  interval: "10s"
+
+# Authentication configuration
+auth:
+  enabled: false
+
+# Storage configuration
+storage:
+  backend: "local"
+  local:
+    path: "./data/storage"
+
+# Cache configuration
+cache:
+  backend: "memory"
+  ttl: "10m"
+  max_size: "100MB"
+
+# Rate limiting configuration
+rate_limiting:
+  enabled: false
+
+# Development configuration
+development:
+  enabled: true
+  debug_endpoints: true
+  profiling: true
+  hot_reload: true

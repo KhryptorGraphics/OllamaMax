@@ -1,0 +1,159 @@
+# Ollamacron Configuration File
+# This file contains the complete configuration for a distributed Ollama node
+
+# Node Configuration
+node:
+  id: ""                    # Node ID (auto-generated if empty)
+  name: "ollama-node"       # Node name
+  region: "us-west-2"       # Node region
+  zone: "us-west-2a"        # Node zone
+  environment: "production" # Environment (production, staging, development)
+  tags: {}                  # Custom tags for the node
+
+# API Server Configuration
+api:
+  listen: "0.0.0.0:11434"   # API server listen address
+  timeout: "30s"            # Request timeout
+  max_body_size: 33554432   # Maximum request body size (32MB)
+  
+  # TLS Configuration
+  tls:
+    enabled: true           # Enable TLS for production
+    cert_file: "${TLS_CERT_PATH}"  # TLS certificate file from environment
+    key_file: "${TLS_KEY_PATH}"   # TLS private key file from environment
+    ca_file: "${TLS_CA_PATH}"     # TLS CA file from environment
+    min_version: "1.3"      # Minimum TLS version 1.3
+    cipher_suites: ["TLS_AES_256_GCM_SHA384", "TLS_AES_128_GCM_SHA256", "TLS_CHACHA20_POLY1305_SHA256"]
+
+  # CORS Configuration
+  cors:
+    enabled: true           # Enable CORS
+    allowed_origins: ["${CORS_ALLOWED_ORIGINS}"]  # Environment-specific origins
+    allowed_methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+    allowed_headers: ["Authorization", "Content-Type", "X-Requested-With", "X-Request-ID"]  # Specific headers only
+    exposed_headers: ["X-Request-ID", "X-RateLimit-Limit", "X-RateLimit-Remaining"]     # Exposed headers
+    allow_credentials: true # Allow credentials for authenticated requests
+    max_age: 3600          # Reduced preflight cache duration
+
+  # Rate Limiting Configuration
+  rate_limit:
+    enabled: true           # Enable rate limiting
+    rps: 1000               # Requests per second
+    burst: 2000             # Burst capacity
+    window: "1m"            # Rate limit window
+
+# P2P Networking Configuration
+p2p:
+  listen: "/ip4/0.0.0.0/tcp/4001"  # P2P listen address
+  bootstrap: []                    # Bootstrap peer addresses
+  private_key: ""                  # Private key file path
+  enable_dht: true                 # Enable DHT
+  enable_pubsub: true              # Enable PubSub
+  conn_mgr_low: 50                 # Connection manager low watermark
+  conn_mgr_high: 200               # Connection manager high watermark
+  conn_mgr_grace: "30s"            # Connection manager grace period
+  dial_timeout: "30s"              # Dial timeout
+  max_streams: 1000                # Maximum streams per connection
+
+# Consensus Configuration
+consensus:
+  data_dir: "./data/consensus"     # Consensus data directory
+  bind_addr: "0.0.0.0:7000"        # Consensus bind address
+  advertise_addr: ""               # Consensus advertise address
+  bootstrap: false                 # Bootstrap new cluster
+  log_level: "INFO"                # Consensus log level
+  heartbeat_timeout: "1s"          # Heartbeat timeout
+  election_timeout: "1s"           # Election timeout
+  commit_timeout: "50ms"           # Commit timeout
+  max_append_entries: 64           # Maximum append entries
+  snapshot_interval: "120s"        # Snapshot interval
+  snapshot_threshold: 8192         # Snapshot threshold
+
+# Scheduler Configuration
+scheduler:
+  algorithm: "round_robin"         # Scheduling algorithm
+  load_balancing: "least_connections" # Load balancing strategy
+  health_check_interval: "30s"    # Health check interval
+  max_retries: 3                   # Maximum retries
+  retry_delay: "1s"                # Retry delay
+  queue_size: 10000                # Queue size
+  worker_count: 10                 # Worker count
+
+# Storage Configuration
+storage:
+  data_dir: "./data"               # Data directory
+  model_dir: "./models"            # Model directory
+  cache_dir: "./cache"             # Cache directory
+  max_disk_size: 107374182400      # Maximum disk size (100GB)
+  cleanup_age: "168h"              # Cleanup age (7 days)
+
+# Security Configuration
+security:
+  # TLS Configuration
+  tls:
+    enabled: true                  # Enable TLS
+    min_version: "1.3"             # Minimum TLS version
+    cert_file: "${TLS_CERT_PATH}"   # TLS certificate file from environment
+    key_file: "${TLS_KEY_PATH}"    # TLS private key file from environment
+    ca_file: "${TLS_CA_PATH}"      # TLS CA file from environment
+    cipher_suites: []              # Allowed cipher suites
+
+  # Authentication Configuration
+  auth:
+    enabled: true                  # Enable authentication
+    method: "jwt"                  # Authentication method (jwt, oauth, x509)
+    token_expiry: "24h"            # Token expiry duration
+    secret_key: "${JWT_SECRET}"    # JWT secret key from environment
+    issuer: "${JWT_ISSUER}"        # JWT issuer from environment
+    audience: "${JWT_AUDIENCE}"    # JWT audience from environment
+
+  # Encryption Configuration
+  encryption:
+    algorithm: "AES-256-GCM"       # Encryption algorithm
+    key_size: 256                  # Key size in bits
+    key_file: "${ENCRYPTION_KEY_FILE}"  # Key file path from environment
+
+  # Firewall Configuration
+  firewall:
+    enabled: true                  # Enable firewall
+    allowed_ips: []                # Allowed IP addresses
+    blocked_ips: []                # Blocked IP addresses
+    rules: []                      # Custom firewall rules
+
+  # Audit Configuration
+  audit:
+    enabled: true                  # Enable audit logging
+    log_file: "./logs/audit.log"   # Audit log file
+    format: "json"                 # Audit log format
+
+# Web Interface Configuration
+web:
+  enabled: true                    # Enable web interface
+  listen: "0.0.0.0:8080"          # Web interface listen address
+  static_dir: "./web/static"       # Static files directory
+  template_dir: "./web/templates"  # Template files directory
+  
+  # TLS Configuration for web interface
+  tls:
+    enabled: true                  # Enable TLS for web interface
+    cert_file: "${TLS_CERT_PATH}"   # TLS certificate file from environment
+    key_file: "${TLS_KEY_PATH}"    # TLS private key file from environment
+
+# Metrics Configuration
+metrics:
+  enabled: true                    # Enable metrics collection
+  listen: "0.0.0.0:9090"          # Metrics server listen address
+  path: "/metrics"                 # Metrics endpoint path
+  namespace: "ollama"              # Metrics namespace
+  subsystem: "distributed"        # Metrics subsystem
+
+# Logging Configuration
+logging:
+  level: "info"                    # Log level (debug, info, warn, error)
+  format: "json"                   # Log format (json, console)
+  output: "stdout"                 # Log output (stdout, file)
+  file: ""                         # Log file path (if output is file)
+  max_size: 100                    # Maximum log file size (MB)
+  max_age: 30                      # Maximum log file age (days)
+  max_backups: 10                  # Maximum log file backups
+  compress: true                   # Compress rotated log files

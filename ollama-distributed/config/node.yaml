@@ -1,0 +1,140 @@
+# Ollama Distributed Node Configuration
+
+# Node configuration
+node:
+  id: ""  # Auto-generated if empty
+  name: "ollama-node"
+  region: "us-west-2"
+  zone: "us-west-2a"
+  environment: "production"
+  tags:
+    role: "worker"
+    version: "1.0.0"
+
+# API server configuration
+api:
+  listen: "0.0.0.0:11434"
+  timeout: 30s
+  max_body_size: 33554432  # 32MB
+  tls:
+    enabled: true
+    cert_file: "${TLS_CERT_PATH}"
+    key_file: "${TLS_KEY_PATH}"
+    min_version: "1.3"
+  cors:
+    enabled: true
+    allowed_origins: ["${CORS_ALLOWED_ORIGINS}"]
+    allowed_methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+    allowed_headers: ["Authorization", "Content-Type", "X-Requested-With", "X-Request-ID"]
+    allow_credentials: true
+    max_age: 3600
+  rate_limit:
+    enabled: true
+    rps: 1000
+    burst: 2000
+    window: 60s
+
+# P2P networking configuration
+p2p:
+  listen: "/ip4/0.0.0.0/tcp/4001"
+  bootstrap: []
+  private_key: ""
+  enable_dht: true
+  enable_pubsub: true
+  conn_mgr_low: 50
+  conn_mgr_high: 200
+  conn_mgr_grace: "30s"
+  dial_timeout: 30s
+  max_streams: 1000
+
+# Consensus configuration
+consensus:
+  data_dir: "./data/consensus"
+  bind_addr: "0.0.0.0:7000"
+  advertise_addr: ""
+  bootstrap: false
+  log_level: "INFO"
+  heartbeat_timeout: 1s
+  election_timeout: 1s
+  commit_timeout: 50ms
+  max_append_entries: 64
+  snapshot_interval: 120s
+  snapshot_threshold: 8192
+
+# Scheduler configuration
+scheduler:
+  algorithm: "round_robin"
+  load_balancing: "least_connections"
+  health_check_interval: 30s
+  max_retries: 3
+  retry_delay: 1s
+  queue_size: 10000
+  worker_count: 10
+
+# Storage configuration
+storage:
+  data_dir: "./data"
+  model_dir: "./models"
+  cache_dir: "./cache"
+  max_disk_size: 107374182400  # 100GB
+  cleanup_age: 168h  # 7 days
+
+# Security configuration
+security:
+  tls:
+    enabled: true
+    cert_file: "${TLS_CERT_PATH}"
+    key_file: "${TLS_KEY_PATH}"
+    ca_file: "${TLS_CA_PATH}"
+    min_version: "1.3"
+    cipher_suites: ["TLS_AES_256_GCM_SHA384", "TLS_AES_128_GCM_SHA256", "TLS_CHACHA20_POLY1305_SHA256"]
+  auth:
+    enabled: true
+    method: "jwt"
+    token_expiry: 24h
+    secret_key: "${JWT_SECRET}"
+    issuer: "${JWT_ISSUER}"
+    audience: "${JWT_AUDIENCE}"
+  encryption:
+    algorithm: "AES-256-GCM"
+    key_size: 256
+    key_file: "${ENCRYPTION_KEY_FILE}"
+  firewall:
+    enabled: true
+    allowed_ips: []
+    blocked_ips: []
+    rules: []
+  audit:
+    enabled: true
+    log_file: "./logs/audit.log"
+    format: "json"
+
+# Web interface configuration
+web:
+  enabled: true
+  listen: "0.0.0.0:8080"
+  static_dir: "./web/static"
+  template_dir: "./web/templates"
+  tls:
+    enabled: true
+    cert_file: "${TLS_CERT_PATH}"
+    key_file: "${TLS_KEY_PATH}"
+
+# Metrics configuration
+metrics:
+  enabled: true
+  listen: "0.0.0.0:9090"
+  path: "/metrics"
+  namespace: "ollama"
+  subsystem: "distributed"
+
+# Logging configuration
+logging:
+  level: "info"
+  format: "json"
+  output: "stdout"
+  file: "./logs/ollama-distributed.log"
+  max_size: 100
+  max_age: 30
+  max_backups: 10
+  compress: true

@@ -1,0 +1,34 @@
+apiVersion: v2
+name: ollamacron
+description: A Helm chart for Ollamacron distributed AI inference platform
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+home: https://github.com/ollama-distributed/ollamacron
+sources:
+  - https://github.com/ollama-distributed/ollamacron
+maintainers:
+  - name: Ollamacron Team
+    email: team@ollama-distributed.com
+keywords:
+  - ai
+  - inference
+  - distributed
+  - machine-learning
+  - p2p
+annotations:
+  category: "Machine Learning"
+  licenses: "Apache-2.0"
+dependencies:
+  - name: prometheus
+    version: "15.18.0"
+    repository: "https://prometheus-community.github.io/helm-charts"
+    condition: prometheus.enabled
+  - name: grafana
+    version: "6.50.0"
+    repository: "https://grafana.github.io/helm-charts"
+    condition: grafana.enabled
+  - name: redis
+    version: "17.3.0"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: redis.enabled

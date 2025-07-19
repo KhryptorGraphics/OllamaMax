@@ -1,0 +1,192 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ollamacron.fullname" . }}-config
+  labels:
+    {{- include "ollamacron.labels" . | nindent 4 }}
+data:
+  config.yaml: |
+    # Ollamacron Configuration
+    server:
+      bind: {{ .Values.ollamacron.config.server.bind | quote }}
+      read_timeout: "30s"
+      write_timeout: "30s"
+      idle_timeout: "60s"
+      tls:
+        enabled: {{ .Values.ollamacron.config.server.tls.enabled }}
+        {{- if .Values.ollamacron.config.server.tls.cert_file }}
+        cert_file: {{ .Values.ollamacron.config.server.tls.cert_file | quote }}
+        {{- end }}
+        {{- if .Values.ollamacron.config.server.tls.key_file }}
+        key_file: {{ .Values.ollamacron.config.server.tls.key_file | quote }}
+        {{- end }}
+      cors:
+        enabled: true
+        allowed_origins: ["*"]
+        allowed_methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+        allowed_headers: ["*"]
+
+    p2p:
+      enabled: {{ .Values.ollamacron.config.p2p.enabled }}
+      listen_addr: {{ .Values.ollamacron.config.p2p.listen_addr | quote }}
+      bootstrap_peers: []
+      connection_limits:
+        max_connections: 500
+        max_incoming: 250
+        max_outgoing: 250
+      discovery:
+        enabled: {{ .Values.ollamacron.config.p2p.discovery.enabled }}
+        rendezvous: {{ .Values.ollamacron.config.p2p.discovery.rendezvous | quote }}
+        advertise_interval: "10m"
+      nat:
+        enabled: true
+        port_map_timeout: "30m"
+
+    models:
+      cache_dir: "/app/data/models"
+      auto_pull: true
+      sync_interval: "10m"
+      retention:
+        max_size: "50GB"
+        max_age: "30d"
+      sources:
+        - name: "ollama"
+          url: "https://ollama.ai/library"
+          priority: 1
+        - name: "huggingface"
+          url: "https://huggingface.co/models"
+          priority: 2
+
+    inference:
+      load_balancing: "weighted"
+      timeout: "600s"
+      max_concurrent_requests: 20
+      partitioning:
+        strategy: "pipeline_parallel"
+        chunk_size: 2000
+        overlap: 200
+      fault_tolerance:
+        enabled: true
+        retry_attempts: 3
+        retry_delay: "10s"
+        circuit_breaker:
+          enabled: true
+          failure_threshold: 10
+          recovery_timeout: "60s"
+
+    logging:
+      level: {{ .Values.ollamacron.config.logging.level | quote }}
+      format: {{ .Values.ollamacron.config.logging.format | quote }}
+      output: "/app/logs/ollamacron.log"
+      rotation:
+        max_size: "200MB"
+        max_age: "7d"
+        max_backups: 5
+        compress: true
+
+    metrics:
+      enabled: {{ .Values.ollamacron.config.metrics.enabled }}
+      bind: {{ .Values.ollamacron.config.metrics.bind | quote }}
+      path: "/metrics"
+      interval: "30s"
+      custom:
+        - name: "inference_requests_total"
+          help: "Total number of inference requests"
+          type: "counter"
+        - name: "inference_duration_seconds"
+          help: "Duration of inference requests in seconds"
+          type: "histogram"
+        - name: "model_cache_size_bytes"
+          help: "Size of model cache in bytes"
+          type: "gauge"
+        - name: "p2p_connections_total"
+          help: "Total number of P2P connections"
+          type: "gauge"
+        - name: "cluster_nodes_total"
+          help: "Total number of cluster nodes"
+          type: "gauge"
+
+    health:
+      enabled: {{ .Values.ollamacron.config.health.enabled }}
+      bind: {{ .Values.ollamacron.config.health.bind | quote }}
+      path: "/health"
+      interval: "30s"
+      timeout: "10s"
+      checks:
+        {{- if .Values.redis.enabled }}
+        - name: "redis"
+          type: "tcp"
+          target: "{{ .Release.Name }}-redis-master:6379"
+        {{- end }}
+
+    auth:
+      enabled: false
+      type: "jwt"
+      jwt:
+        secret: "your-secret-key"
+        expiry: "24h"
+
+    storage:
+      backend: "local"
+      local:
+        path: "/app/data/storage"
+
+    cache:
+      {{- if .Values.redis.enabled }}
+      backend: "redis"
+      redis:
+        addr: "{{ .Release.Name }}-redis-master:6379"
+        password: ""
+        db: 0
+        pool_size: 20
+        min_idle_conns: 5
+        dial_timeout: "5s"
+        read_timeout: "10s"
+        write_timeout: "10s"
+      {{- else }}
+      backend: "memory"
+      max_size: "1GB"
+      {{- end }}
+      ttl: "1h"
+
+    rate_limiting:
+      enabled: true
+      strategy: "sliding_window"
+      rate: 1000
+      burst: 2000
+      key: "ip"
+      {{- if .Values.redis.enabled }}
+      redis:
+        addr: "{{ .Release.Name }}-redis-master:6379"
+        password: ""
+        db: 1
+      {{- end }}
+
+    security:
+      csp:
+        enabled: true
+        policy: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';"
+      headers:
+        x_frame_options: "DENY"
+        x_content_type_options: "nosniff"
+        x_xss_protection: "1; mode=block"
+        referrer_policy: "strict-origin-when-cross-origin"
+      limits:
+        max_request_size: "100MB"
+        max_header_size: "1MB"
+        max_multipart_memory: "32MB"
+
+    observability:
+      tracing:
+        enabled: false
+        provider: "jaeger"
+        jaeger:
+          endpoint: "jaeger:14268"
+          service_name: "ollamacron"
+          sample_rate: 0.1
+
+    development:
+      enabled: false
+      debug_endpoints: false
+      profiling: false
+      hot_reload: false

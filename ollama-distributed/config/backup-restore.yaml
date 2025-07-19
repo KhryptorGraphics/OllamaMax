@@ -1,0 +1,379 @@
+# Backup and Restore Configuration
+# Comprehensive backup strategy for Ollama Distributed
+
+backup:
+  # Global Settings
+  global:
+    enabled: true
+    base_directory: "${BACKUP_BASE_DIR:-./backups}"
+    retention_policy: "30d"  # Keep backups for 30 days
+    compression: true
+    encryption: true
+    verify_backups: true
+    notification_on_failure: true
+  
+  # Encryption Settings
+  encryption:
+    algorithm: "AES-256-GCM"
+    key_file: "${BACKUP_ENCRYPTION_KEY}"
+    key_rotation_interval: "90d"
+    key_derivation: "PBKDF2"
+    iterations: 100000
+  
+  # Database Backup
+  database:
+    enabled: true
+    type: "postgresql"
+    connection:
+      host: "${DATABASE_HOST:-localhost}"
+      port: "${DATABASE_PORT:-5432}"
+      database: "${DATABASE_NAME:-ollama_distributed}"
+      username: "${DATABASE_BACKUP_USER:-backup_user}"
+      password: "${DATABASE_BACKUP_PASSWORD}"
+    
+    schedule:
+      # Full backup daily at 2 AM
+      full: "0 2 * * *"
+      # Incremental backup every 4 hours
+      incremental: "0 */4 * * *"
+      # Transaction log backup every 15 minutes
+      transaction_log: "*/15 * * * *"
+    
+    options:
+      format: "custom"  # PostgreSQL custom format
+      compress: 9       # Maximum compression
+      verbose: true
+      exclude_tables: ["temp_*", "cache_*"]
+      parallel_jobs: 4
+    
+    retention:
+      full_backups: "7d"
+      incremental_backups: "3d"
+      transaction_logs: "24h"
+  
+  # File System Backup
+  filesystem:
+    enabled: true
+    
+    # Model files backup
+    models:
+      source_directory: "${MODEL_DIR:-./models}"
+      destination: "${BACKUP_BASE_DIR}/models"
+      schedule: "0 3 * * *"  # Daily at 3 AM
+      include_patterns:
+        - "*.bin"
+        - "*.safetensors"
+        - "*.json"
+        - "*.txt"
+      exclude_patterns:
+        - "*.tmp"
+        - "*.lock"
+        - "temp_*"
+      verify_checksums: true
+    
+    # Configuration backup
+    config:
+      source_directory: "./config"
+      destination: "${BACKUP_BASE_DIR}/config"
+      schedule: "0 1 * * *"  # Daily at 1 AM
+      include_patterns:
+        - "*.yaml"
+        - "*.yml"
+        - "*.json"
+        - "*.conf"
+      exclude_patterns:
+        - "*.tmp"
+        - "*cache*"
+    
+    # Logs backup
+    logs:
+      source_directory: "${LOG_DIR:-./logs}"
+      destination: "${BACKUP_BASE_DIR}/logs"
+      schedule: "0 4 * * 0"  # Weekly on Sunday at 4 AM
+      compress: true
+      retention: "30d"
+      include_patterns:
+        - "*.log"
+        - "*.log.*"
+      exclude_patterns:
+        - "*.tmp"
+        - "debug_*"
+  
+  # Application State Backup
+  application_state:
+    enabled: true
+    
+    # Consensus state
+    consensus:
+      source_directory: "${CONSENSUS_DATA_DIR:-./data/consensus}"
+      destination: "${BACKUP_BASE_DIR}/consensus"
+      schedule: "0 */6 * * *"  # Every 6 hours
+      atomic: true  # Ensure consistent state
+    
+    # Cache backup (optional)
+    cache:
+      source_directory: "${CACHE_DIR:-./cache}"
+      destination: "${BACKUP_BASE_DIR}/cache"
+      schedule: "0 5 * * 0"  # Weekly on Sunday at 5 AM
+      enabled: false  # Disabled by default (cache can be rebuilt)
+  
+  # S3 Backup (Cloud Storage)
+  s3:
+    enabled: "${S3_BACKUP_ENABLED:-false}"
+    region: "${S3_BACKUP_REGION:-us-west-2}"
+    bucket: "${S3_BACKUP_BUCKET}"
+    prefix: "ollama-distributed-backups"
+    endpoint: "${S3_BACKUP_ENDPOINT}"
+    access_key: "${S3_BACKUP_ACCESS_KEY}"
+    secret_key: "${S3_BACKUP_SECRET_KEY}"
+    
+    # Upload schedule
+    upload_schedule: "0 6 * * *"  # Daily at 6 AM
+    
+    # Storage class
+    storage_class: "STANDARD_IA"  # Infrequent Access
+    
+    # Lifecycle management
+    lifecycle:
+      transition_to_glacier: "90d"
+      delete_after: "2555d"  # 7 years
+    
+    # Server-side encryption
+    server_side_encryption: "AES256"
+    kms_key_id: "${S3_KMS_KEY_ID}"
+
+# Restore Configuration
+restore:
+  # Global Settings
+  global:
+    verify_before_restore: true
+    backup_current_before_restore: true
+    test_restore_in_sandbox: false
+    notification_on_completion: true
+  
+  # Database Restore
+  database:
+    # Connection for restore
+    connection:
+      host: "${DATABASE_HOST:-localhost}"
+      port: "${DATABASE_PORT:-5432}"
+      database: "${DATABASE_NAME:-ollama_distributed}"
+      username: "${DATABASE_RESTORE_USER:-restore_user}"
+      password: "${DATABASE_RESTORE_PASSWORD}"
+    
+    # Restore options
+    options:
+      parallel_jobs: 4
+      verbose: true
+      clean_before_restore: false
+      create_database: false
+      disable_triggers: false
+    
+    # Point-in-time recovery
+    pitr:
+      enabled: true
+      target_time: ""  # Set during restore operation
+      target_xid: ""   # Alternative: restore to specific transaction ID
+      target_lsn: ""   # Alternative: restore to specific LSN
+    
+    # Validation after restore
+    validation:
+      enabled: true
+      queries:
+        - "SELECT COUNT(*) FROM nodes;"
+        - "SELECT COUNT(*) FROM models;"
+        - "SELECT COUNT(*) FROM inference_sessions;"
+        - "SELECT COUNT(*) FROM metrics WHERE timestamp > NOW() - INTERVAL '24 hours';"
+      expected_min_counts:
+        nodes: 1
+        models: 0  # Can be 0 initially
+        inference_sessions: 0
+  
+  # File System Restore
+  filesystem:
+    # Model files restore
+    models:
+      verify_checksums: true
+      preserve_permissions: true
+      atomic_restore: true
+    
+    # Configuration restore
+    config:
+      backup_existing: true
+      preserve_permissions: true
+      validate_syntax: true
+    
+    # Logs restore
+    logs:
+      preserve_permissions: true
+      decompress: true
+  
+  # Application State Restore
+  application_state:
+    # Consensus state restore
+    consensus:
+      verify_integrity: true
+      atomic_restore: true
+      validate_state: true
+    
+    # Cache restore
+    cache:
+      enabled: false  # Usually not restored
+      clear_existing: true
+
+# Monitoring and Alerting
+monitoring:
+  # Backup Monitoring
+  backup_monitoring:
+    enabled: true
+    
+    # Health checks
+    health_checks:
+      backup_completion: true
+      backup_size_validation: true
+      backup_corruption_check: true
+      schedule_adherence: true
+    
+    # Metrics collection
+    metrics:
+      backup_duration: true
+      backup_size: true
+      backup_success_rate: true
+      storage_usage: true
+    
+    # Alerting thresholds
+    alerts:
+      backup_failure: "immediate"
+      backup_delay: "30m"
+      storage_usage_high: "85%"
+      backup_size_anomaly: "50%"
+  
+  # Restore Monitoring
+  restore_monitoring:
+    enabled: true
+    
+    # Progress tracking
+    progress_tracking:
+      enabled: true
+      update_interval: "30s"
+      detailed_logging: true
+    
+    # Validation monitoring
+    validation:
+      pre_restore_checks: true
+      post_restore_validation: true
+      performance_testing: false
+
+# Disaster Recovery
+disaster_recovery:
+  # Recovery Time Objective (RTO)
+  rto: "4h"  # Maximum acceptable downtime
+  
+  # Recovery Point Objective (RPO)
+  rpo: "15m"  # Maximum acceptable data loss
+  
+  # Automated recovery
+  automated_recovery:
+    enabled: false  # Disabled by default for safety
+    conditions:
+      - "database_unavailable > 5m"
+      - "consensus_failure > 10m"
+      - "filesystem_corruption_detected"
+  
+  # Manual recovery procedures
+  recovery_procedures:
+    - name: "database_recovery"
+      description: "Recover database from latest backup"
+      steps:
+        - "Stop all services"
+        - "Restore database from latest full backup"
+        - "Apply incremental backups if available"
+        - "Validate data integrity"
+        - "Start services in maintenance mode"
+        - "Run health checks"
+        - "Enable normal operations"
+    
+    - name: "full_system_recovery"
+      description: "Complete system recovery from backups"
+      steps:
+        - "Prepare new infrastructure"
+        - "Restore configuration files"
+        - "Restore database"
+        - "Restore model files"
+        - "Restore application state"
+        - "Validate system integrity"
+        - "Perform end-to-end testing"
+        - "Switch traffic to recovered system"
+
+# Backup Scripts
+scripts:
+  # Backup script
+  backup_script: |
+    #!/bin/bash
+    # Automated backup script for Ollama Distributed
+    
+    set -euo pipefail
+    
+    BACKUP_DIR="${BACKUP_BASE_DIR:-./backups}"
+    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+    LOG_FILE="${BACKUP_DIR}/logs/backup_${TIMESTAMP}.log"
+    
+    mkdir -p "${BACKUP_DIR}/logs"
+    
+    echo "Starting backup at $(date)" | tee -a "$LOG_FILE"
+    
+    # Database backup
+    echo "Backing up database..." | tee -a "$LOG_FILE"
+    pg_dump -h "${DATABASE_HOST}" -U "${DATABASE_BACKUP_USER}" -d "${DATABASE_NAME}" \
+            -f "${BACKUP_DIR}/database/db_backup_${TIMESTAMP}.sql" \
+            --verbose 2>&1 | tee -a "$LOG_FILE"
+    
+    # Compress and encrypt database backup
+    gzip "${BACKUP_DIR}/database/db_backup_${TIMESTAMP}.sql"
+    
+    # File system backup
+    echo "Backing up model files..." | tee -a "$LOG_FILE"
+    tar -czf "${BACKUP_DIR}/models/models_backup_${TIMESTAMP}.tar.gz" \
+        -C "${MODEL_DIR}" . 2>&1 | tee -a "$LOG_FILE"
+    
+    echo "Backup completed at $(date)" | tee -a "$LOG_FILE"
+  
+  # Restore script
+  restore_script: |
+    #!/bin/bash
+    # Automated restore script for Ollama Distributed
+    
+    set -euo pipefail
+    
+    BACKUP_FILE="$1"
+    BACKUP_DIR="${BACKUP_BASE_DIR:-./backups}"
+    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+    LOG_FILE="${BACKUP_DIR}/logs/restore_${TIMESTAMP}.log"
+    
+    if [ -z "$BACKUP_FILE" ]; then
+        echo "Usage: $0 <backup_file>"
+        exit 1
+    fi
+    
+    echo "Starting restore from $BACKUP_FILE at $(date)" | tee -a "$LOG_FILE"
+    
+    # Validate backup file
+    if [ ! -f "$BACKUP_FILE" ]; then
+        echo "Backup file not found: $BACKUP_FILE" | tee -a "$LOG_FILE"
+        exit 1
+    fi
+    
+    # Stop services
+    echo "Stopping services..." | tee -a "$LOG_FILE"
+    # Add service stop commands here
+    
+    # Restore database
+    echo "Restoring database..." | tee -a "$LOG_FILE"
+    gunzip -c "$BACKUP_FILE" | psql -h "${DATABASE_HOST}" -U "${DATABASE_RESTORE_USER}" -d "${DATABASE_NAME}" \
+                               2>&1 | tee -a "$LOG_FILE"
+    
+    # Start services
+    echo "Starting services..." | tee -a "$LOG_FILE"
+    # Add service start commands here
+    
+    echo "Restore completed at $(date)" | tee -a "$LOG_FILE"

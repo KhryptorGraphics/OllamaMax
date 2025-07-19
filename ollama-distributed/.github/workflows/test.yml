@@ -1,0 +1,468 @@
+name: Comprehensive Test Suite
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    - cron: '0 2 * * *' # Run nightly at 2 AM
+
+env:
+  GO_VERSION: '1.21'
+  OLLAMA_TEST_CI: 'true'
+  OLLAMA_TEST_NODE_COUNT: '3'
+  OLLAMA_TEST_TIMEOUT: '30m'
+
+jobs:
+  # Unit Tests - Fast, run on all platforms
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: ['1.21', '1.22']
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ matrix.go-version }}
+    
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-${{ matrix.go-version }}-
+    
+    - name: Install dependencies
+      run: go mod download
+    
+    - name: Run unit tests
+      run: |
+        go test -v -race -coverprofile=coverage.out -covermode=atomic ./tests/unit/...
+    
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.out
+        flags: unit
+        name: unit-tests-${{ matrix.go-version }}
+
+  # Integration Tests - Require cluster setup
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+    
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ env.GO_VERSION }}-${{ hashFiles('**/go.sum') }}
+    
+    - name: Install dependencies
+      run: go mod download
+    
+    - name: Set up test environment
+      run: |
+        # Create test directories
+        mkdir -p /tmp/ollama-test-data
+        mkdir -p ./test-artifacts
+        
+        # Set up proper permissions
+        chmod 755 /tmp/ollama-test-data
+        
+        # Install additional tools
+        go install github.com/onsi/ginkgo/v2/ginkgo@latest
+    
+    - name: Run integration tests
+      run: |
+        export OLLAMA_TEST_ARTIFACTS_DIR="./test-artifacts"
+        go test -v -timeout=20m -tags=integration ./tests/integration/...
+    
+    - name: Upload test artifacts
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: integration-test-artifacts
+        path: ./test-artifacts/
+        retention-days: 7
+
+  # E2E Tests - Full workflow tests
+  e2e-tests:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: integration-tests
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+    
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ env.GO_VERSION }}-${{ hashFiles('**/go.sum') }}
+    
+    - name: Install dependencies
+      run: go mod download
+    
+    - name: Set up Docker
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Set up test environment
+      run: |
+        # Create test directories
+        mkdir -p ./test-artifacts
+        
+        # Set up system limits for testing
+        echo "fs.file-max = 65536" | sudo tee -a /etc/sysctl.conf
+        sudo sysctl -p
+        
+        # Install system dependencies
+        sudo apt-get update
+        sudo apt-get install -y curl netcat-openbsd
+    
+    - name: Run E2E tests
+      run: |
+        export OLLAMA_TEST_ARTIFACTS_DIR="./test-artifacts"
+        export OLLAMA_TEST_USE_DOCKER="false"
+        go test -v -timeout=45m -tags=e2e ./tests/e2e/...
+    
+    - name: Upload test artifacts
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: e2e-test-artifacts
+        path: ./test-artifacts/
+        retention-days: 7
+
+  # Performance Tests - Benchmarks and load tests
+  performance-tests:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    needs: integration-tests
+    if: github.event_name == 'schedule' || contains(github.event.pull_request.labels.*.name, 'performance')
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+    
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ env.GO_VERSION }}-${{ hashFiles('**/go.sum') }}
+    
+    - name: Install dependencies
+      run: go mod download
+    
+    - name: Set up performance test environment
+      run: |
+        # Create test directories
+        mkdir -p ./test-artifacts
+        
+        # Set up system for performance testing
+        echo "net.core.somaxconn = 65535" | sudo tee -a /etc/sysctl.conf
+        echo "net.core.netdev_max_backlog = 5000" | sudo tee -a /etc/sysctl.conf
+        sudo sysctl -p
+        
+        # Install performance monitoring tools
+        sudo apt-get update
+        sudo apt-get install -y htop iotop sysstat
+    
+    - name: Run performance tests
+      run: |
+        export OLLAMA_TEST_ARTIFACTS_DIR="./test-artifacts"
+        export OLLAMA_TEST_NODE_COUNT="5"
+        go test -v -timeout=60m -bench=. -benchmem ./tests/performance/...
+    
+    - name: Upload performance results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: performance-test-results
+        path: ./test-artifacts/
+        retention-days: 30
+
+  # Chaos Tests - Only on schedule or specific label
+  chaos-tests:
+    name: Chaos Tests
+    runs-on: ubuntu-latest
+    needs: integration-tests
+    if: github.event_name == 'schedule' || contains(github.event.pull_request.labels.*.name, 'chaos')
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+    
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ env.GO_VERSION }}-${{ hashFiles('**/go.sum') }}
+    
+    - name: Install dependencies
+      run: go mod download
+    
+    - name: Set up chaos test environment
+      run: |
+        # Create test directories
+        mkdir -p ./test-artifacts
+        
+        # Set up system for chaos testing
+        sudo sysctl -w fs.file-max=1048576
+        sudo sysctl -w net.core.somaxconn=65535
+        
+        # Install chaos testing tools
+        sudo apt-get update
+        sudo apt-get install -y stress-ng tcpdump
+    
+    - name: Run chaos tests
+      run: |
+        export OLLAMA_TEST_ARTIFACTS_DIR="./test-artifacts"
+        export OLLAMA_TEST_NODE_COUNT="5"
+        go test -v -timeout=60m -tags=chaos ./tests/chaos/...
+    
+    - name: Upload chaos test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: chaos-test-results
+        path: ./test-artifacts/
+        retention-days: 30
+
+  # Security Tests - Static analysis and security checks
+  security-tests:
+    name: Security Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+    
+    - name: Run Gosec Security Scanner
+      uses: securecodewarrior/github-action-gosec@master
+      with:
+        args: '-fmt sarif -out results.sarif ./...'
+    
+    - name: Upload SARIF file
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: results.sarif
+    
+    - name: Run govulncheck
+      run: |
+        go install golang.org/x/vuln/cmd/govulncheck@latest
+        govulncheck ./...
+    
+    - name: Run dependency check
+      run: |
+        go list -json -m all | nancy sleuth
+
+  # Build and Test Matrix - Multiple OS and Go versions
+  build-matrix:
+    name: Build Matrix
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        go-version: ['1.21', '1.22']
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ matrix.go-version }}
+    
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
+    
+    - name: Install dependencies
+      run: go mod download
+    
+    - name: Build
+      run: go build -v ./...
+    
+    - name: Test
+      run: go test -v -short ./tests/unit/...
+
+  # Quality Gates - Code quality checks
+  quality-gates:
+    name: Quality Gates
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+    
+    - name: Install quality tools
+      run: |
+        go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+        go install github.com/axw/gocov/gocov@latest
+        go install github.com/AlekSi/gocov-xml@latest
+        go install honnef.co/go/tools/cmd/staticcheck@latest
+    
+    - name: Run golangci-lint
+      run: golangci-lint run --timeout=10m
+    
+    - name: Run staticcheck
+      run: staticcheck ./...
+    
+    - name: Check formatting
+      run: |
+        if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
+          echo "Code is not formatted properly:"
+          gofmt -s -l .
+          exit 1
+        fi
+    
+    - name: Check for race conditions
+      run: go test -race -short ./tests/unit/...
+    
+    - name: Generate coverage report
+      run: |
+        go test -coverprofile=coverage.out -covermode=atomic ./...
+        go tool cover -html=coverage.out -o coverage.html
+    
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v3
+      with:
+        name: coverage-report
+        path: coverage.html
+
+  # Deployment Test - Test deployment scenarios
+  deployment-test:
+    name: Deployment Test
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+    
+    - name: Set up Docker
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Build Docker image
+      run: |
+        docker build -t ollama-distributed:test .
+    
+    - name: Test Docker deployment
+      run: |
+        # Start container
+        docker run -d --name ollama-test ollama-distributed:test
+        
+        # Wait for startup
+        sleep 10
+        
+        # Test health endpoint
+        docker exec ollama-test curl -f http://localhost:11434/health || exit 1
+        
+        # Cleanup
+        docker stop ollama-test
+        docker rm ollama-test
+
+  # Final Report - Collect all results
+  final-report:
+    name: Final Report
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests, e2e-tests, quality-gates]
+    if: always()
+    
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+    
+    - name: Generate final report
+      run: |
+        echo "# Test Execution Summary" > test-summary.md
+        echo "" >> test-summary.md
+        echo "## Test Results" >> test-summary.md
+        echo "" >> test-summary.md
+        
+        # Check job results
+        echo "- Unit Tests: ${{ needs.unit-tests.result }}" >> test-summary.md
+        echo "- Integration Tests: ${{ needs.integration-tests.result }}" >> test-summary.md
+        echo "- E2E Tests: ${{ needs.e2e-tests.result }}" >> test-summary.md
+        echo "- Quality Gates: ${{ needs.quality-gates.result }}" >> test-summary.md
+        
+        if [ "${{ needs.performance-tests.result }}" != "skipped" ]; then
+          echo "- Performance Tests: ${{ needs.performance-tests.result }}" >> test-summary.md
+        fi
+        
+        if [ "${{ needs.chaos-tests.result }}" != "skipped" ]; then
+          echo "- Chaos Tests: ${{ needs.chaos-tests.result }}" >> test-summary.md
+        fi
+        
+        echo "" >> test-summary.md
+        echo "## Artifacts" >> test-summary.md
+        echo "" >> test-summary.md
+        echo "Test artifacts are available for download from the Actions tab." >> test-summary.md
+        
+        cat test-summary.md
+    
+    - name: Upload final report
+      uses: actions/upload-artifact@v3
+      with:
+        name: final-test-report
+        path: test-summary.md
+        retention-days: 30

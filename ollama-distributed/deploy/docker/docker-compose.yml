@@ -1,0 +1,229 @@
+# Docker Compose configuration for Ollamacron
+# Provides both single-node and multi-node deployment options
+
+version: '3.8'
+
+services:
+  # Coordinator node
+  coordinator:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    container_name: ollamacron-coordinator
+    hostname: coordinator
+    command: [
+      "ollamacron", "coordinator",
+      "--config", "/app/config/config.yaml",
+      "--bootstrap", "true",
+      "--log-level", "info"
+    ]
+    ports:
+      - "11434:11434"  # API
+      - "14001:4001"   # P2P (external port 14001)
+      - "17000:7000"   # Consensus (external port 17000)
+      - "18080:8080"   # Web UI (external port 18080)
+      - "19090:9090"   # Metrics (external port 19090)
+    volumes:
+      - coordinator_data:/app/data
+      - coordinator_models:/app/models
+      - coordinator_cache:/app/cache
+      - coordinator_logs:/app/logs
+      - ./config:/app/config:ro
+    networks:
+      - ollamacron_network
+    environment:
+      - OLLAMACRON_LOG_LEVEL=${LOG_LEVEL:-info}
+      - OLLAMACRON_LOG_FORMAT=${LOG_FORMAT:-json}
+      - OLLAMACRON_NODE_NAME=coordinator
+      - OLLAMACRON_NODE_ENVIRONMENT=${NODE_ENVIRONMENT:-production}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_ISSUER=${JWT_ISSUER}
+      - JWT_AUDIENCE=${JWT_AUDIENCE}
+      - TLS_CERT_PATH=${TLS_CERT_PATH}
+      - TLS_KEY_PATH=${TLS_KEY_PATH}
+      - TLS_CA_PATH=${TLS_CA_PATH}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
+      - ENCRYPTION_KEY_FILE=${ENCRYPTION_KEY_FILE}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Node 1
+  node1:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    container_name: ollamacron-node1
+    hostname: node1
+    command: [
+      "ollamacron", "node",
+      "--config", "/app/config/config.yaml",
+      "--bootstrap", "coordinator:4001",
+      "--log-level", "info"
+    ]
+    ports:
+      - "11435:11434"  # API
+      - "14002:4001"   # P2P (external port 14002)
+      - "18081:8080"   # Web UI (external port 18081)
+      - "19091:9090"   # Metrics (external port 19091)
+    volumes:
+      - node1_data:/app/data
+      - node1_models:/app/models
+      - node1_cache:/app/cache
+      - node1_logs:/app/logs
+      - ./config:/app/config:ro
+    networks:
+      - ollamacron_network
+    environment:
+      - OLLAMACRON_LOG_LEVEL=${LOG_LEVEL:-info}
+      - OLLAMACRON_LOG_FORMAT=${LOG_FORMAT:-json}
+      - OLLAMACRON_NODE_NAME=node1
+      - OLLAMACRON_NODE_ENVIRONMENT=${NODE_ENVIRONMENT:-production}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_ISSUER=${JWT_ISSUER}
+      - JWT_AUDIENCE=${JWT_AUDIENCE}
+      - TLS_CERT_PATH=${TLS_CERT_PATH}
+      - TLS_KEY_PATH=${TLS_KEY_PATH}
+      - TLS_CA_PATH=${TLS_CA_PATH}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
+      - ENCRYPTION_KEY_FILE=${ENCRYPTION_KEY_FILE}
+    depends_on:
+      - coordinator
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Node 2
+  node2:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    container_name: ollamacron-node2
+    hostname: node2
+    command: [
+      "ollamacron", "node",
+      "--config", "/app/config/config.yaml",
+      "--bootstrap", "coordinator:4001",
+      "--log-level", "info"
+    ]
+    ports:
+      - "11436:11434"  # API
+      - "14003:4001"   # P2P (external port 14003)
+      - "18082:8080"   # Web UI (external port 18082)
+      - "19092:9090"   # Metrics (external port 19092)
+    volumes:
+      - node2_data:/app/data
+      - node2_models:/app/models
+      - node2_cache:/app/cache
+      - node2_logs:/app/logs
+      - ./config:/app/config:ro
+    networks:
+      - ollamacron_network
+    environment:
+      - OLLAMACRON_LOG_LEVEL=${LOG_LEVEL:-info}
+      - OLLAMACRON_LOG_FORMAT=${LOG_FORMAT:-json}
+      - OLLAMACRON_NODE_NAME=node2
+      - OLLAMACRON_NODE_ENVIRONMENT=${NODE_ENVIRONMENT:-production}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_ISSUER=${JWT_ISSUER}
+      - JWT_AUDIENCE=${JWT_AUDIENCE}
+      - TLS_CERT_PATH=${TLS_CERT_PATH}
+      - TLS_KEY_PATH=${TLS_KEY_PATH}
+      - TLS_CA_PATH=${TLS_CA_PATH}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
+      - ENCRYPTION_KEY_FILE=${ENCRYPTION_KEY_FILE}
+    depends_on:
+      - coordinator
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ollamacron-prometheus
+    ports:
+      - "19093:9090"  # Prometheus (external port 19093)
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - ollamacron_network
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ollamacron-grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana:/etc/grafana/provisioning:ro
+    networks:
+      - ollamacron_network
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SECURITY_SECRET_KEY=${GRAFANA_SECRET_KEY}
+      - GF_SECURITY_DISABLE_GRAVATAR=true
+      - GF_ANALYTICS_REPORTING_ENABLED=false
+      - GF_ANALYTICS_CHECK_FOR_UPDATES=false
+    restart: unless-stopped
+
+# Volumes for persistent data
+volumes:
+  coordinator_data:
+    driver: local
+  coordinator_models:
+    driver: local
+  coordinator_cache:
+    driver: local
+  coordinator_logs:
+    driver: local
+  node1_data:
+    driver: local
+  node1_models:
+    driver: local
+  node1_cache:
+    driver: local
+  node1_logs:
+    driver: local
+  node2_data:
+    driver: local
+  node2_models:
+    driver: local
+  node2_cache:
+    driver: local
+  node2_logs:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+# Network for inter-service communication
+networks:
+  ollamacron_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

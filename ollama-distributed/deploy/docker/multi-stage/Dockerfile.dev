@@ -1,0 +1,63 @@
+# Development Dockerfile for Ollamacron
+# Includes development tools and debugging capabilities
+
+FROM golang:1.21-alpine
+
+# Install development dependencies
+RUN apk add --no-cache \
+    git \
+    make \
+    gcc \
+    musl-dev \
+    curl \
+    jq \
+    vim \
+    bash \
+    ca-certificates \
+    tzdata
+
+# Install air for hot reloading
+RUN go install github.com/cosmtrek/air@latest
+
+# Install delve for debugging
+RUN go install github.com/go-delve/delve/cmd/dlv@latest
+
+# Create non-root user
+RUN addgroup -g 1000 -S ollamacron && \
+    adduser -u 1000 -S ollamacron -G ollamacron
+
+# Set working directory
+WORKDIR /app
+
+# Create directories
+RUN mkdir -p /app/data /app/logs /app/config && \
+    chown -R ollamacron:ollamacron /app
+
+# Copy go mod files
+COPY go.mod go.sum ./
+
+# Download dependencies
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Change ownership
+RUN chown -R ollamacron:ollamacron /app
+
+# Switch to non-root user
+USER ollamacron
+
+# Expose ports
+EXPOSE 8080 9000 9090 8081 40000
+
+# Environment variables
+ENV OLLAMACRON_CONFIG="/app/config/node.yaml"
+ENV OLLAMACRON_DATA_DIR="/app/data"
+ENV OLLAMACRON_LOG_DIR="/app/logs"
+ENV CGO_ENABLED=0
+ENV GOOS=linux
+ENV GOARCH=amd64
+
+# Default command for development
+CMD ["air", "-c", ".air.toml"]

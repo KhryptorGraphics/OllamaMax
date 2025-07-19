@@ -1,0 +1,269 @@
+# Production Environment Configuration
+# Optimized for production deployment with security and performance
+
+# Server configuration
+server:
+  bind: "0.0.0.0:8080"
+  read_timeout: "30s"
+  write_timeout: "30s"
+  idle_timeout: "60s"
+  max_header_bytes: 1048576  # 1MB
+  shutdown_timeout: "30s"
+  tls:
+    enabled: true
+    cert_file: "/etc/ssl/certs/ollamacron.crt"
+    key_file: "/etc/ssl/private/ollamacron.key"
+    auto_cert: true
+  cors:
+    enabled: true
+    allowed_origins: ["${CORS_ALLOWED_ORIGINS}"]
+    allowed_methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"]
+    allowed_headers: ["Authorization", "Content-Type", "X-Requested-With", "X-Request-ID", "X-Trace-ID"]
+    exposed_headers: ["X-Request-ID", "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"]
+    allow_credentials: true
+
+# P2P networking configuration
+p2p:
+  enabled: true
+  listen_addr: "/ip4/0.0.0.0/tcp/9000"
+  bootstrap_peers: []
+  connection_limits:
+    max_connections: 500
+    max_incoming: 250
+    max_outgoing: 250
+  discovery:
+    enabled: true
+    rendezvous: "ollamacron-prod-v1"
+    advertise_interval: "10m"
+  nat:
+    enabled: true
+    port_map_timeout: "30m"
+
+# Model management configuration
+models:
+  cache_dir: "/app/data/models"
+  auto_pull: true
+  sync_interval: "10m"
+  retention:
+    max_size: "100GB"
+    max_age: "90d"
+  sources:
+    - name: "ollama"
+      url: "https://ollama.ai/library"
+      priority: 1
+    - name: "huggingface"
+      url: "https://huggingface.co/models"
+      priority: 2
+
+# Distributed inference configuration
+inference:
+  load_balancing: "weighted"
+  timeout: "600s"
+  max_concurrent_requests: 50
+  partitioning:
+    strategy: "pipeline_parallel"
+    chunk_size: 2000
+    overlap: 200
+  fault_tolerance:
+    enabled: true
+    retry_attempts: 3
+    retry_delay: "10s"
+    circuit_breaker:
+      enabled: true
+      failure_threshold: 10
+      recovery_timeout: "60s"
+
+# Logging configuration
+logging:
+  level: "info"
+  format: "json"
+  output: "/app/logs/ollamacron.log"
+  rotation:
+    max_size: "500MB"
+    max_age: "30d"
+    max_backups: 10
+    compress: true
+
+# Metrics configuration
+metrics:
+  enabled: true
+  bind: "0.0.0.0:9090"
+  path: "/metrics"
+  interval: "30s"
+  custom:
+    - name: "inference_requests_total"
+      help: "Total number of inference requests"
+      type: "counter"
+    - name: "inference_duration_seconds"
+      help: "Duration of inference requests in seconds"
+      type: "histogram"
+    - name: "model_cache_size_bytes"
+      help: "Size of model cache in bytes"
+      type: "gauge"
+    - name: "p2p_connections_total"
+      help: "Total number of P2P connections"
+      type: "gauge"
+    - name: "cluster_nodes_total"
+      help: "Total number of cluster nodes"
+      type: "gauge"
+
+# Health check configuration
+health:
+  enabled: true
+  bind: "0.0.0.0:8081"
+  path: "/health"
+  interval: "30s"
+  timeout: "10s"
+  checks:
+    - name: "database"
+      type: "tcp"
+      target: "postgres:5432"
+    - name: "redis"
+      type: "tcp"
+      target: "redis:6379"
+    - name: "storage"
+      type: "http"
+      target: "http://localhost:8080/api/v1/storage/health"
+
+# Authentication configuration
+auth:
+  enabled: true
+  type: "jwt"
+  jwt:
+    secret: "${JWT_SECRET}"
+    expiry: "24h"
+    refresh_token_expiry: "7d"
+    issuer: "${JWT_ISSUER}"
+    audience: "${JWT_AUDIENCE}"
+    algorithm: "HS256"
+
+# Storage configuration
+storage:
+  backend: "s3"
+  s3:
+    bucket: "${S3_BUCKET}"
+    region: "${S3_REGION}"
+    endpoint: "${S3_ENDPOINT}"
+    access_key: "${S3_ACCESS_KEY}"
+    secret_key: "${S3_SECRET_KEY}"
+    use_ssl: true
+    path_style: false
+
+# Cache configuration
+cache:
+  backend: "redis"
+  ttl: "1h"
+  max_size: "10GB"
+  redis:
+    addr: "redis:6379"
+    password: "${REDIS_PASSWORD}"
+    db: 0
+    pool_size: 100
+    min_idle_conns: 10
+    dial_timeout: "5s"
+    read_timeout: "10s"
+    write_timeout: "10s"
+
+# Rate limiting configuration
+rate_limiting:
+  enabled: true
+  strategy: "sliding_window"
+  rate: "${RATE_LIMIT_RPS}"
+  burst: "${RATE_LIMIT_BURST}"
+  window: "${RATE_LIMIT_WINDOW}"
+  key: "ip"
+  whitelist: []
+  blacklist: []
+  redis:
+    addr: "redis:6379"
+    password: "${REDIS_PASSWORD}"
+    db: 1
+
+# Security configuration
+security:
+  # Content Security Policy
+  csp:
+    enabled: true
+    policy: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';"
+  
+  # HTTP Security Headers
+  headers:
+    x_frame_options: "DENY"
+    x_content_type_options: "nosniff"
+    x_xss_protection: "1; mode=block"
+    strict_transport_security: "max-age=31536000; includeSubDomains"
+    referrer_policy: "strict-origin-when-cross-origin"
+  
+  # Request size limits
+  limits:
+    max_request_size: "100MB"
+    max_header_size: "1MB"
+    max_multipart_memory: "32MB"
+
+# Observability configuration
+observability:
+  # Distributed tracing
+  tracing:
+    enabled: true
+    provider: "jaeger"
+    jaeger:
+      endpoint: "jaeger:14268"
+      service_name: "ollamacron"
+      sample_rate: 0.1
+  
+  # Application Performance Monitoring
+  apm:
+    enabled: true
+    provider: "elastic"
+    elastic:
+      server_url: "http://apm-server:8200"
+      service_name: "ollamacron"
+      environment: "production"
+
+# Backup configuration
+backup:
+  enabled: true
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  retention: "30d"
+  destinations:
+    - type: "s3"
+      bucket: "${BACKUP_S3_BUCKET}"
+      prefix: "ollamacron-backups"
+    - type: "local"
+      path: "/app/backups"
+
+# Alerting configuration
+alerting:
+  enabled: true
+  providers:
+    - type: "slack"
+      webhook_url: "${SLACK_WEBHOOK_URL}"
+      channel: "#alerts"
+    - type: "email"
+      smtp_host: "${SMTP_HOST}"
+      smtp_port: 587
+      smtp_username: "${SMTP_USERNAME}"
+      smtp_password: "${SMTP_PASSWORD}"
+      from: "alerts@yourdomain.com"
+      to: ["admin@yourdomain.com"]
+  
+  rules:
+    - name: "high_error_rate"
+      condition: "error_rate > 0.05"
+      duration: "5m"
+      severity: "critical"
+    - name: "high_latency"
+      condition: "p95_latency > 10s"
+      duration: "10m"
+      severity: "warning"
+    - name: "low_disk_space"
+      condition: "disk_usage > 0.9"
+      duration: "1m"
+      severity: "critical"
+
+# Development configuration
+development:
+  enabled: false
+  debug_endpoints: false
+  profiling: false
+  hot_reload: false

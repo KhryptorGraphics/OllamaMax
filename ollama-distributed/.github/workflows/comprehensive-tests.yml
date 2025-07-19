@@ -1,0 +1,442 @@
+name: Comprehensive Test Suite
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      test_suite:
+        description: 'Test suite to run'
+        required: false
+        default: 'default'
+        type: choice
+        options:
+        - default
+        - all
+        - unit-only
+        - integration-only
+        - security-only
+        - performance
+        - chaos
+      timeout:
+        description: 'Test timeout (e.g., 30m, 1h)'
+        required: false
+        default: '45m'
+
+env:
+  GO_VERSION: '1.21'
+  NODE_VERSION: '18'
+
+jobs:
+  # Matrix strategy for different test configurations
+  test-matrix:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        test-config:
+          - name: "Unit Tests"
+            args: "--unit --no-integration --no-security --no-p2p --no-fault-tolerance"
+            timeout: "15m"
+          - name: "Security Tests"
+            args: "--security --no-unit --no-integration --no-p2p --no-fault-tolerance"
+            timeout: "20m"
+          - name: "P2P Networking Tests"
+            args: "--p2p --no-unit --no-integration --no-security --no-fault-tolerance"
+            timeout: "25m"
+          - name: "Fault Tolerance Tests"
+            args: "--fault-tolerance --no-unit --no-integration --no-security --no-p2p"
+            timeout: "30m"
+          - name: "Integration Tests"
+            args: "--integration --no-unit --no-security --no-p2p --no-fault-tolerance"
+            timeout: "35m"
+
+    name: ${{ matrix.test-config.name }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential libssl-dev pkg-config
+
+    - name: Install Claude Flow MCP (for enhanced testing)
+      run: |
+        npm install -g claude-flow@alpha || echo "Claude Flow installation failed, continuing without it"
+
+    - name: Install test dependencies
+      run: |
+        go install gotest.tools/gotestsum@latest
+        go install github.com/axw/gocov/gocov@latest
+        go install github.com/matm/gocov-html@latest
+
+    - name: Download Go dependencies
+      run: |
+        go mod download
+        go mod tidy
+
+    - name: Run ${{ matrix.test-config.name }}
+      run: |
+        ./scripts/run_tests.sh ${{ matrix.test-config.args }} --timeout ${{ matrix.test-config.timeout }}
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: test-results-${{ matrix.test-config.name }}
+        path: |
+          test_results/reports/
+          test_results/coverage/
+          test_results/logs/
+        retention-days: 30
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      if: always()
+      with:
+        file: test_results/coverage/combined_coverage.out
+        flags: ${{ matrix.test-config.name }}
+        name: ${{ matrix.test-config.name }}
+
+  # Comprehensive test job (runs all tests together)
+  comprehensive-test:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.test_suite == 'all')
+    
+    name: "Comprehensive Test Suite"
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential libssl-dev pkg-config bc
+
+    - name: Install Claude Flow MCP
+      run: |
+        npm install -g claude-flow@alpha || echo "Claude Flow installation failed, continuing without it"
+
+    - name: Install test dependencies
+      run: |
+        go install gotest.tools/gotestsum@latest
+        go install github.com/axw/gocov/gocov@latest
+        go install github.com/matm/gocov-html@latest
+
+    - name: Download Go dependencies
+      run: |
+        go mod download
+        go mod tidy
+
+    - name: Run comprehensive test suite
+      run: |
+        timeout_arg="${{ github.event.inputs.timeout || '60m' }}"
+        ./scripts/run_tests.sh --all --timeout "$timeout_arg"
+
+    - name: Upload comprehensive test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: comprehensive-test-results
+        path: |
+          test_results/
+        retention-days: 30
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      if: always()
+      with:
+        file: test_results/coverage/combined_coverage.out
+        flags: comprehensive
+        name: comprehensive-test-suite
+
+  # Performance testing job (separate due to resource requirements)
+  performance-test:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.test_suite == 'performance'
+    
+    name: "Performance Test Suite"
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential libssl-dev pkg-config
+        npm install -g claude-flow@alpha || echo "Claude Flow installation failed"
+        go install gotest.tools/gotestsum@latest
+
+    - name: Run performance tests
+      run: |
+        timeout_arg="${{ github.event.inputs.timeout || '45m' }}"
+        ./scripts/run_tests.sh --performance --timeout "$timeout_arg"
+
+    - name: Upload performance test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: performance-test-results
+        path: test_results/
+        retention-days: 30
+
+  # Chaos testing job (separate due to resource intensity)
+  chaos-test:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.test_suite == 'chaos'
+    
+    name: "Chaos Engineering Test Suite"
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential libssl-dev pkg-config
+        npm install -g claude-flow@alpha || echo "Claude Flow installation failed"
+        go install gotest.tools/gotestsum@latest
+
+    - name: Run chaos tests
+      run: |
+        timeout_arg="${{ github.event.inputs.timeout || '90m' }}"
+        ./scripts/run_tests.sh --chaos --timeout "$timeout_arg"
+
+    - name: Upload chaos test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: chaos-test-results
+        path: test_results/
+        retention-days: 30
+
+  # Security scanning job
+  security-scan:
+    runs-on: ubuntu-latest
+    name: "Security Scanning"
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Run Gosec Security Scanner
+      uses: securecodewarrior/github-action-gosec@master
+      with:
+        args: '-fmt sarif -out gosec-results.sarif ./...'
+
+    - name: Upload SARIF file
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: gosec-results.sarif
+
+    - name: Run Nancy vulnerability check
+      run: |
+        go install github.com/sonatypecommunity/nancy@latest
+        go list -json -deps ./... | nancy sleuth
+
+    - name: Run govulncheck
+      run: |
+        go install golang.org/x/vuln/cmd/govulncheck@latest
+        govulncheck ./...
+
+  # Code quality and linting
+  code-quality:
+    runs-on: ubuntu-latest
+    name: "Code Quality"
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Run golangci-lint
+      uses: golangci/golangci-lint-action@v3
+      with:
+        version: latest
+        args: --timeout=10m
+
+    - name: Run gofmt check
+      run: |
+        if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
+          echo "The following files are not formatted correctly:"
+          gofmt -s -l .
+          exit 1
+        fi
+
+    - name: Run go vet
+      run: go vet ./...
+
+    - name: Run ineffassign
+      run: |
+        go install github.com/gordonklaus/ineffassign@latest
+        ineffassign ./...
+
+    - name: Run misspell
+      run: |
+        go install github.com/client9/misspell/cmd/misspell@latest
+        misspell -error .
+
+  # Test report consolidation
+  consolidate-results:
+    runs-on: ubuntu-latest
+    needs: [test-matrix]
+    if: always()
+    name: "Consolidate Test Results"
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download all test artifacts
+      uses: actions/download-artifact@v3
+      with:
+        path: all-test-results
+
+    - name: Consolidate test results
+      run: |
+        mkdir -p consolidated-results
+        
+        # Combine all test results
+        for dir in all-test-results/test-results-*; do
+          if [ -d "$dir" ]; then
+            echo "Processing $dir"
+            cp -r "$dir"/* consolidated-results/ 2>/dev/null || true
+          fi
+        done
+        
+        # Generate consolidated report
+        echo "# Test Results Summary" > consolidated-results/README.md
+        echo "" >> consolidated-results/README.md
+        echo "Generated: $(date)" >> consolidated-results/README.md
+        echo "" >> consolidated-results/README.md
+        
+        # List all test suites
+        echo "## Test Suites" >> consolidated-results/README.md
+        for dir in all-test-results/test-results-*; do
+          if [ -d "$dir" ]; then
+            suite_name=$(basename "$dir" | sed 's/test-results-//')
+            echo "- $suite_name" >> consolidated-results/README.md
+          fi
+        done
+
+    - name: Upload consolidated results
+      uses: actions/upload-artifact@v3
+      with:
+        name: consolidated-test-results
+        path: consolidated-results/
+        retention-days: 90
+
+  # Notification job
+  notify:
+    runs-on: ubuntu-latest
+    needs: [test-matrix, comprehensive-test, security-scan, code-quality]
+    if: always() && (github.event_name == 'schedule' || github.ref == 'refs/heads/main')
+    name: "Notify Results"
+    
+    steps:
+    - name: Determine overall status
+      id: status
+      run: |
+        # Check if any required jobs failed
+        test_status="${{ needs.test-matrix.result }}"
+        security_status="${{ needs.security-scan.result }}"
+        quality_status="${{ needs.code-quality.result }}"
+        
+        if [[ "$test_status" == "failure" || "$security_status" == "failure" || "$quality_status" == "failure" ]]; then
+          echo "status=failure" >> $GITHUB_OUTPUT
+        elif [[ "$test_status" == "success" && "$security_status" == "success" && "$quality_status" == "success" ]]; then
+          echo "status=success" >> $GITHUB_OUTPUT
+        else
+          echo "status=partial" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Create status badge
+      run: |
+        status="${{ steps.status.outputs.status }}"
+        case $status in
+          "success") color="brightgreen" ;;
+          "failure") color="red" ;;
+          *) color="yellow" ;;
+        esac
+        
+        echo "Test Status: $status" >> $GITHUB_STEP_SUMMARY
+        echo "Badge Color: $color" >> $GITHUB_STEP_SUMMARY
