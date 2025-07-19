@@ -352,7 +352,11 @@ func (rm *ReplicationManager) enforcePolicy(modelName string) {
 // findSuitablePeers finds suitable peers for replication
 func (rm *ReplicationManager) findSuitablePeers(modelName string, policy *ReplicationPolicy, count int) []string {
 	// Get all connected peers
-	connectedPeers := rm.p2p.GetConnectedPeers()
+	connectedPeerIDs := rm.p2p.GetConnectedPeers()
+	var connectedPeers []string
+	for _, peerID := range connectedPeerIDs {
+		connectedPeers = append(connectedPeers, peerID.String())
+	}
 	
 	// Filter based on policy
 	var suitable []string

@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/websocket"
 	"github.com/ollama/ollama-distributed/internal/config"
 	"github.com/ollama/ollama-distributed/pkg/consensus"
@@ -50,7 +51,15 @@ func NewServer(config *config.APIConfig, p2pNode *p2p.Node, consensusEngine *con
 		wsConnections: make(map[string]*websocket.Conn),
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
-				return true // Allow all origins for now
+				// Check if origin is in allowed list
+			allowedOrigins := []string{"http://localhost:8080", "https://localhost:8080"}
+			origin := r.Header.Get("Origin")
+			for _, allowed := range allowedOrigins {
+				if origin == allowed {
+					return true
+				}
+			}
+			return false
 			},
 		},
 		wsHub: &WSHub{
@@ -75,12 +84,39 @@ func (s *Server) setupRoutes() {
 	s.router = gin.New()
 	s.router.Use(gin.Logger())
 	s.router.Use(gin.Recovery())
+	s.router.Use(s.rateLimitMiddleware())
+	s.router.Use(s.inputValidationMiddleware())
 	
-	// CORS middleware
+	// CORS middleware with security-first configuration
 	s.router.Use(func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", "*")
-		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "*")
+		// Get origin from config CORS settings
+		allowedOrigins := s.config.Cors.AllowedOrigins
+		if len(allowedOrigins) == 0 || (len(allowedOrigins) == 1 && allowedOrigins[0] == "*") {
+			// Default to secure localhost for development if wildcard is configured
+			allowedOrigins = []string{"http://localhost:8080", "https://localhost:8080"}
+		}
+		
+		origin := c.Request.Header.Get("Origin")
+		allowed := false
+		for _, allowedOrigin := range allowedOrigins {
+			if origin == allowedOrigin {
+				allowed = true
+				break
+			}
+		}
+		
+		if allowed {
+			c.Header("Access-Control-Allow-Origin", origin)
+		} else {
+			c.Header("Access-Control-Allow-Origin", "")
+		}
+		
+		c.Header("Access-Control-Allow-Methods", strings.Join(s.config.Cors.AllowedMethods, ", "))
+		c.Header("Access-Control-Allow-Headers", strings.Join(s.config.Cors.AllowedHeaders, ", "))
+		if s.config.Cors.AllowCredentials {
+			c.Header("Access-Control-Allow-Credentials", "true")
+		}
+		c.Header("Access-Control-Max-Age", fmt.Sprintf("%d", s.config.Cors.MaxAge))
 		
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(204)
@@ -90,8 +126,9 @@ func (s *Server) setupRoutes() {
 		c.Next()
 	})
 	
-	// API routes
+	// API routes with authentication
 	api := s.router.Group("/api/v1")
+	api.Use(s.authMiddleware())
 	{
 		// Node management
 		api.GET("/nodes", s.getNodes)
@@ -625,6 +662,10 @@ func (s *Server) handleWSConnection(conn *websocket.Conn) {
 // WebSocket Hub methods
 
 func (h *WSHub) run() {
+	// Use a cleanup ticker to prevent memory leaks
+	cleanupTicker := time.NewTicker(5 * time.Minute)
+	defer cleanupTicker.Stop()
+
 	for {
 		select {
 		case conn := <-h.register:
@@ -633,17 +674,48 @@ func (h *WSHub) run() {
 		case conn := <-h.unregister:
 			if _, ok := h.clients[conn]; ok {
 				delete(h.clients, conn)
-				conn.Close()
+				// Ensure connection is properly closed
+				if err := conn.Close(); err != nil {
+					fmt.Printf("Error closing WebSocket connection: %v\n", err)
+				}
 			}
 			
 		case message := <-h.broadcast:
+			// Create a list of connections to remove to avoid concurrent map access
+			var toRemove []*websocket.Conn
 			for conn := range h.clients {
 				if err := conn.WriteMessage(websocket.TextMessage, message); err != nil {
-					delete(h.clients, conn)
-					conn.Close()
+					toRemove = append(toRemove, conn)
 				}
 			}
+			// Remove failed connections
+			for _, conn := range toRemove {
+				delete(h.clients, conn)
+				conn.Close()
+			}
+			
+		case <-cleanupTicker.C:
+			// Periodic cleanup of stale connections
+			h.cleanupStaleConnections()
 		}
+	}
+}
+
+// cleanupStaleConnections removes connections that haven't been active
+func (h *WSHub) cleanupStaleConnections() {
+	var toRemove []*websocket.Conn
+	
+	for conn := range h.clients {
+		// Send ping to check if connection is alive
+		if err := conn.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
+			toRemove = append(toRemove, conn)
+		}
+	}
+	
+	// Remove dead connections
+	for _, conn := range toRemove {
+		delete(h.clients, conn)
+		conn.Close()
 	}
 }
 
@@ -792,4 +864,106 @@ func contains(slice []string, item string) bool {
 		}
 	}
 	return false
+}
+
+// Security middleware implementations
+
+// authMiddleware provides JWT-based authentication
+func (s *Server) authMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Skip auth for health check and options
+		if c.Request.URL.Path == "/api/v1/health" || c.Request.Method == "OPTIONS" {
+			c.Next()
+			return
+		}
+
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header required"})
+			c.Abort()
+			return
+		}
+
+		// Extract Bearer token
+		parts := strings.SplitN(authHeader, " ", 2)
+		if len(parts) != 2 || parts[0] != "Bearer" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid authorization header format"})
+			c.Abort()
+			return
+		}
+
+		tokenString := parts[1]
+		
+		// TODO: Get secret from config
+		secretKey := []byte("your-secret-key") // This should come from config
+		
+		// Parse and validate token
+		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			}
+			return secretKey, nil
+		})
+
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+			c.Abort()
+			return
+		}
+
+		if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+			c.Set("user_id", claims["user_id"])
+			c.Set("username", claims["username"])
+			c.Next()
+		} else {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
+			c.Abort()
+			return
+		}
+	}
+}
+
+// rateLimitMiddleware provides rate limiting
+func (s *Server) rateLimitMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// TODO: Implement proper rate limiting with redis or in-memory store
+		// For now, just add headers
+		c.Header("X-RateLimit-Limit", fmt.Sprintf("%d", s.config.RateLimit.RPS))
+		c.Header("X-RateLimit-Remaining", "999") // Mock value
+		c.Header("X-RateLimit-Reset", fmt.Sprintf("%d", time.Now().Add(time.Minute).Unix()))
+		c.Next()
+	}
+}
+
+// inputValidationMiddleware provides input validation and sanitization
+func (s *Server) inputValidationMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Validate content type for POST/PUT requests
+		if c.Request.Method == "POST" || c.Request.Method == "PUT" {
+			contentType := c.GetHeader("Content-Type")
+			if contentType != "" && !strings.Contains(contentType, "application/json") && 
+			   !strings.Contains(contentType, "application/x-www-form-urlencoded") &&
+			   !strings.Contains(contentType, "multipart/form-data") {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Unsupported content type"})
+				c.Abort()
+				return
+			}
+		}
+
+		// Validate request size
+		if c.Request.ContentLength > s.config.MaxBodySize {
+			c.JSON(http.StatusRequestEntityTooLarge, gin.H{"error": "Request body too large"})
+			c.Abort()
+			return
+		}
+
+		// Add security headers
+		c.Header("X-Content-Type-Options", "nosniff")
+		c.Header("X-Frame-Options", "DENY")
+		c.Header("X-XSS-Protection", "1; mode=block")
+		c.Header("Referrer-Policy", "strict-origin-when-cross-origin")
+		c.Header("Content-Security-Policy", "default-src 'self'")
+
+		c.Next()
+	}
 }

@@ -629,12 +629,17 @@ func (dmm *DistributedModelManager) registrySyncRoutine() {
 	}
 }
 
-// syncRegistry synchronizes the registry with peers
+// syncRegistry synchronizes the registry with peers  
 func (dmm *DistributedModelManager) syncRegistry() {
 	// Get connected peers
-	peers := dmm.p2p.GetConnectedPeers()
-	if len(peers) == 0 {
+	peerIDs := dmm.p2p.GetConnectedPeers()
+	if len(peerIDs) == 0 {
 		return // No peers to sync with
+	}
+	
+	var peers []string
+	for _, peerID := range peerIDs {
+		peers = append(peers, peerID.String())
 	}
 
 	// Prepare local registry for broadcasting
@@ -646,13 +651,13 @@ func (dmm *DistributedModelManager) syncRegistry() {
 	dmm.registryMutex.RUnlock()
 
 	// Broadcast local models to peers
-	for _, peerID := range peers {
-		go dmm.syncWithPeer(peerID, localModels)
+	for _, peerStr := range peers {
+		go dmm.syncWithPeer(peerStr, localModels)
 	}
 
 	// Request model information from peers
-	for _, peerID := range peers {
-		go dmm.requestPeerModels(peerID)
+	for _, peerStr := range peers {
+		go dmm.requestPeerModels(peerStr)
 	}
 
 	// Clean up stale peer entries
@@ -827,13 +832,13 @@ func (md *ModelDiscovery) broadcastModels() {
 	}
 
 	// Send to all connected peers
-	peers := md.manager.p2p.GetConnectedPeers()
-	for _, peerID := range peers {
+	peerIDs := md.manager.p2p.GetConnectedPeers()
+	for _, peerID := range peerIDs {
 		go md.sendBroadcastToPeer(peerID, broadcast)
 	}
 
 	// Update broadcast metrics
-	md.updateBroadcastMetrics(len(peers), len(models))
+	md.updateBroadcastMetrics(len(peerIDs), len(models))
 }
 
 // DiscoveryWorker methods
@@ -887,7 +892,7 @@ func (dw *DiscoveryWorker) processRequest(req *DiscoveryRequest) {
 // Helper methods for registry synchronization
 
 // syncWithPeer synchronizes models with a specific peer
-func (dmm *DistributedModelManager) syncWithPeer(peerID peer.ID, localModels map[string]*DistributedModel) {
+func (dmm *DistributedModelManager) syncWithPeer(peerIDStr string, localModels map[string]*DistributedModel) {
 	// Prepare sync message
 	syncMessage := map[string]interface{}{
 		"type":      "registry_sync",
@@ -898,11 +903,11 @@ func (dmm *DistributedModelManager) syncWithPeer(peerID peer.ID, localModels map
 
 	// Send via P2P (simplified implementation)
 	// In practice, this would use libp2p streams
-	dmm.logger.Info("syncing models with peer", "peer", peerID.String(), "models", len(localModels))
+	dmm.logger.Info("syncing models with peer", "peer", peerIDStr, "models", len(localModels), "sync_message", syncMessage)
 }
 
 // requestPeerModels requests model information from a peer
-func (dmm *DistributedModelManager) requestPeerModels(peerID peer.ID) {
+func (dmm *DistributedModelManager) requestPeerModels(peerIDStr string) {
 	// Create request message
 	request := map[string]interface{}{
 		"type":      "model_request",
@@ -911,7 +916,7 @@ func (dmm *DistributedModelManager) requestPeerModels(peerID peer.ID) {
 	}
 
 	// Send request via P2P (simplified implementation)
-	dmm.logger.Info("requesting models from peer", "peer", peerID.String())
+	dmm.logger.Info("requesting models from peer", "peer", peerIDStr, "request", request)
 }
 
 // cleanupStalePeers removes stale peer entries
@@ -919,9 +924,9 @@ func (dmm *DistributedModelManager) cleanupStalePeers() {
 	dmm.registry.peerMutex.Lock()
 	defer dmm.registry.peerMutex.Unlock()
 
-	connectedPeers := dmm.p2p.GetConnectedPeers()
+	connectedPeerIDs := dmm.p2p.GetConnectedPeers()
 	connectedMap := make(map[string]bool)
-	for _, peerID := range connectedPeers {
+	for _, peerID := range connectedPeerIDs {
 		connectedMap[peerID.String()] = true
 	}
 

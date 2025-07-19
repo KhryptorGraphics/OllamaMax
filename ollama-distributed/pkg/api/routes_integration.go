@@ -27,7 +27,7 @@ type RouteIntegration struct {
 }
 
 // NewRouteIntegration creates a new route integration
-func NewRouteIntegration(scheduler *scheduler.Engine, modelDist *models.Distribution, localAddr string) (*RouteIntegration, error) {
+func NewRouteIntegration(scheduler *scheduler.Engine, modelDist *models.Manager, localAddr string) (*RouteIntegration, error) {
 	// Create fallback manager
 	fallbackMgr, err := NewFallbackManager(localAddr)
 	if err != nil {
@@ -46,7 +46,7 @@ func NewRouteIntegration(scheduler *scheduler.Engine, modelDist *models.Distribu
 }
 
 // Initialize initializes the route integration with an existing server
-func (ri *RouteIntegration) Initialize(originalServer interface{}, scheduler *scheduler.Engine, modelDist *models.Distribution, localAddr string) error {
+func (ri *RouteIntegration) Initialize(originalServer interface{}, scheduler *scheduler.Engine, modelDist *models.Manager, localAddr string) error {
 	if ri.initialized {
 		return nil
 	}
@@ -69,21 +69,27 @@ func (ri *RouteIntegration) Initialize(originalServer interface{}, scheduler *sc
 }
 
 // WrapGenerateRoutes wraps the original GenerateRoutes function
-func (ri *RouteIntegration) WrapGenerateRoutes(originalServer interface{}, scheduler *scheduler.Engine, modelDist *models.Distribution, localAddr string) func(*integration.Registry) (http.Handler, error) {
+func (ri *RouteIntegration) WrapGenerateRoutes(originalServer interface{}, scheduler *scheduler.Engine, modelDist *models.Manager, localAddr string) func(*integration.Registry) (http.Handler, error) {
 	return func(rc *integration.Registry) (http.Handler, error) {
 		// Initialize if not done
 		if !ri.initialized {
 			if err := ri.Initialize(originalServer, scheduler, modelDist, localAddr); err != nil {
 				slog.Error("Failed to initialize route integration", "error", err)
 				// Fall back to original
-				return originalServer.GenerateRoutes(rc)
+				if generator, ok := originalServer.(interface{ GenerateRoutes(*integration.Registry) (http.Handler, error) }); ok {
+					return generator.GenerateRoutes(rc)
+				}
+				return http.DefaultServeMux, fmt.Errorf("original server doesn't support GenerateRoutes")
 			}
 		}
 		
 		// Check if distributed mode is enabled
 		if !ri.enabled {
 			slog.Info("Distributed mode disabled, using original routes")
-			return originalServer.GenerateRoutes(rc)
+			if generator, ok := originalServer.(interface{ GenerateRoutes(*integration.Registry) (http.Handler, error) }); ok {
+				return generator.GenerateRoutes(rc)
+			}
+			return http.DefaultServeMux, fmt.Errorf("original server doesn't support GenerateRoutes")
 		}
 		
 		// Check if we should use standalone mode
@@ -156,9 +162,15 @@ func (ri *RouteIntegration) CreateIntegratedRouter(originalServer interface{}, r
 	router.Use(ri.integrationMiddleware())
 	
 	// Get original routes
-	originalHandler, err := originalServer.GenerateRoutes(rc)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get original routes: %w", err)
+	var originalHandler http.Handler
+	var err error
+	if generator, ok := originalServer.(interface{ GenerateRoutes(*integration.Registry) (http.Handler, error) }); ok {
+		originalHandler, err = generator.GenerateRoutes(rc)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get original routes: %w", err)
+		}
+	} else {
+		originalHandler = http.DefaultServeMux
 	}
 	
 	// Add distributed routes if enabled
@@ -359,7 +371,7 @@ func (ri *RouteIntegration) GetCompatibility() *DistributedServerCompatibility {
 var globalIntegration *RouteIntegration
 
 // InitializeGlobalIntegration initializes the global integration
-func InitializeGlobalIntegration(scheduler *scheduler.Engine, modelDist *models.Distribution, localAddr string) error {
+func InitializeGlobalIntegration(scheduler *scheduler.Engine, modelDist *models.Manager, localAddr string) error {
 	integration, err := NewRouteIntegration(scheduler, modelDist, localAddr)
 	if err != nil {
 		return fmt.Errorf("failed to create global integration: %w", err)
@@ -375,13 +387,19 @@ func GetGlobalIntegration() *RouteIntegration {
 }
 
 // WrapServerGenerateRoutes wraps the server's GenerateRoutes method
-func WrapServerGenerateRoutes(originalServer interface{}, scheduler *scheduler.Engine, modelDist *models.Distribution, localAddr string) func(*integration.Registry) (http.Handler, error) {
+func WrapServerGenerateRoutes(originalServer interface{}, scheduler *scheduler.Engine, modelDist *models.Manager, localAddr string) func(*integration.Registry) (http.Handler, error) {
 	// Initialize global integration if not done
 	if globalIntegration == nil {
 		if err := InitializeGlobalIntegration(scheduler, modelDist, localAddr); err != nil {
 			slog.Error("Failed to initialize global integration", "error", err)
-			// Return original function
-			return originalServer.GenerateRoutes
+			// Return original function if it supports GenerateRoutes
+			if generator, ok := originalServer.(interface{ GenerateRoutes(*integration.Registry) (http.Handler, error) }); ok {
+				return generator.GenerateRoutes
+			}
+			// Return fallback function
+			return func(*integration.Registry) (http.Handler, error) {
+				return http.DefaultServeMux, fmt.Errorf("original server doesn't support GenerateRoutes")
+			}
 		}
 	}
 	

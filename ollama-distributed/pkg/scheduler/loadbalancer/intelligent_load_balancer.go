@@ -1,7 +1,6 @@
 package loadbalancer
 
 import (
-	"context"
 	"fmt"
 	"log/slog"
 	"math"

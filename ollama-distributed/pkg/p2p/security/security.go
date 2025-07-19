@@ -17,8 +17,6 @@ import (
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
-	"github.com/libp2p/go-libp2p/p2p/security/noise"
-	"github.com/multiformats/go-multiaddr"
 )
 
 const (
@@ -977,6 +975,8 @@ func NewAuthManager(host host.Host, config *SecurityConfig) (*AuthManager, error
 
 	return &AuthManager{
 		authenticatedPeers: make(map[peer.ID]time.Time),
+		privateKey:         privateKey,
+		publicKey:          publicKey,
 		sessions:           make(map[string]*AuthSession),
 		sessionTTL:         4 * time.Hour,
 		config:             config,

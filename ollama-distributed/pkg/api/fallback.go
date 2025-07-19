@@ -3,7 +3,6 @@ package api
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
@@ -13,7 +12,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ollama/ollama-distributed/pkg/integration"
+	ollamaapi "github.com/ollama/ollama/api"
 )
 
 // FallbackManager manages fallback mechanisms for distributed requests
@@ -558,14 +557,14 @@ func (lfh *LocalFallbackHandler) GetName() string {
 
 // CachedResponseHandler implements fallback to cached responses
 type CachedResponseHandler struct {
-	cache map[string]*api.GenerateResponse
+	cache map[string]*ollamaapi.GenerateResponse
 	mu    sync.RWMutex
 }
 
 // NewCachedResponseHandler creates a new cached response handler
 func NewCachedResponseHandler() *CachedResponseHandler {
 	return &CachedResponseHandler{
-		cache: make(map[string]*api.GenerateResponse),
+		cache: make(map[string]*ollamaapi.GenerateResponse),
 	}
 }
 
@@ -608,7 +607,7 @@ func (crh *CachedResponseHandler) generateCacheKey(c *gin.Context) string {
 }
 
 // CacheResponse caches a response
-func (crh *CachedResponseHandler) CacheResponse(key string, response *api.GenerateResponse) {
+func (crh *CachedResponseHandler) CacheResponse(key string, response *ollamaapi.GenerateResponse) {
 	crh.mu.Lock()
 	defer crh.mu.Unlock()
 	
@@ -620,5 +619,5 @@ func (crh *CachedResponseHandler) ClearCache() {
 	crh.mu.Lock()
 	defer crh.mu.Unlock()
 	
-	crh.cache = make(map[string]*api.GenerateResponse)
+	crh.cache = make(map[string]*ollamaapi.GenerateResponse)
 }

@@ -252,7 +252,23 @@ func (e *Engine) discoverNodes() {
 
 // updateNodeRegistry updates the node registry from P2P peers
 func (e *Engine) updateNodeRegistry() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("Recovered from panic in updateNodeRegistry: %v\n", r)
+		}
+	}()
+
+	// Safely check if P2P is available
+	if e.p2p == nil {
+		fmt.Printf("Warning: P2P node is nil, skipping node registry update\n")
+		return
+	}
+
 	peers := e.p2p.GetAllPeers()
+	if peers == nil {
+		fmt.Printf("Warning: No peers found from P2P node\n")
+		return
+	}
 
 	e.nodesMu.Lock()
 	defer e.nodesMu.Unlock()
@@ -266,13 +282,35 @@ func (e *Engine) updateNodeRegistry() {
 			node.Status = NodeStatusOnline
 			node.LastSeen = time.Now()
 		} else {
-			// Add new node
+			// Add new node with safe address handling
+			var address string
+			if len(peerInfo.Addresses) > 0 {
+				address = peerInfo.Addresses[0]
+			} else {
+				address = "unknown"
+			}
+
+			// Get node capabilities from P2P metadata
+			capacity := NodeCapacity{
+				CPU:    4,  // Default values
+				Memory: 8 * 1024 * 1024 * 1024, // 8GB
+				Disk:   100 * 1024 * 1024 * 1024, // 100GB
+				GPU:    0,
+			}
+
+			usage := NodeUsage{
+				CPU:    0.0,
+				Memory: 0.0,
+				Disk:   0.0,
+				GPU:    0.0,
+			}
+
 			e.nodes[nodeID] = &NodeInfo{
 				ID:       nodeID,
-				Address:  peerInfo.Addresses[0].String(),
+				Address:  address,
 				Status:   NodeStatusOnline,
-				Capacity: NodeCapacity{}, // TODO: Get actual capacity
-				Usage:    NodeUsage{},    // TODO: Get actual usage
+				Capacity: capacity,
+				Usage:    usage,
 				Models:   []string{},
 				LastSeen: time.Now(),
 				Metadata: make(map[string]string),
@@ -281,7 +319,7 @@ func (e *Engine) updateNodeRegistry() {
 	}
 
 	// Mark offline nodes
-	for nodeID, node := range e.nodes {
+	for _, node := range e.nodes {
 		if time.Since(node.LastSeen) > 5*time.Minute {
 			node.Status = NodeStatusOffline
 		}

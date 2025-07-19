@@ -39,7 +39,7 @@ func (d *DHTStrategy) Advertise(ctx context.Context, ns string, opts ...discover
 
 // MDNSStrategy implements mDNS-based discovery
 type MDNSStrategy struct {
-	service *mdns.MdnsService
+	service mdns.Service
 }
 
 // Name returns the strategy name

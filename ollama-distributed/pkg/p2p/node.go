@@ -14,15 +14,19 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/network"
-	dht "github.com/libp2p/go-libp2p-kad-dht"
+	"github.com/multiformats/go-multiaddr"
 	
 	"github.com/ollama/ollama-distributed/pkg/config"
+	internalconfig "github.com/ollama/ollama-distributed/internal/config"
 	"github.com/ollama/ollama-distributed/pkg/p2p/discovery"
 	p2phost "github.com/ollama/ollama-distributed/pkg/p2p/host"
 	"github.com/ollama/ollama-distributed/pkg/p2p/resources"
 	"github.com/ollama/ollama-distributed/pkg/p2p/routing"
 	"github.com/ollama/ollama-distributed/pkg/p2p/security"
 )
+
+// Node is an alias for P2PNode for compatibility
+type Node = P2PNode
 
 // P2PNode represents a complete P2P node implementation
 type P2PNode struct {
@@ -37,8 +41,8 @@ type P2PNode struct {
 	contentRouter     *routing.ContentRouter
 	
 	// Node state
-	capabilities      *config.NodeCapabilities
-	resourceMetrics   *ResourceMetrics
+	capabilities      *resources.NodeCapabilities
+	resourceMetrics   *resources.ResourceMetrics
 	
 	// Event handlers
 	eventHandlers     map[string][]EventHandler
@@ -101,6 +105,14 @@ type NodeEvent struct {
 	Timestamp time.Time
 }
 
+// PeerInfo represents information about a peer
+type PeerInfo struct {
+	ID        peer.ID
+	Addresses []string
+	Connected bool
+	LastSeen  time.Time
+}
+
 // Event types
 const (
 	EventPeerConnected    = "peer_connected"
@@ -114,15 +126,38 @@ const (
 	EventError            = "error"
 )
 
+// NewNode creates a new P2P node with internal P2PConfig
+func NewNode(ctx context.Context, p2pConfig *internalconfig.P2PConfig) (*P2PNode, error) {
+	// Create a proper pkg/config NodeConfig from the internal P2PConfig
+	nodeConfig := config.DefaultConfig()
+	
+	// Copy P2P config fields if provided
+	if p2pConfig != nil {
+		nodeConfig.PrivateKey = p2pConfig.PrivateKey
+		nodeConfig.Listen = []string{p2pConfig.Listen}
+		nodeConfig.BootstrapPeers = p2pConfig.Bootstrap
+		nodeConfig.EnableDHT = p2pConfig.EnableDHT
+		nodeConfig.ConnMgrLow = p2pConfig.ConnMgrLow
+		nodeConfig.ConnMgrHigh = p2pConfig.ConnMgrHigh
+		if gracePeriod, err := time.ParseDuration(p2pConfig.ConnMgrGrace); err == nil {
+			nodeConfig.ConnMgrGrace = gracePeriod
+		} else {
+			nodeConfig.ConnMgrGrace = time.Minute // Default fallback
+		}
+	}
+	
+	return NewP2PNode(ctx, nodeConfig)
+}
+
 // NewP2PNode creates a new P2P node
-func NewP2PNode(ctx context.Context, config *config.NodeConfig) (*P2PNode, error) {
-	if config == nil {
-		config = config.DefaultConfig()
+func NewP2PNode(ctx context.Context, nodeConfig *config.NodeConfig) (*P2PNode, error) {
+	if nodeConfig == nil {
+		nodeConfig = config.DefaultConfig()
 	}
 	
 	// Generate key if not provided
-	if config.PrivateKey == "" {
-		if err := config.GenerateKey(); err != nil {
+	if nodeConfig.PrivateKey == "" {
+		if err := nodeConfig.GenerateKey(); err != nil {
 			return nil, fmt.Errorf("failed to generate node key: %w", err)
 		}
 	}
@@ -130,7 +165,7 @@ func NewP2PNode(ctx context.Context, config *config.NodeConfig) (*P2PNode, error
 	ctx, cancel := context.WithCancel(ctx)
 	
 	node := &P2PNode{
-		config:        config,
+		config:        nodeConfig,
 		eventHandlers: make(map[string][]EventHandler),
 		metrics: &NodeMetrics{
 			StartTime: time.Now(),
@@ -147,7 +182,7 @@ func NewP2PNode(ctx context.Context, config *config.NodeConfig) (*P2PNode, error
 	// Setup event handlers
 	node.setupEventHandlers()
 	
-	log.Printf("P2P node initialized with ID: %s", node.host.ID())
+	log.Printf("P2P node initialized with ID: %s", node.ID())
 	return node, nil
 }
 
@@ -333,6 +368,36 @@ func (n *P2PNode) GetConnectedPeers() []peer.ID {
 	return n.host.GetConnectedPeers()
 }
 
+// ConnectedPeers returns list of connected peers (compatibility method)
+func (n *P2PNode) ConnectedPeers() []peer.ID {
+	return n.GetConnectedPeers()
+}
+
+// GetAllPeers returns comprehensive peer information
+func (n *P2PNode) GetAllPeers() map[peer.ID]*PeerInfo {
+	peers := make(map[peer.ID]*PeerInfo)
+	connectedPeers := n.host.GetConnectedPeers()
+	
+	for _, peerID := range connectedPeers {
+		// Get peer connection info
+		conn := n.host.Network().ConnsToPeer(peerID)
+		var addresses []string
+		
+		if len(conn) > 0 {
+			addresses = append(addresses, conn[0].RemoteMultiaddr().String())
+		}
+		
+		peers[peerID] = &PeerInfo{
+			ID:        peerID,
+			Addresses: addresses,
+			Connected: true,
+			LastSeen:  time.Now(),
+		}
+	}
+	
+	return peers
+}
+
 // GetPeerCount returns number of connected peers
 func (n *P2PNode) GetPeerCount() int {
 	return n.host.GetPeerCount()
@@ -344,7 +409,7 @@ func (n *P2PNode) IsConnected(peerID peer.ID) bool {
 }
 
 // SetCapabilities sets node capabilities
-func (n *P2PNode) SetCapabilities(caps *NodeCapabilities) {
+func (n *P2PNode) SetCapabilities(caps *resources.NodeCapabilities) {
 	n.capabilities = caps
 	n.host.SetCapabilities(caps)
 	
@@ -357,12 +422,12 @@ func (n *P2PNode) SetCapabilities(caps *NodeCapabilities) {
 }
 
 // GetCapabilities returns node capabilities
-func (n *P2PNode) GetCapabilities() *NodeCapabilities {
+func (n *P2PNode) GetCapabilities() *resources.NodeCapabilities {
 	return n.capabilities
 }
 
 // SetResourceMetrics sets resource metrics
-func (n *P2PNode) SetResourceMetrics(metrics *ResourceMetrics) {
+func (n *P2PNode) SetResourceMetrics(metrics *resources.ResourceMetrics) {
 	n.resourceMetrics = metrics
 	
 	// Update advertiser
@@ -374,7 +439,7 @@ func (n *P2PNode) SetResourceMetrics(metrics *ResourceMetrics) {
 }
 
 // GetResourceMetrics returns resource metrics
-func (n *P2PNode) GetResourceMetrics() *ResourceMetrics {
+func (n *P2PNode) GetResourceMetrics() *resources.ResourceMetrics {
 	return n.resourceMetrics
 }
 
@@ -556,8 +621,8 @@ func (n *P2PNode) updateMetrics() {
 // updateResourceMetrics updates resource metrics
 func (n *P2PNode) updateResourceMetrics() {
 	if n.resourceMetrics == nil {
-		n.resourceMetrics = &ResourceMetrics{
-			LastUpdated: time.Now(),
+		n.resourceMetrics = &resources.ResourceMetrics{
+			Timestamp: time.Now(),
 		}
 	}
 	
@@ -567,28 +632,25 @@ func (n *P2PNode) updateResourceMetrics() {
 		cpuUsage = 0.0
 	}
 	
-	memoryUsage, totalMemory, err := n.getMemoryUsage()
+	memoryUsage, _, err := n.getMemoryUsage()
 	if err != nil {
 		memoryUsage = 0.0
-		totalMemory = 0
 	}
 	
-	diskUsage, totalDisk, err := n.getDiskUsage()
+	diskUsage, _, err := n.getDiskUsage()
 	if err != nil {
 		diskUsage = 0.0
-		totalDisk = 0
 	}
 	
 	networkBandwidth := n.getNetworkBandwidth()
 	
 	// Update metrics
 	n.resourceMetrics.CPUUsage = cpuUsage
-	n.resourceMetrics.MemoryUsage = memoryUsage
-	n.resourceMetrics.MemoryTotal = totalMemory
-	n.resourceMetrics.DiskUsage = diskUsage
-	n.resourceMetrics.DiskTotal = totalDisk
-	n.resourceMetrics.NetworkBandwidth = networkBandwidth
-	n.resourceMetrics.LastUpdated = time.Now()
+	n.resourceMetrics.MemoryUsage = int64(memoryUsage)
+	n.resourceMetrics.DiskUsage = int64(diskUsage)
+	n.resourceMetrics.NetworkRx = int64(networkBandwidth)
+	n.resourceMetrics.NetworkTx = int64(networkBandwidth)
+	n.resourceMetrics.Timestamp = time.Now()
 	
 	// Update advertiser
 	if n.resourceAdvertiser != nil {
@@ -630,6 +692,11 @@ func (n *P2PNode) GetHost() host.Host {
 	return n.host
 }
 
+// ID returns the peer ID of the node
+func (n *P2PNode) ID() peer.ID {
+	return n.host.ID()
+}
+
 // NodeStatus represents node status
 type NodeStatus struct {
 	ID              peer.ID
@@ -637,8 +704,8 @@ type NodeStatus struct {
 	Uptime          time.Duration
 	ConnectedPeers  int
 	ListenAddresses []multiaddr.Multiaddr
-	Capabilities    *NodeCapabilities
-	ResourceMetrics *ResourceMetrics
+	Capabilities    *resources.NodeCapabilities
+	ResourceMetrics *resources.ResourceMetrics
 	LastActivity    time.Time
 }
 

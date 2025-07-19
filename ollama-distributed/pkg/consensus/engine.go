@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/hashicorp/raft"
@@ -28,9 +29,8 @@ type Engine struct {
 	snapshots raft.SnapshotStore
 	transport *raft.NetworkTransport
 	
-	// Leadership tracking
-	isLeader     bool
-	leadershipMu sync.RWMutex
+	// Leadership tracking (atomic for thread safety)
+	isLeader     int64 // Use atomic operations
 	leaderCh     chan bool
 	
 	// State management
@@ -151,9 +151,12 @@ func (e *Engine) monitorLeadership() {
 	for {
 		select {
 		case isLeader := <-e.raft.LeaderCh():
-			e.leadershipMu.Lock()
-			e.isLeader = isLeader
-			e.leadershipMu.Unlock()
+			// Use atomic operations to prevent race conditions
+			var leaderVal int64
+			if isLeader {
+				leaderVal = 1
+			}
+			atomic.StoreInt64(&e.isLeader, leaderVal)
 			
 			// Notify leadership change
 			select {
@@ -282,9 +285,7 @@ func (e *Engine) Delete(key string) error {
 
 // IsLeader returns true if this node is the leader
 func (e *Engine) IsLeader() bool {
-	e.leadershipMu.RLock()
-	defer e.leadershipMu.RUnlock()
-	return e.isLeader
+	return atomic.LoadInt64(&e.isLeader) == 1
 }
 
 // Leader returns the current leader address
@@ -403,12 +404,16 @@ func (f *FSM) Apply(log *raft.Log) interface{} {
 	}
 	
 	// Send to apply channel with timeout to prevent blocking
-	select {
-	case f.applyCh <- &event:
-	case <-time.After(1 * time.Second):
-		// Log warning but continue - don't fail the consensus operation
-		log.Printf("Warning: apply channel full, dropping event notification for key %s", event.Key)
-	}
+	// Use goroutine to prevent blocking the FSM apply operation
+	go func() {
+		select {
+		case f.applyCh <- &event:
+			// Successfully sent
+		case <-time.After(1 * time.Second):
+			// Log warning but continue - don't fail the consensus operation
+			fmt.Printf("Warning: apply channel full, dropping event notification for key %s\n", event.Key)
+		}
+	}()
 	
 	return nil
 }

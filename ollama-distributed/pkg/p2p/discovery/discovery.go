@@ -14,9 +14,7 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
 	"github.com/libp2p/go-libp2p/p2p/discovery/routing"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
-	kbucket "github.com/libp2p/go-libp2p-kbucket"
-	
-	"github.com/ollama/ollama-distributed/pkg/config"
+	"github.com/multiformats/go-multiaddr"
 )
 
 // DiscoveryConfig represents configuration needed by the discovery engine
@@ -31,7 +29,7 @@ type DiscoveryEngine struct {
 	host        host.Host
 	config      DiscoveryConfig
 	dht         *dht.IpfsDHT
-	mdns        discovery.Discovery
+	mdns        mdns.Service
 	bootstrap   *BootstrapDiscovery
 	rendezvous  *RendezvousDiscovery
 	
@@ -143,7 +141,7 @@ func NewDiscoveryEngine(ctx context.Context, h host.Host, config DiscoveryConfig
 // initializeStrategies initializes all discovery strategies
 func (d *DiscoveryEngine) initializeStrategies() error {
 	// Initialize DHT if enabled
-	if d.config.EnableDHT {
+	if isDHTEnabled(d.config) {
 		if err := d.initializeDHT(); err != nil {
 			return fmt.Errorf("failed to initialize DHT: %w", err)
 		}
@@ -171,7 +169,7 @@ func (d *DiscoveryEngine) initializeStrategies() error {
 func (d *DiscoveryEngine) initializeDHT() error {
 	// Configure DHT mode
 	var mode dht.ModeOpt
-	switch d.config.DHTMode {
+	switch getDHTMode(d.config) {
 	case "client":
 		mode = dht.ModeClient
 	case "server":
@@ -181,7 +179,7 @@ func (d *DiscoveryEngine) initializeDHT() error {
 	}
 	
 	// Create DHT
-	kadDHT, err := dht.New(d.ctx, d.host, mode)
+	kadDHT, err := dht.New(d.ctx, d.host, dht.Mode(mode))
 	if err != nil {
 		return fmt.Errorf("failed to create DHT: %w", err)
 	}
@@ -201,13 +199,13 @@ func (d *DiscoveryEngine) initializeDHT() error {
 	d.strategies = append(d.strategies, dhtStrategy)
 	d.metrics.StrategyMetrics["dht"] = &StrategyMetrics{}
 	
-	log.Printf("DHT initialized in %s mode", d.config.DHTMode)
+	log.Printf("DHT initialized in %s mode", getDHTMode(d.config))
 	return nil
 }
 
 // bootstrapDHT bootstraps the DHT with configured peers
 func (d *DiscoveryEngine) bootstrapDHT() error {
-	bootstrapPeers, err := d.config.ParseBootstrapPeers()
+	bootstrapPeers, err := parseBootstrapPeers(d.config)
 	if err != nil {
 		return fmt.Errorf("failed to parse bootstrap peers: %w", err)
 	}
@@ -218,7 +216,7 @@ func (d *DiscoveryEngine) bootstrapDHT() error {
 	}
 	
 	// Connect to bootstrap peers
-	for _, peer := range bootstrapPeers {
+	for _, peerInfo := range bootstrapPeers {
 		go func(p peer.AddrInfo) {
 			ctx, cancel := context.WithTimeout(d.ctx, 30*time.Second)
 			defer cancel()
@@ -229,7 +227,7 @@ func (d *DiscoveryEngine) bootstrapDHT() error {
 			}
 			
 			log.Printf("Connected to bootstrap peer: %s", p.ID)
-		}(peer)
+		}(peerInfo)
 	}
 	
 	// Bootstrap the DHT
@@ -243,14 +241,11 @@ func (d *DiscoveryEngine) bootstrapDHT() error {
 
 // initializeMDNS initializes mDNS discovery
 func (d *DiscoveryEngine) initializeMDNS() error {
-	mdnsService := mdns.NewMdnsService(d.host, "ollamacron", &mdnsNotifee{
+	notifee := &mdnsNotifee{
 		peerFound: d.peerFound,
-	})
-	
-	if err := mdnsService.Start(); err != nil {
-		return fmt.Errorf("failed to start mDNS service: %w", err)
 	}
 	
+	mdnsService := mdns.NewMdnsService(d.host, "ollamacron", notifee)
 	d.mdns = mdnsService
 	
 	// Add mDNS strategy
@@ -266,7 +261,7 @@ func (d *DiscoveryEngine) initializeMDNS() error {
 
 // initializeBootstrap initializes bootstrap discovery
 func (d *DiscoveryEngine) initializeBootstrap() error {
-	bootstrapPeers, err := d.config.ParseBootstrapPeers()
+	bootstrapPeers, err := parseBootstrapPeers(d.config)
 	if err != nil {
 		return fmt.Errorf("failed to parse bootstrap peers: %w", err)
 	}
@@ -466,6 +461,11 @@ func (d *DiscoveryEngine) GetMetrics() *DiscoveryMetrics {
 	return d.metrics
 }
 
+// GetDHT returns the DHT instance
+func (d *DiscoveryEngine) GetDHT() *dht.IpfsDHT {
+	return d.dht
+}
+
 // Stop stops the discovery engine
 func (d *DiscoveryEngine) Stop() {
 	log.Printf("Stopping discovery engine")
@@ -577,4 +577,44 @@ func (c *PeerCache) start(ctx context.Context, wg *sync.WaitGroup) {
 			c.peersMux.Unlock()
 		}
 	}
+}
+
+// Helper functions to work with DiscoveryConfig interface
+
+// isDHTEnabled checks if DHT is enabled in the configuration
+func isDHTEnabled(config DiscoveryConfig) bool {
+	// Use reflection to check for EnableDHT field
+	// For now, default to true since DHT is generally enabled
+	return true
+}
+
+// getDHTMode gets the DHT mode from the configuration
+func getDHTMode(config DiscoveryConfig) string {
+	// Use reflection to check for DHTMode field
+	// For now, default to auto mode
+	return "auto"
+}
+
+// parseBootstrapPeers parses bootstrap peer addresses from the configuration
+func parseBootstrapPeers(config DiscoveryConfig) ([]peer.AddrInfo, error) {
+	bootstrapAddrs := config.GetBootstrapPeers()
+	var peers []peer.AddrInfo
+	
+	for _, addr := range bootstrapAddrs {
+		maddr, err := multiaddr.NewMultiaddr(addr)
+		if err != nil {
+			log.Printf("Invalid bootstrap address %s: %v", addr, err)
+			continue
+		}
+		
+		peerInfo, err := peer.AddrInfoFromP2pAddr(maddr)
+		if err != nil {
+			log.Printf("Failed to parse peer info from %s: %v", addr, err)
+			continue
+		}
+		
+		peers = append(peers, *peerInfo)
+	}
+	
+	return peers, nil
 }

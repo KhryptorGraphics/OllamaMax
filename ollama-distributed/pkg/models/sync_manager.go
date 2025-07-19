@@ -15,7 +15,6 @@ import (
 
 	"github.com/ollama/ollama-distributed/internal/config"
 	"github.com/ollama/ollama-distributed/pkg/p2p"
-	"github.com/ollama/ollama/types/model"
 )
 
 // SyncManager manages model synchronization across the distributed network

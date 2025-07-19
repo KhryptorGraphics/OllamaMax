@@ -19,7 +19,7 @@ type DistributedRoutes struct {
 	scheduler         *scheduler.Engine
 	integrationLayer  *IntegrationLayer
 	distributedRunner *DistributedRunner
-	modelDistribution *models.Distribution
+	modelDistribution *models.Manager
 	
 	// Original server for fallback
 	originalServer integration.Server
@@ -31,7 +31,7 @@ type DistributedRoutes struct {
 }
 
 // NewDistributedRoutes creates a new distributed routes handler
-func NewDistributedRoutes(scheduler *scheduler.Engine, modelDist *models.Distribution, localAddr string) (*DistributedRoutes, error) {
+func NewDistributedRoutes(scheduler *scheduler.Engine, modelDist *models.Manager, localAddr string) (*DistributedRoutes, error) {
 	// Create integration layer
 	integrationLayer, err := NewIntegrationLayer(scheduler, localAddr, modelDist)
 	if err != nil {
@@ -350,7 +350,7 @@ func (dr *DistributedRoutes) handleMigrate(c *gin.Context) {
 		return
 	}
 	
-	if err := dr.modelDistribution.MigrateModel(req.ModelName, req.FromNode, req.ToNode); err != nil {
+	if err := dr.modelDistribution.MigrateModel(req.ModelName, req.ToNode); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

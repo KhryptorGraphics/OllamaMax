@@ -2,11 +2,14 @@ package unit
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/hashicorp/raft"
 	"github.com/ollama/ollama-distributed/internal/config"
 	"github.com/ollama/ollama-distributed/pkg/consensus"
 	"github.com/ollama/ollama-distributed/pkg/p2p"
@@ -378,9 +381,3 @@ func BenchmarkConsensusGet(b *testing.B) {
 	engine.Shutdown(ctx)
 }
 
-// Additional imports needed
-import (
-	"encoding/json"
-	"fmt"
-	"github.com/hashicorp/raft"
-)

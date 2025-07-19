@@ -14,6 +14,32 @@ import (
 	"github.com/ollama/ollama-distributed/pkg/scheduler"
 )
 
+// ServerWrapper wraps the original server to implement integration.Server interface
+type ServerWrapper struct {
+	originalServer interface{}
+}
+
+func (sw *ServerWrapper) GenerateRoutes(registry *integration.Registry) (http.Handler, error) {
+	// Return a basic handler for compatibility
+	return http.DefaultServeMux, nil
+}
+
+func (sw *ServerWrapper) Start(ctx context.Context) error {
+	// If the original server has a Start method, call it
+	if starter, ok := sw.originalServer.(interface{ Start(context.Context) error }); ok {
+		return starter.Start(ctx)
+	}
+	return nil
+}
+
+func (sw *ServerWrapper) Stop(ctx context.Context) error {
+	// If the original server has a Stop method, call it
+	if stopper, ok := sw.originalServer.(interface{ Stop(context.Context) error }); ok {
+		return stopper.Stop(ctx)
+	}
+	return nil
+}
+
 // DistributedServerWrapper wraps the original Ollama server with distributed capabilities
 type DistributedServerWrapper struct {
 	// Original server components (using interface for compatibility)
@@ -22,7 +48,7 @@ type DistributedServerWrapper struct {
 	// Distributed components
 	distributedRoutes *DistributedRoutes
 	scheduler         *scheduler.Engine
-	modelDistribution *models.Distribution
+	modelDistribution *models.Manager
 	
 	// Configuration
 	distributedEnabled bool
@@ -31,15 +57,16 @@ type DistributedServerWrapper struct {
 }
 
 // NewDistributedServerWrapper creates a new wrapper for the original server
-func NewDistributedServerWrapper(originalServer interface{}, scheduler *scheduler.Engine, modelDist *models.Distribution, localAddr string) (*DistributedServerWrapper, error) {
+func NewDistributedServerWrapper(originalServer interface{}, scheduler *scheduler.Engine, modelDist *models.Manager, localAddr string) (*DistributedServerWrapper, error) {
 	// Create distributed routes
 	distributedRoutes, err := NewDistributedRoutes(scheduler, modelDist, localAddr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create distributed routes: %w", err)
 	}
 	
-	// Set original server for fallback
-	distributedRoutes.SetOriginalServer(originalServer)
+	// Create server wrapper for fallback
+	serverWrapper := &ServerWrapper{originalServer: originalServer}
+	distributedRoutes.SetOriginalServer(serverWrapper)
 	
 	return &DistributedServerWrapper{
 		originalServer:     originalServer,
