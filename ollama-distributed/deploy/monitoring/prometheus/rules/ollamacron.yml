@@ -1,0 +1,261 @@
+# Prometheus Alerting Rules for Ollamacron
+groups:
+  - name: ollamacron.rules
+    rules:
+      # High Error Rate
+      - alert: OllamacronHighErrorRate
+        expr: |
+          (
+            rate(ollamacron_http_requests_total{status=~"5.."}[5m])
+            /
+            rate(ollamacron_http_requests_total[5m])
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          service: ollamacron
+        annotations:
+          summary: "High error rate detected for Ollamacron"
+          description: "Error rate is {{ $value | humanizePercentage }} for the last 5 minutes on instance {{ $labels.instance }}"
+          runbook_url: "https://runbooks.example.com/ollamacron/high-error-rate"
+
+      # High Latency
+      - alert: OllamacronHighLatency
+        expr: |
+          histogram_quantile(0.95, 
+            rate(ollamacron_http_request_duration_seconds_bucket[5m])
+          ) > 10
+        for: 10m
+        labels:
+          severity: warning
+          service: ollamacron
+        annotations:
+          summary: "High latency detected for Ollamacron"
+          description: "95th percentile latency is {{ $value }}s for the last 10 minutes on instance {{ $labels.instance }}"
+          runbook_url: "https://runbooks.example.com/ollamacron/high-latency"
+
+      # Service Down
+      - alert: OllamacronServiceDown
+        expr: up{job="ollamacron"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: ollamacron
+        annotations:
+          summary: "Ollamacron service is down"
+          description: "Ollamacron service on instance {{ $labels.instance }} has been down for more than 1 minute"
+          runbook_url: "https://runbooks.example.com/ollamacron/service-down"
+
+      # High Memory Usage
+      - alert: OllamacronHighMemoryUsage
+        expr: |
+          (
+            process_resident_memory_bytes{job="ollamacron"}
+            /
+            1024 / 1024 / 1024
+          ) > 2
+        for: 10m
+        labels:
+          severity: warning
+          service: ollamacron
+        annotations:
+          summary: "High memory usage for Ollamacron"
+          description: "Memory usage is {{ $value | humanize }}GB for the last 10 minutes on instance {{ $labels.instance }}"
+          runbook_url: "https://runbooks.example.com/ollamacron/high-memory-usage"
+
+      # High CPU Usage
+      - alert: OllamacronHighCPUUsage
+        expr: |
+          rate(process_cpu_seconds_total{job="ollamacron"}[5m]) > 0.8
+        for: 10m
+        labels:
+          severity: warning
+          service: ollamacron
+        annotations:
+          summary: "High CPU usage for Ollamacron"
+          description: "CPU usage is {{ $value | humanizePercentage }} for the last 10 minutes on instance {{ $labels.instance }}"
+          runbook_url: "https://runbooks.example.com/ollamacron/high-cpu-usage"
+
+      # P2P Connection Issues
+      - alert: OllamacronP2PConnectionLow
+        expr: ollamacron_p2p_connections_total < 2
+        for: 5m
+        labels:
+          severity: warning
+          service: ollamacron
+        annotations:
+          summary: "Low P2P connections for Ollamacron"
+          description: "P2P connections are {{ $value }} for the last 5 minutes on instance {{ $labels.instance }}"
+          runbook_url: "https://runbooks.example.com/ollamacron/low-p2p-connections"
+
+      # Model Cache Full
+      - alert: OllamacronModelCacheFull
+        expr: |
+          (
+            ollamacron_model_cache_size_bytes
+            /
+            ollamacron_model_cache_max_size_bytes
+          ) > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          service: ollamacron
+        annotations:
+          summary: "Model cache is nearly full"
+          description: "Model cache usage is {{ $value | humanizePercentage }} on instance {{ $labels.instance }}"
+          runbook_url: "https://runbooks.example.com/ollamacron/model-cache-full"
+
+      # Inference Queue Backup
+      - alert: OllamacronInferenceQueueBackup
+        expr: ollamacron_inference_queue_size > 100
+        for: 5m
+        labels:
+          severity: warning
+          service: ollamacron
+        annotations:
+          summary: "Inference queue is backing up"
+          description: "Inference queue size is {{ $value }} on instance {{ $labels.instance }}"
+          runbook_url: "https://runbooks.example.com/ollamacron/inference-queue-backup"
+
+      # Cluster Split Brain
+      - alert: OllamacronClusterSplitBrain
+        expr: |
+          count(ollamacron_cluster_leader_election_leader == 1) > 1
+        for: 1m
+        labels:
+          severity: critical
+          service: ollamacron
+        annotations:
+          summary: "Cluster split brain detected"
+          description: "Multiple leaders detected in the cluster: {{ $value }}"
+          runbook_url: "https://runbooks.example.com/ollamacron/cluster-split-brain"
+
+      # No Cluster Leader
+      - alert: OllamacronNoClusterLeader
+        expr: |
+          count(ollamacron_cluster_leader_election_leader == 1) == 0
+        for: 30s
+        labels:
+          severity: critical
+          service: ollamacron
+        annotations:
+          summary: "No cluster leader detected"
+          description: "No leader found in the cluster"
+          runbook_url: "https://runbooks.example.com/ollamacron/no-cluster-leader"
+
+      # Failed Model Sync
+      - alert: OllamacronModelSyncFailure
+        expr: |
+          rate(ollamacron_model_sync_errors_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          service: ollamacron
+        annotations:
+          summary: "High model sync failure rate"
+          description: "Model sync error rate is {{ $value | humanize }}/sec on instance {{ $labels.instance }}"
+          runbook_url: "https://runbooks.example.com/ollamacron/model-sync-failure"
+
+  - name: ollamacron-infrastructure.rules
+    rules:
+      # Disk Space
+      - alert: OllamacronDiskSpaceHigh
+        expr: |
+          (
+            (
+              node_filesystem_size_bytes{job="node",mountpoint="/"}
+              -
+              node_filesystem_avail_bytes{job="node",mountpoint="/"}
+            )
+            /
+            node_filesystem_size_bytes{job="node",mountpoint="/"}
+          ) > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          service: ollamacron
+        annotations:
+          summary: "High disk space usage"
+          description: "Disk usage is {{ $value | humanizePercentage }} on instance {{ $labels.instance }}"
+          runbook_url: "https://runbooks.example.com/ollamacron/high-disk-usage"
+
+      # Redis Connection Issues
+      - alert: OllamacronRedisConnectionFailure
+        expr: |
+          rate(ollamacron_redis_connection_errors_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          service: ollamacron
+        annotations:
+          summary: "Redis connection issues"
+          description: "Redis connection error rate is {{ $value | humanize }}/sec on instance {{ $labels.instance }}"
+          runbook_url: "https://runbooks.example.com/ollamacron/redis-connection-failure"
+
+      # Load Balancer Issues
+      - alert: OllamacronLoadBalancerUnhealthy
+        expr: |
+          (
+            ollamacron_load_balancer_healthy_nodes
+            /
+            ollamacron_load_balancer_total_nodes
+          ) < 0.5
+        for: 2m
+        labels:
+          severity: critical
+          service: ollamacron
+        annotations:
+          summary: "Load balancer has unhealthy nodes"
+          description: "Only {{ $value | humanizePercentage }} of nodes are healthy in the load balancer"
+          runbook_url: "https://runbooks.example.com/ollamacron/load-balancer-unhealthy"
+
+  - name: ollamacron-performance.rules
+    rules:
+      # Recording rules for performance metrics
+      - record: ollamacron:request_rate
+        expr: |
+          rate(ollamacron_http_requests_total[5m])
+
+      - record: ollamacron:error_rate
+        expr: |
+          rate(ollamacron_http_requests_total{status=~"5.."}[5m])
+          /
+          rate(ollamacron_http_requests_total[5m])
+
+      - record: ollamacron:latency_p95
+        expr: |
+          histogram_quantile(0.95, 
+            rate(ollamacron_http_request_duration_seconds_bucket[5m])
+          )
+
+      - record: ollamacron:latency_p99
+        expr: |
+          histogram_quantile(0.99, 
+            rate(ollamacron_http_request_duration_seconds_bucket[5m])
+          )
+
+      - record: ollamacron:inference_rate
+        expr: |
+          rate(ollamacron_inference_requests_total[5m])
+
+      - record: ollamacron:inference_latency_p95
+        expr: |
+          histogram_quantile(0.95, 
+            rate(ollamacron_inference_duration_seconds_bucket[5m])
+          )
+
+      - record: ollamacron:model_cache_usage
+        expr: |
+          ollamacron_model_cache_size_bytes
+          /
+          ollamacron_model_cache_max_size_bytes
+
+      - record: ollamacron:p2p_connection_rate
+        expr: |
+          rate(ollamacron_p2p_connections_established_total[5m])
+
+      - record: ollamacron:cluster_health
+        expr: |
+          ollamacron_cluster_healthy_nodes
+          /
+          ollamacron_cluster_total_nodes

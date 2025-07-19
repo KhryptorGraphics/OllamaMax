@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ollama Distributed - Control Panel</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .sidebar {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .main-content {
+            background-color: #f8f9fa;
+            min-height: 100vh;
+        }
+        
+        .nav-link {
+            color: rgba(255,255,255,0.8) !important;
+            border-radius: 0.5rem;
+            margin: 0.25rem 0;
+        }
+        
+        .nav-link:hover, .nav-link.active {
+            background-color: rgba(255,255,255,0.1) !important;
+            color: white !important;
+        }
+        
+        .card {
+            border: none;
+            border-radius: 1rem;
+            box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+        }
+        
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 1rem 1rem 0 0 !important;
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 0.5rem;
+        }
+        
+        .status-online { background-color: #28a745; }
+        .status-offline { background-color: #dc3545; }
+        .status-draining { background-color: #ffc107; }
+        .status-maintenance { background-color: #6c757d; }
+        
+        .metric-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 1rem;
+        }
+        
+        .progress-bar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .table-container {
+            background: white;
+            border-radius: 1rem;
+            overflow: hidden;
+        }
+        
+        .websocket-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        
+        .model-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .model-card {
+            background: white;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .transfer-progress {
+            background: #f8f9fa;
+            border-radius: 0.5rem;
+            height: 6px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+        
+        .transfer-progress-bar {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s ease;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-top: 1rem;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .alert-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1050;
+            max-width: 400px;
+        }
+        
+        .node-health-card {
+            background: white;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 1rem;
+        }
+        
+        .bandwidth-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        
+        .bandwidth-bar {
+            flex: 1;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .bandwidth-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #28a745 0%, #ffc107 50%, #dc3545 100%);
+            transition: width 0.5s ease;
+        }
+        
+        .inference-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+            animation: pulse 2s infinite;
+        }
+        
+        .inference-ready { background: #28a745; }
+        .inference-busy { background: #ffc107; }
+        .inference-error { background: #dc3545; }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        .distribution-controls {
+            background: #f8f9fa;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-top: 1rem;
+        }
+        
+        .auto-distribution-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .toggle-switch {
+            position: relative;
+            width: 60px;
+            height: 30px;
+            background: #ccc;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        
+        .toggle-switch.active {
+            background: #28a745;
+        }
+        
+        .toggle-slider {
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 24px;
+            height: 24px;
+            background: white;
+            border-radius: 12px;
+            transition: transform 0.3s ease;
+        }
+        
+        .toggle-switch.active .toggle-slider {
+            transform: translateX(30px);
+        }
+        
+        .responsive-table {
+            overflow-x: auto;
+        }
+        
+        @media (max-width: 768px) {
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .chart-container {
+                height: 200px;
+            }
+            
+            .sidebar {
+                position: fixed;
+                top: 0;
+                left: -100%;
+                width: 280px;
+                height: 100vh;
+                z-index: 1000;
+                transition: left 0.3s ease;
+            }
+            
+            .sidebar.show {
+                left: 0;
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // WebSocket connection
+        const useWebSocket = (url) => {
+            const [socket, setSocket] = useState(null);
+            const [isConnected, setIsConnected] = useState(false);
+            const [lastMessage, setLastMessage] = useState(null);
+
+            useEffect(() => {
+                const ws = new WebSocket(url);
+                
+                ws.onopen = () => {
+                    setIsConnected(true);
+                    setSocket(ws);
+                };
+                
+                ws.onmessage = (event) => {
+                    const message = JSON.parse(event.data);
+                    setLastMessage(message);
+                };
+                
+                ws.onclose = () => {
+                    setIsConnected(false);
+                    setSocket(null);
+                };
+                
+                return () => {
+                    ws.close();
+                };
+            }, [url]);
+
+            return { socket, isConnected, lastMessage };
+        };
+
+        // API client
+        const api = {
+            async get(endpoint) {
+                const response = await fetch(`/api/v1${endpoint}`);
+                return response.json();
+            },
+            
+            async post(endpoint, data) {
+                const response = await fetch(`/api/v1${endpoint}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data),
+                });
+                return response.json();
+            },
+            
+            async delete(endpoint) {
+                const response = await fetch(`/api/v1${endpoint}`, {
+                    method: 'DELETE',
+                });
+                return response.json();
+            }
+        };
+
+        // Main App Component
+        const App = () => {
+            const [activeTab, setActiveTab] = useState('dashboard');
+            const [clusterStatus, setClusterStatus] = useState({});
+            const [nodes, setNodes] = useState([]);
+            const [models, setModels] = useState([]);
+            const [transfers, setTransfers] = useState([]);
+            const [metrics, setMetrics] = useState({});
+            
+            const wsUrl = `ws://${window.location.host}/api/v1/ws`;
+            const { socket, isConnected, lastMessage } = useWebSocket(wsUrl);
+
+            useEffect(() => {
+                fetchData();
+                const interval = setInterval(fetchData, 5000);
+                return () => clearInterval(interval);
+            }, []);
+
+            const fetchData = async () => {
+                try {
+                    const [statusRes, nodesRes, modelsRes, transfersRes, metricsRes] = await Promise.all([
+                        api.get('/cluster/status'),
+                        api.get('/nodes'),
+                        api.get('/models'),
+                        api.get('/transfers'),
+                        api.get('/metrics')
+                    ]);
+                    
+                    setClusterStatus(statusRes);
+                    setNodes(Object.values(nodesRes.nodes || {}));
+                    setModels(Object.values(modelsRes.models || {}));
+                    setTransfers(Object.values(transfersRes.transfers || {}));
+                    setMetrics(metricsRes);
+                } catch (error) {
+                    console.error('Failed to fetch data:', error);
+                }
+            };
+
+            const handleDownloadModel = async (modelName) => {
+                try {
+                    await api.post(`/models/${modelName}/download`, {});
+                    fetchData();
+                } catch (error) {
+                    console.error('Failed to download model:', error);
+                }
+            };
+
+            const handleDeleteModel = async (modelName) => {
+                try {
+                    await api.delete(`/models/${modelName}`);
+                    fetchData();
+                } catch (error) {
+                    console.error('Failed to delete model:', error);
+                }
+            };
+
+            return (
+                <div className="container-fluid">
+                    <div className="row">
+                        <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
+                        <div className="col-md-10 p-0">
+                            <div className="main-content p-4">
+                                <WebSocketStatus isConnected={isConnected} />
+                                
+                                {activeTab === 'dashboard' && (
+                                    <Dashboard 
+                                        clusterStatus={clusterStatus} 
+                                        nodes={nodes} 
+                                        metrics={metrics}
+                                    />
+                                )}
+                                
+                                {activeTab === 'nodes' && (
+                                    <NodesView nodes={nodes} />
+                                )}
+                                
+                                {activeTab === 'models' && (
+                                    <ModelsView 
+                                        models={models} 
+                                        onDownload={handleDownloadModel}
+                                        onDelete={handleDeleteModel}
+                                    />
+                                )}
+                                
+                                {activeTab === 'transfers' && (
+                                    <TransfersView transfers={transfers} />
+                                )}
+                                
+                                {activeTab === 'cluster' && (
+                                    <ClusterView clusterStatus={clusterStatus} />
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // Sidebar Component
+        const Sidebar = ({ activeTab, onTabChange }) => (
+            <div className="col-md-2 p-0">
+                <div className="sidebar p-3">
+                    <h4 className="mb-4">
+                        <i className="fas fa-network-wired me-2"></i>
+                        Ollama Distributed
+                    </h4>
+                    
+                    <ul className="nav nav-pills flex-column">
+                        <li className="nav-item">
+                            <a 
+                                className={`nav-link ${activeTab === 'dashboard' ? 'active' : ''}`}
+                                href="#" 
+                                onClick={() => onTabChange('dashboard')}
+                            >
+                                <i className="fas fa-tachometer-alt me-2"></i>Dashboard
+                            </a>
+                        </li>
+                        <li className="nav-item">
+                            <a 
+                                className={`nav-link ${activeTab === 'nodes' ? 'active' : ''}`}
+                                href="#" 
+                                onClick={() => onTabChange('nodes')}
+                            >
+                                <i className="fas fa-server me-2"></i>Nodes
+                            </a>
+                        </li>
+                        <li className="nav-item">
+                            <a 
+                                className={`nav-link ${activeTab === 'models' ? 'active' : ''}`}
+                                href="#" 
+                                onClick={() => onTabChange('models')}
+                            >
+                                <i className="fas fa-brain me-2"></i>Models
+                            </a>
+                        </li>
+                        <li className="nav-item">
+                            <a 
+                                className={`nav-link ${activeTab === 'transfers' ? 'active' : ''}`}
+                                href="#" 
+                                onClick={() => onTabChange('transfers')}
+                            >
+                                <i className="fas fa-exchange-alt me-2"></i>Transfers
+                            </a>
+                        </li>
+                        <li className="nav-item">
+                            <a 
+                                className={`nav-link ${activeTab === 'cluster' ? 'active' : ''}`}
+                                href="#" 
+                                onClick={() => onTabChange('cluster')}
+                            >
+                                <i className="fas fa-sitemap me-2"></i>Cluster
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        );
+
+        // WebSocket Status Component
+        const WebSocketStatus = ({ isConnected }) => (
+            <div className="websocket-status">
+                <span className={`badge ${isConnected ? 'bg-success' : 'bg-danger'}`}>
+                    <i className={`fas fa-${isConnected ? 'wifi' : 'wifi-slash'} me-1`}></i>
+                    {isConnected ? 'Connected' : 'Disconnected'}
+                </span>
+            </div>
+        );
+
+        // Dashboard Component
+        const Dashboard = ({ clusterStatus, nodes, metrics }) => {
+            const onlineNodes = nodes.filter(node => node.status === 'online').length;
+            const offlineNodes = nodes.filter(node => node.status === 'offline').length;
+            
+            return (
+                <div>
+                    <h2 className="mb-4">Dashboard</h2>
+                    
+                    <div className="row mb-4">
+                        <div className="col-md-3">
+                            <div className="card metric-card">
+                                <div className="card-body text-center">
+                                    <i className="fas fa-server fa-2x mb-2"></i>
+                                    <h3>{nodes.length}</h3>
+                                    <p>Total Nodes</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="col-md-3">
+                            <div className="card metric-card">
+                                <div className="card-body text-center">
+                                    <i className="fas fa-check-circle fa-2x mb-2"></i>
+                                    <h3>{onlineNodes}</h3>
+                                    <p>Online Nodes</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="col-md-3">
+                            <div className="card metric-card">
+                                <div className="card-body text-center">
+                                    <i className="fas fa-crown fa-2x mb-2"></i>
+                                    <h3>{clusterStatus.is_leader ? 'Yes' : 'No'}</h3>
+                                    <p>Leader</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="col-md-3">
+                            <div className="card metric-card">
+                                <div className="card-body text-center">
+                                    <i className="fas fa-network-wired fa-2x mb-2"></i>
+                                    <h3>{clusterStatus.peers || 0}</h3>
+                                    <p>Connected Peers</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div className="row">
+                        <div className="col-md-6">
+                            <div className="card">
+                                <div className="card-header">
+                                    <h5 className="mb-0">Cluster Status</h5>
+                                </div>
+                                <div className="card-body">
+                                    <div className="mb-3">
+                                        <strong>Node ID:</strong> {clusterStatus.node_id}
+                                    </div>
+                                    <div className="mb-3">
+                                        <strong>Leader:</strong> {clusterStatus.leader || 'Unknown'}
+                                    </div>
+                                    <div className="mb-3">
+                                        <strong>Status:</strong> 
+                                        <span className={`badge ms-2 ${clusterStatus.status === 'healthy' ? 'bg-success' : 'bg-warning'}`}>
+                                            {clusterStatus.status}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="col-md-6">
+                            <div className="card">
+                                <div className="card-header">
+                                    <h5 className="mb-0">Node Overview</h5>
+                                </div>
+                                <div className="card-body">
+                                    <div className="row">
+                                        <div className="col-6">
+                                            <div className="text-center">
+                                                <div className="status-indicator status-online"></div>
+                                                Online: {onlineNodes}
+                                            </div>
+                                        </div>
+                                        <div className="col-6">
+                                            <div className="text-center">
+                                                <div className="status-indicator status-offline"></div>
+                                                Offline: {offlineNodes}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // Nodes View Component
+        const NodesView = ({ nodes }) => (
+            <div>
+                <h2 className="mb-4">Nodes</h2>
+                <div className="table-container">
+                    <table className="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Node ID</th>
+                                <th>Address</th>
+                                <th>Status</th>
+                                <th>CPU</th>
+                                <th>Memory</th>
+                                <th>Models</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {nodes.map(node => (
+                                <tr key={node.id}>
+                                    <td>{node.id.substring(0, 8)}...</td>
+                                    <td>{node.address}</td>
+                                    <td>
+                                        <span className={`status-indicator status-${node.status}`}></span>
+                                        {node.status}
+                                    </td>
+                                    <td>{node.usage ? `${node.usage.cpu.toFixed(1)}%` : 'N/A'}</td>
+                                    <td>{node.usage ? `${node.usage.memory.toFixed(1)}%` : 'N/A'}</td>
+                                    <td>{node.models ? node.models.length : 0}</td>
+                                    <td>
+                                        <button className="btn btn-sm btn-outline-primary me-2">
+                                            <i className="fas fa-info-circle"></i>
+                                        </button>
+                                        <button className="btn btn-sm btn-outline-warning">
+                                            <i className="fas fa-pause"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        );
+
+        // Models View Component
+        const ModelsView = ({ models, onDownload, onDelete }) => (
+            <div>
+                <h2 className="mb-4">Models</h2>
+                <div className="model-grid">
+                    {models.map(model => (
+                        <div key={model.name} className="model-card">
+                            <h5>{model.name}</h5>
+                            <p className="text-muted">Size: {model.size ? `${(model.size / 1024 / 1024).toFixed(2)} MB` : 'Unknown'}</p>
+                            <p className="text-muted">Replicas: {model.replicas ? model.replicas.length : 0}</p>
+                            <p className="text-muted">Status: 
+                                <span className={`badge ms-2 ${model.status === 'available' ? 'bg-success' : 'bg-warning'}`}>
+                                    {model.status}
+                                </span>
+                            </p>
+                            <div className="mt-3">
+                                <button 
+                                    className="btn btn-sm btn-primary me-2"
+                                    onClick={() => onDownload(model.name)}
+                                >
+                                    <i className="fas fa-download"></i> Download
+                                </button>
+                                <button 
+                                    className="btn btn-sm btn-outline-danger"
+                                    onClick={() => onDelete(model.name)}
+                                >
+                                    <i className="fas fa-trash"></i> Delete
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+
+        // Transfers View Component
+        const TransfersView = ({ transfers }) => (
+            <div>
+                <h2 className="mb-4">Transfers</h2>
+                <div className="table-container">
+                    <table className="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Transfer ID</th>
+                                <th>Model</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                                <th>Progress</th>
+                                <th>Speed</th>
+                                <th>Peer</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {transfers.map(transfer => (
+                                <tr key={transfer.id}>
+                                    <td>{transfer.id.substring(0, 8)}...</td>
+                                    <td>{transfer.model_name}</td>
+                                    <td>{transfer.type}</td>
+                                    <td>
+                                        <span className={`badge ${transfer.status === 'completed' ? 'bg-success' : 'bg-primary'}`}>
+                                            {transfer.status}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div className="transfer-progress">
+                                            <div 
+                                                className="transfer-progress-bar"
+                                                style={{ width: `${transfer.progress}%` }}
+                                            ></div>
+                                        </div>
+                                        {transfer.progress.toFixed(1)}%
+                                    </td>
+                                    <td>{transfer.speed ? `${(transfer.speed / 1024 / 1024).toFixed(2)} MB/s` : 'N/A'}</td>
+                                    <td>{transfer.peer_id.substring(0, 8)}...</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        );
+
+        // Cluster View Component
+        const ClusterView = ({ clusterStatus }) => (
+            <div>
+                <h2 className="mb-4">Cluster Management</h2>
+                <div className="row">
+                    <div className="col-md-6">
+                        <div className="card">
+                            <div className="card-header">
+                                <h5 className="mb-0">Cluster Information</h5>
+                            </div>
+                            <div className="card-body">
+                                <div className="mb-3">
+                                    <strong>Current Node ID:</strong><br />
+                                    <code>{clusterStatus.node_id}</code>
+                                </div>
+                                <div className="mb-3">
+                                    <strong>Leader Node:</strong><br />
+                                    <code>{clusterStatus.leader || 'Unknown'}</code>
+                                </div>
+                                <div className="mb-3">
+                                    <strong>Is Leader:</strong> 
+                                    <span className={`badge ms-2 ${clusterStatus.is_leader ? 'bg-success' : 'bg-secondary'}`}>
+                                        {clusterStatus.is_leader ? 'Yes' : 'No'}
+                                    </span>
+                                </div>
+                                <div className="mb-3">
+                                    <strong>Connected Peers:</strong> {clusterStatus.peers || 0}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="col-md-6">
+                        <div className="card">
+                            <div className="card-header">
+                                <h5 className="mb-0">Cluster Actions</h5>
+                            </div>
+                            <div className="card-body">
+                                <button className="btn btn-primary mb-2 w-100">
+                                    <i className="fas fa-plus-circle me-2"></i>
+                                    Join Cluster
+                                </button>
+                                <button className="btn btn-outline-warning mb-2 w-100">
+                                    <i className="fas fa-sign-out-alt me-2"></i>
+                                    Leave Cluster
+                                </button>
+                                <button className="btn btn-outline-info w-100">
+                                    <i className="fas fa-sync me-2"></i>
+                                    Refresh Status
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+
+        // Render the app
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>

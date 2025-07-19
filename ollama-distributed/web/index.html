@@ -1,0 +1,1559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ollama Distributed - Enhanced Control Panel</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .sidebar {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            transition: all 0.3s ease;
+        }
+        
+        .main-content {
+            background-color: #f8f9fa;
+            min-height: 100vh;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-link {
+            color: rgba(255,255,255,0.8) !important;
+            border-radius: 0.5rem;
+            margin: 0.25rem 0;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-link:hover, .nav-link.active {
+            background-color: rgba(255,255,255,0.1) !important;
+            color: white !important;
+            transform: translateX(5px);
+        }
+        
+        .card {
+            border: none;
+            border-radius: 1rem;
+            box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+            transition: all 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15);
+        }
+        
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 1rem 1rem 0 0 !important;
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 0.5rem;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .status-online { background-color: #28a745; }
+        .status-offline { background-color: #dc3545; }
+        .status-draining { background-color: #ffc107; }
+        .status-maintenance { background-color: #6c757d; }
+        .status-ready { background-color: #17a2b8; }
+        .status-loading { background-color: #fd7e14; }
+        
+        .metric-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .metric-card:hover {
+            transform: scale(1.05);
+        }
+        
+        .progress-bar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s ease;
+        }
+        
+        .progress-bar-success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        }
+        
+        .progress-bar-warning {
+            background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
+        }
+        
+        .progress-bar-danger {
+            background: linear-gradient(135deg, #dc3545 0%, #e83e8c 100%);
+        }
+        
+        .table-container {
+            background: white;
+            border-radius: 1rem;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .websocket-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+        
+        .model-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .model-card {
+            background: white;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .model-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+        }
+        
+        .node-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .node-card {
+            background: white;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .node-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        
+        .transfer-progress {
+            background: #f8f9fa;
+            border-radius: 0.5rem;
+            height: 8px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+        
+        .transfer-progress-bar {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s ease;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-top: 1rem;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .alert-container {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 1001;
+            max-width: 400px;
+        }
+        
+        .alert {
+            margin-bottom: 0.5rem;
+            border-radius: 0.5rem;
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
+        }
+        
+        .auto-distribution-toggle {
+            background: white;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 1rem;
+        }
+        
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+        
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: 0.4s;
+            border-radius: 34px;
+        }
+        
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: 0.4s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .toggle-slider {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        input:checked + .toggle-slider:before {
+            transform: translateX(26px);
+        }
+        
+        .bandwidth-chart {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 1rem;
+            padding: 1rem;
+            color: white;
+            margin-top: 1rem;
+        }
+        
+        .bandwidth-indicator {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        
+        .bandwidth-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-left: 0.5rem;
+        }
+        
+        .copy-button {
+            background: none;
+            border: none;
+            color: #6c757d;
+            cursor: pointer;
+            padding: 0.25rem;
+            border-radius: 0.25rem;
+            transition: all 0.3s ease;
+        }
+        
+        .copy-button:hover {
+            background-color: #f8f9fa;
+            color: #495057;
+        }
+        
+        .mobile-toggle {
+            display: none;
+        }
+        
+        @media (max-width: 768px) {
+            .mobile-toggle {
+                display: block;
+                background: none;
+                border: none;
+                color: #667eea;
+                font-size: 1.5rem;
+                padding: 0.5rem;
+                margin-right: 1rem;
+            }
+            
+            .sidebar {
+                position: fixed;
+                top: 0;
+                left: -100%;
+                width: 280px;
+                height: 100vh;
+                z-index: 1000;
+                transition: left 0.3s ease;
+            }
+            
+            .sidebar.show {
+                left: 0;
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+            
+            .metrics-grid {
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            }
+            
+            .node-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .model-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <div id="alerts"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // Enhanced WebSocket connection with auto-reconnect
+        const useWebSocket = (url) => {
+            const [socket, setSocket] = useState(null);
+            const [isConnected, setIsConnected] = useState(false);
+            const [lastMessage, setLastMessage] = useState(null);
+            const [reconnectAttempts, setReconnectAttempts] = useState(0);
+            const reconnectTimeout = useRef(null);
+
+            const connect = () => {
+                const ws = new WebSocket(url);
+                
+                ws.onopen = () => {
+                    setIsConnected(true);
+                    setSocket(ws);
+                    setReconnectAttempts(0);
+                    showAlert('WebSocket connected', 'success');
+                };
+                
+                ws.onmessage = (event) => {
+                    const message = JSON.parse(event.data);
+                    setLastMessage(message);
+                    
+                    // Handle specific message types
+                    if (message.type === 'alert') {
+                        showAlert(message.message, message.level || 'info');
+                    }
+                };
+                
+                ws.onclose = () => {
+                    setIsConnected(false);
+                    setSocket(null);
+                    
+                    // Auto-reconnect with exponential backoff
+                    if (reconnectAttempts < 5) {
+                        const delay = Math.pow(2, reconnectAttempts) * 1000;
+                        reconnectTimeout.current = setTimeout(() => {
+                            setReconnectAttempts(prev => prev + 1);
+                            connect();
+                        }, delay);
+                    }
+                };
+                
+                ws.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                    showAlert('WebSocket connection error', 'danger');
+                };
+            };
+
+            useEffect(() => {
+                connect();
+                
+                return () => {
+                    if (reconnectTimeout.current) {
+                        clearTimeout(reconnectTimeout.current);
+                    }
+                    if (socket) {
+                        socket.close();
+                    }
+                };
+            }, [url]);
+
+            return { socket, isConnected, lastMessage, reconnectAttempts };
+        };
+
+        // Enhanced API client with error handling
+        const api = {
+            async get(endpoint) {
+                try {
+                    const response = await fetch(`/api/v1${endpoint}`);
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    return await response.json();
+                } catch (error) {
+                    showAlert(`API Error: ${error.message}`, 'danger');
+                    throw error;
+                }
+            },
+            
+            async post(endpoint, data) {
+                try {
+                    const response = await fetch(`/api/v1${endpoint}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(data),
+                    });
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    return await response.json();
+                } catch (error) {
+                    showAlert(`API Error: ${error.message}`, 'danger');
+                    throw error;
+                }
+            },
+            
+            async delete(endpoint) {
+                try {
+                    const response = await fetch(`/api/v1${endpoint}`, {
+                        method: 'DELETE',
+                    });
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    return await response.json();
+                } catch (error) {
+                    showAlert(`API Error: ${error.message}`, 'danger');
+                    throw error;
+                }
+            }
+        };
+
+        // Alert system
+        const showAlert = (message, type = 'info') => {
+            const alertContainer = document.getElementById('alerts');
+            const alertId = `alert-${Date.now()}`;
+            
+            const alertElement = document.createElement('div');
+            alertElement.id = alertId;
+            alertElement.className = `alert alert-${type} alert-dismissible fade show`;
+            alertElement.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'danger' ? 'exclamation-triangle' : 'info-circle'} me-2"></i>
+                ${message}
+                <button type="button" class="btn-close" onclick="document.getElementById('${alertId}').remove()"></button>
+            `;
+            
+            alertContainer.appendChild(alertElement);
+            
+            // Auto-dismiss after 5 seconds
+            setTimeout(() => {
+                const alert = document.getElementById(alertId);
+                if (alert) {
+                    alert.remove();
+                }
+            }, 5000);
+        };
+
+        // Real-time metrics chart
+        const MetricsChart = ({ data, title, color }) => {
+            const chartRef = useRef(null);
+            const chartInstance = useRef(null);
+
+            useEffect(() => {
+                if (chartRef.current) {
+                    const ctx = chartRef.current.getContext('2d');
+                    
+                    // Destroy previous chart instance
+                    if (chartInstance.current) {
+                        chartInstance.current.destroy();
+                    }
+                    
+                    chartInstance.current = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: data.labels || [],
+                            datasets: [{
+                                label: title,
+                                data: data.values || [],
+                                borderColor: color,
+                                backgroundColor: color + '20',
+                                fill: true,
+                                tension: 0.4,
+                                pointRadius: 0,
+                                pointHoverRadius: 5,
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    display: false
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    display: false
+                                },
+                                y: {
+                                    beginAtZero: true,
+                                    max: 100,
+                                    ticks: {
+                                        callback: function(value) {
+                                            return value + '%';
+                                        }
+                                    }
+                                }
+                            },
+                            animation: {
+                                duration: 1000,
+                                easing: 'easeInOutQuart'
+                            }
+                        }
+                    });
+                }
+                
+                return () => {
+                    if (chartInstance.current) {
+                        chartInstance.current.destroy();
+                    }
+                };
+            }, [data, title, color]);
+
+            return <canvas ref={chartRef} />;
+        };
+
+        // Main App Component
+        const App = () => {
+            const [activeTab, setActiveTab] = useState('dashboard');
+            const [clusterStatus, setClusterStatus] = useState({});
+            const [nodes, setNodes] = useState([]);
+            const [models, setModels] = useState([]);
+            const [transfers, setTransfers] = useState([]);
+            const [metrics, setMetrics] = useState({});
+            const [realTimeMetrics, setRealTimeMetrics] = useState({
+                cpu: { labels: [], values: [] },
+                memory: { labels: [], values: [] },
+                network: { labels: [], values: [] }
+            });
+            const [autoDistribution, setAutoDistribution] = useState(false);
+            const [sidebarOpen, setSidebarOpen] = useState(false);
+            
+            const wsUrl = `ws://${window.location.host}/api/v1/ws`;
+            const { socket, isConnected, lastMessage, reconnectAttempts } = useWebSocket(wsUrl);
+
+            // Update real-time metrics
+            useEffect(() => {
+                if (lastMessage && lastMessage.type === 'metrics') {
+                    const timestamp = new Date().toLocaleTimeString();
+                    setRealTimeMetrics(prev => ({
+                        cpu: {
+                            labels: [...prev.cpu.labels.slice(-49), timestamp],
+                            values: [...prev.cpu.values.slice(-49), lastMessage.data.cpu || 0]
+                        },
+                        memory: {
+                            labels: [...prev.memory.labels.slice(-49), timestamp],
+                            values: [...prev.memory.values.slice(-49), lastMessage.data.memory || 0]
+                        },
+                        network: {
+                            labels: [...prev.network.labels.slice(-49), timestamp],
+                            values: [...prev.network.values.slice(-49), lastMessage.data.network || 0]
+                        }
+                    }));
+                }
+            }, [lastMessage]);
+
+            useEffect(() => {
+                fetchData();
+                const interval = setInterval(fetchData, 5000);
+                return () => clearInterval(interval);
+            }, []);
+
+            const fetchData = async () => {
+                try {
+                    const [statusRes, nodesRes, modelsRes, transfersRes, metricsRes] = await Promise.all([
+                        api.get('/cluster/status'),
+                        api.get('/nodes'),
+                        api.get('/models'),
+                        api.get('/transfers'),
+                        api.get('/metrics')
+                    ]);
+                    
+                    setClusterStatus(statusRes);
+                    setNodes(Object.values(nodesRes.nodes || {}));
+                    setModels(Object.values(modelsRes.models || {}));
+                    setTransfers(Object.values(transfersRes.transfers || {}));
+                    setMetrics(metricsRes);
+                } catch (error) {
+                    console.error('Failed to fetch data:', error);
+                }
+            };
+
+            const handleDownloadModel = async (modelName) => {
+                try {
+                    showAlert(`Downloading model: ${modelName}`, 'info');
+                    await api.post(`/models/${modelName}/download`, {});
+                    showAlert(`Successfully started download for ${modelName}`, 'success');
+                    fetchData();
+                } catch (error) {
+                    console.error('Failed to download model:', error);
+                }
+            };
+
+            const handleDeleteModel = async (modelName) => {
+                if (confirm(`Are you sure you want to delete model: ${modelName}?`)) {
+                    try {
+                        showAlert(`Deleting model: ${modelName}`, 'info');
+                        await api.delete(`/models/${modelName}`);
+                        showAlert(`Successfully deleted ${modelName}`, 'success');
+                        fetchData();
+                    } catch (error) {
+                        console.error('Failed to delete model:', error);
+                    }
+                }
+            };
+
+            const handleToggleAutoDistribution = async () => {
+                try {
+                    const newState = !autoDistribution;
+                    await api.post('/distribution/auto-configure', { enabled: newState });
+                    setAutoDistribution(newState);
+                    showAlert(`Auto-distribution ${newState ? 'enabled' : 'disabled'}`, 'success');
+                } catch (error) {
+                    console.error('Failed to toggle auto-distribution:', error);
+                }
+            };
+
+            const copyToClipboard = (text) => {
+                navigator.clipboard.writeText(text);
+                showAlert('Copied to clipboard', 'success');
+            };
+
+            return (
+                <div className="container-fluid">
+                    <div className="row">
+                        <button 
+                            className="mobile-toggle d-md-none"
+                            onClick={() => setSidebarOpen(!sidebarOpen)}
+                        >
+                            <i className="fas fa-bars"></i>
+                        </button>
+                        
+                        <Sidebar 
+                            activeTab={activeTab} 
+                            onTabChange={setActiveTab}
+                            isOpen={sidebarOpen}
+                            onClose={() => setSidebarOpen(false)}
+                        />
+                        
+                        <div className="col-md-10 p-0">
+                            <div className="main-content p-4">
+                                <div className="alert-container" id="alerts"></div>
+                                
+                                <WebSocketStatus 
+                                    isConnected={isConnected} 
+                                    reconnectAttempts={reconnectAttempts}
+                                />
+                                
+                                {activeTab === 'dashboard' && (
+                                    <Dashboard 
+                                        clusterStatus={clusterStatus} 
+                                        nodes={nodes} 
+                                        metrics={metrics}
+                                        realTimeMetrics={realTimeMetrics}
+                                    />
+                                )}
+                                
+                                {activeTab === 'nodes' && (
+                                    <NodesView 
+                                        nodes={nodes} 
+                                        onCopy={copyToClipboard}
+                                    />
+                                )}
+                                
+                                {activeTab === 'models' && (
+                                    <ModelsView 
+                                        models={models} 
+                                        onDownload={handleDownloadModel}
+                                        onDelete={handleDeleteModel}
+                                        autoDistribution={autoDistribution}
+                                        onToggleAutoDistribution={handleToggleAutoDistribution}
+                                    />
+                                )}
+                                
+                                {activeTab === 'transfers' && (
+                                    <TransfersView transfers={transfers} />
+                                )}
+                                
+                                {activeTab === 'cluster' && (
+                                    <ClusterView 
+                                        clusterStatus={clusterStatus}
+                                        onCopy={copyToClipboard}
+                                    />
+                                )}
+                                
+                                {activeTab === 'analytics' && (
+                                    <AnalyticsView 
+                                        metrics={metrics}
+                                        realTimeMetrics={realTimeMetrics}
+                                    />
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // Enhanced Sidebar Component
+        const Sidebar = ({ activeTab, onTabChange, isOpen, onClose }) => (
+            <div className={`col-md-2 p-0 ${isOpen ? 'sidebar show' : 'sidebar'}`}>
+                <div className="sidebar p-3">
+                    <div className="d-flex justify-content-between align-items-center mb-4">
+                        <h4 className="mb-0">
+                            <i className="fas fa-network-wired me-2"></i>
+                            Ollama Distributed
+                        </h4>
+                        <button 
+                            className="btn btn-sm btn-outline-light d-md-none"
+                            onClick={onClose}
+                        >
+                            <i className="fas fa-times"></i>
+                        </button>
+                    </div>
+                    
+                    <ul className="nav nav-pills flex-column">
+                        <li className="nav-item">
+                            <a 
+                                className={`nav-link ${activeTab === 'dashboard' ? 'active' : ''}`}
+                                href="#" 
+                                onClick={() => { onTabChange('dashboard'); onClose(); }}
+                            >
+                                <i className="fas fa-tachometer-alt me-2"></i>Dashboard
+                            </a>
+                        </li>
+                        <li className="nav-item">
+                            <a 
+                                className={`nav-link ${activeTab === 'nodes' ? 'active' : ''}`}
+                                href="#" 
+                                onClick={() => { onTabChange('nodes'); onClose(); }}
+                            >
+                                <i className="fas fa-server me-2"></i>Nodes
+                            </a>
+                        </li>
+                        <li className="nav-item">
+                            <a 
+                                className={`nav-link ${activeTab === 'models' ? 'active' : ''}`}
+                                href="#" 
+                                onClick={() => { onTabChange('models'); onClose(); }}
+                            >
+                                <i className="fas fa-brain me-2"></i>Models
+                            </a>
+                        </li>
+                        <li className="nav-item">
+                            <a 
+                                className={`nav-link ${activeTab === 'transfers' ? 'active' : ''}`}
+                                href="#" 
+                                onClick={() => { onTabChange('transfers'); onClose(); }}
+                            >
+                                <i className="fas fa-exchange-alt me-2"></i>Transfers
+                            </a>
+                        </li>
+                        <li className="nav-item">
+                            <a 
+                                className={`nav-link ${activeTab === 'cluster' ? 'active' : ''}`}
+                                href="#" 
+                                onClick={() => { onTabChange('cluster'); onClose(); }}
+                            >
+                                <i className="fas fa-sitemap me-2"></i>Cluster
+                            </a>
+                        </li>
+                        <li className="nav-item">
+                            <a 
+                                className={`nav-link ${activeTab === 'analytics' ? 'active' : ''}`}
+                                href="#" 
+                                onClick={() => { onTabChange('analytics'); onClose(); }}
+                            >
+                                <i className="fas fa-chart-line me-2"></i>Analytics
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        );
+
+        // Enhanced WebSocket Status Component
+        const WebSocketStatus = ({ isConnected, reconnectAttempts }) => (
+            <div className="websocket-status">
+                <span className={`badge ${isConnected ? 'bg-success' : 'bg-danger'}`}>
+                    <i className={`fas fa-${isConnected ? 'wifi' : 'wifi-slash'} me-1`}></i>
+                    {isConnected ? 'Connected' : `Disconnected ${reconnectAttempts > 0 ? `(${reconnectAttempts}/5)` : ''}`}
+                </span>
+            </div>
+        );
+
+        // Enhanced Dashboard Component
+        const Dashboard = ({ clusterStatus, nodes, metrics, realTimeMetrics }) => {
+            const onlineNodes = nodes.filter(node => node.status === 'online').length;
+            const offlineNodes = nodes.filter(node => node.status === 'offline').length;
+            const totalRequests = metrics.totalRequests || 0;
+            const avgLatency = metrics.avgLatency || 0;
+            
+            return (
+                <div>
+                    <div className="d-flex justify-content-between align-items-center mb-4">
+                        <h2>Enhanced Dashboard</h2>
+                        <div className="d-flex gap-2">
+                            <button className="btn btn-outline-primary btn-sm">
+                                <i className="fas fa-sync me-2"></i>Refresh
+                            </button>
+                            <button className="btn btn-outline-success btn-sm">
+                                <i className="fas fa-download me-2"></i>Export
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div className="metrics-grid">
+                        <div className="card metric-card">
+                            <div className="card-body text-center">
+                                <i className="fas fa-server fa-2x mb-2"></i>
+                                <h3>{nodes.length}</h3>
+                                <p>Total Nodes</p>
+                            </div>
+                        </div>
+                        <div className="card metric-card">
+                            <div className="card-body text-center">
+                                <i className="fas fa-check-circle fa-2x mb-2"></i>
+                                <h3>{onlineNodes}</h3>
+                                <p>Online Nodes</p>
+                            </div>
+                        </div>
+                        <div className="card metric-card">
+                            <div className="card-body text-center">
+                                <i className="fas fa-bolt fa-2x mb-2"></i>
+                                <h3>{totalRequests}</h3>
+                                <p>Total Requests</p>
+                            </div>
+                        </div>
+                        <div className="card metric-card">
+                            <div className="card-body text-center">
+                                <i className="fas fa-clock fa-2x mb-2"></i>
+                                <h3>{avgLatency}ms</h3>
+                                <p>Avg Latency</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {/* Real-time Charts */}
+                    <div className="row mt-4">
+                        <div className="col-md-4">
+                            <div className="card">
+                                <div className="card-header">
+                                    <h5 className="mb-0">
+                                        <i className="fas fa-microchip me-2"></i>CPU Usage
+                                    </h5>
+                                </div>
+                                <div className="card-body">
+                                    <div className="chart-container">
+                                        <MetricsChart 
+                                            data={realTimeMetrics.cpu}
+                                            title="CPU Usage"
+                                            color="#667eea"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="col-md-4">
+                            <div className="card">
+                                <div className="card-header">
+                                    <h5 className="mb-0">
+                                        <i className="fas fa-memory me-2"></i>Memory Usage
+                                    </h5>
+                                </div>
+                                <div className="card-body">
+                                    <div className="chart-container">
+                                        <MetricsChart 
+                                            data={realTimeMetrics.memory}
+                                            title="Memory Usage"
+                                            color="#764ba2"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="col-md-4">
+                            <div className="card">
+                                <div className="card-header">
+                                    <h5 className="mb-0">
+                                        <i className="fas fa-network-wired me-2"></i>Network I/O
+                                    </h5>
+                                </div>
+                                <div className="card-body">
+                                    <div className="chart-container">
+                                        <MetricsChart 
+                                            data={realTimeMetrics.network}
+                                            title="Network I/O"
+                                            color="#28a745"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div className="row mt-4">
+                        <div className="col-md-6">
+                            <div className="card">
+                                <div className="card-header">
+                                    <h5 className="mb-0">Cluster Status</h5>
+                                </div>
+                                <div className="card-body">
+                                    <div className="mb-3">
+                                        <strong>Node ID:</strong> 
+                                        <span className="ms-2 text-muted">{clusterStatus.node_id}</span>
+                                    </div>
+                                    <div className="mb-3">
+                                        <strong>Leader:</strong> 
+                                        <span className="ms-2">{clusterStatus.leader || 'Unknown'}</span>
+                                    </div>
+                                    <div className="mb-3">
+                                        <strong>Status:</strong> 
+                                        <span className={`badge ms-2 ${clusterStatus.status === 'healthy' ? 'bg-success' : 'bg-warning'}`}>
+                                            {clusterStatus.status}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="col-md-6">
+                            <div className="card">
+                                <div className="card-header">
+                                    <h5 className="mb-0">Node Overview</h5>
+                                </div>
+                                <div className="card-body">
+                                    <div className="row">
+                                        <div className="col-6">
+                                            <div className="text-center">
+                                                <div className="status-indicator status-online"></div>
+                                                Online: {onlineNodes}
+                                            </div>
+                                        </div>
+                                        <div className="col-6">
+                                            <div className="text-center">
+                                                <div className="status-indicator status-offline"></div>
+                                                Offline: {offlineNodes}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // Enhanced Nodes View Component
+        const NodesView = ({ nodes, onCopy }) => (
+            <div>
+                <div className="d-flex justify-content-between align-items-center mb-4">
+                    <h2>Node Management</h2>
+                    <button className="btn btn-primary">
+                        <i className="fas fa-plus me-2"></i>Add Node
+                    </button>
+                </div>
+                
+                <div className="node-grid">
+                    {nodes.map(node => (
+                        <div key={node.id} className="node-card">
+                            <div className="d-flex justify-content-between align-items-center mb-3">
+                                <h5 className="mb-0">
+                                    <span className={`status-indicator status-${node.status}`}></span>
+                                    Node {node.id?.substring(0, 8)}...
+                                </h5>
+                                <button 
+                                    className="copy-button"
+                                    onClick={() => onCopy(node.id)}
+                                    title="Copy Node ID"
+                                >
+                                    <i className="fas fa-copy"></i>
+                                </button>
+                            </div>
+                            
+                            <div className="mb-3">
+                                <small className="text-muted">Address:</small>
+                                <div className="d-flex justify-content-between align-items-center">
+                                    <span className="font-monospace">{node.address}</span>
+                                    <button 
+                                        className="copy-button"
+                                        onClick={() => onCopy(node.address)}
+                                        title="Copy Address"
+                                    >
+                                        <i className="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            {node.usage && (
+                                <div>
+                                    <div className="mb-2">
+                                        <div className="d-flex justify-content-between">
+                                            <small>CPU Usage</small>
+                                            <small>{node.usage.cpu?.toFixed(1)}%</small>
+                                        </div>
+                                        <div className="progress">
+                                            <div 
+                                                className={`progress-bar ${node.usage.cpu > 80 ? 'progress-bar-danger' : node.usage.cpu > 60 ? 'progress-bar-warning' : 'progress-bar-success'}`}
+                                                style={{ width: `${node.usage.cpu}%` }}
+                                            ></div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="mb-2">
+                                        <div className="d-flex justify-content-between">
+                                            <small>Memory Usage</small>
+                                            <small>{node.usage.memory?.toFixed(1)}%</small>
+                                        </div>
+                                        <div className="progress">
+                                            <div 
+                                                className={`progress-bar ${node.usage.memory > 80 ? 'progress-bar-danger' : node.usage.memory > 60 ? 'progress-bar-warning' : 'progress-bar-success'}`}
+                                                style={{ width: `${node.usage.memory}%` }}
+                                            ></div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="mb-3">
+                                        <div className="d-flex justify-content-between">
+                                            <small>Bandwidth</small>
+                                            <small>{node.usage.bandwidth?.toFixed(1)} MB/s</small>
+                                        </div>
+                                        <div className="progress">
+                                            <div 
+                                                className="progress-bar"
+                                                style={{ 
+                                                    width: `${Math.min((node.usage.bandwidth || 0) / 100 * 100, 100)}%`,
+                                                    background: 'linear-gradient(45deg, #667eea, #764ba2)'
+                                                }}
+                                            ></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                            
+                            <div className="mb-3">
+                                <small className="text-muted">Models: {node.models?.length || 0}</small>
+                            </div>
+                            
+                            <div className="mb-3">
+                                <span className={`badge ${node.status === 'ready' ? 'bg-success' : 'bg-warning'}`}>
+                                    <i className={`fas fa-${node.status === 'ready' ? 'check' : 'clock'} me-1`}></i>
+                                    {node.status === 'ready' ? 'Ready for Inference' : 'Loading Models'}
+                                </span>
+                            </div>
+                            
+                            <div className="d-flex gap-2">
+                                <button className="btn btn-sm btn-outline-primary">
+                                    <i className="fas fa-info-circle me-1"></i>Details
+                                </button>
+                                <button className="btn btn-sm btn-outline-warning">
+                                    <i className="fas fa-pause me-1"></i>Drain
+                                </button>
+                                <button className="btn btn-sm btn-outline-danger">
+                                    <i className="fas fa-power-off me-1"></i>Shutdown
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+
+        // Enhanced Models View Component
+        const ModelsView = ({ models, onDownload, onDelete, autoDistribution, onToggleAutoDistribution }) => (
+            <div>
+                <div className="d-flex justify-content-between align-items-center mb-4">
+                    <h2>Model Management</h2>
+                    <button className="btn btn-primary">
+                        <i className="fas fa-plus me-2"></i>Add Model
+                    </button>
+                </div>
+                
+                {/* Auto-distribution toggle */}
+                <div className="auto-distribution-toggle">
+                    <div className="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 className="mb-1">Automatic Model Distribution</h5>
+                            <p className="text-muted mb-0">
+                                Automatically distribute models across nodes for optimal performance
+                            </p>
+                        </div>
+                        <label className="toggle-switch">
+                            <input 
+                                type="checkbox" 
+                                checked={autoDistribution}
+                                onChange={onToggleAutoDistribution}
+                            />
+                            <span className="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div className="model-grid">
+                    {models.map(model => (
+                        <div key={model.name} className="model-card">
+                            <div className="d-flex justify-content-between align-items-start mb-3">
+                                <h5 className="mb-0">{model.name}</h5>
+                                <span className={`badge ${model.status === 'available' ? 'bg-success' : model.status === 'loading' ? 'bg-warning' : 'bg-secondary'}`}>
+                                    <i className={`fas fa-${model.status === 'available' ? 'check' : model.status === 'loading' ? 'spinner fa-spin' : 'clock'} me-1`}></i>
+                                    {model.status}
+                                </span>
+                            </div>
+                            
+                            <div className="mb-3">
+                                <small className="text-muted">Size:</small>
+                                <span className="ms-2">{model.size ? `${(model.size / 1024 / 1024).toFixed(2)} MB` : 'Unknown'}</span>
+                            </div>
+                            
+                            <div className="mb-3">
+                                <small className="text-muted">Replicas:</small>
+                                <span className="ms-2">{model.replicas?.length || 0}</span>
+                            </div>
+                            
+                            <div className="mb-3">
+                                <small className="text-muted">Inference Ready:</small>
+                                <span className="ms-2">
+                                    <span className={`status-indicator status-${model.inference_ready ? 'ready' : 'loading'}`}></span>
+                                    {model.inference_ready ? 'Yes' : 'No'}
+                                </span>
+                            </div>
+                            
+                            {model.distribution_progress && (
+                                <div className="mb-3">
+                                    <small className="text-muted">Distribution Progress:</small>
+                                    <div className="transfer-progress mt-1">
+                                        <div 
+                                            className="transfer-progress-bar"
+                                            style={{ width: `${model.distribution_progress}%` }}
+                                        ></div>
+                                    </div>
+                                    <small className="text-muted">{model.distribution_progress}%</small>
+                                </div>
+                            )}
+                            
+                            <div className="d-flex gap-2">
+                                <button 
+                                    className="btn btn-sm btn-primary"
+                                    onClick={() => onDownload(model.name)}
+                                >
+                                    <i className="fas fa-download me-1"></i>Download
+                                </button>
+                                <button 
+                                    className="btn btn-sm btn-outline-success"
+                                    disabled={!model.inference_ready}
+                                >
+                                    <i className="fas fa-play me-1"></i>Test
+                                </button>
+                                <button 
+                                    className="btn btn-sm btn-outline-danger"
+                                    onClick={() => onDelete(model.name)}
+                                >
+                                    <i className="fas fa-trash me-1"></i>Delete
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+
+        // Enhanced Transfers View Component
+        const TransfersView = ({ transfers }) => {
+            const activeTransfers = transfers.filter(t => t.status === 'active').length;
+            const completedTransfers = transfers.filter(t => t.status === 'completed').length;
+            const failedTransfers = transfers.filter(t => t.status === 'failed').length;
+
+            return (
+                <div>
+                    <div className="d-flex justify-content-between align-items-center mb-4">
+                        <h2>Transfer Management</h2>
+                        <div className="d-flex gap-2">
+                            <span className="badge bg-primary">Active: {activeTransfers}</span>
+                            <span className="badge bg-success">Completed: {completedTransfers}</span>
+                            <span className="badge bg-danger">Failed: {failedTransfers}</span>
+                        </div>
+                    </div>
+                    
+                    <div className="table-container">
+                        <table className="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Transfer ID</th>
+                                    <th>Model</th>
+                                    <th>Type</th>
+                                    <th>Status</th>
+                                    <th>Progress</th>
+                                    <th>Speed</th>
+                                    <th>ETA</th>
+                                    <th>Peer</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {transfers.map(transfer => (
+                                    <tr key={transfer.id}>
+                                        <td>
+                                            <span className="font-monospace">{transfer.id?.substring(0, 8)}...</span>
+                                        </td>
+                                        <td>{transfer.model_name}</td>
+                                        <td>
+                                            <span className={`badge ${transfer.type === 'download' ? 'bg-primary' : 'bg-info'}`}>
+                                                <i className={`fas fa-${transfer.type === 'download' ? 'download' : 'upload'} me-1`}></i>
+                                                {transfer.type}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span className={`badge ${
+                                                transfer.status === 'completed' ? 'bg-success' : 
+                                                transfer.status === 'failed' ? 'bg-danger' : 'bg-primary'
+                                            }`}>
+                                                {transfer.status}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div className="transfer-progress">
+                                                <div 
+                                                    className="transfer-progress-bar"
+                                                    style={{ width: `${transfer.progress || 0}%` }}
+                                                ></div>
+                                            </div>
+                                            <small>{(transfer.progress || 0).toFixed(1)}%</small>
+                                        </td>
+                                        <td>
+                                            {transfer.speed ? `${(transfer.speed / 1024 / 1024).toFixed(2)} MB/s` : 'N/A'}
+                                        </td>
+                                        <td>
+                                            {transfer.eta ? `${transfer.eta}s` : 'N/A'}
+                                        </td>
+                                        <td>
+                                            <span className="font-monospace">{transfer.peer_id?.substring(0, 8)}...</span>
+                                        </td>
+                                        <td>
+                                            <div className="d-flex gap-1">
+                                                <button 
+                                                    className="btn btn-sm btn-outline-warning"
+                                                    disabled={transfer.status === 'completed'}
+                                                >
+                                                    <i className="fas fa-pause"></i>
+                                                </button>
+                                                <button 
+                                                    className="btn btn-sm btn-outline-danger"
+                                                    disabled={transfer.status === 'completed'}
+                                                >
+                                                    <i className="fas fa-times"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            );
+        };
+
+        // Enhanced Cluster View Component
+        const ClusterView = ({ clusterStatus, onCopy }) => (
+            <div>
+                <div className="d-flex justify-content-between align-items-center mb-4">
+                    <h2>Cluster Management</h2>
+                    <div className="d-flex gap-2">
+                        <button className="btn btn-outline-primary">
+                            <i className="fas fa-sync me-2"></i>Refresh
+                        </button>
+                        <button className="btn btn-outline-success">
+                            <i className="fas fa-chart-line me-2"></i>Health Check
+                        </button>
+                    </div>
+                </div>
+                
+                <div className="row">
+                    <div className="col-md-6">
+                        <div className="card">
+                            <div className="card-header">
+                                <h5 className="mb-0">Cluster Information</h5>
+                            </div>
+                            <div className="card-body">
+                                <div className="mb-3">
+                                    <strong>Current Node ID:</strong>
+                                    <div className="d-flex justify-content-between align-items-center">
+                                        <code className="text-break">{clusterStatus.node_id}</code>
+                                        <button 
+                                            className="copy-button"
+                                            onClick={() => onCopy(clusterStatus.node_id)}
+                                            title="Copy Node ID"
+                                        >
+                                            <i className="fas fa-copy"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="mb-3">
+                                    <strong>Leader Node:</strong>
+                                    <div className="d-flex justify-content-between align-items-center">
+                                        <code className="text-break">{clusterStatus.leader || 'Unknown'}</code>
+                                        {clusterStatus.leader && (
+                                            <button 
+                                                className="copy-button"
+                                                onClick={() => onCopy(clusterStatus.leader)}
+                                                title="Copy Leader ID"
+                                            >
+                                                <i className="fas fa-copy"></i>
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="mb-3">
+                                    <strong>Is Leader:</strong> 
+                                    <span className={`badge ms-2 ${clusterStatus.is_leader ? 'bg-success' : 'bg-secondary'}`}>
+                                        <i className={`fas fa-${clusterStatus.is_leader ? 'crown' : 'user'} me-1`}></i>
+                                        {clusterStatus.is_leader ? 'Yes' : 'No'}
+                                    </span>
+                                </div>
+                                <div className="mb-3">
+                                    <strong>Connected Peers:</strong> 
+                                    <span className="badge bg-info ms-2">{clusterStatus.peers || 0}</span>
+                                </div>
+                                <div className="mb-3">
+                                    <strong>Cluster Health:</strong> 
+                                    <span className={`badge ms-2 ${clusterStatus.status === 'healthy' ? 'bg-success' : 'bg-warning'}`}>
+                                        <i className={`fas fa-${clusterStatus.status === 'healthy' ? 'heart' : 'exclamation-triangle'} me-1`}></i>
+                                        {clusterStatus.status || 'Unknown'}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="col-md-6">
+                        <div className="card">
+                            <div className="card-header">
+                                <h5 className="mb-0">Cluster Actions</h5>
+                            </div>
+                            <div className="card-body">
+                                <div className="mb-3">
+                                    <label className="form-label">Join Cluster</label>
+                                    <div className="input-group">
+                                        <input 
+                                            type="text" 
+                                            className="form-control" 
+                                            placeholder="Enter cluster address"
+                                        />
+                                        <button className="btn btn-primary">
+                                            <i className="fas fa-plus-circle me-2"></i>Join
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div className="d-grid gap-2">
+                                    <button className="btn btn-outline-warning">
+                                        <i className="fas fa-sign-out-alt me-2"></i>
+                                        Leave Cluster
+                                    </button>
+                                    <button className="btn btn-outline-info">
+                                        <i className="fas fa-sync me-2"></i>
+                                        Refresh Status
+                                    </button>
+                                    <button className="btn btn-outline-success">
+                                        <i className="fas fa-download me-2"></i>
+                                        Export Configuration
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+
+        // New Analytics View Component
+        const AnalyticsView = ({ metrics, realTimeMetrics }) => (
+            <div>
+                <div className="d-flex justify-content-between align-items-center mb-4">
+                    <h2>Performance Analytics</h2>
+                    <div className="d-flex gap-2">
+                        <button className="btn btn-outline-primary">
+                            <i className="fas fa-filter me-2"></i>Filter
+                        </button>
+                        <button className="btn btn-outline-success">
+                            <i className="fas fa-download me-2"></i>Export Report
+                        </button>
+                    </div>
+                </div>
+                
+                <div className="row">
+                    <div className="col-md-12">
+                        <div className="card">
+                            <div className="card-header">
+                                <h5 className="mb-0">System Performance Overview</h5>
+                            </div>
+                            <div className="card-body">
+                                <div className="row">
+                                    <div className="col-md-4">
+                                        <div className="chart-container">
+                                            <MetricsChart 
+                                                data={realTimeMetrics.cpu}
+                                                title="CPU Usage"
+                                                color="#dc3545"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="col-md-4">
+                                        <div className="chart-container">
+                                            <MetricsChart 
+                                                data={realTimeMetrics.memory}
+                                                title="Memory Usage"
+                                                color="#28a745"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="col-md-4">
+                                        <div className="chart-container">
+                                            <MetricsChart 
+                                                data={realTimeMetrics.network}
+                                                title="Network Usage"
+                                                color="#17a2b8"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div className="row mt-4">
+                    <div className="col-md-6">
+                        <div className="card">
+                            <div className="card-header">
+                                <h5 className="mb-0">Resource Utilization</h5>
+                            </div>
+                            <div className="card-body">
+                                <div className="mb-3">
+                                    <div className="d-flex justify-content-between">
+                                        <span>CPU</span>
+                                        <span>{metrics.cpu_usage || 0}%</span>
+                                    </div>
+                                    <div className="progress">
+                                        <div 
+                                            className="progress-bar bg-danger"
+                                            style={{ width: `${metrics.cpu_usage || 0}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+                                <div className="mb-3">
+                                    <div className="d-flex justify-content-between">
+                                        <span>Memory</span>
+                                        <span>{metrics.memory_usage || 0}%</span>
+                                    </div>
+                                    <div className="progress">
+                                        <div 
+                                            className="progress-bar bg-success"
+                                            style={{ width: `${metrics.memory_usage || 0}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+                                <div className="mb-3">
+                                    <div className="d-flex justify-content-between">
+                                        <span>Network</span>
+                                        <span>{metrics.network_usage || 0}%</span>
+                                    </div>
+                                    <div className="progress">
+                                        <div 
+                                            className="progress-bar bg-info"
+                                            style={{ width: `${metrics.network_usage || 0}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="col-md-6">
+                        <div className="card">
+                            <div className="card-header">
+                                <h5 className="mb-0">Performance Metrics</h5>
+                            </div>
+                            <div className="card-body">
+                                <div className="row">
+                                    <div className="col-6">
+                                        <div className="text-center">
+                                            <h4 className="text-primary">{metrics.requests_per_second || 0}</h4>
+                                            <small className="text-muted">Requests/sec</small>
+                                        </div>
+                                    </div>
+                                    <div className="col-6">
+                                        <div className="text-center">
+                                            <h4 className="text-success">{metrics.average_latency || 0}ms</h4>
+                                            <small className="text-muted">Avg Latency</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <hr />
+                                <div className="row">
+                                    <div className="col-6">
+                                        <div className="text-center">
+                                            <h4 className="text-info">{metrics.active_connections || 0}</h4>
+                                            <small className="text-muted">Active Connections</small>
+                                        </div>
+                                    </div>
+                                    <div className="col-6">
+                                        <div className="text-center">
+                                            <h4 className="text-warning">{metrics.error_rate || 0}%</h4>
+                                            <small className="text-muted">Error Rate</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+
+        // Render the app
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>

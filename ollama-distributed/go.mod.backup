@@ -1,0 +1,32 @@
+module github.com/ollama/ollama-distributed
+
+go 1.22
+
+require (
+	github.com/libp2p/go-libp2p v0.32.0
+	github.com/libp2p/go-libp2p-kad-dht v0.25.0
+	github.com/libp2p/go-libp2p-pubsub v0.10.0
+	github.com/multiformats/go-multiaddr v0.12.0
+	github.com/gin-gonic/gin v1.9.1
+	github.com/gorilla/websocket v1.5.1
+	github.com/prometheus/client_golang v1.17.0
+	github.com/spf13/cobra v1.8.0
+	github.com/spf13/viper v1.17.0
+	github.com/stretchr/testify v1.8.4
+	github.com/hashicorp/raft v1.6.0
+	github.com/hashicorp/raft-boltdb v0.0.0-20230125174641-2a8082862702
+	go.etcd.io/bbolt v1.3.7
+	github.com/golang/protobuf v1.5.3
+	google.golang.org/protobuf v1.31.0
+	github.com/rs/zerolog v1.31.0
+	github.com/go-chi/chi/v5 v5.0.10
+	github.com/go-chi/cors v1.2.1
+	k8s.io/client-go v0.28.4
+	github.com/shirou/gopsutil/v3 v3.23.10
+)
+
+require (
+	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
+)
