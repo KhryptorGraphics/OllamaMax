@@ -9,10 +9,11 @@ import (
 	"time"
 
 	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
-	"github.com/multiformats/go-multiaddr"
+	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
 )
 
@@ -341,17 +342,11 @@ func (cr *ContentRouter) findProviders(ctx context.Context, contentID string) ([
 		return nil, fmt.Errorf("failed to calculate content hash: %w", err)
 	}
 	
-	providers, err := cr.dht.FindProviders(ctx, contentHash)
-	if err != nil {
-		return nil, fmt.Errorf("failed to find providers: %w", err)
-	}
+	providersChan := cr.dht.FindProvidersAsync(ctx, contentHash, cr.config.MaxProviders)
 	
 	var providerIDs []peer.ID
-	for provider := range providers {
+	for provider := range providersChan {
 		providerIDs = append(providerIDs, provider.ID)
-		if len(providerIDs) >= cr.config.MaxProviders {
-			break
-		}
 	}
 	
 	cr.metrics.ProviderQueries++
@@ -549,7 +544,7 @@ func (cr *ContentRouter) handleContentRequest(stream network.Stream) {
 	}
 	
 	// Process request
-	response := cr.processContentRequest(&request, peerID)
+	response := cr.processIncomingContentRequest(&request, peerID)
 	
 	// Send response
 	data, err := json.Marshal(response)
@@ -603,8 +598,8 @@ func (cr *ContentRouter) processRoutingRequest(msg *RoutingMessage) *RoutingResp
 	}
 }
 
-// processContentRequest processes a content request
-func (cr *ContentRouter) processContentRequest(request *ContentRequestMessage, requesterID peer.ID) *ContentResponseMessage {
+// processIncomingContentRequest processes an incoming content request from a peer
+func (cr *ContentRouter) processIncomingContentRequest(request *ContentRequestMessage, requesterID peer.ID) *ContentResponseMessage {
 	// Check if we have the content
 	content, exists := cr.contentStore.GetLocal(request.ContentID)
 	if !exists {
@@ -716,9 +711,13 @@ func (cr *ContentRouter) cacheCleanupTask() {
 // Utility methods
 
 // calculateContentHash calculates hash for content ID
-func (cr *ContentRouter) calculateContentHash(contentID string) (multihash.Multihash, error) {
+func (cr *ContentRouter) calculateContentHash(contentID string) (cid.Cid, error) {
 	// Simple hash calculation - in production use proper content addressing
-	return multihash.Sum([]byte(contentID), multihash.SHA2_256, -1)
+	mh, err := multihash.Sum([]byte(contentID), multihash.SHA2_256, -1)
+	if err != nil {
+		return cid.Cid{}, err
+	}
+	return cid.NewCidV1(cid.Raw, mh), nil
 }
 
 // isFailedProvider checks if provider has failed recently
@@ -843,4 +842,347 @@ type ProvisionAnnouncement struct {
 	Provider  peer.ID   `json:"provider"`
 	TTL       time.Duration `json:"ttl"`
 	Timestamp time.Time `json:"timestamp"`
+}
+
+// RoutingTable manages peer routing information
+type RoutingTable struct {
+	localPeerID peer.ID
+	routes      map[string][]peer.ID
+	mu          sync.RWMutex
+}
+
+// NewRoutingTable creates a new routing table
+func NewRoutingTable(localPeerID peer.ID) *RoutingTable {
+	return &RoutingTable{
+		localPeerID: localPeerID,
+		routes:      make(map[string][]peer.ID),
+	}
+}
+
+// AddRoute adds a route to the routing table
+func (rt *RoutingTable) AddRoute(contentID string, peerID peer.ID) {
+	rt.mu.Lock()
+	defer rt.mu.Unlock()
+	
+	routes := rt.routes[contentID]
+	for _, p := range routes {
+		if p == peerID {
+			return // Already exists
+		}
+	}
+	rt.routes[contentID] = append(routes, peerID)
+}
+
+// FindRoutes finds routes for a content ID
+func (rt *RoutingTable) FindRoutes(contentID string) []peer.ID {
+	rt.mu.RLock()
+	defer rt.mu.RUnlock()
+	
+	routes := rt.routes[contentID]
+	result := make([]peer.ID, len(routes))
+	copy(result, routes)
+	return result
+}
+
+// ContentDiscovery manages content discovery in the network
+type ContentDiscovery struct {
+	host   host.Host
+	dht    *dht.IpfsDHT
+	config *ContentRouterConfig
+	ctx    context.Context
+	cancel context.CancelFunc
+}
+
+// NewContentDiscovery creates a new content discovery instance
+func NewContentDiscovery(host host.Host, dht *dht.IpfsDHT, config *ContentRouterConfig) *ContentDiscovery {
+	ctx, cancel := context.WithCancel(context.Background())
+	return &ContentDiscovery{
+		host:   host,
+		dht:    dht,
+		config: config,
+		ctx:    ctx,
+		cancel: cancel,
+	}
+}
+
+// Start starts the content discovery service
+func (cd *ContentDiscovery) Start() {
+	// TODO: Implement discovery service
+}
+
+// Stop stops the content discovery service
+func (cd *ContentDiscovery) Stop() {
+	cd.cancel()
+}
+
+// ContentCache manages cached content
+type ContentCache struct {
+	cache    map[string]*CacheEntry
+	maxSize  int
+	ttl      time.Duration
+	mu       sync.RWMutex
+}
+
+// CacheEntry represents a cache entry
+type CacheEntry struct {
+	Content   *RemoteContent
+	ExpiresAt time.Time
+}
+
+// NewContentCache creates a new content cache
+func NewContentCache(maxSize int, ttl time.Duration) *ContentCache {
+	return &ContentCache{
+		cache:   make(map[string]*CacheEntry),
+		maxSize: maxSize,
+		ttl:     ttl,
+	}
+}
+
+// Get retrieves content from cache
+func (cc *ContentCache) Get(contentID string) (*RemoteContent, bool) {
+	cc.mu.RLock()
+	defer cc.mu.RUnlock()
+	
+	entry, exists := cc.cache[contentID]
+	if !exists || time.Now().After(entry.ExpiresAt) {
+		return nil, false
+	}
+	return entry.Content, true
+}
+
+// Put stores content in cache
+func (cc *ContentCache) Put(contentID string, content *RemoteContent) {
+	cc.mu.Lock()
+	defer cc.mu.Unlock()
+	
+	cc.cache[contentID] = &CacheEntry{
+		Content:   content,
+		ExpiresAt: time.Now().Add(cc.ttl),
+	}
+	
+	// Simple eviction if cache is full
+	if len(cc.cache) > cc.maxSize {
+		// Remove oldest entry
+		var oldestID string
+		var oldestTime time.Time
+		for id, entry := range cc.cache {
+			if oldestTime.IsZero() || entry.ExpiresAt.Before(oldestTime) {
+				oldestID = id
+				oldestTime = entry.ExpiresAt
+			}
+		}
+		delete(cc.cache, oldestID)
+	}
+}
+
+// Cleanup removes expired entries
+func (cc *ContentCache) Cleanup() {
+	cc.mu.Lock()
+	defer cc.mu.Unlock()
+	
+	now := time.Now()
+	for id, entry := range cc.cache {
+		if now.After(entry.ExpiresAt) {
+			delete(cc.cache, id)
+		}
+	}
+}
+
+// Storage interface for content storage
+type Storage interface {
+	Get(key string) ([]byte, error)
+	Put(key string, value []byte) error
+	Delete(key string) error
+	Has(key string) bool
+}
+
+// MemoryStorage implements in-memory storage
+type MemoryStorage struct {
+	data map[string][]byte
+	mu   sync.RWMutex
+}
+
+// NewMemoryStorage creates a new memory storage
+func NewMemoryStorage() *MemoryStorage {
+	return &MemoryStorage{
+		data: make(map[string][]byte),
+	}
+}
+
+// Get retrieves data from storage
+func (ms *MemoryStorage) Get(key string) ([]byte, error) {
+	ms.mu.RLock()
+	defer ms.mu.RUnlock()
+	
+	data, exists := ms.data[key]
+	if !exists {
+		return nil, fmt.Errorf("key not found: %s", key)
+	}
+	return data, nil
+}
+
+// Put stores data in storage
+func (ms *MemoryStorage) Put(key string, value []byte) error {
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
+	
+	ms.data[key] = value
+	return nil
+}
+
+// Delete removes data from storage
+func (ms *MemoryStorage) Delete(key string) error {
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
+	
+	delete(ms.data, key)
+	return nil
+}
+
+// Has checks if key exists in storage
+func (ms *MemoryStorage) Has(key string) bool {
+	ms.mu.RLock()
+	defer ms.mu.RUnlock()
+	
+	_, exists := ms.data[key]
+	return exists
+}
+
+// ContentIndex manages content indexing
+type ContentIndex struct {
+	index map[string]*IndexEntry
+	mu    sync.RWMutex
+}
+
+// IndexEntry represents an index entry
+type IndexEntry struct {
+	ContentID string
+	Metadata  *ContentMetadata
+	Keywords  []string
+	UpdatedAt time.Time
+}
+
+// NewContentIndex creates a new content index
+func NewContentIndex() *ContentIndex {
+	return &ContentIndex{
+		index: make(map[string]*IndexEntry),
+	}
+}
+
+// Add adds content to the index
+func (ci *ContentIndex) Add(contentID string, metadata *ContentMetadata) {
+	ci.mu.Lock()
+	defer ci.mu.Unlock()
+	
+	ci.index[contentID] = &IndexEntry{
+		ContentID: contentID,
+		Metadata:  metadata,
+		Keywords:  extractKeywords(metadata),
+		UpdatedAt: time.Now(),
+	}
+}
+
+// Search searches the index
+func (ci *ContentIndex) Search(query string) []*IndexEntry {
+	ci.mu.RLock()
+	defer ci.mu.RUnlock()
+	
+	var results []*IndexEntry
+	for _, entry := range ci.index {
+		if matchesQuery(entry, query) {
+			results = append(results, entry)
+		}
+	}
+	return results
+}
+
+// extractKeywords extracts keywords from metadata
+func extractKeywords(metadata *ContentMetadata) []string {
+	keywords := []string{metadata.Name, metadata.Type, metadata.ModelType}
+	keywords = append(keywords, metadata.Labels...)
+	return keywords
+}
+
+// matchesQuery checks if entry matches query
+func matchesQuery(entry *IndexEntry, query string) bool {
+	// Simple substring matching
+	for _, keyword := range entry.Keywords {
+		if keyword == query {
+			return true
+		}
+	}
+	return false
+}
+
+// NewContentStore creates a new content store
+func NewContentStore(config *ContentRouterConfig) (*ContentStore, error) {
+	cache := NewContentCache(config.CacheSize, config.CacheTTL)
+	storage := NewMemoryStorage()
+	index := NewContentIndex()
+	
+	return &ContentStore{
+		localContent:  make(map[string]*ContentMetadata),
+		remoteContent: make(map[string]*RemoteContent),
+		cache:         cache,
+		storage:       storage,
+		index:         index,
+	}, nil
+}
+
+// StoreLocal stores content locally
+func (cs *ContentStore) StoreLocal(content *ContentMetadata) {
+	cs.localMux.Lock()
+	defer cs.localMux.Unlock()
+	
+	cs.localContent[content.ID] = content
+	if cs.index != nil {
+		cs.index.Add(content.ID, content)
+	}
+}
+
+// GetLocal retrieves local content
+func (cs *ContentStore) GetLocal(contentID string) (*ContentMetadata, bool) {
+	cs.localMux.RLock()
+	defer cs.localMux.RUnlock()
+	
+	content, exists := cs.localContent[contentID]
+	return content, exists
+}
+
+// CacheRemote caches remote content
+func (cs *ContentStore) CacheRemote(contentID string, metadata *ContentMetadata, providers []peer.ID) {
+	cs.remoteMux.Lock()
+	defer cs.remoteMux.Unlock()
+	
+	remote := &RemoteContent{
+		Metadata:     metadata,
+		Providers:    providers,
+		LastUpdated:  time.Now(),
+		Availability: float64(len(providers)) / 10.0, // Simple availability metric
+	}
+	
+	cs.remoteContent[contentID] = remote
+	if cs.cache != nil {
+		cs.cache.Put(contentID, remote)
+	}
+}
+
+// GetCached retrieves cached content
+func (cs *ContentStore) GetCached(contentID string) (*RemoteContent, bool) {
+	if cs.cache != nil {
+		return cs.cache.Get(contentID)
+	}
+	
+	cs.remoteMux.RLock()
+	defer cs.remoteMux.RUnlock()
+	
+	content, exists := cs.remoteContent[contentID]
+	return content, exists
+}
+
+// CleanupCache cleans up the cache
+func (cs *ContentStore) CleanupCache() {
+	if cs.cache != nil {
+		cs.cache.Cleanup()
+	}
 }

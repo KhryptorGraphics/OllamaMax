@@ -215,6 +215,40 @@ func (c *Client) Version(ctx context.Context) (*VersionResponse, error) {
 	}, nil
 }
 
+// Server interface stub to replace ollama server interface
+type Server interface {
+	GenerateRoutes(registry *Registry) (http.Handler, error)
+	Start(ctx context.Context) error
+	Stop(ctx context.Context) error
+}
+
+// ServerStub provides a stub implementation of the Server interface
+type ServerStub struct {
+	client *Client
+}
+
+// NewServerStub creates a new server stub
+func NewServerStub(baseURL string) *ServerStub {
+	return &ServerStub{
+		client: NewClient(baseURL),
+	}
+}
+
+func (s *ServerStub) GenerateRoutes(registry *Registry) (http.Handler, error) {
+	// Stub implementation
+	return http.DefaultServeMux, nil
+}
+
+func (s *ServerStub) Start(ctx context.Context) error {
+	// Stub implementation
+	return nil
+}
+
+func (s *ServerStub) Stop(ctx context.Context) error {
+	// Stub implementation
+	return nil
+}
+
 // Additional stub types and functions that might be needed
 
 type ModelManifest struct {

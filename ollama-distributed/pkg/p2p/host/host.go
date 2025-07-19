@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/libp2p/go-libp2p"
+	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -14,10 +15,10 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	"github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
 	"github.com/libp2p/go-libp2p/p2p/security/noise"
-	"github.com/libp2p/go-libp2p/p2p/security/tls"
+	libp2ptls "github.com/libp2p/go-libp2p/p2p/security/tls"
 	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
 	"github.com/libp2p/go-libp2p/p2p/transport/websocket"
-	"github.com/libp2p/go-libp2p/p2p/transport/webtransport"
+	libp2pwebtransport "github.com/libp2p/go-libp2p/p2p/transport/webtransport"
 	"github.com/multiformats/go-multiaddr"
 	
 	"github.com/ollama/ollama-distributed/pkg/config"
@@ -79,7 +80,7 @@ func NewP2PHost(ctx context.Context, config *config.NodeConfig) (*P2PHost, error
 	transports := []libp2p.Option{
 		libp2p.Transport(tcp.NewTCPTransport),
 		libp2p.Transport(websocket.New),
-		libp2p.Transport(webtransport.New),
+		libp2p.Transport(libp2pwebtransport.New),
 	}
 	
 	// Configure security
@@ -88,7 +89,7 @@ func NewP2PHost(ctx context.Context, config *config.NodeConfig) (*P2PHost, error
 		security = append(security, libp2p.Security(noise.ID, noise.New))
 	}
 	if config.EnableTLS {
-		security = append(security, libp2p.Security(tls.ID, tls.New))
+		security = append(security, libp2p.Security(libp2ptls.ID, libp2ptls.New))
 	}
 	
 	// Configure NAT traversal
@@ -179,10 +180,10 @@ func NewP2PHost(ctx context.Context, config *config.NodeConfig) (*P2PHost, error
 
 // setupEventHandlers configures network event handlers
 func (h *P2PHost) setupEventHandlers() {
-	network := h.Host.Network()
+	net := h.Host.Network()
 	
 	// Connection events
-	network.Notify(&network.NotifyBundle{
+	notifee := &network.NotifyBundle{
 		ConnectedF: func(net network.Network, conn network.Conn) {
 			h.metrics.ConnectionCount++
 			h.metrics.LastActivity = time.Now()
@@ -201,7 +202,9 @@ func (h *P2PHost) setupEventHandlers() {
 				h.disconnectHandler(net, conn)
 			}
 		},
-	})
+	}
+	
+	net.Notify(notifee)
 }
 
 // collectMetrics periodically collects host metrics
@@ -267,8 +270,16 @@ func (h *P2PHost) GetConfig() *config.NodeConfig {
 }
 
 // SetCapabilities sets node capabilities
-func (h *P2PHost) SetCapabilities(caps *config.NodeCapabilities) {
-	h.capabilities = caps
+func (h *P2PHost) SetCapabilities(caps interface{}) {
+	// Accept both config.NodeCapabilities and resources.NodeCapabilities
+	switch v := caps.(type) {
+	case *config.NodeCapabilities:
+		h.capabilities = v
+	default:
+		// For resources.NodeCapabilities, we don't store them directly
+		// as they're managed by the resource layer
+		log.Printf("Setting capabilities of type %T", caps)
+	}
 }
 
 // GetCapabilities returns node capabilities

@@ -6,8 +6,6 @@ import (
 	"log/slog"
 	"math"
 	"time"
-
-	"github.com/ollama/ollama/discover"
 )
 
 // LayerwiseStrategy implements layer-wise partitioning

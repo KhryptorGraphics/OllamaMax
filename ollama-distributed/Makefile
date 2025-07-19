@@ -28,6 +28,13 @@ COVERAGE_FLAGS ?= -coverprofile=$(COVERAGE_DIR)/coverage.out -covermode=atomic
 # Build flags
 LDFLAGS=-ldflags "-X main.version=$(shell git describe --tags --always --dirty)"
 
+# Go commands
+GOCMD=go
+GOBUILD=go build
+GOCLEAN=go clean
+GOTEST=go test
+GOGET=go get
+
 # Directories
 BUILD_DIR=bin
 PKG_DIR=pkg

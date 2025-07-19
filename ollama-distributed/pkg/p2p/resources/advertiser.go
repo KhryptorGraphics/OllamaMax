@@ -13,8 +13,6 @@ import (
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/libp2p/go-libp2p/core/network"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
-	
-	"github.com/ollama/ollama-distributed/pkg/config"
 )
 
 const (
@@ -34,16 +32,16 @@ type ResourceAdvertiser struct {
 	dht            *dht.IpfsDHT
 	
 	// Resource information
-	capabilities   *config.NodeCapabilities
-	resources      *config.ResourceMetrics
+	capabilities   *NodeCapabilities
+	resources      *ResourceMetrics
 	
 	// Advertisement management
 	advertisements map[string]*Advertisement
 	advMux         sync.RWMutex
 	
 	// Update channels
-	capabilityUpdates chan *config.NodeCapabilities
-	resourceUpdates   chan *config.ResourceMetrics
+	capabilityUpdates chan *NodeCapabilities
+	resourceUpdates   chan *ResourceMetrics
 	
 	// Subscriptions
 	subscriptions     map[string]*ResourceSubscription
@@ -68,8 +66,8 @@ type ResourceAdvertiser struct {
 type Advertisement struct {
 	ID            string                `json:"id"`
 	NodeID        peer.ID               `json:"node_id"`
-	Capabilities  *config.NodeCapabilities `json:"capabilities"`
-	Resources     *config.ResourceMetrics  `json:"resources"`
+	Capabilities  *NodeCapabilities `json:"capabilities"`
+	Resources     *ResourceMetrics  `json:"resources"`
 	Timestamp     time.Time             `json:"timestamp"`
 	TTL           time.Duration         `json:"ttl"`
 	Version       int                   `json:"version"`
@@ -154,8 +152,8 @@ func NewResourceAdvertiser(ctx context.Context, host host.Host, dht *dht.IpfsDHT
 		dht:               dht,
 		config:            config,
 		advertisements:    make(map[string]*Advertisement),
-		capabilityUpdates: make(chan *config.NodeCapabilities, 10),
-		resourceUpdates:   make(chan *config.ResourceMetrics, 10),
+		capabilityUpdates: make(chan *NodeCapabilities, 10),
+		resourceUpdates:   make(chan *ResourceMetrics, 10),
 		subscriptions:     make(map[string]*ResourceSubscription),
 		metrics: &AdvertiserMetrics{
 			StartTime: time.Now(),
@@ -381,7 +379,7 @@ func (ra *ResourceAdvertiser) sendAdvertisement(peerID peer.ID, ad *Advertisemen
 }
 
 // SetCapabilities updates node capabilities
-func (ra *ResourceAdvertiser) SetCapabilities(caps *config.NodeCapabilities) {
+func (ra *ResourceAdvertiser) SetCapabilities(caps *NodeCapabilities) {
 	select {
 	case ra.capabilityUpdates <- caps:
 	default:
@@ -392,7 +390,7 @@ func (ra *ResourceAdvertiser) SetCapabilities(caps *config.NodeCapabilities) {
 }
 
 // SetResourceMetrics updates resource metrics
-func (ra *ResourceAdvertiser) SetResourceMetrics(metrics *config.ResourceMetrics) {
+func (ra *ResourceAdvertiser) SetResourceMetrics(metrics *ResourceMetrics) {
 	select {
 	case ra.resourceUpdates <- metrics:
 	default:

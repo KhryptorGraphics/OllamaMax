@@ -639,3 +639,121 @@ func (w *UploadWorker) simulateUpload(req *UploadRequest) error {
 	
 	return nil
 }
+
+// ShouldDistribute determines if a model should be distributed
+func (m *Manager) ShouldDistribute(modelName string) bool {
+	// Check if model exists and is suitable for distribution
+	_, exists := m.GetModel(modelName)
+	return exists
+}
+
+// IsDistributed checks if a model is already distributed
+func (m *Manager) IsDistributed(modelName string) bool {
+	// Check if model exists in the distributed network
+	_, exists := m.GetModel(modelName)
+	return exists
+}
+
+// GetModelInfo returns information about a model
+func (m *Manager) GetModelInfo(modelName string) map[string]interface{} {
+	if model, exists := m.GetModel(modelName); exists {
+		return map[string]interface{}{
+			"name":     model.Name,
+			"version":  model.Version,
+			"size":     model.Size,
+			"checksum": model.Checksum,
+			"path":     model.Path,
+			"created":  model.CreatedAt,
+			"accessed": model.LastAccessed,
+		}
+	}
+	return nil
+}
+
+// GetDistributedModels returns all distributed models as API responses
+func (m *Manager) GetDistributedModels() []interface{} {
+	m.modelsMu.RLock()
+	defer m.modelsMu.RUnlock()
+	
+	var models []interface{}
+	for _, model := range m.models {
+		models = append(models, map[string]interface{}{
+			"name":     model.Name,
+			"version":  model.Version,
+			"size":     model.Size,
+			"checksum": model.Checksum,
+			"path":     model.Path,
+			"created":  model.CreatedAt,
+			"accessed": model.LastAccessed,
+		})
+	}
+	return models
+}
+
+// DeleteModel deletes a model from the distributed system
+func (m *Manager) DeleteModel(modelName string) error {
+	m.modelsMu.Lock()
+	defer m.modelsMu.Unlock()
+	
+	if _, exists := m.models[modelName]; !exists {
+		return fmt.Errorf("model %s not found", modelName)
+	}
+	
+	delete(m.models, modelName)
+	return nil
+}
+
+// GetDistributedModelCount returns the count of distributed models
+func (m *Manager) GetDistributedModelCount() int {
+	m.modelsMu.RLock()
+	defer m.modelsMu.RUnlock()
+	return len(m.models)
+}
+
+// DownloadFromPeer downloads a model from a peer
+func (m *Manager) DownloadFromPeer(modelName, peerID string) error {
+	// This is a wrapper around the existing DownloadModel method
+	_, err := m.DownloadModel(modelName, peerID)
+	return err
+}
+
+// RegisterModel registers a model in the distributed system
+func (m *Manager) RegisterModel(modelName, modelPath string) error {
+	return m.registerLocalModel(modelPath)
+}
+
+// Rebalance rebalances models across the distributed network
+func (m *Manager) Rebalance() error {
+	// Stub implementation for rebalancing logic
+	return nil
+}
+
+// MigrateModel migrates a model to a different node
+func (m *Manager) MigrateModel(modelName, targetNodeID string) error {
+	// Stub implementation for model migration
+	return nil
+}
+
+// GetStats returns statistics about the distributed system
+func (m *Manager) GetStats() map[string]interface{} {
+	m.modelsMu.RLock()
+	defer m.modelsMu.RUnlock()
+	
+	return map[string]interface{}{
+		"total_models": len(m.models),
+		"total_transfers": len(m.transfers),
+		"active_downloads": len(m.downloadQueue),
+		"active_uploads": len(m.uploadQueue),
+	}
+}
+
+// ForceRebalance forces a rebalancing operation
+func (m *Manager) ForceRebalance() error {
+	// Stub implementation for forced rebalancing
+	return m.Rebalance()
+}
+
+// GetTotalModels returns the total number of models in the system
+func (m *Manager) GetTotalModels() int {
+	return m.GetDistributedModelCount()
+}

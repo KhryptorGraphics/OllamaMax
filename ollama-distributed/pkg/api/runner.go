@@ -8,9 +8,22 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ollama/ollama-distributed/pkg/integration"
+	ollamaapi "github.com/ollama/ollama/api"
 	"github.com/ollama/ollama-distributed/pkg/scheduler"
 )
+
+// Stub types for missing llm package
+type CompletionRequest struct {
+	Model  string `json:"model"`
+	Prompt string `json:"prompt"`
+	Stream bool   `json:"stream,omitempty"`
+}
+
+type CompletionResponse struct {
+	Text     string `json:"text"`
+	Finished bool   `json:"finished"`
+	Error    string `json:"error,omitempty"`
+}
 
 // DistributedRunner extends the existing runner functionality for distributed execution
 type DistributedRunner struct {
@@ -114,7 +127,7 @@ func (dr *DistributedRunner) ExecuteRequest(req *RunnerRequest) (*RunnerResponse
 
 // HandleGeneration handles generation requests
 func (dr *DistributedRunner) HandleGeneration(c *gin.Context) {
-	var req api.GenerateRequest
+	var req ollamaapi.GenerateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -147,7 +160,7 @@ func (dr *DistributedRunner) HandleGeneration(c *gin.Context) {
 
 // HandleChat handles chat requests
 func (dr *DistributedRunner) HandleChat(c *gin.Context) {
-	var req api.ChatRequest
+	var req ollamaapi.ChatRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -180,7 +193,7 @@ func (dr *DistributedRunner) HandleChat(c *gin.Context) {
 
 // HandleEmbedding handles embedding requests
 func (dr *DistributedRunner) HandleEmbedding(c *gin.Context) {
-	var req api.EmbedRequest
+	var req ollamaapi.EmbedRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -294,13 +307,26 @@ func (dr *DistributedRunner) processRequest(runner *RunnerInstance, req *RunnerR
 	startTime := time.Now()
 	
 	// Create scheduler request
+	// Convert interface{} payload to map[string]interface{}
+	var payload map[string]interface{}
+	if req.Payload != nil {
+		if p, ok := req.Payload.(map[string]interface{}); ok {
+			payload = p
+		} else {
+			// If payload is not a map, wrap it
+			payload = map[string]interface{}{
+				"data": req.Payload,
+			}
+		}
+	}
+	
 	schedReq := &scheduler.Request{
 		ID:         req.ID,
 		Type:       req.Type,
 		Priority:   1,
 		Timeout:    30 * time.Second,
 		ResponseCh: make(chan *scheduler.Response, 1),
-		Payload:    req.Payload,
+		Payload:    payload,
 	}
 	
 	// Schedule request
@@ -477,7 +503,7 @@ func NewDistributedRunnerAdapter(runner *DistributedRunner) *DistributedRunnerAd
 }
 
 // Completion implements the LlamaServer interface for compatibility
-func (dra *DistributedRunnerAdapter) Completion(ctx context.Context, req llm.CompletionRequest, fn func(llm.CompletionResponse)) error {
+func (dra *DistributedRunnerAdapter) Completion(ctx context.Context, req CompletionRequest, fn func(CompletionResponse)) error {
 	// Convert to RunnerRequest
 	runnerReq := &RunnerRequest{
 		ID:       fmt.Sprintf("comp_%d", time.Now().UnixNano()),
@@ -498,7 +524,7 @@ func (dra *DistributedRunnerAdapter) Completion(ctx context.Context, req llm.Com
 	}
 	
 	// Convert response back to CompletionResponse
-	if completionResp, ok := resp.Data.(llm.CompletionResponse); ok {
+	if completionResp, ok := resp.Data.(CompletionResponse); ok {
 		fn(completionResp)
 	}
 	

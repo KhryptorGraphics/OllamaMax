@@ -12,16 +12,19 @@ import (
 // Config represents the complete configuration for a distributed Ollama node
 type Config struct {
 	// Node configuration
-	Node      NodeConfig      `yaml:"node"`
-	API       APIConfig       `yaml:"api"`
-	P2P       P2PConfig       `yaml:"p2p"`
-	Consensus ConsensusConfig `yaml:"consensus"`
-	Scheduler SchedulerConfig `yaml:"scheduler"`
-	Storage   StorageConfig   `yaml:"storage"`
-	Security  SecurityConfig  `yaml:"security"`
-	Web       WebConfig       `yaml:"web"`
-	Metrics   MetricsConfig   `yaml:"metrics"`
-	Logging   LoggingConfig   `yaml:"logging"`
+	Node        NodeConfig        `yaml:"node"`
+	API         APIConfig         `yaml:"api"`
+	P2P         P2PConfig         `yaml:"p2p"`
+	Consensus   ConsensusConfig   `yaml:"consensus"`
+	Scheduler   SchedulerConfig   `yaml:"scheduler"`
+	Storage     StorageConfig     `yaml:"storage"`
+	Security    SecurityConfig    `yaml:"security"`
+	Web         WebConfig         `yaml:"web"`
+	Metrics     MetricsConfig     `yaml:"metrics"`
+	Logging     LoggingConfig     `yaml:"logging"`
+	Sync        SyncConfig        `yaml:"sync"`
+	Replication ReplicationConfig `yaml:"replication"`
+	Distributed DistributedConfig `yaml:"distributed"`
 }
 
 // NodeConfig holds node-specific configuration
@@ -201,8 +204,72 @@ type LoggingConfig struct {
 	Compress   bool   `yaml:"compress"`
 }
 
+// SyncConfig holds model synchronization configuration
+type SyncConfig struct {
+	DeltaDir       string        `yaml:"delta_dir"`
+	CASDir         string        `yaml:"cas_dir"`
+	WorkerCount    int           `yaml:"worker_count"`
+	SyncInterval   time.Duration `yaml:"sync_interval"`
+	ChunkSize      int64         `yaml:"chunk_size"`
+	MaxRetries     int           `yaml:"max_retries"`
+	RetryDelay     time.Duration `yaml:"retry_delay"`
+}
+
+// ReplicationConfig holds model replication configuration
+type ReplicationConfig struct {
+	WorkerCount                int           `yaml:"worker_count"`
+	DefaultMinReplicas         int           `yaml:"default_min_replicas"`
+	DefaultMaxReplicas         int           `yaml:"default_max_replicas"`
+	DefaultReplicationFactor   int           `yaml:"default_replication_factor"`
+	DefaultSyncInterval        time.Duration `yaml:"default_sync_interval"`
+	PolicyEnforcementInterval  time.Duration `yaml:"policy_enforcement_interval"`
+	HealthCheckInterval        time.Duration `yaml:"health_check_interval"`
+	HealthCheckTimeout         time.Duration `yaml:"health_check_timeout"`
+}
+
+// DistributedConfig holds distributed model management configuration
+type DistributedConfig struct {
+	Storage     *StorageConfig     `yaml:"storage"`
+	Sync        *SyncConfig        `yaml:"sync"`
+	Replication *ReplicationConfig `yaml:"replication"`
+	CASDir      string             `yaml:"cas_dir"`
+	DeltaDir    string             `yaml:"delta_dir"`
+}
+
 // DefaultConfig returns a default configuration
 func DefaultConfig() *Config {
+	// Create storage config first
+	storageConfig := StorageConfig{
+		DataDir:     "./data",
+		ModelDir:    "./models",
+		CacheDir:    "./cache",
+		MaxDiskSize: 100 * 1024 * 1024 * 1024, // 100GB
+		CleanupAge:  7 * 24 * time.Hour,       // 7 days
+	}
+	
+	// Create sync config
+	syncConfig := SyncConfig{
+		DeltaDir:     "./data/deltas",
+		CASDir:       "./data/cas",
+		WorkerCount:  3,
+		SyncInterval: 5 * time.Minute,
+		ChunkSize:    1024 * 1024, // 1MB
+		MaxRetries:   3,
+		RetryDelay:   time.Second,
+	}
+	
+	// Create replication config
+	replicationConfig := ReplicationConfig{
+		WorkerCount:                3,
+		DefaultMinReplicas:         1,
+		DefaultMaxReplicas:         3,
+		DefaultReplicationFactor:   2,
+		DefaultSyncInterval:        10 * time.Minute,
+		PolicyEnforcementInterval:  30 * time.Second,
+		HealthCheckInterval:        30 * time.Second,
+		HealthCheckTimeout:         10 * time.Second,
+	}
+	
 	return &Config{
 		Node: NodeConfig{
 			ID:          "",
@@ -222,11 +289,11 @@ func DefaultConfig() *Config {
 			},
 			Cors: CorsConfig{
 				Enabled:          true,
-				AllowedOrigins:   []string{"*"},
+				AllowedOrigins:   []string{"http://localhost:8080", "https://localhost:8080"},
 				AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-				AllowedHeaders:   []string{"*"},
-				AllowCredentials: false,
-				MaxAge:           86400,
+				AllowedHeaders:   []string{"Content-Type", "Authorization", "X-Requested-With"},
+				AllowCredentials: true,
+				MaxAge:           3600,
 			},
 			RateLimit: RateLimitConfig{
 				Enabled: true,
@@ -268,13 +335,7 @@ func DefaultConfig() *Config {
 			QueueSize:           10000,
 			WorkerCount:         10,
 		},
-		Storage: StorageConfig{
-			DataDir:     "./data",
-			ModelDir:    "./models",
-			CacheDir:    "./cache",
-			MaxDiskSize: 100 * 1024 * 1024 * 1024, // 100GB
-			CleanupAge:  7 * 24 * time.Hour,       // 7 days
-		},
+		Storage: storageConfig,
 		Security: SecurityConfig{
 			TLS: TLSConfig{
 				Enabled:    true,
@@ -322,6 +383,15 @@ func DefaultConfig() *Config {
 			MaxAge:     30,
 			MaxBackups: 10,
 			Compress:   true,
+		},
+		Sync:        syncConfig,
+		Replication: replicationConfig,
+		Distributed: DistributedConfig{
+			Storage:     &storageConfig,
+			Sync:        &syncConfig,
+			Replication: &replicationConfig,
+			CASDir:      "./data/cas",
+			DeltaDir:    "./data/deltas",
 		},
 	}
 }
@@ -374,6 +444,10 @@ func (c *Config) Validate() error {
 		c.Storage.ModelDir,
 		c.Storage.CacheDir,
 		c.Consensus.DataDir,
+		c.Sync.DeltaDir,
+		c.Sync.CASDir,
+		c.Distributed.CASDir,
+		c.Distributed.DeltaDir,
 	}
 	
 	for _, dir := range dirs {
