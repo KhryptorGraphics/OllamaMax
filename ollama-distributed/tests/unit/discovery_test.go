@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/ollama/ollama-distributed/pkg/p2p"
-	"github.com/ollama/ollama-distributed/pkg/p2p/discovery"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p/discovery"
 )
 
 // TestDiscoveryEngine tests the P2P discovery engine

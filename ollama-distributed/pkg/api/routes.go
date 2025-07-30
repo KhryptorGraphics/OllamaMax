@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ollama/ollama-distributed/pkg/integration"
-	"github.com/ollama/ollama-distributed/pkg/models"
-	"github.com/ollama/ollama-distributed/pkg/scheduler"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/integration"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/models"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/scheduler"
 )
 
 // DistributedRoutes provides distributed routing capability for Ollama

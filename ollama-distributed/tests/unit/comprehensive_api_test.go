@@ -16,11 +16,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/ollama/ollama-distributed/internal/config"
-	"github.com/ollama/ollama-distributed/pkg/api"
-	"github.com/ollama/ollama-distributed/pkg/consensus"
-	"github.com/ollama/ollama-distributed/pkg/p2p"
-	"github.com/ollama/ollama-distributed/pkg/scheduler"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/internal/config"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/api"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/consensus"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/scheduler"
 )
 
 // TestAPIServerCreation tests API server creation

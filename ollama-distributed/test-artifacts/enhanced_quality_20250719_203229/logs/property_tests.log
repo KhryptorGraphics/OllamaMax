@@ -1,0 +1,9 @@
+# github.com/ollama/ollama-distributed/tests/property [github.com/ollama/ollama-distributed/tests/property.test]
+tests/property/consensus_properties_test.go:269:41: cannot use time.Now().Add(24 * time.Hour) (value of struct type time.Time) as time.Duration value in argument to gen.TimeRange
+tests/property/consensus_properties_test.go:291:51: cannot use now.Add(time.Hour) (value of struct type time.Time) as time.Duration value in argument to gen.TimeRange
+tests/property/consensus_properties_test.go:381:41: cannot use value (variable of type interface{}) as string value in assignment: need type assertion
+tests/property/consensus_properties_test.go:511:23: node.GetCurrentTerm undefined (type *consensus.Engine has no field or method GetCurrentTerm)
+tests/property/crypto_properties_test.go:223:61: cannot use time.Now() (value of struct type time.Time) as time.Duration value in argument to gen.TimeRange
+tests/property/crypto_properties_test.go:234:58: cannot use time.Now() (value of struct type time.Time) as time.Duration value in argument to gen.TimeRange
+FAIL	github.com/ollama/ollama-distributed/tests/property [build failed]
+FAIL

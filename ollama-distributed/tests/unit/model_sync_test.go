@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/ollama/ollama-distributed/pkg/models"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/models"
 )
 
 // TestModelSyncManager tests the model synchronization manager

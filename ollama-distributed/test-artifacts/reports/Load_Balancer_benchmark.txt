@@ -1,0 +1,14 @@
+# github.com/ollama/ollama-distributed/tests/loadbalancer [github.com/ollama/ollama-distributed/tests/loadbalancer.test]
+tests/loadbalancer/comprehensive_loadbalancer_test.go:36:27: undefined: loadbalancer.NewRoundRobinBalancer
+tests/loadbalancer/comprehensive_loadbalancer_test.go:47:28: undefined: loadbalancer.Request
+tests/loadbalancer/comprehensive_loadbalancer_test.go:75:28: undefined: loadbalancer.Request
+tests/loadbalancer/comprehensive_loadbalancer_test.go:100:27: undefined: loadbalancer.Node
+tests/loadbalancer/comprehensive_loadbalancer_test.go:101:50: undefined: loadbalancer.NodeStatusHealthy
+tests/loadbalancer/comprehensive_loadbalancer_test.go:102:50: undefined: loadbalancer.NodeStatusHealthy
+tests/loadbalancer/comprehensive_loadbalancer_test.go:103:50: undefined: loadbalancer.NodeStatusHealthy
+tests/loadbalancer/comprehensive_loadbalancer_test.go:104:50: undefined: loadbalancer.NodeStatusHealthy
+tests/loadbalancer/comprehensive_loadbalancer_test.go:107:27: undefined: loadbalancer.NewWeightedRoundRobinBalancer
+tests/loadbalancer/comprehensive_loadbalancer_test.go:1045:49: undefined: loadbalancer.Node
+tests/loadbalancer/comprehensive_loadbalancer_test.go:107:27: too many errors
+FAIL	github.com/ollama/ollama-distributed/tests/loadbalancer [build failed]
+FAIL

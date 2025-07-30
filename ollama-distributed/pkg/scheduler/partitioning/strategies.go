@@ -3,7 +3,6 @@ package partitioning
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"math"
 	"time"
 
@@ -52,15 +51,15 @@ type PartitionTask struct {
 
 // NodeInfo represents node information for partitioning
 type NodeInfo struct {
-	ID            string                 `json:"id"`
-	Address       string                 `json:"address"`
-	Capacity      *ResourceCapacity      `json:"capacity"`
-	Usage         *ResourceUsage         `json:"usage"`
-	GPUs          discover.GpuInfoList   `json:"gpus"`
-	Latency       time.Duration          `json:"latency"`
-	Bandwidth     int64                  `json:"bandwidth"`
-	Capabilities  []string               `json:"capabilities"`
-	Metadata      map[string]interface{} `json:"metadata"`
+	ID           string                 `json:"id"`
+	Address      string                 `json:"address"`
+	Capacity     *ResourceCapacity      `json:"capacity"`
+	Usage        *ResourceUsage         `json:"usage"`
+	GPUs         discover.GpuInfoList   `json:"gpus"`
+	Latency      time.Duration          `json:"latency"`
+	Bandwidth    int64                  `json:"bandwidth"`
+	Capabilities []string               `json:"capabilities"`
+	Metadata     map[string]interface{} `json:"metadata"`
 }
 
 // ResourceCapacity represents node resource capacity
@@ -75,73 +74,73 @@ type ResourceCapacity struct {
 
 // ResourceUsage represents node resource usage
 type ResourceUsage struct {
-	CPUUtilization    float64 `json:"cpu_utilization"`
-	MemoryUtilization float64 `json:"memory_utilization"`
-	GPUUtilization    float64 `json:"gpu_utilization"`
+	CPUUtilization     float64 `json:"cpu_utilization"`
+	MemoryUtilization  float64 `json:"memory_utilization"`
+	GPUUtilization     float64 `json:"gpu_utilization"`
 	NetworkUtilization float64 `json:"network_utilization"`
-	ActiveRequests    int     `json:"active_requests"`
+	ActiveRequests     int     `json:"active_requests"`
 }
 
 // PartitionPlan represents a partitioning plan
 type PartitionPlan struct {
-	ID           string                 `json:"id"`
-	Strategy     string                 `json:"strategy"`
-	Partitions   []*Partition           `json:"partitions"`
-	Metadata     map[string]interface{} `json:"metadata"`
-	EstimatedLatency time.Duration      `json:"estimated_latency"`
-	EstimatedThroughput float64         `json:"estimated_throughput"`
-	OptimizationScore float64           `json:"optimization_score"`
-	CreatedAt    time.Time              `json:"created_at"`
+	ID                  string                 `json:"id"`
+	Strategy            string                 `json:"strategy"`
+	Partitions          []*Partition           `json:"partitions"`
+	Metadata            map[string]interface{} `json:"metadata"`
+	EstimatedLatency    time.Duration          `json:"estimated_latency"`
+	EstimatedThroughput float64                `json:"estimated_throughput"`
+	OptimizationScore   float64                `json:"optimization_score"`
+	CreatedAt           time.Time              `json:"created_at"`
 }
 
 // Partition represents a single partition
 type Partition struct {
-	ID          string                 `json:"id"`
-	NodeID      string                 `json:"node_id"`
-	Type        PartitionType          `json:"type"`
-	Data        interface{}            `json:"data"`
-	Dependencies []string              `json:"dependencies"`
-	Metadata    map[string]interface{} `json:"metadata"`
-	EstimatedLatency time.Duration     `json:"estimated_latency"`
-	EstimatedMemory int64              `json:"estimated_memory"`
+	ID               string                 `json:"id"`
+	NodeID           string                 `json:"node_id"`
+	Type             PartitionType          `json:"type"`
+	Data             interface{}            `json:"data"`
+	Dependencies     []string               `json:"dependencies"`
+	Metadata         map[string]interface{} `json:"metadata"`
+	EstimatedLatency time.Duration          `json:"estimated_latency"`
+	EstimatedMemory  int64                  `json:"estimated_memory"`
 }
 
 // PartitionType represents the type of partition
 type PartitionType string
 
 const (
-	PartitionTypeLayer    PartitionType = "layer"
-	PartitionTypeData     PartitionType = "data"
-	PartitionTypeTask     PartitionType = "task"
-	PartitionTypeSequence PartitionType = "sequence"
+	PartitionTypeLayer     PartitionType = "layer"
+	PartitionTypeData      PartitionType = "data"
+	PartitionTypeTask      PartitionType = "task"
+	PartitionTypeSequence  PartitionType = "sequence"
 	PartitionTypeAttention PartitionType = "attention"
 	PartitionTypeEmbedding PartitionType = "embedding"
 )
 
 // StrategyMetrics represents metrics for a partitioning strategy
 type StrategyMetrics struct {
-	TotalPartitions   int64         `json:"total_partitions"`
-	SuccessfulPartitions int64      `json:"successful_partitions"`
-	FailedPartitions  int64         `json:"failed_partitions"`
-	AverageLatency    time.Duration `json:"average_latency"`
-	AverageThroughput float64       `json:"average_throughput"`
-	LastUsed          time.Time     `json:"last_used"`
+	TotalPartitions      int64         `json:"total_partitions"`
+	SuccessfulPartitions int64         `json:"successful_partitions"`
+	FailedPartitions     int64         `json:"failed_partitions"`
+	AverageLatency       time.Duration `json:"average_latency"`
+	AverageThroughput    float64       `json:"average_throughput"`
+	LastUsed             time.Time     `json:"last_used"`
 }
 
 // PartitionOptimizer optimizes partitioning decisions
 type PartitionOptimizer struct {
-	history        []*PartitionResult
-	learningRate   float64
+	history             []*PartitionResult
+	learningRate        float64
 	optimizationWeights map[string]float64
 }
 
 // PartitionResult represents the result of a partitioning decision
 type PartitionResult struct {
-	Plan         *PartitionPlan `json:"plan"`
-	ActualLatency time.Duration `json:"actual_latency"`
-	ActualThroughput float64    `json:"actual_throughput"`
-	Success      bool           `json:"success"`
-	Timestamp    time.Time      `json:"timestamp"`
+	Plan             *PartitionPlan `json:"plan"`
+	ActualLatency    time.Duration  `json:"actual_latency"`
+	ActualThroughput float64        `json:"actual_throughput"`
+	Success          bool           `json:"success"`
+	Timestamp        time.Time      `json:"timestamp"`
 }
 
 // WorkloadAnalyzer analyzes workloads to select optimal partitioning strategies
@@ -151,13 +150,13 @@ type WorkloadAnalyzer struct {
 
 // WorkloadProfile represents a workload profile
 type WorkloadProfile struct {
-	ModelSize      int64   `json:"model_size"`
-	ContextLength  int     `json:"context_length"`
-	BatchSize      int     `json:"batch_size"`
-	Complexity     float64 `json:"complexity"`
-	MemoryRequirement int64 `json:"memory_requirement"`
+	ModelSize          int64   `json:"model_size"`
+	ContextLength      int     `json:"context_length"`
+	BatchSize          int     `json:"batch_size"`
+	Complexity         float64 `json:"complexity"`
+	MemoryRequirement  int64   `json:"memory_requirement"`
 	ComputeRequirement float64 `json:"compute_requirement"`
-	Parallelizability float64 `json:"parallelizability"`
+	Parallelizability  float64 `json:"parallelizability"`
 }
 
 // NewPartitionManager creates a new partition manager
@@ -179,14 +178,16 @@ func NewPartitionManager(config *Config) *PartitionManager {
 			profiles: make(map[string]*WorkloadProfile),
 		},
 	}
-	
+
 	// Register strategies
 	pm.RegisterStrategy(NewLayerwiseStrategy())
 	pm.RegisterStrategy(NewDataSplitStrategy())
 	pm.RegisterStrategy(NewTaskParallelismStrategy())
 	pm.RegisterStrategy(NewSequenceParallelismStrategy())
 	pm.RegisterStrategy(NewAttentionParallelismStrategy())
-	
+
+	// Register advanced strategies (will be implemented in enhanced_partitioning.go)
+
 	return pm
 }
 
@@ -206,10 +207,10 @@ func (pm *PartitionManager) SelectStrategy(task interface{}, model *server.Model
 		Metadata:  make(map[string]interface{}),
 		CreatedAt: time.Now(),
 	}
-	
+
 	// Analyze workload
 	profile := pm.analyzer.AnalyzeWorkload(partitionTask)
-	
+
 	// Select strategy based on workload profile
 	if profile.ModelSize > 10*1024*1024*1024 { // 10GB+
 		if profile.Parallelizability > 0.8 {
@@ -217,15 +218,15 @@ func (pm *PartitionManager) SelectStrategy(task interface{}, model *server.Model
 		}
 		return "data_split", nil
 	}
-	
+
 	if profile.ContextLength > 2048 {
 		return "sequence_parallel", nil
 	}
-	
+
 	if profile.BatchSize > 1 {
 		return "data_split", nil
 	}
-	
+
 	// Default strategy
 	return pm.config.DefaultStrategy, nil
 }
@@ -236,20 +237,20 @@ func (pm *PartitionManager) Partition(ctx context.Context, task *PartitionTask, 
 	if !exists {
 		return nil, fmt.Errorf("strategy not found: %s", strategyName)
 	}
-	
+
 	if !strategy.CanHandle(task) {
 		return nil, fmt.Errorf("strategy %s cannot handle task", strategyName)
 	}
-	
+
 	// Execute partitioning
 	plan, err := strategy.Partition(ctx, task)
 	if err != nil {
 		return nil, fmt.Errorf("partitioning failed: %v", err)
 	}
-	
+
 	// Optimize plan
 	optimizedPlan := pm.optimizer.OptimizePlan(plan)
-	
+
 	return optimizedPlan, nil
 }
 
@@ -268,7 +269,7 @@ func (pm *PartitionManager) GetStrategyMetrics(strategyName string) (*StrategyMe
 	if !exists {
 		return nil, fmt.Errorf("strategy not found: %s", strategyName)
 	}
-	
+
 	return strategy.GetMetrics(), nil
 }
 
@@ -277,26 +278,26 @@ func (pm *PartitionManager) GetStrategyMetrics(strategyName string) (*StrategyMe
 // AnalyzeWorkload analyzes a workload and returns its profile
 func (wa *WorkloadAnalyzer) AnalyzeWorkload(task *PartitionTask) *WorkloadProfile {
 	profile := &WorkloadProfile{
-		ModelSize:      wa.estimateModelSize(task),
-		ContextLength:  task.Options.NumCtx,
-		BatchSize:      wa.estimateBatchSize(task),
-		Complexity:     wa.estimateComplexity(task),
-		MemoryRequirement: wa.estimateMemoryRequirement(task),
+		ModelSize:          wa.estimateModelSize(task),
+		ContextLength:      task.Options.NumCtx,
+		BatchSize:          wa.estimateBatchSize(task),
+		Complexity:         wa.estimateComplexity(task),
+		MemoryRequirement:  wa.estimateMemoryRequirement(task),
 		ComputeRequirement: wa.estimateComputeRequirement(task),
-		Parallelizability: wa.estimateParallelizability(task),
+		Parallelizability:  wa.estimateParallelizability(task),
 	}
-	
+
 	// Cache profile
 	profileKey := fmt.Sprintf("%s_%d_%d", task.Model.Name, task.Options.NumCtx, wa.estimateBatchSize(task))
 	wa.profiles[profileKey] = profile
-	
+
 	return profile
 }
 
 // estimateModelSize estimates the size of a model
 func (wa *WorkloadAnalyzer) estimateModelSize(task *PartitionTask) int64 {
 	if task.GGML != nil {
-		return int64(task.GGML.Size())
+		return task.GGML.Length
 	}
 	// Fallback estimation based on model name patterns
 	return 4 * 1024 * 1024 * 1024 // 4GB default
@@ -318,10 +319,10 @@ func (wa *WorkloadAnalyzer) estimateComplexity(task *PartitionTask) float64 {
 	// Base complexity on model size and context length
 	modelSize := float64(wa.estimateModelSize(task))
 	contextLength := float64(task.Options.NumCtx)
-	
+
 	// Complexity grows with model size and context length
 	complexity := math.Log(modelSize) * math.Log(contextLength)
-	
+
 	// Normalize to 0-1 range
 	return math.Min(complexity/100.0, 1.0)
 }
@@ -330,11 +331,11 @@ func (wa *WorkloadAnalyzer) estimateComplexity(task *PartitionTask) float64 {
 func (wa *WorkloadAnalyzer) estimateMemoryRequirement(task *PartitionTask) int64 {
 	modelSize := wa.estimateModelSize(task)
 	contextLength := int64(task.Options.NumCtx)
-	
+
 	// Memory requirement = model size + context memory + overhead
 	contextMemory := contextLength * 4 * 1024 // 4KB per context token
-	overhead := modelSize / 10 // 10% overhead
-	
+	overhead := modelSize / 10                // 10% overhead
+
 	return modelSize + contextMemory + overhead
 }
 
@@ -342,12 +343,12 @@ func (wa *WorkloadAnalyzer) estimateMemoryRequirement(task *PartitionTask) int64
 func (wa *WorkloadAnalyzer) estimateComputeRequirement(task *PartitionTask) float64 {
 	modelSize := float64(wa.estimateModelSize(task))
 	contextLength := float64(task.Options.NumCtx)
-	
+
 	// Compute requirement based on model parameters and context
 	// This is a simplified estimation
-	params := modelSize / 4 // Assume 4 bytes per parameter
+	params := modelSize / 4                  // Assume 4 bytes per parameter
 	operations := params * contextLength * 2 // Forward and backward pass
-	
+
 	// Return in GFLOPS
 	return operations / 1e9
 }
@@ -358,13 +359,13 @@ func (wa *WorkloadAnalyzer) estimateParallelizability(task *PartitionTask) float
 	// 1. Model architecture (transformers are more parallelizable)
 	// 2. Context length (longer contexts are more parallelizable)
 	// 3. Batch size (larger batches are more parallelizable)
-	
+
 	contextLength := float64(task.Options.NumCtx)
 	batchSize := float64(wa.estimateBatchSize(task))
-	
+
 	// Base parallelizability on context length and batch size
 	parallelizability := math.Min((contextLength/2048.0)*(batchSize/4.0), 1.0)
-	
+
 	// Adjust based on model type
 	if task.Model != nil {
 		// Check if model is a transformer (more parallelizable)
@@ -372,14 +373,14 @@ func (wa *WorkloadAnalyzer) estimateParallelizability(task *PartitionTask) float
 			parallelizability *= 1.2
 		}
 	}
-	
+
 	return math.Min(parallelizability, 1.0)
 }
 
 // isTransformerModel checks if a model is a transformer-based model
 func isTransformerModel(model *server.Model) bool {
 	// Check model family or architecture
-	if model.Config != nil && model.Config.ModelFamilies != nil {
+	if model.Config.ModelFamilies != nil {
 		for _, family := range model.Config.ModelFamilies {
 			if family == "llama" || family == "mistral" || family == "gpt" {
 				return true
@@ -395,13 +396,13 @@ func isTransformerModel(model *server.Model) bool {
 func (po *PartitionOptimizer) OptimizePlan(plan *PartitionPlan) *PartitionPlan {
 	// Calculate optimization score
 	plan.OptimizationScore = po.calculateOptimizationScore(plan)
-	
+
 	// Apply optimizations
 	optimizedPlan := po.applyOptimizations(plan)
-	
+
 	// Recalculate score
 	optimizedPlan.OptimizationScore = po.calculateOptimizationScore(optimizedPlan)
-	
+
 	return optimizedPlan
 }
 
@@ -410,15 +411,15 @@ func (po *PartitionOptimizer) calculateOptimizationScore(plan *PartitionPlan) fl
 	// Weighted score based on latency, throughput, and resource usage
 	latencyScore := 1.0 - (float64(plan.EstimatedLatency) / float64(time.Second))
 	throughputScore := plan.EstimatedThroughput / 1000.0 // Normalize to 1000 ops/sec
-	memoryScore := 1.0 // Placeholder for memory efficiency
-	bandwidthScore := 1.0 // Placeholder for bandwidth efficiency
-	
+	memoryScore := 1.0                                   // Placeholder for memory efficiency
+	bandwidthScore := 1.0                                // Placeholder for bandwidth efficiency
+
 	// Weighted combination
 	score := po.optimizationWeights["latency"]*latencyScore +
-			po.optimizationWeights["throughput"]*throughputScore +
-			po.optimizationWeights["memory"]*memoryScore +
-			po.optimizationWeights["bandwidth"]*bandwidthScore
-	
+		po.optimizationWeights["throughput"]*throughputScore +
+		po.optimizationWeights["memory"]*memoryScore +
+		po.optimizationWeights["bandwidth"]*bandwidthScore
+
 	return math.Max(0.0, math.Min(1.0, score))
 }
 
@@ -434,20 +435,20 @@ func (po *PartitionOptimizer) applyOptimizations(plan *PartitionPlan) *Partition
 		EstimatedThroughput: plan.EstimatedThroughput,
 		CreatedAt:           time.Now(),
 	}
-	
+
 	// Copy partitions
 	copy(optimized.Partitions, plan.Partitions)
-	
+
 	// Copy metadata
 	for k, v := range plan.Metadata {
 		optimized.Metadata[k] = v
 	}
-	
+
 	// Apply specific optimizations
 	optimized = po.optimizePartitionPlacement(optimized)
 	optimized = po.optimizeResourceUsage(optimized)
 	optimized = po.optimizeCommunication(optimized)
-	
+
 	return optimized
 }
 
@@ -463,7 +464,7 @@ func (po *PartitionOptimizer) optimizePartitionPlacement(plan *PartitionPlan) *P
 		partition.Metadata["optimized_placement"] = true
 		partition.Metadata["optimization_step"] = i
 	}
-	
+
 	return plan
 }
 
@@ -477,7 +478,7 @@ func (po *PartitionOptimizer) optimizeResourceUsage(plan *PartitionPlan) *Partit
 		}
 		partition.Metadata["resource_optimized"] = true
 	}
-	
+
 	return plan
 }
 
@@ -491,19 +492,19 @@ func (po *PartitionOptimizer) optimizeCommunication(plan *PartitionPlan) *Partit
 		}
 		partition.Metadata["communication_optimized"] = true
 	}
-	
+
 	return plan
 }
 
 // RecordResult records the result of a partitioning decision for learning
 func (po *PartitionOptimizer) RecordResult(result *PartitionResult) {
 	po.history = append(po.history, result)
-	
+
 	// Keep only last 1000 results
 	if len(po.history) > 1000 {
 		po.history = po.history[len(po.history)-1000:]
 	}
-	
+
 	// Learn from result
 	po.learnFromResult(result)
 }
@@ -524,7 +525,7 @@ func (po *PartitionOptimizer) learnFromResult(result *PartitionResult) {
 		po.optimizationWeights["latency"] *= (1.0 - po.learningRate)
 		po.optimizationWeights["throughput"] *= (1.0 - po.learningRate)
 	}
-	
+
 	// Normalize weights
 	po.normalizeWeights()
 }
@@ -535,7 +536,7 @@ func (po *PartitionOptimizer) normalizeWeights() {
 	for _, weight := range po.optimizationWeights {
 		sum += weight
 	}
-	
+
 	if sum > 0 {
 		for key, weight := range po.optimizationWeights {
 			po.optimizationWeights[key] = weight / sum

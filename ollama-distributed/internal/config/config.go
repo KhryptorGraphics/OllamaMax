@@ -63,10 +63,13 @@ type P2PConfig struct {
 
 // ConsensusConfig holds consensus engine configuration
 type ConsensusConfig struct {
+	NodeID           string        `yaml:"node_id"`
 	DataDir          string        `yaml:"data_dir"`
 	BindAddr         string        `yaml:"bind_addr"`
 	AdvertiseAddr    string        `yaml:"advertise_addr"`
 	Bootstrap        bool          `yaml:"bootstrap"`
+	BootstrapExpect  int           `yaml:"bootstrap_expect"`
+	Peers            []string      `yaml:"peers"`
 	LogLevel         string        `yaml:"log_level"`
 	HeartbeatTimeout time.Duration `yaml:"heartbeat_timeout"`
 	ElectionTimeout  time.Duration `yaml:"election_timeout"`
@@ -396,31 +399,79 @@ func DefaultConfig() *Config {
 	}
 }
 
-// Load loads configuration from file
+// Load loads configuration from file with environment-specific support
 func Load(configFile string) (*Config, error) {
 	config := DefaultConfig()
+	
+	// Determine environment from environment variable or default to development
+	environment := os.Getenv("OLLAMA_ENVIRONMENT")
+	if environment == "" {
+		environment = "development"
+	}
 	
 	if configFile != "" {
 		viper.SetConfigFile(configFile)
 	} else {
-		// Look for config in standard locations
-		viper.SetConfigName("config")
-		viper.SetConfigType("yaml")
-		viper.AddConfigPath(".")
-		viper.AddConfigPath("./config")
-		viper.AddConfigPath("$HOME/.ollama-distributed")
-		viper.AddConfigPath("/etc/ollama-distributed")
+		// First try environment-specific config
+		envConfigFile := fmt.Sprintf("config/%s.yaml", environment)
+		if _, err := os.Stat(envConfigFile); err == nil {
+			viper.SetConfigFile(envConfigFile)
+		} else {
+			// Fallback to standard config locations
+			viper.SetConfigName("config")
+			viper.SetConfigType("yaml")
+			viper.AddConfigPath(".")
+			viper.AddConfigPath("./config")
+			viper.AddConfigPath("$HOME/.ollama-distributed")
+			viper.AddConfigPath("/etc/ollama-distributed")
+		}
 	}
 	
-	// Environment variables
+	// Environment variables with automatic env mapping
 	viper.SetEnvPrefix("OLLAMA")
 	viper.AutomaticEnv()
+	
+	// Map environment variables to nested config keys
+	viper.BindEnv("node.id", "OLLAMA_NODE_ID")
+	viper.BindEnv("node.name", "OLLAMA_NODE_NAME")
+	viper.BindEnv("node.region", "OLLAMA_NODE_REGION")
+	viper.BindEnv("node.zone", "OLLAMA_NODE_ZONE")
+	viper.BindEnv("node.environment", "OLLAMA_ENVIRONMENT")
+	
+	viper.BindEnv("api.listen", "OLLAMA_API_LISTEN")
+	viper.BindEnv("api.tls.enabled", "OLLAMA_TLS_ENABLED")
+	viper.BindEnv("api.tls.cert_file", "OLLAMA_TLS_CERT_FILE")
+	viper.BindEnv("api.tls.key_file", "OLLAMA_TLS_KEY_FILE")
+	
+	viper.BindEnv("security.auth.enabled", "OLLAMA_AUTH_ENABLED")
+	viper.BindEnv("security.auth.secret_key", "OLLAMA_JWT_SECRET")
+	viper.BindEnv("security.auth.method", "OLLAMA_AUTH_METHOD")
+	
+	viper.BindEnv("metrics.enabled", "OLLAMA_METRICS_ENABLED")
+	viper.BindEnv("metrics.listen", "OLLAMA_METRICS_LISTEN")
+	
+	viper.BindEnv("logging.level", "OLLAMA_LOG_LEVEL")
+	viper.BindEnv("logging.format", "OLLAMA_LOG_FORMAT")
+	viper.BindEnv("logging.output", "OLLAMA_LOG_OUTPUT")
+	viper.BindEnv("logging.file", "OLLAMA_LOG_FILE")
+	
+	viper.BindEnv("consensus.bootstrap", "OLLAMA_CONSENSUS_BOOTSTRAP")
+	viper.BindEnv("consensus.bind_addr", "OLLAMA_CONSENSUS_BIND_ADDR")
+	viper.BindEnv("consensus.advertise_addr", "OLLAMA_CONSENSUS_ADVERTISE_ADDR")
+	
+	viper.BindEnv("storage.data_dir", "OLLAMA_DATA_DIR")
+	viper.BindEnv("storage.model_dir", "OLLAMA_MODEL_DIR")
+	viper.BindEnv("storage.cache_dir", "OLLAMA_CACHE_DIR")
 	
 	// Read configuration
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			return nil, fmt.Errorf("failed to read config file: %w", err)
 		}
+		// If no config file found, proceed with defaults and env vars
+		fmt.Printf("Warning: No config file found, using defaults and environment variables\n")
+	} else {
+		fmt.Printf("Using config file: %s\n", viper.ConfigFileUsed())
 	}
 	
 	// Unmarshal into config struct
@@ -428,10 +479,34 @@ func Load(configFile string) (*Config, error) {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 	
+	// Set environment in config if not already set
+	if config.Node.Environment == "" {
+		config.Node.Environment = environment
+	}
+	
+	// Generate node ID if not provided
+	if config.Node.ID == "" {
+		hostname, _ := os.Hostname()
+		config.Node.ID = fmt.Sprintf("%s-%s", hostname, environment)
+	}
+	
+	// Set consensus node ID if not provided
+	if config.Consensus.NodeID == "" {
+		config.Consensus.NodeID = config.Node.ID
+	}
+	
 	// Validate and set defaults
 	if err := config.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid configuration: %w", err)
 	}
+	
+	// Log configuration summary
+	fmt.Printf("Configuration loaded for environment: %s\n", config.Node.Environment)
+	fmt.Printf("Node ID: %s\n", config.Node.ID)
+	fmt.Printf("API Listen: %s\n", config.API.Listen)
+	fmt.Printf("Metrics Enabled: %t\n", config.Metrics.Enabled)
+	fmt.Printf("TLS Enabled: %t\n", config.Security.TLS.Enabled)
+	fmt.Printf("Auth Enabled: %t\n", config.Security.Auth.Enabled)
 	
 	return config, nil
 }

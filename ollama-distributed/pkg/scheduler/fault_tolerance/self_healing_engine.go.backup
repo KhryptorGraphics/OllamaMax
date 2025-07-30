@@ -1,0 +1,1229 @@
+package fault_tolerance
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"math"
+	"sync"
+	"time"
+
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/scheduler/types"
+)
+
+// SelfHealingEngine interface for healing operations
+type SelfHealingEngine interface {
+	Start() error
+	Stop() error
+	GetMetrics() *SelfHealingMetrics
+}
+
+// HealingAttempt represents a healing attempt
+type HealingAttempt struct {
+	ID        string
+	Type      string
+	Target    string
+	Strategy  string
+	Success   bool
+	Error     error
+	Timestamp time.Time
+}
+
+// SelfHealingStrategy interface for healing strategies
+type SelfHealingStrategy interface {
+	Name() string
+	CanHeal(fault *FaultDetection) bool
+	Heal(fault *FaultDetection) error
+}
+
+// SelfHealingEngineImpl automatically heals the system from faults
+type SelfHealingEngineImpl struct {
+	manager           *EnhancedFaultToleranceManager
+	interval          time.Duration
+	threshold         float64
+	healingStrategies []SelfHealingStrategyImpl
+	strategyWeights   map[string]float64
+	healingHistory    []*HealingAttemptImpl
+	healingHistoryMu  sync.RWMutex
+	learning          bool
+	successRate       float64
+	metrics           *SelfHealingMetrics
+	mu                sync.RWMutex
+}
+
+// SelfHealingMetrics tracks self-healing metrics
+type SelfHealingMetrics struct {
+	SelfHealingAttempts  int64         `json:"self_healing_attempts"`
+	SelfHealingSuccesses int64         `json:"self_healing_successes"`
+	SelfHealingFailures  int64         `json:"self_healing_failures"`
+	AverageHealingTime   time.Duration `json:"average_healing_time"`
+	LastSelfHealing      *time.Time    `json:"last_self_healing,omitempty"`
+	LastUpdated          time.Time     `json:"last_updated"`
+}
+
+// SelfHealingStrategyImpl defines the interface for self-healing strategies
+type SelfHealingStrategyImpl interface {
+	Apply(ctx context.Context, systemState *SystemStateImpl) (*HealingResultImpl, error)
+	GetName() string
+	GetWeight() float64
+	SetWeight(weight float64)
+	CanHandle(state *SystemStateImpl) bool
+}
+
+// HealingAttemptImpl represents a self-healing attempt implementation
+type HealingAttemptImpl struct {
+	ID          string                 `json:"id"`
+	Timestamp   time.Time              `json:"timestamp"`
+	Strategy    string                 `json:"strategy"`
+	SystemState *SystemStateImpl       `json:"system_state"`
+	Result      *HealingResultImpl     `json:"result"`
+	Duration    time.Duration          `json:"duration"`
+	Success     bool                   `json:"success"`
+	Metadata    map[string]interface{} `json:"metadata"`
+}
+
+// HealingResultImpl represents the result of a healing attempt implementation
+type HealingResultImpl struct {
+	Improvement  float64            `json:"improvement"`
+	Metrics      map[string]float64 `json:"metrics"`
+	ActionsTaken []string           `json:"actions_taken"`
+	Error        string             `json:"error,omitempty"`
+	Timestamp    time.Time          `json:"timestamp"`
+}
+
+// SystemStateImpl represents the current system state implementation
+type SystemStateImpl struct {
+	Nodes       []*types.NodeInfo         `json:"nodes"`
+	Resources   *types.ResourceMetrics    `json:"resources"`
+	Performance *types.PerformanceMetrics `json:"performance"`
+	Health      *types.HealthMetrics      `json:"health"`
+	Faults      []*types.FaultDetection   `json:"faults"`
+	Metadata    map[string]interface{}    `json:"metadata"`
+	Timestamp   time.Time                 `json:"timestamp"`
+}
+
+// ResourceMetrics represents resource metrics
+type ResourceMetrics struct {
+	CPUUtilization     float64   `json:"cpu_utilization"`
+	MemoryUtilization  float64   `json:"memory_utilization"`
+	DiskUtilization    float64   `json:"disk_utilization"`
+	GPUUtilization     float64   `json:"gpu_utilization"`
+	NetworkUtilization float64   `json:"network_utilization"`
+	ActiveRequests     int       `json:"active_requests"`
+	QueuedRequests     int       `json:"queued_requests"`
+	LoadAverage        float64   `json:"load_average"`
+	LastUpdated        time.Time `json:"last_updated"`
+}
+
+// PerformanceMetrics represents performance metrics
+type PerformanceMetrics struct {
+	AverageLatency    time.Duration `json:"average_latency"`
+	Throughput        float64       `json:"throughput"`
+	SuccessRate       float64       `json:"success_rate"`
+	ErrorRate         float64       `json:"error_rate"`
+	RequestsProcessed int64         `json:"requests_processed"`
+	LastUpdated       time.Time     `json:"last_updated"`
+}
+
+// HealthMetrics represents health metrics
+type HealthMetrics struct {
+	TotalNodes         int64     `json:"total_nodes"`
+	HealthyNodes       int64     `json:"healthy_nodes"`
+	UnhealthyNodes     int64     `json:"unhealthy_nodes"`
+	AverageHealthScore float64   `json:"average_health_score"`
+	WorstNodeHealth    float64   `json:"worst_node_health"`
+	BestNodeHealth     float64   `json:"best_node_health"`
+	LastUpdated        time.Time `json:"last_updated"`
+}
+
+// NewSelfHealingEngine creates a new self-healing engine
+func NewSelfHealingEngine(config *EnhancedFaultToleranceConfig, manager *FaultToleranceManager) *SelfHealingEngineImpl {
+	// Create enhanced manager (stub implementation)
+	enhancedManager := &EnhancedFaultToleranceManager{
+		FaultToleranceManager: manager,
+	}
+
+	she := &SelfHealingEngineImpl{
+		manager:           enhancedManager,
+		interval:          config.SelfHealingInterval,
+		threshold:         config.SelfHealingThreshold,
+		healingStrategies: make([]SelfHealingStrategyImpl, 0),
+		strategyWeights: map[string]float64{
+			"restart_services":     0.25,
+			"resource_rebalancing": 0.30,
+			"load_shedding":        0.20,
+			"component_scaling":    0.15,
+			"network_optimization": 0.10,
+		},
+		healingHistory: make([]*HealingAttemptImpl, 0),
+		learning:       config.EnableSelfHealing,
+		successRate:    0.0,
+		metrics: &SelfHealingMetrics{
+			LastUpdated: time.Now(),
+		},
+	}
+
+	// Initialize healing strategies
+	she.initializeStrategies()
+
+	return she
+}
+
+// initializeStrategies initializes self-healing strategies
+func (she *SelfHealingEngineImpl) initializeStrategies() {
+	// Add restart services strategy
+	she.healingStrategies = append(she.healingStrategies, &RestartServicesStrategy{
+		weight: 0.25,
+	})
+
+	// Add resource rebalancing strategy
+	she.healingStrategies = append(she.healingStrategies, &ResourceRebalancingStrategy{
+		weight: 0.30,
+	})
+
+	// Add load shedding strategy
+	she.healingStrategies = append(she.healingStrategies, &LoadSheddingSelfHealingStrategy{
+		weight: 0.20,
+	})
+
+	// Add component scaling strategy
+	she.healingStrategies = append(she.healingStrategies, &ComponentScalingStrategy{
+		weight: 0.15,
+	})
+
+	// Add network optimization strategy
+	she.healingStrategies = append(she.healingStrategies, &NetworkOptimizationStrategy{
+		weight: 0.10,
+	})
+}
+
+// start starts the self-healing engine
+func (she *SelfHealingEngineImpl) start(ctx context.Context, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	ticker := time.NewTicker(she.interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			she.healSystemAutomatically()
+		}
+	}
+}
+
+// healSystemAutomatically automatically heals the system
+func (she *SelfHealingEngineImpl) healSystemAutomatically() {
+	if !she.learning {
+		return
+	}
+
+	start := time.Now()
+
+	// Get current system state
+	systemState := she.getCurrentSystemState()
+
+	// Check if healing is needed
+	if !she.needsHealing(systemState) {
+		return
+	}
+
+	// Apply healing strategies
+	attempt := &HealingAttemptImpl{
+		ID:          fmt.Sprintf("heal_%d", time.Now().UnixNano()),
+		Timestamp:   time.Now(),
+		SystemState: systemState,
+		Metadata:    make(map[string]interface{}),
+	}
+
+	// Select and apply best strategy
+	strategy := she.selectBestStrategy(systemState)
+	if strategy != nil {
+		attempt.Strategy = strategy.GetName()
+
+		// Apply strategy
+		result, err := strategy.Apply(context.Background(), systemState)
+		attempt.Duration = time.Since(start)
+
+		if err != nil {
+			attempt.Success = false
+			attempt.Result = &HealingResultImpl{
+				Error:     err.Error(),
+				Timestamp: time.Now(),
+			}
+		} else {
+			attempt.Success = true
+			attempt.Result = result
+
+			// Update metrics
+			she.updateMetrics(attempt)
+		}
+	} else {
+		attempt.Success = false
+		attempt.Result = &HealingResultImpl{
+			Error:     "no suitable healing strategy found",
+			Timestamp: time.Now(),
+		}
+		attempt.Duration = time.Since(start)
+	}
+
+	// Add to history
+	she.addToHistory(attempt)
+
+	// Learn from result
+	she.learnFromAttempt(attempt)
+
+	// Log result
+	if attempt.Success {
+		slog.Info("system healed automatically",
+			"strategy", attempt.Strategy,
+			"duration", attempt.Duration,
+			"improvement", attempt.Result.Improvement)
+	} else {
+		slog.Warn("system healing attempt failed",
+			"strategy", attempt.Strategy,
+			"duration", attempt.Duration,
+			"error", attempt.Result.Error)
+	}
+}
+
+// healSystem heals the system for a specific fault
+func (she *SelfHealingEngineImpl) healSystem(fault *FaultDetection) {
+	if !she.learning {
+		return
+	}
+
+	start := time.Now()
+
+	// Get current system state
+	systemState := she.getCurrentSystemState()
+
+	// Add fault to system state
+	systemState.Faults = append(systemState.Faults, fault)
+
+	// Apply healing strategies
+	attempt := &HealingAttemptImpl{
+		ID:          fmt.Sprintf("heal_%s_%d", fault.ID, time.Now().UnixNano()),
+		Timestamp:   time.Now(),
+		SystemState: systemState,
+		Metadata: map[string]interface{}{
+			"fault_id":     fault.ID,
+			"fault_type":   fault.Type,
+			"fault_target": fault.Target,
+		},
+	}
+
+	// Select and apply best strategy
+	strategy := she.selectBestStrategy(systemState)
+	if strategy != nil {
+		attempt.Strategy = strategy.GetName()
+
+		// Apply strategy
+		result, err := strategy.Apply(context.Background(), systemState)
+		attempt.Duration = time.Since(start)
+
+		if err != nil {
+			attempt.Success = false
+			attempt.Result = &HealingResultImpl{
+				Error:     err.Error(),
+				Timestamp: time.Now(),
+			}
+		} else {
+			attempt.Success = true
+			attempt.Result = result
+
+			// Update metrics
+			she.updateMetrics(attempt)
+		}
+	} else {
+		attempt.Success = false
+		attempt.Result = &HealingResultImpl{
+			Error:     "no suitable healing strategy found",
+			Timestamp: time.Now(),
+		}
+		attempt.Duration = time.Since(start)
+	}
+
+	// Add to history
+	she.addToHistory(attempt)
+
+	// Learn from result
+	she.learnFromAttempt(attempt)
+
+	// Log result
+	if attempt.Success {
+		slog.Info("system healed for fault",
+			"fault_id", fault.ID,
+			"strategy", attempt.Strategy,
+			"duration", attempt.Duration,
+			"improvement", attempt.Result.Improvement)
+	} else {
+		slog.Warn("system healing for fault failed",
+			"fault_id", fault.ID,
+			"strategy", attempt.Strategy,
+			"duration", attempt.Duration,
+			"error", attempt.Result.Error)
+	}
+}
+
+// getCurrentSystemState gets the current system state (stub implementation)
+func (she *SelfHealingEngineImpl) getCurrentSystemState() *SystemStateImpl {
+	// Stub implementation - return minimal state with correct types
+	return &SystemStateImpl{
+		Nodes:       make([]*types.NodeInfo, 0),
+		Resources:   &types.ResourceMetrics{},
+		Performance: &types.PerformanceMetrics{},
+		Health:      &types.HealthMetrics{},
+		Faults:      make([]*types.FaultDetection, 0),
+		Metadata:    make(map[string]interface{}),
+		Timestamp:   time.Now(),
+	}
+}
+
+// needsHealing checks if the system needs healing (stub implementation)
+func (she *SelfHealingEngineImpl) needsHealing(state *SystemStateImpl) bool {
+	// Stub implementation - always return false for now
+	return false
+
+	// Check fault count
+	if len(state.Faults) > 5 { // More than 5 active faults
+		return true
+	}
+
+	return false
+}
+
+// selectBestStrategy selects the best healing strategy for the system state
+func (she *SelfHealingEngineImpl) selectBestStrategy(state *SystemStateImpl) SelfHealingStrategyImpl {
+	if len(she.healingStrategies) == 0 {
+		return nil
+	}
+
+	// Score strategies based on system state
+	strategyScores := make(map[SelfHealingStrategyImpl]float64)
+
+	for _, strategy := range she.healingStrategies {
+		if strategy.CanHandle(state) {
+			// Calculate score based on strategy weight and system state
+			weight := strategy.GetWeight()
+
+			// Adjust weight based on system state
+			adjustedWeight := she.adjustWeightForState(weight, state, strategy)
+			strategyScores[strategy] = adjustedWeight
+		}
+	}
+
+	// Select strategy with highest score
+	var bestStrategy SelfHealingStrategy
+	highestScore := 0.0
+
+	for strategy, score := range strategyScores {
+		if score > highestScore {
+			highestScore = score
+			bestStrategy = strategy
+		}
+	}
+
+	return bestStrategy
+}
+
+// adjustWeightForState adjusts strategy weight based on system state
+func (she *SelfHealingEngineImpl) adjustWeightForState(weight float64, state *SystemStateImpl, strategy SelfHealingStrategyImpl) float64 {
+	// Base adjustment
+	adjustedWeight := weight
+
+	// Adjust based on health
+	if state.Health.AverageHealthScore < 0.5 {
+		// System is unhealthy, increase weight for healing strategies
+		adjustedWeight *= 1.5
+	}
+
+	// Adjust based on resource utilization
+	if state.Resources.CPUUtilization > 80.0 ||
+		state.Resources.MemoryUtilization > 80.0 ||
+		state.Resources.DiskUtilization > 80.0 {
+		// High resource utilization, adjust accordingly
+		resourcePressure := (state.Resources.CPUUtilization +
+			state.Resources.MemoryUtilization +
+			state.Resources.DiskUtilization) / 300.0
+
+		adjustedWeight *= (1.0 + resourcePressure)
+	}
+
+	// Adjust based on performance
+	if state.Performance.ErrorRate > 0.05 {
+		// High error rate, increase weight for error-reducing strategies
+		adjustedWeight *= (1.0 + state.Performance.ErrorRate*2.0)
+	}
+
+	// Adjust based on fault count
+	if len(state.Faults) > 3 {
+		// Many faults, increase weight for fault-reducing strategies
+		adjustedWeight *= (1.0 + float64(len(state.Faults))/10.0)
+	}
+
+	// Cap weight at 1.0
+	if adjustedWeight > 1.0 {
+		adjustedWeight = 1.0
+	}
+
+	return adjustedWeight
+}
+
+// getResourceMetrics gets current resource metrics
+func (she *SelfHealingEngineImpl) getResourceMetrics() *ResourceMetrics {
+	// Get nodes
+	nodes := she.manager.GetAvailableNodes()
+
+	// Calculate aggregate metrics
+	totalCPU := 0.0
+	totalMemory := 0.0
+	totalDisk := 0.0
+	totalGPU := 0.0
+	totalNetwork := 0.0
+	totalActiveRequests := 0
+	totalQueuedRequests := 0
+	totalLoad := 0.0
+
+	for _, node := range nodes {
+		totalCPU += node.Usage.CPUUtilization
+		totalMemory += node.Usage.MemoryUtilization
+		totalDisk += node.Usage.DiskUtilization
+		totalGPU += node.Usage.GPUUtilization
+		totalNetwork += node.Usage.NetworkUtilization
+		totalActiveRequests += node.Usage.ActiveRequests
+		totalQueuedRequests += node.Usage.QueuedRequests
+		totalLoad += node.Usage.LoadAverage
+	}
+
+	nodeCount := float64(len(nodes))
+	if nodeCount == 0 {
+		nodeCount = 1.0 // Avoid division by zero
+	}
+
+	return &ResourceMetrics{
+		CPUUtilization:     totalCPU / nodeCount,
+		MemoryUtilization:  totalMemory / nodeCount,
+		DiskUtilization:    totalDisk / nodeCount,
+		GPUUtilization:     totalGPU / nodeCount,
+		NetworkUtilization: totalNetwork / nodeCount,
+		ActiveRequests:     totalActiveRequests,
+		QueuedRequests:     totalQueuedRequests,
+		LoadAverage:        totalLoad / nodeCount,
+		LastUpdated:        time.Now(),
+	}
+}
+
+// getPerformanceMetrics gets current performance metrics
+func (she *SelfHealingEngineImpl) getPerformanceMetrics() *PerformanceMetrics {
+	// Get base metrics
+	baseMetrics := she.manager.GetMetrics()
+
+	// Calculate derived metrics
+	averageLatency := time.Duration(0)
+	throughput := 0.0
+	successRate := 0.0
+	errorRate := 0.0
+
+	if baseMetrics.RequestsProcessed > 0 {
+		averageLatency = baseMetrics.AverageLatency
+		throughput = baseMetrics.Throughput
+		successRate = baseMetrics.SuccessRate
+		errorRate = 1.0 - successRate
+	}
+
+	return &PerformanceMetrics{
+		AverageLatency:    averageLatency,
+		Throughput:        throughput,
+		SuccessRate:       successRate,
+		ErrorRate:         errorRate,
+		RequestsProcessed: baseMetrics.RequestsProcessed,
+		LastUpdated:       time.Now(),
+	}
+}
+
+// getHealthMetrics gets current health metrics
+func (she *SelfHealingEngineImpl) getHealthMetrics() *HealthMetrics {
+	// Get nodes
+	nodes := she.manager.GetAvailableNodes()
+
+	totalNodes := int64(len(nodes))
+	healthyNodes := int64(0)
+	unhealthyNodes := int64(0)
+	totalHealthScore := 0.0
+	worstHealth := 100.0
+	bestHealth := 0.0
+
+	for _, node := range nodes {
+		if node.Status == NodeStatusOnline {
+			healthyNodes++
+		} else {
+			unhealthyNodes++
+		}
+
+		healthScore := node.HealthScore
+		totalHealthScore += healthScore
+
+		if healthScore < worstHealth {
+			worstHealth = healthScore
+		}
+
+		if healthScore > bestHealth {
+			bestHealth = healthScore
+		}
+	}
+
+	averageHealthScore := 0.0
+	if totalNodes > 0 {
+		averageHealthScore = totalHealthScore / float64(totalNodes)
+	}
+
+	return &HealthMetrics{
+		TotalNodes:         totalNodes,
+		HealthyNodes:       healthyNodes,
+		UnhealthyNodes:     unhealthyNodes,
+		AverageHealthScore: averageHealthScore,
+		WorstNodeHealth:    worstHealth,
+		BestNodeHealth:     bestHealth,
+		LastUpdated:        time.Now(),
+	}
+}
+
+// updateMetrics updates self-healing metrics
+func (she *SelfHealingEngine) updateMetrics(attempt *HealingAttempt) {
+	she.mu.Lock()
+	defer she.mu.Unlock()
+
+	she.metrics.SelfHealingAttempts++
+
+	if attempt.Success {
+		she.metrics.SelfHealingSuccesses++
+
+		// Update average healing time
+		if she.metrics.AverageHealingTime == 0 {
+			she.metrics.AverageHealingTime = attempt.Duration
+		} else {
+			totalTime := she.metrics.AverageHealingTime*time.Duration(she.metrics.SelfHealingSuccesses-1) + attempt.Duration
+			she.metrics.AverageHealingTime = totalTime / time.Duration(she.metrics.SelfHealingSuccesses)
+		}
+	} else {
+		she.metrics.SelfHealingFailures++
+	}
+
+	// Update success rate
+	if she.metrics.SelfHealingAttempts > 0 {
+		she.successRate = float64(she.metrics.SelfHealingSuccesses) / float64(she.metrics.SelfHealingAttempts)
+	}
+
+	// Update timestamps
+	now := time.Now()
+	she.metrics.LastSelfHealing = &now
+	she.metrics.LastUpdated = now
+}
+
+// addToHistory adds a healing attempt to history
+func (she *SelfHealingEngine) addToHistory(attempt *HealingAttempt) {
+	she.healingHistoryMu.Lock()
+	defer she.healingHistoryMu.Unlock()
+
+	// Add to history
+	she.healingHistory = append(she.healingHistory, attempt)
+
+	// Keep only last 1000 attempts
+	if len(she.healingHistory) > 1000 {
+		she.healingHistory = she.healingHistory[len(she.healingHistory)-1000:]
+	}
+}
+
+// learnFromAttempt learns from a healing attempt to improve future decisions
+func (she *SelfHealingEngine) learnFromAttempt(attempt *HealingAttempt) {
+	if !she.learning {
+		return
+	}
+
+	// Update strategy weight based on success
+	strategy, exists := she.getStrategyByName(attempt.Strategy)
+	if !exists {
+		return
+	}
+
+	// Adjust weight based on success
+	currentWeight := strategy.GetWeight()
+
+	if attempt.Success {
+		// Increase weight for successful strategies
+		newWeight := currentWeight * 1.1
+		if newWeight > 1.0 {
+			newWeight = 1.0
+		}
+		strategy.SetWeight(newWeight)
+	} else {
+		// Decrease weight for failed strategies
+		newWeight := currentWeight * 0.9
+		if newWeight < 0.1 {
+			newWeight = 0.1
+		}
+		strategy.SetWeight(newWeight)
+	}
+
+	// Log learning
+	slog.Debug("strategy weight updated",
+		"strategy", attempt.Strategy,
+		"previous_weight", currentWeight,
+		"new_weight", strategy.GetWeight(),
+		"success", attempt.Success)
+}
+
+// getStrategyByName gets a strategy by name
+func (she *SelfHealingEngine) getStrategyByName(name string) (SelfHealingStrategy, bool) {
+	for _, strategy := range she.healingStrategies {
+		if strategy.GetName() == name {
+			return strategy, true
+		}
+	}
+	return nil, false
+}
+
+// GetMetrics returns self-healing metrics
+func (she *SelfHealingEngine) GetMetrics() *SelfHealingMetrics {
+	she.mu.RLock()
+	defer she.mu.RUnlock()
+
+	// Create a copy of metrics to avoid race conditions
+	metrics := &SelfHealingMetrics{
+		SelfHealingAttempts:  she.metrics.SelfHealingAttempts,
+		SelfHealingSuccesses: she.metrics.SelfHealingSuccesses,
+		SelfHealingFailures:  she.metrics.SelfHealingFailures,
+		AverageHealingTime:   she.metrics.AverageHealingTime,
+		LastSelfHealing:      she.metrics.LastSelfHealing,
+		LastUpdated:          she.metrics.LastUpdated,
+	}
+
+	return metrics
+}
+
+// GetSuccessRate returns the self-healing success rate
+func (she *SelfHealingEngine) GetSuccessRate() float64 {
+	she.mu.RLock()
+	defer she.mu.RUnlock()
+
+	return she.successRate
+}
+
+// GetHistory returns healing history
+func (she *SelfHealingEngine) GetHistory() []*HealingAttempt {
+	she.healingHistoryMu.RLock()
+	defer she.healingHistoryMu.RUnlock()
+
+	// Create a copy of history to avoid race conditions
+	history := make([]*HealingAttempt, len(she.healingHistory))
+	copy(history, she.healingHistory)
+
+	return history
+}
+
+// GetStrategies returns all healing strategies
+func (she *SelfHealingEngine) GetStrategies() []SelfHealingStrategy {
+	she.mu.RLock()
+	defer she.mu.RUnlock()
+
+	// Create a copy of strategies to avoid race conditions
+	strategies := make([]SelfHealingStrategy, len(she.healingStrategies))
+	copy(strategies, she.healingStrategies)
+
+	return strategies
+}
+
+// GetStrategyWeights returns strategy weights
+func (she *SelfHealingEngine) GetStrategyWeights() map[string]float64 {
+	she.mu.RLock()
+	defer she.mu.RUnlock()
+
+	// Create a copy of weights to avoid race conditions
+	weights := make(map[string]float64)
+	for k, v := range she.strategyWeights {
+		weights[k] = v
+	}
+
+	return weights
+}
+
+// SetStrategyWeight sets the weight for a specific strategy
+func (she *SelfHealingEngine) SetStrategyWeight(strategyName string, weight float64) {
+	she.mu.Lock()
+	defer she.mu.Unlock()
+
+	// Clamp weight between 0.0 and 1.0
+	if weight < 0.0 {
+		weight = 0.0
+	}
+	if weight > 1.0 {
+		weight = 1.0
+	}
+
+	she.strategyWeights[strategyName] = weight
+
+	// Update actual strategy if it exists
+	for _, strategy := range she.healingStrategies {
+		if strategy.GetName() == strategyName {
+			strategy.SetWeight(weight)
+			break
+		}
+	}
+
+	slog.Debug("strategy weight updated",
+		"strategy", strategyName,
+		"weight", weight)
+}
+
+// Enable enables self-healing
+func (she *SelfHealingEngine) Enable() {
+	she.mu.Lock()
+	defer she.mu.Unlock()
+
+	she.learning = true
+	slog.Info("self-healing enabled")
+}
+
+// Disable disables self-healing
+func (she *SelfHealingEngine) Disable() {
+	she.mu.Lock()
+	defer she.mu.Unlock()
+
+	she.learning = false
+	slog.Info("self-healing disabled")
+}
+
+// IsEnabled returns true if self-healing is enabled
+func (she *SelfHealingEngine) IsEnabled() bool {
+	she.mu.RLock()
+	defer she.mu.RUnlock()
+
+	return she.learning
+}
+
+// SetThreshold sets the self-healing threshold
+func (she *SelfHealingEngine) SetThreshold(threshold float64) {
+	she.mu.Lock()
+	defer she.mu.Unlock()
+
+	she.threshold = threshold
+	slog.Info("self-healing threshold updated", "threshold", threshold)
+}
+
+// GetThreshold returns the self-healing threshold
+func (she *SelfHealingEngine) GetThreshold() float64 {
+	she.mu.RLock()
+	defer she.mu.RUnlock()
+
+	return she.threshold
+}
+
+// SetInterval sets the self-healing interval
+func (she *SelfHealingEngine) SetInterval(interval time.Duration) {
+	she.mu.Lock()
+	defer she.mu.Unlock()
+
+	she.interval = interval
+	slog.Info("self-healing interval updated", "interval", interval)
+}
+
+// GetInterval returns the self-healing interval
+func (she *SelfHealingEngine) GetInterval() time.Duration {
+	she.mu.RLock()
+	defer she.mu.RUnlock()
+
+	return she.interval
+}
+
+// RestartServicesStrategy restarts services to heal system issues
+type RestartServicesStrategy struct {
+	weight float64
+}
+
+// GetName returns the strategy name
+func (rss *RestartServicesStrategy) GetName() string {
+	return "restart_services"
+}
+
+// GetWeight returns the strategy weight
+func (rss *RestartServicesStrategy) GetWeight() float64 {
+	return rss.weight
+}
+
+// SetWeight sets the strategy weight
+func (rss *RestartServicesStrategy) SetWeight(weight float64) {
+	rss.weight = weight
+}
+
+// CanHandle checks if this strategy can handle the system state
+func (rss *RestartServicesStrategy) CanHandle(state *SystemStateImpl) bool {
+	// This strategy can handle most system states
+	return true
+}
+
+// Apply applies the restart services strategy
+func (rss *RestartServicesStrategy) Apply(ctx context.Context, state *SystemStateImpl) (*HealingResultImpl, error) {
+	start := time.Now()
+
+	// Restart services on affected nodes
+	actionsTaken := make([]string, 0)
+
+	// For each node with faults, restart services
+	for _, fault := range state.Faults {
+		action := fmt.Sprintf("restarting services on node %s due to fault %s", fault.Target, fault.ID)
+		actionsTaken = append(actionsTaken, action)
+
+		// In a real implementation, this would restart services on the node
+		// For now, we'll just simulate the action
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	// Calculate improvement
+	improvement := 0.1 + 0.2*math.Min(float64(len(state.Faults))/10.0, 1.0)
+
+	// Create result
+	result := &HealingResultImpl{
+		Improvement:  improvement,
+		Metrics:      make(map[string]float64),
+		ActionsTaken: actionsTaken,
+		Timestamp:    time.Now(),
+	}
+
+	result.Metrics["duration_ms"] = float64(time.Since(start).Milliseconds())
+	result.Metrics["faults_handled"] = float64(len(state.Faults))
+
+	return result, nil
+}
+
+// ResourceRebalancingStrategy rebalances resources to heal system issues
+type ResourceRebalancingStrategy struct {
+	weight float64
+}
+
+// GetName returns the strategy name
+func (rrs *ResourceRebalancingStrategy) GetName() string {
+	return "resource_rebalancing"
+}
+
+// GetWeight returns the strategy weight
+func (rrs *ResourceRebalancingStrategy) GetWeight() float64 {
+	return rrs.weight
+}
+
+// SetWeight sets the strategy weight
+func (rrs *ResourceRebalancingStrategy) SetWeight(weight float64) {
+	rrs.weight = weight
+}
+
+// CanHandle checks if this strategy can handle the system state
+func (rrs *ResourceRebalancingStrategy) CanHandle(state *SystemStateImpl) bool {
+	// This strategy can handle resource imbalance issues
+	return state.Resources.CPUUtilization > 80.0 ||
+		state.Resources.MemoryUtilization > 80.0 ||
+		state.Resources.DiskUtilization > 80.0
+}
+
+// Apply applies the resource rebalancing strategy
+func (rrs *ResourceRebalancingStrategy) Apply(ctx context.Context, state *SystemStateImpl) (*HealingResultImpl, error) {
+	start := time.Now()
+
+	// Rebalance resources across nodes
+	actionsTaken := make([]string, 0)
+
+	// Calculate current resource utilization
+	totalCPU := 0.0
+	totalMemory := 0.0
+	totalDisk := 0.0
+	nodeCount := float64(len(state.Nodes))
+
+	for _, node := range state.Nodes {
+		totalCPU += node.Usage.CPUUtilization
+		totalMemory += node.Usage.MemoryUtilization
+		totalDisk += node.Usage.DiskUtilization
+	}
+
+	avgCPU := totalCPU / nodeCount
+	avgMemory := totalMemory / nodeCount
+	avgDisk := totalDisk / nodeCount
+
+	// Identify overloaded nodes
+	overloadedNodes := make([]*NodeInfo, 0)
+	for _, node := range state.Nodes {
+		if node.Usage.CPUUtilization > avgCPU*1.2 ||
+			node.Usage.MemoryUtilization > avgMemory*1.2 ||
+			node.Usage.DiskUtilization > avgDisk*1.2 {
+			overloadedNodes = append(overloadedNodes, node)
+		}
+	}
+
+	// Move workloads from overloaded to underloaded nodes
+	for _, node := range overloadedNodes {
+		action := fmt.Sprintf("rebalancing resources from node %s", node.ID)
+		actionsTaken = append(actionsTaken, action)
+
+		// In a real implementation, this would migrate workloads
+		// For now, we'll just simulate the action
+		time.Sleep(200 * time.Millisecond)
+	}
+
+	// Calculate improvement
+	improvement := 0.2 + 0.3*math.Min(float64(len(overloadedNodes))/float64(len(state.Nodes)), 1.0)
+
+	// Create result
+	result := &HealingResultImpl{
+		Improvement:  improvement,
+		Metrics:      make(map[string]float64),
+		ActionsTaken: actionsTaken,
+		Timestamp:    time.Now(),
+	}
+
+	result.Metrics["duration_ms"] = float64(time.Since(start).Milliseconds())
+	result.Metrics["overloaded_nodes"] = float64(len(overloadedNodes))
+	result.Metrics["avg_cpu_before"] = avgCPU
+	result.Metrics["avg_memory_before"] = avgMemory
+	result.Metrics["avg_disk_before"] = avgDisk
+
+	return result, nil
+}
+
+// LoadSheddingSelfHealingStrategy sheds load to heal system issues
+// This is separate from LoadSheddingStrategy in recovery_strategies.go
+// because it implements SelfHealingStrategy interface, not RecoveryStrategy
+type LoadSheddingSelfHealingStrategy struct {
+	weight float64
+}
+
+// GetName returns the strategy name
+func (lss *LoadSheddingSelfHealingStrategy) GetName() string {
+	return "load_shedding_self_healing"
+}
+
+// GetWeight returns the strategy weight
+func (lss *LoadSheddingSelfHealingStrategy) GetWeight() float64 {
+	return lss.weight
+}
+
+// SetWeight sets the strategy weight
+func (lss *LoadSheddingSelfHealingStrategy) SetWeight(weight float64) {
+	lss.weight = weight
+}
+
+// CanHandle checks if this strategy can handle the system state
+func (lss *LoadSheddingSelfHealingStrategy) CanHandle(state *SystemStateImpl) bool {
+	// This strategy can handle high load situations
+	return state.Resources.CPUUtilization > 90.0 ||
+		state.Resources.MemoryUtilization > 90.0 ||
+		state.Resources.LoadAverage > 80.0 ||
+		state.Performance.ErrorRate > 0.1
+}
+
+// Apply applies the load shedding strategy
+func (lss *LoadSheddingSelfHealingStrategy) Apply(ctx context.Context, state *SystemStateImpl) (*HealingResultImpl, error) {
+	start := time.Now()
+
+	// Shed load to reduce system pressure
+	actionsTaken := make([]string, 0)
+
+	// Calculate current load
+	totalLoad := state.Resources.LoadAverage
+	nodeCount := float64(len(state.Nodes))
+	avgLoad := totalLoad / nodeCount
+
+	// Identify overloaded nodes
+	overloadedNodes := make([]*NodeInfo, 0)
+	for _, node := range state.Nodes {
+		if node.Usage.LoadAverage > avgLoad*1.5 {
+			overloadedNodes = append(overloadedNodes, node)
+		}
+	}
+
+	// Shed load from overloaded nodes
+	for _, node := range overloadedNodes {
+		action := fmt.Sprintf("shedding load from node %s", node.ID)
+		actionsTaken = append(actionsTaken, action)
+
+		// In a real implementation, this would reject or queue requests
+		// For now, we'll just simulate the action
+		time.Sleep(150 * time.Millisecond)
+	}
+
+	// Calculate improvement
+	improvement := 0.3 + 0.4*math.Min(float64(len(overloadedNodes))/float64(len(state.Nodes)), 1.0)
+
+	// Create result
+	result := &HealingResultImpl{
+		Improvement:  improvement,
+		Metrics:      make(map[string]float64),
+		ActionsTaken: actionsTaken,
+		Timestamp:    time.Now(),
+	}
+
+	result.Metrics["duration_ms"] = float64(time.Since(start).Milliseconds())
+	result.Metrics["overloaded_nodes"] = float64(len(overloadedNodes))
+	result.Metrics["avg_load_before"] = avgLoad
+
+	return result, nil
+}
+
+// ComponentScalingStrategy scales components to heal system issues
+type ComponentScalingStrategy struct {
+	weight float64
+}
+
+// GetName returns the strategy name
+func (css *ComponentScalingStrategy) GetName() string {
+	return "component_scaling"
+}
+
+// GetWeight returns the strategy weight
+func (css *ComponentScalingStrategy) GetWeight() float64 {
+	return css.weight
+}
+
+// SetWeight sets the strategy weight
+func (css *ComponentScalingStrategy) SetWeight(weight float64) {
+	css.weight = weight
+}
+
+// CanHandle checks if this strategy can handle the system state
+func (css *ComponentScalingStrategy) CanHandle(state *SystemStateImpl) bool {
+	// This strategy can handle resource shortages
+	return state.Resources.CPUUtilization > 70.0 &&
+		state.Performance.Throughput < 50.0
+}
+
+// Apply applies the component scaling strategy
+func (css *ComponentScalingStrategy) Apply(ctx context.Context, state *SystemStateImpl) (*HealingResultImpl, error) {
+	start := time.Now()
+
+	// Scale components to handle increased demand
+	actionsTaken := make([]string, 0)
+
+	// Identify bottlenecks
+	bottlenecks := make([]string, 0)
+	if state.Resources.CPUUtilization > 80.0 {
+		bottlenecks = append(bottlenecks, "cpu")
+	}
+	if state.Resources.MemoryUtilization > 80.0 {
+		bottlenecks = append(bottlenecks, "memory")
+	}
+	if state.Performance.Throughput < 30.0 {
+		bottlenecks = append(bottlenecks, "throughput")
+	}
+
+	// Scale components to address bottlenecks
+	for _, bottleneck := range bottlenecks {
+		action := fmt.Sprintf("scaling %s components", bottleneck)
+		actionsTaken = append(actionsTaken, action)
+
+		// In a real implementation, this would add more instances
+		// For now, we'll just simulate the action
+		time.Sleep(300 * time.Millisecond)
+	}
+
+	// Calculate improvement
+	improvement := 0.2 + 0.3*math.Min(float64(len(bottlenecks))/3.0, 1.0)
+
+	// Create result
+	result := &HealingResultImpl{
+		Improvement:  improvement,
+		Metrics:      make(map[string]float64),
+		ActionsTaken: actionsTaken,
+		Timestamp:    time.Now(),
+	}
+
+	result.Metrics["duration_ms"] = float64(time.Since(start).Milliseconds())
+	result.Metrics["bottlenecks"] = float64(len(bottlenecks))
+
+	return result, nil
+}
+
+// NetworkOptimizationStrategy optimizes network to heal system issues
+type NetworkOptimizationStrategy struct {
+	weight float64
+}
+
+// GetName returns the strategy name
+func (nos *NetworkOptimizationStrategy) GetName() string {
+	return "network_optimization"
+}
+
+// GetWeight returns the strategy weight
+func (nos *NetworkOptimizationStrategy) GetWeight() float64 {
+	return nos.weight
+}
+
+// SetWeight sets the strategy weight
+func (nos *NetworkOptimizationStrategy) SetWeight(weight float64) {
+	nos.weight = weight
+}
+
+// CanHandle checks if this strategy can handle the system state
+func (nos *NetworkOptimizationStrategy) CanHandle(state *SystemStateImpl) bool {
+	// This strategy can handle network issues
+	return state.Resources.NetworkUtilization > 80.0 ||
+		state.Performance.AverageLatency > 200*time.Millisecond
+}
+
+// Apply applies the network optimization strategy
+func (nos *NetworkOptimizationStrategy) Apply(ctx context.Context, state *SystemStateImpl) (*HealingResultImpl, error) {
+	start := time.Now()
+
+	// Optimize network configuration
+	actionsTaken := make([]string, 0)
+
+	// Identify network issues
+	networkIssues := make([]string, 0)
+	if state.Resources.NetworkUtilization > 80.0 {
+		networkIssues = append(networkIssues, "high_bandwidth")
+	}
+	if state.Performance.AverageLatency > 200*time.Millisecond {
+		networkIssues = append(networkIssues, "high_latency")
+	}
+
+	// Apply network optimizations
+	for _, issue := range networkIssues {
+		action := fmt.Sprintf("optimizing network for %s", issue)
+		actionsTaken = append(actionsTaken, action)
+
+		// In a real implementation, this would adjust network settings
+		// For now, we'll just simulate the action
+		time.Sleep(200 * time.Millisecond)
+	}
+
+	// Calculate improvement
+	improvement := 0.15 + 0.25*math.Min(float64(len(networkIssues))/2.0, 1.0)
+
+	// Create result
+	result := &HealingResultImpl{
+		Improvement:  improvement,
+		Metrics:      make(map[string]float64),
+		ActionsTaken: actionsTaken,
+		Timestamp:    time.Now(),
+	}
+
+	result.Metrics["duration_ms"] = float64(time.Since(start).Milliseconds())
+	result.Metrics["network_issues"] = float64(len(networkIssues))
+
+	return result, nil
+}
+
+// Missing method implementations (stubs for compilation)
+
+// updateMetrics updates healing metrics (stub implementation)
+func (she *SelfHealingEngineImpl) updateMetrics(attempt *HealingAttemptImpl) {
+	// Stub implementation
+}
+
+// addToHistory adds healing attempt to history (stub implementation)
+func (she *SelfHealingEngineImpl) addToHistory(attempt *HealingAttemptImpl) {
+	// Stub implementation
+}
+
+// learnFromAttempt learns from healing attempt results (stub implementation)
+func (she *SelfHealingEngineImpl) learnFromAttempt(attempt *HealingAttemptImpl) {
+	// Stub implementation
+}

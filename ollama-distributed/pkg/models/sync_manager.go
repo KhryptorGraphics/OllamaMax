@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ollama/ollama-distributed/internal/config"
-	"github.com/ollama/ollama-distributed/pkg/p2p"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/internal/config"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p"
 )
 
 // SyncManager manages model synchronization across the distributed network

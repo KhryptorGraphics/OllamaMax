@@ -174,7 +174,7 @@ func (ls *LayerwiseStrategy) Partition(ctx context.Context, task *PartitionTask)
 // estimateModelSize estimates the size of the model
 func (ls *LayerwiseStrategy) estimateModelSize(task *PartitionTask) int64 {
 	if task.GGML != nil {
-		return int64(task.GGML.Size())
+		return task.GGML.Length
 	}
 	
 	// Fallback estimation based on model metadata
@@ -194,7 +194,7 @@ func (ls *LayerwiseStrategy) estimateModelLayers(task *PartitionTask) (int, erro
 	if task.GGML != nil {
 		// Extract layer information from GGML
 		// This is a simplified implementation
-		modelSize := int64(task.GGML.Size())
+		modelSize := task.GGML.Length
 		
 		// Estimate layers based on model size
 		// This is a rough estimation
@@ -423,7 +423,7 @@ func (ls *LayerwiseStrategy) estimateLatency(layerGroups []*LayerGroup, nodeAnal
 	for _, layerGroup := range layerGroups {
 		// Estimate computation time based on layers and node throughput
 		layerCount := layerGroup.EndLayer - layerGroup.StartLayer + 1
-		computeLatency := time.Duration(float64(layerCount) * 10.0 * time.Millisecond.Nanoseconds() / layerGroup.Throughput)
+		computeLatency := time.Duration(float64(layerCount) * 10.0 * float64(time.Millisecond.Nanoseconds()) / layerGroup.Throughput)
 		
 		if computeLatency > maxComputeLatency {
 			maxComputeLatency = computeLatency

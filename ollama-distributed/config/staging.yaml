@@ -1,0 +1,191 @@
+# Staging Environment Configuration
+# Pre-production testing environment with production-like settings
+
+node:
+  id: ""
+  name: "ollama-staging-node"
+  region: "us-west-2"
+  zone: "us-west-2a"
+  environment: "staging"
+  tags:
+    purpose: "staging"
+    tier: "pre-production"
+    team: "engineering"
+
+api:
+  listen: "0.0.0.0:11434"
+  timeout: 30s
+  max_body_size: 33554432 # 32MB
+  tls:
+    enabled: true
+    cert_file: "/etc/tls/staging/server.crt"
+    key_file: "/etc/tls/staging/server.key"
+    ca_file: "/etc/tls/staging/ca.crt"
+    min_version: "1.2"
+    cipher_suites:
+      - "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"
+      - "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305"
+      - "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"
+  cors:
+    enabled: true
+    allowed_origins:
+      - "https://staging.ollamamax.com"
+      - "https://staging-ui.ollamamax.com"
+    allowed_methods:
+      - "GET"
+      - "POST"
+      - "PUT"
+      - "DELETE"
+      - "OPTIONS"
+    allowed_headers:
+      - "Content-Type"
+      - "Authorization"
+      - "X-Requested-With"
+      - "X-API-Version"
+    allow_credentials: true
+    max_age: 3600
+  rate_limit:
+    enabled: true
+    rps: 500 # Moderate rate limiting for staging
+    burst: 1000
+    window: 1m
+
+p2p:
+  listen: "/ip4/0.0.0.0/tcp/4001"
+  bootstrap: 
+    - "/dns4/staging-bootstrap-1.ollamamax.com/tcp/4001/p2p/QmBootstrap1"
+    - "/dns4/staging-bootstrap-2.ollamamax.com/tcp/4001/p2p/QmBootstrap2"
+  enable_dht: true
+  enable_pubsub: true
+  conn_mgr_low: 100
+  conn_mgr_high: 300
+  conn_mgr_grace: "30s"
+  dial_timeout: 30s
+  max_streams: 500
+
+consensus:
+  node_id: ""
+  data_dir: "/var/lib/ollama/staging/consensus"
+  bind_addr: "0.0.0.0:7000"
+  advertise_addr: ""
+  bootstrap: false
+  bootstrap_expect: 3 # 3-node cluster for staging
+  peers:
+    - "staging-node-1.ollamamax.com:7000"
+    - "staging-node-2.ollamamax.com:7000"
+    - "staging-node-3.ollamamax.com:7000"
+  log_level: "INFO"
+  heartbeat_timeout: 1s
+  election_timeout: 1s
+  commit_timeout: 50ms
+  max_append_entries: 64
+  snapshot_interval: 60s
+  snapshot_threshold: 4096
+
+scheduler:
+  algorithm: "weighted_round_robin"
+  load_balancing: "least_connections"
+  health_check_interval: 15s
+  max_retries: 3
+  retry_delay: 1s
+  queue_size: 5000
+  worker_count: 5
+
+storage:
+  data_dir: "/var/lib/ollama/staging"
+  model_dir: "/var/lib/ollama/staging/models"
+  cache_dir: "/var/cache/ollama/staging"
+  max_disk_size: 107374182400 # 100GB for staging
+  cleanup_age: 168h # 7 days
+
+security:
+  tls:
+    enabled: true
+    cert_file: "/etc/tls/staging/server.crt"
+    key_file: "/etc/tls/staging/server.key"
+    ca_file: "/etc/tls/staging/ca.crt"
+    min_version: "1.2"
+    cipher_suites:
+      - "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"
+      - "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305"
+  auth:
+    enabled: true
+    method: "jwt"
+    token_expiry: 8h # Shorter expiry for staging
+    secret_key: "${JWT_SECRET_STAGING}"
+    issuer: "ollamamax-staging"
+    audience: "ollamamax-api"
+  encryption:
+    algorithm: "AES-256-GCM"
+    key_size: 256
+    key_file: "/etc/keys/staging/encryption.key"
+  firewall:
+    enabled: true
+    allowed_ips:
+      - "10.0.0.0/8"
+      - "172.16.0.0/12"
+      - "192.168.0.0/16"
+    blocked_ips: []
+    rules:
+      - protocol: "tcp"
+        port: 22
+        action: "allow"
+        source: "10.0.0.0/8"
+      - protocol: "tcp"
+        port: 11434
+        action: "allow"
+        source: "0.0.0.0/0"
+  audit:
+    enabled: true
+    log_file: "/var/log/ollama/staging/audit.log"
+    format: "json"
+
+web:
+  enabled: true
+  listen: "0.0.0.0:8080"
+  static_dir: "/opt/ollama/web/static"
+  template_dir: "/opt/ollama/web/templates"
+  tls:
+    enabled: true
+    cert_file: "/etc/tls/staging/web.crt"
+    key_file: "/etc/tls/staging/web.key"
+
+metrics:
+  enabled: true
+  listen: "0.0.0.0:9090"
+  path: "/metrics"
+  namespace: "ollama_staging"
+  subsystem: "distributed"
+
+logging:
+  level: "info"
+  format: "json"
+  output: "file"
+  file: "/var/log/ollama/staging/application.log"
+  max_size: 100
+  max_age: 14
+  max_backups: 10
+  compress: true
+
+sync:
+  delta_dir: "/var/lib/ollama/staging/deltas"
+  cas_dir: "/var/lib/ollama/staging/cas"
+  worker_count: 3
+  sync_interval: 5m
+  chunk_size: 1048576 # 1MB chunks
+  max_retries: 3
+  retry_delay: 2s
+
+replication:
+  worker_count: 3
+  default_min_replicas: 2 # Higher replication for staging
+  default_max_replicas: 3
+  default_replication_factor: 2
+  default_sync_interval: 10m
+  policy_enforcement_interval: 30s
+  health_check_interval: 30s
+  health_check_timeout: 10s
+
+distributed:
+  cas_dir: "/var/lib/ollama/staging/cas"
+  delta_dir: "/var/lib/ollama/staging/deltas"

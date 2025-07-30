@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	ollamaapi "github.com/ollama/ollama/api"
+	ollamaapi "github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/types"
 )
 
 // FallbackManager manages fallback mechanisms for distributed requests

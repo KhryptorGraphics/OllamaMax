@@ -1,0 +1,9 @@
+# github.com/ollama/ollama-distributed/pkg/scheduler/partitioning
+pkg/scheduler/partitioning/data_split.go:280:34: task.GGML.FileInfo undefined (type *"github.com/ollama/ollama/fs/ggml".GGML has no field or method FileInfo)
+pkg/scheduler/partitioning/layerwise.go:177:26: task.GGML.Size undefined (type *"github.com/ollama/ollama/fs/ggml".GGML has no field or method Size)
+pkg/scheduler/partitioning/layerwise.go:197:32: task.GGML.Size undefined (type *"github.com/ollama/ollama/fs/ggml".GGML has no field or method Size)
+pkg/scheduler/partitioning/strategies.go:6:2: "log/slog" imported and not used
+pkg/scheduler/partitioning/strategies.go:299:26: task.GGML.Size undefined (type *"github.com/ollama/ollama/fs/ggml".GGML has no field or method Size)
+pkg/scheduler/partitioning/strategies.go:382:21: invalid operation: model.Config != nil (mismatched types server.ConfigV2 and untyped nil)
+FAIL	github.com/ollama/ollama-distributed/tests/fault_tolerance [build failed]
+FAIL

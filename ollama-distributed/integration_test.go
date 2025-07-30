@@ -2,9 +2,7 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -31,7 +29,6 @@ func main() {
 	log.Println("✅ Server is ready")
 	
 	// Run test suite
-	ctx := context.Background()
 	
 	// Test 1: API Endpoints
 	log.Println("\n🔍 Testing API Endpoints...")

@@ -13,9 +13,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	ollamaapi "github.com/ollama/ollama/api"
-	"github.com/ollama/ollama-distributed/pkg/models"
-	"github.com/ollama/ollama-distributed/pkg/scheduler"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/types"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/models"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/scheduler"
 )
 
 // IntegrationLayer provides transparent API layer for distributed Ollama
@@ -124,7 +124,7 @@ func (il *IntegrationLayer) HandleRequest(c *gin.Context) {
 
 // Generate endpoint with distributed routing
 func (il *IntegrationLayer) handleGenerate(c *gin.Context) {
-	var req ollamaapi.GenerateRequest
+	var req types.GenerateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -192,7 +192,7 @@ func (il *IntegrationLayer) handleGenerate(c *gin.Context) {
 
 // Chat endpoint with distributed routing
 func (il *IntegrationLayer) handleChat(c *gin.Context) {
-	var req ollamaapi.ChatRequest
+	var req types.ChatRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -258,7 +258,7 @@ func (il *IntegrationLayer) handleChat(c *gin.Context) {
 
 // Embed endpoint with distributed routing
 func (il *IntegrationLayer) handleEmbed(c *gin.Context) {
-	var req ollamaapi.EmbedRequest
+	var req types.EmbedRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -322,14 +322,14 @@ func (il *IntegrationLayer) handleEmbed(c *gin.Context) {
 // Embeddings endpoint (compatibility)
 func (il *IntegrationLayer) handleEmbeddings(c *gin.Context) {
 	// Convert to EmbedRequest format and handle
-	var req ollamaapi.EmbeddingRequest
+	var req types.EmbeddingRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	
 	// Convert to EmbedRequest
-	embedReq := ollamaapi.EmbedRequest{
+	embedReq := types.EmbedRequest{
 		Model:     req.Model,
 		Input:     req.Prompt,
 		Options:   req.Options,
@@ -345,7 +345,7 @@ func (il *IntegrationLayer) handleEmbeddings(c *gin.Context) {
 
 // Pull endpoint with distributed model management
 func (il *IntegrationLayer) handlePull(c *gin.Context) {
-	var req ollamaapi.PullRequest
+	var req types.PullRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -369,7 +369,7 @@ func (il *IntegrationLayer) handlePush(c *gin.Context) {
 
 // Show endpoint with distributed model info
 func (il *IntegrationLayer) handleShow(c *gin.Context) {
-	var req ollamaapi.ShowRequest
+	var req types.ShowRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -413,10 +413,10 @@ func (il *IntegrationLayer) handleTags(c *gin.Context) {
 	}
 	
 	// Convert distributed models to ListModelResponse and merge
-	var convertedDistributed []ollamaapi.ListModelResponse
+	var convertedDistributed []types.ListModelResponse
 	for _, model := range distributedModels {
 		if modelMap, ok := model.(map[string]interface{}); ok {
-			response := ollamaapi.ListModelResponse{
+			response := types.ListModelResponse{
 				Name:  getString(modelMap, "name"),
 				Model: getString(modelMap, "name"),
 				Size:  getInt64(modelMap, "size"),
@@ -432,12 +432,12 @@ func (il *IntegrationLayer) handleTags(c *gin.Context) {
 	c.Header("X-Ollama-Local-Models", fmt.Sprintf("%d", len(localModels)))
 	c.Header("X-Ollama-Distributed-Models", fmt.Sprintf("%d", len(distributedModels)))
 	
-	c.JSON(http.StatusOK, ollamaapi.ListResponse{Models: allModels})
+	c.JSON(http.StatusOK, types.ListResponse{Models: allModels})
 }
 
 // Delete endpoint with distributed model cleanup
 func (il *IntegrationLayer) handleDelete(c *gin.Context) {
-	var req ollamaapi.DeleteRequest
+	var req types.DeleteRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -485,7 +485,7 @@ func (il *IntegrationLayer) handlePs(c *gin.Context) {
 	c.Header("X-Ollama-Local-Processes", fmt.Sprintf("%d", len(localProcs)))
 	c.Header("X-Ollama-Distributed-Processes", fmt.Sprintf("%d", len(distributedProcs)))
 	
-	c.JSON(http.StatusOK, ollamaapi.ProcessResponse{Models: allProcs})
+	c.JSON(http.StatusOK, types.ProcessResponse{Models: allProcs})
 }
 
 // Create endpoint - proxy to local
@@ -619,7 +619,7 @@ func getInt64(m map[string]interface{}, key string) int64 {
 
 // Placeholder methods for implementation
 
-func (il *IntegrationLayer) handleDistributedPull(c *gin.Context, req ollamaapi.PullRequest) {
+func (il *IntegrationLayer) handleDistributedPull(c *gin.Context, req types.PullRequest) {
 	// First check if model already exists in distributed cluster
 	if il.modelDistribution.IsDistributed(req.Model) {
 		c.JSON(http.StatusOK, gin.H{"status": "Model already available in distributed cluster"})
@@ -669,7 +669,7 @@ func (il *IntegrationLayer) handleDistributedPull(c *gin.Context, req ollamaapi.
 	}
 }
 
-func (il *IntegrationLayer) getLocalModels() ([]ollamaapi.ListModelResponse, error) {
+func (il *IntegrationLayer) getLocalModels() ([]types.ListModelResponse, error) {
 	// Create request to local Ollama instance
 	req, err := http.NewRequest("GET", il.localURL.String()+"/api/tags", nil)
 	if err != nil {
@@ -689,7 +689,7 @@ func (il *IntegrationLayer) getLocalModels() ([]ollamaapi.ListModelResponse, err
 	}
 
 	// Parse response
-	var listResponse ollamaapi.ListResponse
+	var listResponse types.ListResponse
 	if err := json.NewDecoder(resp.Body).Decode(&listResponse); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
@@ -697,7 +697,7 @@ func (il *IntegrationLayer) getLocalModels() ([]ollamaapi.ListModelResponse, err
 	return listResponse.Models, nil
 }
 
-func (il *IntegrationLayer) getLocalProcesses() ([]ollamaapi.ProcessModelResponse, error) {
+func (il *IntegrationLayer) getLocalProcesses() ([]types.ProcessModelResponse, error) {
 	// Create request to local Ollama instance
 	req, err := http.NewRequest("GET", il.localURL.String()+"/api/ps", nil)
 	if err != nil {
@@ -717,7 +717,7 @@ func (il *IntegrationLayer) getLocalProcesses() ([]ollamaapi.ProcessModelRespons
 	}
 
 	// Parse response
-	var processResponse ollamaapi.ProcessResponse
+	var processResponse types.ProcessResponse
 	if err := json.NewDecoder(resp.Body).Decode(&processResponse); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
@@ -725,17 +725,17 @@ func (il *IntegrationLayer) getLocalProcesses() ([]ollamaapi.ProcessModelRespons
 	return processResponse.Models, nil
 }
 
-func (il *IntegrationLayer) getDistributedProcesses() ([]ollamaapi.ProcessModelResponse, error) {
+func (il *IntegrationLayer) getDistributedProcesses() ([]types.ProcessModelResponse, error) {
 	// Get active requests from scheduler
 	activeRequests := il.requestTracker.GetActiveRequests()
 
 	// Convert to process responses
-	var processes []ollamaapi.ProcessModelResponse
+	var processes []types.ProcessModelResponse
 	for _, req := range activeRequests {
-		process := ollamaapi.ProcessModelResponse{
+		process := types.ProcessModelResponse{
 			Model: req.Model,
 			Name:  req.Model,
-			ExpiresAt: req.Started.Add(30 * time.Minute), // Default expiry
+			ExpiresAt: &[]time.Time{req.Started.Add(30 * time.Minute)}[0], // Default expiry
 			SizeVRAM: 0, // TODO: Get actual VRAM usage
 			Size: 0,     // TODO: Get actual size
 		}
@@ -804,14 +804,14 @@ func (il *IntegrationLayer) handleOpenAIChat(c *gin.Context) {
 	}
 
 	// Convert to Ollama chat request
-	ollamaReq := ollamaapi.ChatRequest{
+	ollamaReq := types.ChatRequest{
 		Model: openAIReq.Model,
 		Stream: &openAIReq.Stream,
 	}
 
 	// Convert messages
 	for _, msg := range openAIReq.Messages {
-		ollamaReq.Messages = append(ollamaReq.Messages, ollamaapi.Message{
+		ollamaReq.Messages = append(ollamaReq.Messages, types.Message{
 			Role:    msg.Role,
 			Content: msg.Content,
 		})
@@ -840,7 +840,7 @@ func (il *IntegrationLayer) handleOpenAICompletion(c *gin.Context) {
 	}
 
 	// Convert to Ollama generate request
-	ollamaReq := ollamaapi.GenerateRequest{
+	ollamaReq := types.GenerateRequest{
 		Model:  openAIReq.Model,
 		Prompt: openAIReq.Prompt,
 		Stream: &openAIReq.Stream,
@@ -868,7 +868,7 @@ func (il *IntegrationLayer) handleOpenAIEmbeddings(c *gin.Context) {
 	}
 
 	// Convert to Ollama embed request
-	ollamaReq := ollamaapi.EmbedRequest{
+	ollamaReq := types.EmbedRequest{
 		Model: openAIReq.Model,
 		Input: openAIReq.Input,
 	}
@@ -950,7 +950,7 @@ func (il *IntegrationLayer) GetStats() map[string]interface{} {
 }
 
 // pullModelLocally pulls a model using the local Ollama instance
-func (il *IntegrationLayer) pullModelLocally(req ollamaapi.PullRequest) error {
+func (il *IntegrationLayer) pullModelLocally(req types.PullRequest) error {
 	// Create request to local Ollama instance
 	body, err := json.Marshal(req)
 	if err != nil {
@@ -979,8 +979,8 @@ func (il *IntegrationLayer) pullModelLocally(req ollamaapi.PullRequest) error {
 }
 
 // getNodeProcesses gets processes from a specific node
-func (il *IntegrationLayer) getNodeProcesses(nodeID string) ([]ollamaapi.ProcessModelResponse, error) {
+func (il *IntegrationLayer) getNodeProcesses(nodeID string) ([]types.ProcessModelResponse, error) {
 	// TODO: Implement P2P communication to get processes from specific node
 	// For now, return empty slice
-	return []ollamaapi.ProcessModelResponse{}, nil
+	return []types.ProcessModelResponse{}, nil
 }

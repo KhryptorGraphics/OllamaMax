@@ -7,45 +7,8 @@ import (
 	"time"
 )
 
-// GracefulDegradationStrategy implements graceful degradation recovery
-type GracefulDegradationStrategy struct {
-	name string
-}
-
-func (gds *GracefulDegradationStrategy) GetName() string {
-	return "graceful_degradation"
-}
-
-func (gds *GracefulDegradationStrategy) CanHandle(fault *FaultDetection) bool {
-	return fault.Type == FaultTypeNodeFailure || fault.Type == FaultTypeResourceExhaustion
-}
-
-func (gds *GracefulDegradationStrategy) Recover(ctx context.Context, fault *FaultDetection) (*RecoveryResult, error) {
-	start := time.Now()
-	
-	// Implement graceful degradation
-	// 1. Reduce quality/speed for availability
-	// 2. Fallback to smaller models
-	// 3. Skip optional processing steps
-	
-	slog.Info("implementing graceful degradation", "fault_id", fault.ID, "target", fault.Target)
-	
-	// Simulate degradation implementation
-	time.Sleep(100 * time.Millisecond)
-	
-	return &RecoveryResult{
-		FaultID:    fault.ID,
-		Strategy:   gds.GetName(),
-		Successful: true,
-		Duration:   time.Since(start),
-		Metadata: map[string]interface{}{
-			"degradation_level": "moderate",
-			"fallback_model":    "small",
-			"quality_reduction": 0.2,
-		},
-		Timestamp: time.Now(),
-	}, nil
-}
+// GracefulDegradationStrategy gracefully degrades service during faults
+// NOTE: This is now implemented in advanced_strategies.go
 
 // RequestMigrationStrategy implements request migration recovery
 type RequestMigrationStrategy struct {

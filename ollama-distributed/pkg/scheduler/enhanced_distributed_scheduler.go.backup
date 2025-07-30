@@ -1,0 +1,702 @@
+package scheduler
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"sort"
+	"sync"
+	"time"
+
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/internal/config"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/consensus"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/scheduler/fault_tolerance"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/scheduler/loadbalancer"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/scheduler/partitioning"
+)
+
+// EnhancedDistributedScheduler extends the existing scheduler with advanced features
+type EnhancedDistributedScheduler struct {
+	*Engine // Embed existing engine
+
+	// Enhanced components (using existing types)
+	partitionManager *partitioning.PartitionManager
+	loadBalancer     *loadbalancer.LoadBalancer
+	faultTolerance   *fault_tolerance.EnhancedFaultToleranceManager
+
+	// Performance tracking
+	performanceTracker *PerformanceTracker
+
+	// Adaptive scheduling
+	schedulingAdvisor *SchedulingAdvisor
+
+	// Configuration
+	config *EnhancedSchedulerConfig
+
+	// Lifecycle
+	mu      sync.RWMutex
+	started bool
+	ctx     context.Context
+	cancel  context.CancelFunc
+	wg      sync.WaitGroup
+}
+
+// EnhancedSchedulerConfig holds enhanced scheduler configuration
+type EnhancedSchedulerConfig struct {
+	*config.SchedulerConfig // Embed base config
+
+	// Enhanced features
+	EnableAdaptiveScheduling       bool `json:"enable_adaptive_scheduling"`
+	EnablePerformanceTracking      bool `json:"enable_performance_tracking"`
+	EnableIntelligentLoadBalancing bool `json:"enable_intelligent_load_balancing"`
+	EnableAdvancedFaultTolerance   bool `json:"enable_advanced_fault_tolerance"`
+
+	// Performance tracking settings
+	PerformanceHistorySize        int           `json:"performance_history_size"`
+	PerformanceCollectionInterval time.Duration `json:"performance_collection_interval"`
+
+	// Adaptive scheduling settings
+	AdaptiveThresholds map[string]float64 `json:"adaptive_thresholds"`
+	LearningRate       float64            `json:"learning_rate"`
+
+	// Load balancing settings
+	IntelligentLoadBalancingAlgorithm string             `json:"intelligent_load_balancing_algorithm"`
+	LoadBalancingWeightFactors        map[string]float64 `json:"load_balancing_weight_factors"`
+
+	// Fault tolerance settings
+	AdvancedFaultToleranceStrategy string        `json:"advanced_fault_tolerance_strategy"`
+	FaultRecoveryTimeout           time.Duration `json:"fault_recovery_timeout"`
+
+	// Advisor settings
+	AdvisorDecisionTimeout time.Duration `json:"advisor_decision_timeout"`
+	AdvisorLearningRate    float64       `json:"advisor_learning_rate"`
+}
+
+// PerformanceTracker tracks performance metrics
+type PerformanceTracker struct {
+	history            []*PerformanceRecord
+	historyMu          sync.RWMutex
+	metrics            *AggregatedPerformanceMetrics
+	metricsMu          sync.RWMutex
+	collectionInterval time.Duration
+	historySize        int
+	learning           bool
+}
+
+// PerformanceRecord represents a performance record
+type PerformanceRecord struct {
+	Timestamp     time.Time              `json:"timestamp"`
+	TaskID        string                 `json:"task_id"`
+	ModelName     string                 `json:"model_name"`
+	NodeID        string                 `json:"node_id"`
+	Latency       time.Duration          `json:"latency"`
+	Throughput    float64                `json:"throughput"`
+	ResourceUsage *NodeResourceState     `json:"resource_usage"`
+	Success       bool                   `json:"success"`
+	Error         string                 `json:"error,omitempty"`
+	Metadata      map[string]interface{} `json:"metadata"`
+}
+
+// NodeResourceState represents node resource state
+type NodeResourceState struct {
+	CPUUtilization     float64 `json:"cpu_utilization"`
+	MemoryUtilization  float64 `json:"memory_utilization"`
+	GPUUtilization     float64 `json:"gpu_utilization"`
+	NetworkUtilization float64 `json:"network_utilization"`
+	ActiveRequests     int     `json:"active_requests"`
+	QueuedRequests     int     `json:"queued_requests"`
+	LoadAverage        float64 `json:"load_average"`
+}
+
+// AggregatedPerformanceMetrics represents aggregated performance metrics
+type AggregatedPerformanceMetrics struct {
+	TotalTasks          int64         `json:"total_tasks"`
+	SuccessfulTasks     int64         `json:"successful_tasks"`
+	FailedTasks         int64         `json:"failed_tasks"`
+	AverageLatency      time.Duration `json:"average_latency"`
+	Throughput          float64       `json:"throughput"`
+	ResourceUtilization float64       `json:"resource_utilization"`
+	SuccessRate         float64       `json:"success_rate"`
+	ErrorRate           float64       `json:"error_rate"`
+	LastUpdated         time.Time     `json:"last_updated"`
+}
+
+// SchedulingAdvisor provides scheduling recommendations
+type SchedulingAdvisor struct {
+	history         []*SchedulingDecision
+	historyMu       sync.RWMutex
+	patterns        map[string]*SchedulingPattern
+	patternsMu      sync.RWMutex
+	recommender     *RecommendationEngine
+	learning        bool
+	learningRate    float64
+	decisionTimeout time.Duration
+}
+
+// SchedulingDecision represents a scheduling decision
+type SchedulingDecision struct {
+	TaskID           string                 `json:"task_id"`
+	ModelName        string                 `json:"model_name"`
+	Strategy         string                 `json:"strategy"`
+	DecisionTime     time.Time              `json:"decision_time"`
+	ExecutionLatency time.Duration          `json:"execution_latency"`
+	Throughput       float64                `json:"throughput"`
+	Success          bool                   `json:"success"`
+	Metadata         map[string]interface{} `json:"metadata"`
+}
+
+// SchedulingPattern represents a scheduling pattern
+type SchedulingPattern struct {
+	ID          string                 `json:"id"`
+	Name        string                 `json:"name"`
+	Description string                 `json:"description"`
+	Conditions  map[string]interface{} `json:"conditions"`
+	Strategies  []string               `json:"strategies"`
+	Confidence  float64                `json:"confidence"`
+	LastUpdated time.Time              `json:"last_updated"`
+	Metadata    map[string]interface{} `json:"metadata"`
+}
+
+// RecommendationEngine generates scheduling recommendations
+type RecommendationEngine struct {
+	patterns     map[string]*SchedulingPattern
+	patternsMu   sync.RWMutex
+	algorithms   map[string]RecommendationAlgorithm
+	algorithmsMu sync.RWMutex
+	learning     bool
+	accuracy     float64
+}
+
+// RecommendationAlgorithm defines recommendation algorithms
+type RecommendationAlgorithm interface {
+	GenerateRecommendation(task *Request, patterns []*SchedulingPattern) (string, error)
+	GetName() string
+	GetAccuracy() float64
+	UpdateAccuracy(success bool)
+}
+
+// NewEnhancedDistributedScheduler creates a new enhanced distributed scheduler
+func NewEnhancedDistributedScheduler(
+	config *EnhancedSchedulerConfig,
+	p2pNode *p2p.Node,
+	consensusEngine *consensus.Engine,
+) (*EnhancedDistributedScheduler, error) {
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// Create base scheduler engine
+	baseConfig := config.SchedulerConfig
+	if baseConfig == nil {
+		baseConfig = config.DefaultConfig()
+	}
+
+	baseEngine, err := NewEngine(baseConfig, p2pNode, consensusEngine)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create base engine: %w", err)
+	}
+
+	eds := &EnhancedDistributedScheduler{
+		Engine: baseEngine,
+		config: config,
+		ctx:    ctx,
+		cancel: cancel,
+	}
+
+	// Initialize enhanced components
+	if err := eds.initializeComponents(); err != nil {
+		return nil, fmt.Errorf("failed to initialize enhanced components: %w", err)
+	}
+
+	return eds, nil
+}
+
+// initializeComponents initializes enhanced scheduler components
+func (eds *EnhancedDistributedScheduler) initializeComponents() error {
+	// Initialize enhanced partition manager
+	eds.enhancedPartitionManager = partitioning.NewEnhancedPartitionManager(eds.Engine.partitionManager)
+
+	// Initialize intelligent load balancer
+	eds.intelligentLoadBalancer = loadbalancer.NewIntelligentLoadBalancer(&loadbalancer.Config{
+		Algorithm:         eds.config.IntelligentLoadBalancingAlgorithm,
+		LatencyTarget:     100 * time.Millisecond,
+		WeightFactors:     eds.config.LoadBalancingWeightFactors,
+		Adaptive:          true,
+		PredictionEnabled: true,
+		HistorySize:       1000,
+		MaxBodySize:       32 * 1024 * 1024,
+		RateLimit: &loadbalancer.RateLimitConfig{
+			RPS:    1000,
+			Burst:  2000,
+			Window: 1 * time.Minute,
+		},
+		Cors: &loadbalancer.CorsConfig{
+			AllowedOrigins: []string{"*"},
+			AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+			AllowedHeaders: []string{"Content-Type", "Authorization"},
+		},
+	})
+
+	// Initialize advanced fault tolerance
+	eds.advancedFaultTolerance = fault_tolerance.NewAdvancedFaultToleranceManager(eds.Engine.faultTolerance)
+
+	// Initialize performance tracker
+	eds.performanceTracker = NewPerformanceTracker(
+		eds.config.PerformanceHistorySize,
+		eds.config.PerformanceCollectionInterval,
+		eds.config.EnablePerformanceTracking,
+	)
+
+	// Initialize scheduling advisor
+	eds.schedulingAdvisor = NewSchedulingAdvisor(
+		eds.config.AdvisorLearningRate,
+		eds.config.AdvisorDecisionTimeout,
+		eds.config.EnableAdaptiveScheduling,
+	)
+
+	return nil
+}
+
+// Start starts the enhanced distributed scheduler
+func (eds *EnhancedDistributedScheduler) Start() error {
+	eds.mu.Lock()
+	defer eds.mu.Unlock()
+
+	if eds.started {
+		return fmt.Errorf("scheduler already started")
+	}
+
+	// Start base engine
+	if err := eds.Engine.Start(); err != nil {
+		return fmt.Errorf("failed to start base engine: %w", err)
+	}
+
+	// Start enhanced components
+	if err := eds.startEnhancedComponents(); err != nil {
+		return fmt.Errorf("failed to start enhanced components: %w", err)
+	}
+
+	eds.started = true
+
+	slog.Info("enhanced distributed scheduler started",
+		"adaptive_scheduling", eds.config.EnableAdaptiveScheduling,
+		"performance_tracking", eds.config.EnablePerformanceTracking,
+		"intelligent_load_balancing", eds.config.EnableIntelligentLoadBalancing,
+		"advanced_fault_tolerance", eds.config.EnableAdvancedFaultTolerance)
+
+	return nil
+}
+
+// startEnhancedComponents starts enhanced scheduler components
+func (eds *EnhancedDistributedScheduler) startEnhancedComponents() error {
+	// Start performance tracker
+	if eds.config.EnablePerformanceTracking {
+		eds.wg.Add(1)
+		go eds.performanceTracker.start(eds.ctx, &eds.wg)
+	}
+
+	// Start scheduling advisor
+	if eds.config.EnableAdaptiveScheduling {
+		eds.wg.Add(1)
+		go eds.schedulingAdvisor.start(eds.ctx, &eds.wg)
+	}
+
+	return nil
+}
+
+// Schedule schedules a request with enhanced features
+func (eds *EnhancedDistributedScheduler) Schedule(req *Request) error {
+	// Use scheduling advisor if enabled
+	if eds.config.EnableAdaptiveScheduling {
+		recommendedStrategy := eds.schedulingAdvisor.GetRecommendation(req)
+		if recommendedStrategy != "" {
+			slog.Debug("using recommended scheduling strategy",
+				"task_id", req.ID,
+				"model_name", req.ModelName,
+				"recommended_strategy", recommendedStrategy)
+		}
+	}
+
+	// Track performance if enabled
+	if eds.config.EnablePerformanceTracking {
+		start := time.Now()
+		defer func() {
+			duration := time.Since(start)
+			eds.performanceTracker.RecordPerformance(&PerformanceRecord{
+				Timestamp: start,
+				TaskID:    req.ID,
+				ModelName: req.ModelName,
+				Latency:   duration,
+				Success:   true, // Assuming success for now
+				Metadata:  make(map[string]interface{}),
+			})
+		}()
+	}
+
+	// Delegate to base scheduler
+	return eds.Engine.Schedule(req)
+}
+
+// GetEnhancedStats returns enhanced scheduler statistics
+func (eds *EnhancedDistributedScheduler) GetEnhancedStats() *EnhancedStats {
+	baseStats := eds.Engine.GetStats()
+
+	enhancedStats := &EnhancedStats{
+		BaseStats: *baseStats,
+	}
+
+	// Add performance metrics if tracking is enabled
+	if eds.config.EnablePerformanceTracking {
+		perfMetrics := eds.performanceTracker.GetAggregatedMetrics()
+		enhancedStats.PerformanceMetrics = perfMetrics
+	}
+
+	return enhancedStats
+}
+
+// EnhancedStats represents enhanced scheduler statistics
+type EnhancedStats struct {
+	BaseStats          Stats                         `json:"base_stats"`
+	PerformanceMetrics *AggregatedPerformanceMetrics `json:"performance_metrics,omitempty"`
+}
+
+// Shutdown gracefully shuts down the enhanced distributed scheduler
+func (eds *EnhancedDistributedScheduler) Shutdown(ctx context.Context) error {
+	eds.mu.Lock()
+	defer eds.mu.Unlock()
+
+	if !eds.started {
+		return nil
+	}
+
+	slog.Info("shutting down enhanced distributed scheduler")
+
+	// Cancel context
+	eds.cancel()
+
+	// Wait for background tasks
+	eds.wg.Wait()
+
+	// Shutdown base engine
+	if err := eds.Engine.Shutdown(ctx); err != nil {
+		slog.Warn("failed to shutdown base engine", "error", err)
+	}
+
+	eds.started = false
+
+	return nil
+}
+
+// NewPerformanceTracker creates a new performance tracker
+func NewPerformanceTracker(historySize int, collectionInterval time.Duration, learning bool) *PerformanceTracker {
+	if historySize <= 0 {
+		historySize = 1000
+	}
+
+	if collectionInterval <= 0 {
+		collectionInterval = 30 * time.Second
+	}
+
+	return &PerformanceTracker{
+		history: make([]*PerformanceRecord, 0, historySize),
+		metrics: &AggregatedPerformanceMetrics{
+			LastUpdated: time.Now(),
+		},
+		collectionInterval: collectionInterval,
+		historySize:        historySize,
+		learning:           learning,
+	}
+}
+
+// start starts the performance tracker
+func (pt *PerformanceTracker) start(ctx context.Context, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	ticker := time.NewTicker(pt.collectionInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			pt.updateMetrics()
+		}
+	}
+}
+
+// RecordPerformance records a performance record
+func (pt *PerformanceTracker) RecordPerformance(record *PerformanceRecord) {
+	pt.historyMu.Lock()
+	defer pt.historyMu.Unlock()
+
+	// Add to history
+	pt.history = append(pt.history, record)
+
+	// Maintain history size limit
+	if len(pt.history) > pt.historySize {
+		pt.history = pt.history[len(pt.history)-pt.historySize:]
+	}
+}
+
+// updateMetrics updates aggregated performance metrics
+func (pt *PerformanceTracker) updateMetrics() {
+	pt.historyMu.RLock()
+	defer pt.historyMu.RUnlock()
+
+	pt.metricsMu.Lock()
+	defer pt.metricsMu.Unlock()
+
+	if len(pt.history) == 0 {
+		return
+	}
+
+	// Calculate aggregated metrics
+	totalTasks := len(pt.history)
+	successfulTasks := 0
+	failedTasks := 0
+	totalLatency := time.Duration(0)
+	totalThroughput := 0.0
+	totalResourceUtilization := 0.0
+
+	for _, record := range pt.history {
+		if record.Success {
+			successfulTasks++
+			totalLatency += record.Latency
+			totalThroughput += record.Throughput
+
+			// Calculate resource utilization from resource usage if available
+			if record.ResourceUsage != nil {
+				util := (record.ResourceUsage.CPUUtilization +
+					record.ResourceUsage.MemoryUtilization +
+					record.ResourceUsage.GPUUtilization +
+					record.ResourceUsage.NetworkUtilization) / 4.0
+				totalResourceUtilization += util
+			}
+		} else {
+			failedTasks++
+		}
+	}
+
+	// Update metrics
+	pt.metrics.TotalTasks = int64(totalTasks)
+	pt.metrics.SuccessfulTasks = int64(successfulTasks)
+	pt.metrics.FailedTasks = int64(failedTasks)
+
+	if successfulTasks > 0 {
+		pt.metrics.AverageLatency = totalLatency / time.Duration(successfulTasks)
+		pt.metrics.Throughput = totalThroughput / float64(successfulTasks)
+		pt.metrics.ResourceUtilization = totalResourceUtilization / float64(successfulTasks)
+	}
+
+	if totalTasks > 0 {
+		pt.metrics.SuccessRate = float64(successfulTasks) / float64(totalTasks)
+		pt.metrics.ErrorRate = float64(failedTasks) / float64(totalTasks)
+	}
+
+	pt.metrics.LastUpdated = time.Now()
+}
+
+// GetAggregatedMetrics returns aggregated performance metrics
+func (pt *PerformanceTracker) GetAggregatedMetrics() *AggregatedPerformanceMetrics {
+	pt.metricsMu.RLock()
+	defer pt.metricsMu.RUnlock()
+
+	// Return a copy to avoid race conditions
+	metrics := &AggregatedPerformanceMetrics{
+		TotalTasks:          pt.metrics.TotalTasks,
+		SuccessfulTasks:     pt.metrics.SuccessfulTasks,
+		FailedTasks:         pt.metrics.FailedTasks,
+		AverageLatency:      pt.metrics.AverageLatency,
+		Throughput:          pt.metrics.Throughput,
+		ResourceUtilization: pt.metrics.ResourceUtilization,
+		SuccessRate:         pt.metrics.SuccessRate,
+		ErrorRate:           pt.metrics.ErrorRate,
+		LastUpdated:         pt.metrics.LastUpdated,
+	}
+
+	return metrics
+}
+
+// NewSchedulingAdvisor creates a new scheduling advisor
+func NewSchedulingAdvisor(learningRate float64, decisionTimeout time.Duration, learning bool) *SchedulingAdvisor {
+	if learningRate <= 0 {
+		learningRate = 0.1
+	}
+
+	if decisionTimeout <= 0 {
+		decisionTimeout = 5 * time.Second
+	}
+
+	return &SchedulingAdvisor{
+		history:         make([]*SchedulingDecision, 0),
+		patterns:        make(map[string]*SchedulingPattern),
+		recommender:     NewRecommendationEngine(),
+		learningRate:    learningRate,
+		decisionTimeout: decisionTimeout,
+		learning:        learning,
+	}
+}
+
+// start starts the scheduling advisor
+func (sa *SchedulingAdvisor) start(ctx context.Context, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	ticker := time.NewTicker(sa.decisionTimeout)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			sa.learnFromHistory()
+		}
+	}
+}
+
+// GetRecommendation returns a scheduling recommendation
+func (sa *SchedulingAdvisor) GetRecommendation(req *Request) string {
+	sa.historyMu.RLock()
+	defer sa.historyMu.RUnlock()
+
+	// Simple recommendation based on model name and request type
+	// In a real implementation, this would use pattern matching and learning
+	modelName := req.ModelName
+	requestType := req.Type
+
+	// Recommendations based on common patterns
+	if requestType == "inference" {
+		if contains(modelName, "llama") || contains(modelName, "mistral") {
+			return "layerwise"
+		} else if contains(modelName, "gemma") {
+			return "data_split"
+		}
+	} else if requestType == "embedding" {
+		return "data_split"
+	} else if requestType == "classification" {
+		return "task_parallel"
+	}
+
+	// Default recommendation
+	return "round_robin"
+}
+
+// containsSubstring checks if a string contains a substring (case-insensitive)
+func containsSubstring(s, substr string) bool {
+	return len(s) >= len(substr) &&
+		(LowerCase(s) == LowerCase(substr) ||
+			LowerCase(s[:len(substr)]) == LowerCase(substr) ||
+			LowerCase(s[len(s)-len(substr):]) == LowerCase(substr))
+}
+
+// LowerCase converts a string to lowercase
+func LowerCase(s string) string {
+	runes := []rune(s)
+	for i, r := range runes {
+		if r >= 'A' && r <= 'Z' {
+			runes[i] = r + ('a' - 'A')
+		}
+	}
+	return string(runes)
+}
+
+// learnFromHistory learns from scheduling history
+func (sa *SchedulingAdvisor) learnFromHistory() {
+	sa.historyMu.RLock()
+	history := make([]*SchedulingDecision, len(sa.history))
+	copy(history, sa.history)
+	sa.historyMu.RUnlock()
+
+	if len(history) < 10 {
+		return // Not enough data
+	}
+
+	// Analyze recent performance
+	recentHistory := history[len(history)-10:]
+
+	// Group by strategy and calculate success rate
+	strategySuccess := make(map[string]int)
+	strategyTotal := make(map[string]int)
+
+	for _, decision := range recentHistory {
+		strategyTotal[decision.Strategy]++
+		if decision.Success {
+			strategySuccess[decision.Strategy]++
+		}
+	}
+
+	// Update patterns based on performance
+	sa.patternsMu.Lock()
+	defer sa.patternsMu.Unlock()
+
+	for strategy, total := range strategyTotal {
+		success := strategySuccess[strategy]
+		successRate := float64(success) / float64(total)
+
+		// Update or create pattern
+		patternID := fmt.Sprintf("pattern_%s", strategy)
+		pattern, exists := sa.patterns[patternID]
+		if !exists {
+			pattern = &SchedulingPattern{
+				ID:          patternID,
+				Name:        strategy,
+				Description: fmt.Sprintf("Pattern for %s strategy", strategy),
+				Conditions:  make(map[string]interface{}),
+				Strategies:  []string{strategy},
+				Confidence:  0.5, // Initial confidence
+				LastUpdated: time.Now(),
+				Metadata:    make(map[string]interface{}),
+			}
+			sa.patterns[patternID] = pattern
+		}
+
+		// Update confidence based on performance
+		alpha := sa.learningRate
+		pattern.Confidence = alpha*successRate + (1-alpha)*pattern.Confidence
+		pattern.LastUpdated = time.Now()
+	}
+}
+
+// NewRecommendationEngine creates a new recommendation engine
+func NewRecommendationEngine() *RecommendationEngine {
+	return &RecommendationEngine{
+		patterns:   make(map[string]*SchedulingPattern),
+		algorithms: make(map[string]RecommendationAlgorithm),
+		learning:   true,
+		accuracy:   0.7, // Initial accuracy
+	}
+}
+
+// GenerateRecommendation generates a scheduling recommendation
+func (re *RecommendationEngine) GenerateRecommendation(task *Request, patterns []*SchedulingPattern) (string, error) {
+	if len(patterns) == 0 {
+		return "", fmt.Errorf("no patterns available")
+	}
+
+	// Sort patterns by confidence (highest first)
+	sort.Slice(patterns, func(i, j int) bool {
+		return patterns[i].Confidence > patterns[j].Confidence
+	})
+
+	// Return the strategy from the most confident pattern
+	if len(patterns[0].Strategies) > 0 {
+		return patterns[0].Strategies[0], nil
+	}
+
+	return "", fmt.Errorf("no strategies in pattern")
+}
+
+// GetAccuracy returns the engine accuracy
+func (re *RecommendationEngine) GetAccuracy() float64 {
+	return re.accuracy
+}
+
+// UpdateAccuracy updates the engine accuracy
+func (re *RecommendationEngine) UpdateAccuracy(success bool) {
+	alpha := 0.1
+	if success {
+		re.accuracy = alpha*1.0 + (1-alpha)*re.accuracy
+	} else {
+		re.accuracy = alpha*0.0 + (1-alpha)*re.accuracy
+	}
+}

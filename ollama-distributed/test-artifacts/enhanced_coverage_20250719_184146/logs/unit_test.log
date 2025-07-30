@@ -1,0 +1,67 @@
+# github.com/ollama/ollama-distributed/pkg/api
+../../go/pkg/mod/github.com/stretchr/testify@v1.9.0/mock/mock.go:16:2: missing go.sum entry for module providing package github.com/stretchr/objx (imported by github.com/stretchr/testify/mock); to add:
+	go get github.com/stretchr/testify/mock@v1.9.0
+FAIL	github.com/ollama/ollama-distributed/pkg/api [setup failed]
+	github.com/ollama/ollama-distributed/pkg/config		coverage: 0.0% of statements
+# github.com/ollama/ollama-distributed/pkg/security [github.com/ollama/ollama-distributed/pkg/security.test]
+pkg/security/auth_test.go:37:18: undefined: NewSecurityManager
+pkg/security/auth_test.go:45:14: undefined: SecurityManager
+pkg/security/auth_test.go:71:18: undefined: NewSecurityManager
+pkg/security/auth_test.go:125:18: undefined: NewSecurityManager
+pkg/security/auth_test.go:167:3: unknown field RateLimit in struct literal of type config.SecurityConfig
+pkg/security/auth_test.go:169:4: unknown field RequestsPerMinute in struct literal of type config.RateLimitConfig
+pkg/security/auth_test.go:170:4: unknown field BurstSize in struct literal of type config.RateLimitConfig
+pkg/security/auth_test.go:174:18: undefined: NewSecurityManager
+pkg/security/auth_test.go:210:3: unknown field Headers in struct literal of type config.SecurityConfig
+pkg/security/auth_test.go:210:19: undefined: config.SecurityHeadersConfig
+pkg/security/auth_test.go:210:3: too many errors
+# github.com/ollama/ollama-distributed/pkg/scheduler/partitioning
+pkg/scheduler/partitioning/data_split.go:280:34: task.GGML.FileInfo undefined (type *"github.com/ollama/ollama/fs/ggml".GGML has no field or method FileInfo)
+pkg/scheduler/partitioning/layerwise.go:177:26: task.GGML.Size undefined (type *"github.com/ollama/ollama/fs/ggml".GGML has no field or method Size)
+pkg/scheduler/partitioning/layerwise.go:197:32: task.GGML.Size undefined (type *"github.com/ollama/ollama/fs/ggml".GGML has no field or method Size)
+pkg/scheduler/partitioning/strategies.go:6:2: "log/slog" imported and not used
+pkg/scheduler/partitioning/strategies.go:299:26: task.GGML.Size undefined (type *"github.com/ollama/ollama/fs/ggml".GGML has no field or method Size)
+pkg/scheduler/partitioning/strategies.go:382:21: invalid operation: model.Config != nil (mismatched types server.ConfigV2 and untyped nil)
+# github.com/ollama/ollama-distributed/pkg/consensus [github.com/ollama/ollama-distributed/pkg/consensus.test]
+pkg/consensus/engine_test.go:395:17: undefined: json
+pkg/consensus/engine_test.go:470:13: undefined: json
+FAIL	github.com/ollama/ollama-distributed/pkg/consensus [build failed]
+	github.com/ollama/ollama-distributed/pkg/integration		coverage: 0.0% of statements
+# github.com/ollama/ollama-distributed/pkg/p2p [github.com/ollama/ollama-distributed/pkg/p2p.test]
+pkg/p2p/node_test.go:170:3: unknown field CPU in struct literal of type resources.NodeCapabilities
+pkg/p2p/node_test.go:173:3: unknown field ModelTypes in struct literal of type resources.NodeCapabilities
+pkg/p2p/node_test.go:174:13: cannot use map[string]bool{…} (value of type map[string]bool) as []string value in struct literal
+pkg/p2p/node_test.go:185:27: testCaps.CPU undefined (type *resources.NodeCapabilities has no field or method CPU)
+pkg/p2p/node_test.go:185:37: caps.CPU undefined (type *resources.NodeCapabilities has no field or method CPU)
+pkg/p2p/node_test.go:188:27: testCaps.ModelTypes undefined (type *resources.NodeCapabilities has no field or method ModelTypes)
+pkg/p2p/node_test.go:188:44: caps.ModelTypes undefined (type *resources.NodeCapabilities has no field or method ModelTypes)
+pkg/p2p/node_test.go:248:3: unknown field CPU in struct literal of type resources.NodeCapabilities
+pkg/p2p/node_test.go:547:5: unknown field CPU in struct literal of type resources.NodeCapabilities
+pkg/p2p/node_test.go:643:3: unknown field CPU in struct literal of type resources.NodeCapabilities
+pkg/p2p/node_test.go:643:3: too many errors
+	github.com/ollama/ollama-distributed/pkg/models		coverage: 0.0% of statements
+FAIL	github.com/ollama/ollama-distributed/pkg/p2p [build failed]
+	github.com/ollama/ollama-distributed/pkg/p2p/discovery		coverage: 0.0% of statements
+	github.com/ollama/ollama-distributed/pkg/p2p/host		coverage: 0.0% of statements
+	github.com/ollama/ollama-distributed/pkg/p2p/resources		coverage: 0.0% of statements
+	github.com/ollama/ollama-distributed/pkg/p2p/routing		coverage: 0.0% of statements
+	github.com/ollama/ollama-distributed/pkg/p2p/security		coverage: 0.0% of statements
+	github.com/ollama/ollama-distributed/pkg/scheduler		coverage: 0.0% of statements
+FAIL	github.com/ollama/ollama-distributed/pkg/scheduler/distributed [build failed]
+	github.com/ollama/ollama-distributed/pkg/scheduler/fault_tolerance		coverage: 0.0% of statements
+FAIL	github.com/ollama/ollama-distributed/pkg/scheduler/integration [build failed]
+	github.com/ollama/ollama-distributed/pkg/scheduler/loadbalancer		coverage: 0.0% of statements
+	github.com/ollama/ollama-distributed/pkg/scheduler/orchestration		coverage: 0.0% of statements
+FAIL	github.com/ollama/ollama-distributed/pkg/scheduler/partitioning [build failed]
+FAIL	github.com/ollama/ollama-distributed/pkg/security [build failed]
+# github.com/ollama/ollama-distributed/internal/storage [github.com/ollama/ollama-distributed/internal/storage.test]
+internal/storage/metadata_fixed.go:19:73: mm.getIndexValue undefined (type *MetadataManager has no field or method getIndexValue)
+internal/storage/metadata_fixed.go:24:76: mm.valueToString undefined (type *MetadataManager has no field or method valueToString)
+internal/storage/metadata_fixed.go:27:8: index.mutex undefined (type *MetadataIndex has no field or method mutex)
+internal/storage/metadata_fixed.go:28:14: index.mutex undefined (type *MetadataIndex has no field or method mutex)
+internal/storage/metadata_fixed.go:67:3: undefined: Index
+ok  	github.com/ollama/ollama-distributed/internal/auth	14.817s	coverage: 18.1% of statements
+	github.com/ollama/ollama-distributed/internal/config		coverage: 0.0% of statements
+	github.com/ollama/ollama-distributed/internal/metrics		coverage: 0.0% of statements
+FAIL	github.com/ollama/ollama-distributed/internal/storage [build failed]
+FAIL

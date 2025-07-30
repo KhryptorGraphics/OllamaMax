@@ -12,17 +12,17 @@ import (
 	"time"
 
 	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
-	
-	"github.com/ollama/ollama-distributed/pkg/config"
-	internalconfig "github.com/ollama/ollama-distributed/internal/config"
-	"github.com/ollama/ollama-distributed/pkg/p2p/discovery"
-	p2phost "github.com/ollama/ollama-distributed/pkg/p2p/host"
-	"github.com/ollama/ollama-distributed/pkg/p2p/resources"
-	"github.com/ollama/ollama-distributed/pkg/p2p/routing"
-	"github.com/ollama/ollama-distributed/pkg/p2p/security"
+
+	internalconfig "github.com/khryptorgraphics/ollamamax/ollama-distributed/internal/config"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/config"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p/discovery"
+	p2phost "github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p/host"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p/resources"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p/routing"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/security"
 )
 
 // Node is an alias for P2PNode for compatibility
@@ -31,67 +31,68 @@ type Node = P2PNode
 // P2PNode represents a complete P2P node implementation
 type P2PNode struct {
 	// Core components
-	host              *p2phost.P2PHost
-	config            *config.NodeConfig
-	
+	host   *p2phost.P2PHost
+	config *config.NodeConfig
+
 	// Network components
-	discoveryEngine   *discovery.DiscoveryEngine
-	securityManager   *security.SecurityManager
+	discoveryEngine    *discovery.DiscoveryEngine
+	securityManager    *security.SecurityManager
+	advancedSecurity   *security.SecurityManager
 	resourceAdvertiser *resources.ResourceAdvertiser
-	contentRouter     *routing.ContentRouter
-	
+	contentRouter      *routing.ContentRouter
+
 	// Node state
-	capabilities      *resources.NodeCapabilities
-	resourceMetrics   *resources.ResourceMetrics
-	
+	capabilities    *resources.NodeCapabilities
+	resourceMetrics *resources.ResourceMetrics
+
 	// Event handlers
-	eventHandlers     map[string][]EventHandler
-	eventMux          sync.RWMutex
-	
+	eventHandlers map[string][]EventHandler
+	eventMux      sync.RWMutex
+
 	// Metrics
-	metrics           *NodeMetrics
-	
+	metrics *NodeMetrics
+
 	// Lifecycle
-	ctx               context.Context
-	cancel            context.CancelFunc
-	wg                sync.WaitGroup
-	started           bool
-	startedMux        sync.RWMutex
+	ctx        context.Context
+	cancel     context.CancelFunc
+	wg         sync.WaitGroup
+	started    bool
+	startedMux sync.RWMutex
 }
 
 // NodeMetrics tracks node performance metrics
 type NodeMetrics struct {
 	// Connection metrics
-	ConnectedPeers    int
-	TotalConnections  int
-	ConnectionErrors  int
-	
+	ConnectedPeers   int
+	TotalConnections int
+	ConnectionErrors int
+
 	// Discovery metrics
-	PeersDiscovered   int
-	DiscoveryErrors   int
-	
+	PeersDiscovered int
+	DiscoveryErrors int
+
 	// Security metrics
-	AuthAttempts      int
-	AuthSuccesses     int
-	AuthFailures      int
-	
+	AuthAttempts  int
+	AuthSuccesses int
+	AuthFailures  int
+
 	// Resource metrics
 	ResourcesAdvertised int
 	ResourcesDiscovered int
-	
+
 	// Content metrics
-	ContentPublished  int
-	ContentRequests   int
-	ContentProvided   int
-	
+	ContentPublished int
+	ContentRequests  int
+	ContentProvided  int
+
 	// Performance metrics
 	AverageLatency    time.Duration
 	MessageThroughput int64
-	
+
 	// Timestamps
-	StartTime         time.Time
-	LastActivity      time.Time
-	Uptime            time.Duration
+	StartTime    time.Time
+	LastActivity time.Time
+	Uptime       time.Duration
 }
 
 // EventHandler defines event handler interface
@@ -130,7 +131,7 @@ const (
 func NewNode(ctx context.Context, p2pConfig *internalconfig.P2PConfig) (*P2PNode, error) {
 	// Create a proper pkg/config NodeConfig from the internal P2PConfig
 	nodeConfig := config.DefaultConfig()
-	
+
 	// Copy P2P config fields if provided
 	if p2pConfig != nil {
 		nodeConfig.PrivateKey = p2pConfig.PrivateKey
@@ -145,7 +146,7 @@ func NewNode(ctx context.Context, p2pConfig *internalconfig.P2PConfig) (*P2PNode
 			nodeConfig.ConnMgrGrace = time.Minute // Default fallback
 		}
 	}
-	
+
 	return NewP2PNode(ctx, nodeConfig)
 }
 
@@ -154,16 +155,16 @@ func NewP2PNode(ctx context.Context, nodeConfig *config.NodeConfig) (*P2PNode, e
 	if nodeConfig == nil {
 		nodeConfig = config.DefaultConfig()
 	}
-	
+
 	// Generate key if not provided
 	if nodeConfig.PrivateKey == "" {
 		if err := nodeConfig.GenerateKey(); err != nil {
 			return nil, fmt.Errorf("failed to generate node key: %w", err)
 		}
 	}
-	
+
 	ctx, cancel := context.WithCancel(ctx)
-	
+
 	node := &P2PNode{
 		config:        nodeConfig,
 		eventHandlers: make(map[string][]EventHandler),
@@ -173,15 +174,15 @@ func NewP2PNode(ctx context.Context, nodeConfig *config.NodeConfig) (*P2PNode, e
 		ctx:    ctx,
 		cancel: cancel,
 	}
-	
+
 	// Initialize components
 	if err := node.initializeComponents(); err != nil {
 		return nil, fmt.Errorf("failed to initialize components: %w", err)
 	}
-	
+
 	// Setup event handlers
 	node.setupEventHandlers()
-	
+
 	log.Printf("P2P node initialized with ID: %s", node.ID())
 	return node, nil
 }
@@ -189,26 +190,27 @@ func NewP2PNode(ctx context.Context, nodeConfig *config.NodeConfig) (*P2PNode, e
 // initializeComponents initializes all node components
 func (n *P2PNode) initializeComponents() error {
 	var err error
-	
+
 	// Initialize libp2p host
 	n.host, err = p2phost.NewP2PHost(n.ctx, n.config)
 	if err != nil {
 		return fmt.Errorf("failed to create host: %w", err)
 	}
-	
+
 	// Initialize discovery engine
 	n.discoveryEngine, err = discovery.NewDiscoveryEngine(n.ctx, n.host, n.config)
 	if err != nil {
 		return fmt.Errorf("failed to create discovery engine: %w", err)
 	}
-	
-	// Initialize security manager
+
+	// Initialize security manager with config from node config
 	securityConfig := security.DefaultSecurityConfig()
-	n.securityManager, err = security.NewSecurityManager(n.ctx, n.host, securityConfig)
+	// TODO: Load security config from node config when available
+	n.securityManager, err = security.NewSecurityManager(securityConfig)
 	if err != nil {
 		return fmt.Errorf("failed to create security manager: %w", err)
 	}
-	
+
 	// Initialize resource advertiser
 	// Note: We'll need to get the DHT from discovery engine
 	dht := n.discoveryEngine.GetDHT()
@@ -219,7 +221,7 @@ func (n *P2PNode) initializeComponents() error {
 			return fmt.Errorf("failed to create resource advertiser: %w", err)
 		}
 	}
-	
+
 	// Initialize content router
 	if dht != nil {
 		routerConfig := routing.DefaultContentRouterConfig()
@@ -228,7 +230,7 @@ func (n *P2PNode) initializeComponents() error {
 			return fmt.Errorf("failed to create content router: %w", err)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -239,17 +241,17 @@ func (n *P2PNode) setupEventHandlers() {
 		n.metrics.ConnectedPeers++
 		n.metrics.TotalConnections++
 		n.metrics.LastActivity = time.Now()
-		
+
 		n.emitEvent(EventPeerConnected, map[string]interface{}{
 			"peer_id": conn.RemotePeer(),
 			"addr":    conn.RemoteMultiaddr(),
 		}, conn.RemotePeer())
 	})
-	
+
 	n.host.OnDisconnect(func(net network.Network, conn network.Conn) {
 		n.metrics.ConnectedPeers--
 		n.metrics.LastActivity = time.Now()
-		
+
 		n.emitEvent(EventPeerDisconnected, map[string]interface{}{
 			"peer_id": conn.RemotePeer(),
 			"addr":    conn.RemoteMultiaddr(),
@@ -261,39 +263,39 @@ func (n *P2PNode) setupEventHandlers() {
 func (n *P2PNode) Start() error {
 	n.startedMux.Lock()
 	defer n.startedMux.Unlock()
-	
+
 	if n.started {
 		return fmt.Errorf("node already started")
 	}
-	
+
 	log.Printf("Starting P2P node...")
-	
+
 	// Start discovery engine
 	n.discoveryEngine.Start()
-	
+
 	// Start resource advertiser
 	if n.resourceAdvertiser != nil {
 		n.resourceAdvertiser.Start()
 	}
-	
+
 	// Start content router
 	if n.contentRouter != nil {
 		n.contentRouter.Start()
 	}
-	
+
 	// Start metrics collection
 	n.wg.Add(1)
 	go n.metricsTask()
-	
+
 	// Start resource monitoring
 	n.wg.Add(1)
 	go n.resourceMonitoringTask()
-	
+
 	n.started = true
 	log.Printf("P2P node started successfully")
 	log.Printf("Node ID: %s", n.host.ID())
 	log.Printf("Listen addresses: %v", n.host.Addrs())
-	
+
 	return nil
 }
 
@@ -301,44 +303,44 @@ func (n *P2PNode) Start() error {
 func (n *P2PNode) Stop() error {
 	n.startedMux.Lock()
 	defer n.startedMux.Unlock()
-	
+
 	if !n.started {
 		return fmt.Errorf("node not started")
 	}
-	
+
 	log.Printf("Stopping P2P node...")
-	
+
 	// Cancel context
 	n.cancel()
-	
+
 	// Wait for background tasks
 	n.wg.Wait()
-	
+
 	// Stop components
 	if n.discoveryEngine != nil {
 		n.discoveryEngine.Stop()
 	}
-	
+
 	if n.resourceAdvertiser != nil {
 		n.resourceAdvertiser.Stop()
 	}
-	
+
 	if n.contentRouter != nil {
 		n.contentRouter.Stop()
 	}
-	
+
 	if n.securityManager != nil {
 		n.securityManager.Close()
 	}
-	
+
 	// Close host
 	if n.host != nil {
 		n.host.Close()
 	}
-	
+
 	n.started = false
 	log.Printf("P2P node stopped")
-	
+
 	return nil
 }
 
@@ -348,7 +350,7 @@ func (n *P2PNode) ConnectToPeer(ctx context.Context, peerInfo peer.AddrInfo) err
 		n.metrics.ConnectionErrors++
 		return fmt.Errorf("failed to connect to peer: %w", err)
 	}
-	
+
 	log.Printf("Connected to peer: %s", peerInfo.ID)
 	return nil
 }
@@ -358,7 +360,7 @@ func (n *P2PNode) DisconnectFromPeer(peerID peer.ID) error {
 	if err := n.host.Network().ClosePeer(peerID); err != nil {
 		return fmt.Errorf("failed to disconnect from peer: %w", err)
 	}
-	
+
 	log.Printf("Disconnected from peer: %s", peerID)
 	return nil
 }
@@ -377,16 +379,16 @@ func (n *P2PNode) ConnectedPeers() []peer.ID {
 func (n *P2PNode) GetAllPeers() map[peer.ID]*PeerInfo {
 	peers := make(map[peer.ID]*PeerInfo)
 	connectedPeers := n.host.GetConnectedPeers()
-	
+
 	for _, peerID := range connectedPeers {
 		// Get peer connection info
 		conn := n.host.Network().ConnsToPeer(peerID)
 		var addresses []string
-		
+
 		if len(conn) > 0 {
 			addresses = append(addresses, conn[0].RemoteMultiaddr().String())
 		}
-		
+
 		peers[peerID] = &PeerInfo{
 			ID:        peerID,
 			Addresses: addresses,
@@ -394,7 +396,7 @@ func (n *P2PNode) GetAllPeers() map[peer.ID]*PeerInfo {
 			LastSeen:  time.Now(),
 		}
 	}
-	
+
 	return peers
 }
 
@@ -412,12 +414,12 @@ func (n *P2PNode) IsConnected(peerID peer.ID) bool {
 func (n *P2PNode) SetCapabilities(caps *resources.NodeCapabilities) {
 	n.capabilities = caps
 	n.host.SetCapabilities(caps)
-	
+
 	// Update advertiser
 	if n.resourceAdvertiser != nil {
 		n.resourceAdvertiser.SetCapabilities(caps)
 	}
-	
+
 	n.emitEvent(EventResourceUpdated, caps, "")
 }
 
@@ -429,12 +431,12 @@ func (n *P2PNode) GetCapabilities() *resources.NodeCapabilities {
 // SetResourceMetrics sets resource metrics
 func (n *P2PNode) SetResourceMetrics(metrics *resources.ResourceMetrics) {
 	n.resourceMetrics = metrics
-	
+
 	// Update advertiser
 	if n.resourceAdvertiser != nil {
 		n.resourceAdvertiser.SetResourceMetrics(metrics)
 	}
-	
+
 	n.emitEvent(EventResourceUpdated, metrics, "")
 }
 
@@ -448,14 +450,14 @@ func (n *P2PNode) PublishContent(ctx context.Context, content *routing.ContentMe
 	if n.contentRouter == nil {
 		return fmt.Errorf("content router not available")
 	}
-	
+
 	if err := n.contentRouter.PublishContent(ctx, content); err != nil {
 		return fmt.Errorf("failed to publish content: %w", err)
 	}
-	
+
 	n.metrics.ContentPublished++
 	n.emitEvent(EventContentPublished, content, "")
-	
+
 	return nil
 }
 
@@ -464,15 +466,15 @@ func (n *P2PNode) RequestContent(ctx context.Context, contentID string, priority
 	if n.contentRouter == nil {
 		return nil, fmt.Errorf("content router not available")
 	}
-	
+
 	request, err := n.contentRouter.RequestContent(ctx, contentID, priority)
 	if err != nil {
 		return nil, fmt.Errorf("failed to request content: %w", err)
 	}
-	
+
 	n.metrics.ContentRequests++
 	n.emitEvent(EventContentRequested, request, "")
-	
+
 	return request, nil
 }
 
@@ -481,7 +483,7 @@ func (n *P2PNode) FindContent(ctx context.Context, contentID string) (*routing.C
 	if n.contentRouter == nil {
 		return nil, nil, fmt.Errorf("content router not available")
 	}
-	
+
 	return n.contentRouter.FindContent(ctx, contentID)
 }
 
@@ -490,8 +492,8 @@ func (n *P2PNode) EstablishSecureChannel(ctx context.Context, peerID peer.ID) (*
 	if n.securityManager == nil {
 		return nil, fmt.Errorf("security manager not available")
 	}
-	
-	return n.securityManager.EstablishSecureChannel(ctx, peerID)
+
+	return n.securityManager.EstablishSecureChannel(peerID)
 }
 
 // Event system
@@ -500,7 +502,7 @@ func (n *P2PNode) EstablishSecureChannel(ctx context.Context, peerID peer.ID) (*
 func (n *P2PNode) On(eventType string, handler EventHandler) {
 	n.eventMux.Lock()
 	defer n.eventMux.Unlock()
-	
+
 	n.eventHandlers[eventType] = append(n.eventHandlers[eventType], handler)
 }
 
@@ -508,7 +510,7 @@ func (n *P2PNode) On(eventType string, handler EventHandler) {
 func (n *P2PNode) Off(eventType string, handler EventHandler) {
 	n.eventMux.Lock()
 	defer n.eventMux.Unlock()
-	
+
 	handlers := n.eventHandlers[eventType]
 	for i, h := range handlers {
 		// Note: In Go, we can't directly compare functions
@@ -525,18 +527,18 @@ func (n *P2PNode) emitEvent(eventType string, data interface{}, peerID peer.ID) 
 	n.eventMux.RLock()
 	handlers := n.eventHandlers[eventType]
 	n.eventMux.RUnlock()
-	
+
 	if len(handlers) == 0 {
 		return
 	}
-	
+
 	event := &NodeEvent{
 		Type:      eventType,
 		Data:      data,
 		PeerID:    peerID,
 		Timestamp: time.Now(),
 	}
-	
+
 	// Call handlers in separate goroutines
 	for _, handler := range handlers {
 		go handler(event)
@@ -548,10 +550,10 @@ func (n *P2PNode) emitEvent(eventType string, data interface{}, peerID peer.ID) 
 // metricsTask collects node metrics
 func (n *P2PNode) metricsTask() {
 	defer n.wg.Done()
-	
+
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-n.ctx.Done():
@@ -565,10 +567,10 @@ func (n *P2PNode) metricsTask() {
 // resourceMonitoringTask monitors resource usage
 func (n *P2PNode) resourceMonitoringTask() {
 	defer n.wg.Done()
-	
+
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-n.ctx.Done():
@@ -583,33 +585,33 @@ func (n *P2PNode) resourceMonitoringTask() {
 func (n *P2PNode) updateMetrics() {
 	// Update uptime
 	n.metrics.Uptime = time.Since(n.metrics.StartTime)
-	
+
 	// Update peer count
 	n.metrics.ConnectedPeers = n.host.GetPeerCount()
-	
+
 	// Update last activity
 	n.metrics.LastActivity = time.Now()
-	
+
 	// Aggregate metrics from components
 	if n.discoveryEngine != nil {
 		discoveryMetrics := n.discoveryEngine.GetMetrics()
 		n.metrics.PeersDiscovered = discoveryMetrics.PeersFound
 		n.metrics.DiscoveryErrors = discoveryMetrics.DiscoveryErrors
 	}
-	
+
 	if n.securityManager != nil {
 		securityMetrics := n.securityManager.GetMetrics()
-		n.metrics.AuthAttempts = securityMetrics.AuthAttempts
-		n.metrics.AuthSuccesses = securityMetrics.AuthAttempts - securityMetrics.AuthFailures
-		n.metrics.AuthFailures = securityMetrics.AuthFailures
+		n.metrics.AuthAttempts = int(securityMetrics.AuthAttempts)
+		n.metrics.AuthSuccesses = int(securityMetrics.AuthAttempts - securityMetrics.AuthFailures)
+		n.metrics.AuthFailures = int(securityMetrics.AuthFailures)
 	}
-	
+
 	if n.resourceAdvertiser != nil {
 		advertiserMetrics := n.resourceAdvertiser.GetMetrics()
 		n.metrics.ResourcesAdvertised = advertiserMetrics.AdvertisementsSent
 		n.metrics.ResourcesDiscovered = advertiserMetrics.AdvertisementsReceived
 	}
-	
+
 	if n.contentRouter != nil {
 		routerMetrics := n.contentRouter.GetMetrics()
 		n.metrics.ContentPublished = routerMetrics.ContentPublished
@@ -625,25 +627,25 @@ func (n *P2PNode) updateResourceMetrics() {
 			Timestamp: time.Now(),
 		}
 	}
-	
+
 	// Get system resource usage
 	cpuUsage, err := n.getCPUUsage()
 	if err != nil {
 		cpuUsage = 0.0
 	}
-	
+
 	memoryUsage, _, err := n.getMemoryUsage()
 	if err != nil {
 		memoryUsage = 0.0
 	}
-	
+
 	diskUsage, _, err := n.getDiskUsage()
 	if err != nil {
 		diskUsage = 0.0
 	}
-	
+
 	networkBandwidth := n.getNetworkBandwidth()
-	
+
 	// Update metrics
 	n.resourceMetrics.CPUUsage = cpuUsage
 	n.resourceMetrics.MemoryUsage = int64(memoryUsage)
@@ -651,7 +653,7 @@ func (n *P2PNode) updateResourceMetrics() {
 	n.resourceMetrics.NetworkRx = int64(networkBandwidth)
 	n.resourceMetrics.NetworkTx = int64(networkBandwidth)
 	n.resourceMetrics.Timestamp = time.Now()
-	
+
 	// Update advertiser
 	if n.resourceAdvertiser != nil {
 		n.resourceAdvertiser.SetResourceMetrics(n.resourceMetrics)
@@ -664,7 +666,7 @@ func (n *P2PNode) updateResourceMetrics() {
 func (n *P2PNode) GetStatus() *NodeStatus {
 	n.startedMux.RLock()
 	defer n.startedMux.RUnlock()
-	
+
 	return &NodeStatus{
 		ID:              n.host.ID(),
 		Started:         n.started,
@@ -722,7 +724,7 @@ func (n *P2PNode) getCPUUsage() (float64, error) {
 	// Implementation depends on platform
 	// This is a simplified cross-platform approach
 	var usage float64
-	
+
 	// Try to read /proc/stat on Linux
 	if data, err := os.ReadFile("/proc/stat"); err == nil {
 		lines := strings.Split(string(data), "\n")
@@ -733,7 +735,7 @@ func (n *P2PNode) getCPUUsage() (float64, error) {
 				nice, _ := strconv.ParseFloat(fields[2], 64)
 				system, _ := strconv.ParseFloat(fields[3], 64)
 				idle, _ := strconv.ParseFloat(fields[4], 64)
-				
+
 				total := user + nice + system + idle
 				if total > 0 {
 					usage = ((total - idle) / total) * 100
@@ -747,7 +749,7 @@ func (n *P2PNode) getCPUUsage() (float64, error) {
 		// Approximate CPU usage based on GC activity
 		usage = float64(m.NumGC % 100)
 	}
-	
+
 	return usage, nil
 }
 
@@ -755,19 +757,19 @@ func (n *P2PNode) getCPUUsage() (float64, error) {
 func (n *P2PNode) getMemoryUsage() (float64, int64, error) {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
-	
+
 	// Get process memory usage
 	processMemory := int64(m.Alloc)
-	
+
 	// Try to get system memory info
 	var totalMemory int64
 	var usage float64
-	
+
 	// Try to read /proc/meminfo on Linux
 	if data, err := os.ReadFile("/proc/meminfo"); err == nil {
 		lines := strings.Split(string(data), "\n")
 		var memTotal, memAvailable int64
-		
+
 		for _, line := range lines {
 			if strings.HasPrefix(line, "MemTotal:") {
 				fields := strings.Fields(line)
@@ -785,7 +787,7 @@ func (n *P2PNode) getMemoryUsage() (float64, int64, error) {
 				}
 			}
 		}
-		
+
 		if memTotal > 0 {
 			totalMemory = memTotal
 			if memAvailable > 0 {
@@ -793,13 +795,13 @@ func (n *P2PNode) getMemoryUsage() (float64, int64, error) {
 			}
 		}
 	}
-	
+
 	// Fallback to process memory
 	if totalMemory == 0 {
 		totalMemory = processMemory * 10 // Rough estimate
-		usage = 10.0 // Rough estimate
+		usage = 10.0                     // Rough estimate
 	}
-	
+
 	return usage, totalMemory, nil
 }
 
@@ -810,23 +812,23 @@ func (n *P2PNode) getDiskUsage() (float64, int64, error) {
 	if err != nil {
 		return 0, 0, err
 	}
-	
+
 	// Try to get disk usage for the current directory
 	// This is a cross-platform approach using file stat
 	var totalSpace, usedSpace int64
-	
+
 	if info, err := os.Stat(pwd); err == nil {
 		// This is a rough approximation
 		// In a real implementation, you'd use platform-specific syscalls
 		totalSpace = 1024 * 1024 * 1024 * 100 // Assume 100GB
-		usedSpace = info.Size() * 1000         // Rough estimate
+		usedSpace = info.Size() * 1000        // Rough estimate
 	}
-	
+
 	usage := float64(usedSpace) / float64(totalSpace) * 100
 	if usage > 100 {
 		usage = 100
 	}
-	
+
 	return usage, totalSpace, nil
 }
 
@@ -834,11 +836,11 @@ func (n *P2PNode) getDiskUsage() (float64, int64, error) {
 func (n *P2PNode) getNetworkBandwidth() int64 {
 	// Simple bandwidth estimation based on peer connections
 	peerCount := n.GetPeerCount()
-	
+
 	// Estimate bandwidth based on number of peers
 	// This is a rough approximation
-	baseBandwidth := int64(1024 * 1024) // 1 MB/s base
+	baseBandwidth := int64(1024 * 1024)            // 1 MB/s base
 	peerBandwidth := int64(peerCount * 100 * 1024) // 100 KB/s per peer
-	
+
 	return baseBandwidth + peerBandwidth
 }

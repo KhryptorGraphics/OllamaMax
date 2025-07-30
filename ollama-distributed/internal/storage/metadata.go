@@ -83,6 +83,7 @@ type MetadataIndex struct {
 	CreatedAt time.Time                  `json:"created_at"`
 	UpdatedAt time.Time                  `json:"updated_at"`
 	Stats     *IndexStats                `json:"stats"`
+	mutex     sync.RWMutex               `json:"-"` // Added for thread safety
 }
 
 // IndexStats contains statistics about an index

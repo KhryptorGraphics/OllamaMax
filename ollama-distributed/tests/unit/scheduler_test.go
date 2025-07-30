@@ -2,38 +2,38 @@ package unit
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
-	"github.com/ollama/ollama/api"
-	"github.com/ollama/ollama/server"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/integration"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/ollama/ollama-distributed/pkg/consensus"
-	"github.com/ollama/ollama-distributed/pkg/p2p"
-	"github.com/ollama/ollama-distributed/pkg/scheduler/distributed"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/consensus"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/scheduler/distributed"
 )
 
 // TestDistributedScheduler tests the distributed scheduler
 func TestDistributedScheduler(t *testing.T) {
 	// Create test configuration
 	config := &distributed.DistributedConfig{
-		ClusterID:           "test-cluster",
-		NodeID:              "test-node-1",
-		MaxNodes:            5,
-		HeartbeatInterval:   30 * time.Second,
-		DefaultStrategy:     "layerwise",
-		LayerThreshold:      8,
-		BatchSizeLimit:      32,
-		LBAlgorithm:         "weighted_round_robin",
-		LatencyTarget:       100 * time.Millisecond,
-		ReplicationFactor:   2,
-		HealthCheckInterval: 10 * time.Second,
-		RecoveryTimeout:     30 * time.Second,
+		ClusterID:             "test-cluster",
+		NodeID:                "test-node-1",
+		MaxNodes:              5,
+		HeartbeatInterval:     30 * time.Second,
+		DefaultStrategy:       "layerwise",
+		LayerThreshold:        8,
+		BatchSizeLimit:        32,
+		LBAlgorithm:           "weighted_round_robin",
+		LatencyTarget:         100 * time.Millisecond,
+		ReplicationFactor:     2,
+		HealthCheckInterval:   10 * time.Second,
+		RecoveryTimeout:       30 * time.Second,
 		CommunicationProtocol: "libp2p",
-		Encryption:          true,
-		Compression:         true,
+		Encryption:            true,
+		Compression:           true,
 	}
 
 	// Create base scheduler (mock)
@@ -113,16 +113,16 @@ func TestDistributedEngine(t *testing.T) {
 
 		// Test task status transitions
 		assert.Equal(t, distributed.TaskStatusPending, task.Status)
-		
+
 		task.Status = distributed.TaskStatusPartitioned
 		assert.Equal(t, distributed.TaskStatusPartitioned, task.Status)
-		
+
 		task.Status = distributed.TaskStatusScheduled
 		assert.Equal(t, distributed.TaskStatusScheduled, task.Status)
-		
+
 		task.Status = distributed.TaskStatusRunning
 		assert.Equal(t, distributed.TaskStatusRunning, task.Status)
-		
+
 		task.Status = distributed.TaskStatusCompleted
 		assert.Equal(t, distributed.TaskStatusCompleted, task.Status)
 	})
@@ -130,11 +130,11 @@ func TestDistributedEngine(t *testing.T) {
 	t.Run("TestSubtaskManagement", func(t *testing.T) {
 		// Create test subtask
 		subtask := &distributed.Subtask{
-			ID:      "subtask-1",
-			TaskID:  "test-task-1",
-			NodeID:  "test-node-1",
-			Type:    "inference",
-			Status:  distributed.TaskStatusPending,
+			ID:       "subtask-1",
+			TaskID:   "test-task-1",
+			NodeID:   "test-node-1",
+			Type:     "inference",
+			Status:   distributed.TaskStatusPending,
 			Metadata: make(map[string]interface{}),
 		}
 
@@ -164,7 +164,7 @@ func TestClusterManager(t *testing.T) {
 				CPUCores:       8,
 				MemoryBytes:    16 * 1024 * 1024 * 1024, // 16GB
 				GPUCount:       1,
-				GPUMemoryBytes: 8 * 1024 * 1024 * 1024,  // 8GB
+				GPUMemoryBytes: 8 * 1024 * 1024 * 1024, // 8GB
 				ComputeScore:   100.0,
 			},
 			Usage: &distributed.ResourceUsage{
@@ -174,13 +174,13 @@ func TestClusterManager(t *testing.T) {
 				ActiveRequests:    0,
 				QueuedRequests:    0,
 			},
-			LastSeen: time.Now(),
+			LastSeen:     time.Now(),
 			Capabilities: []string{"inference", "training"},
 		}
 
 		// Test node registration
 		manager.RegisterNode(node)
-		
+
 		// Verify node is registered
 		registeredNode := manager.GetNode(node.ID)
 		assert.NotNil(t, registeredNode)
@@ -205,7 +205,7 @@ func TestClusterManager(t *testing.T) {
 
 		// Test model registration
 		manager.RegisterModel(model)
-		
+
 		// Verify model is registered
 		registeredModel := manager.GetModel(model.Name)
 		assert.NotNil(t, registeredModel)
@@ -232,7 +232,7 @@ func TestClusterManager(t *testing.T) {
 
 		// Test heartbeat processing
 		manager.ProcessHeartbeat(heartbeat)
-		
+
 		// Verify node status is updated
 		node := manager.GetNode(heartbeat.NodeID)
 		if node != nil {
@@ -262,8 +262,8 @@ func TestLoadBalancer(t *testing.T) {
 		// Create test nodes
 		nodes := []*distributed.NodeInfo{
 			{
-				ID:      "node-1",
-				Status:  distributed.NodeStatusOnline,
+				ID:     "node-1",
+				Status: distributed.NodeStatusOnline,
 				Capacity: &distributed.ResourceCapacity{
 					CPUCores:    8,
 					MemoryBytes: 16 * 1024 * 1024 * 1024,
@@ -277,8 +277,8 @@ func TestLoadBalancer(t *testing.T) {
 				Latency: 50 * time.Millisecond,
 			},
 			{
-				ID:      "node-2",
-				Status:  distributed.NodeStatusOnline,
+				ID:     "node-2",
+				Status: distributed.NodeStatusOnline,
 				Capacity: &distributed.ResourceCapacity{
 					CPUCores:    4,
 					MemoryBytes: 8 * 1024 * 1024 * 1024,
@@ -329,7 +329,7 @@ func TestResourceMetrics(t *testing.T) {
 	// Create test resource capacity
 	capacity := &distributed.ResourceCapacity{
 		CPUCores:         8,
-		MemoryBytes:      16 * 1024 * 1024 * 1024, // 16GB
+		MemoryBytes:      16 * 1024 * 1024 * 1024,   // 16GB
 		DiskBytes:        1024 * 1024 * 1024 * 1024, // 1TB
 		GPUCount:         2,
 		GPUMemoryBytes:   16 * 1024 * 1024 * 1024, // 16GB
@@ -393,7 +393,7 @@ func BenchmarkDistributedScheduler(b *testing.B) {
 					CreatedAt: time.Now(),
 					Priority:  1,
 				}
-				
+
 				// Simulate task processing
 				_ = task
 				i++

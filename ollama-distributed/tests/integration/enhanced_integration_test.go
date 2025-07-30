@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/ollama/ollama-distributed/pkg/api"
-	"github.com/ollama/ollama-distributed/pkg/models"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/api"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/models"
 )
 
 // EnhancedIntegrationTestSuite provides comprehensive end-to-end testing

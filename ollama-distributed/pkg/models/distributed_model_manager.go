@@ -8,9 +8,8 @@ import (
 	"time"
 
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/ollama/ollama-distributed/internal/config"
-	"github.com/ollama/ollama-distributed/pkg/p2p"
-	"github.com/ollama/ollama/server"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/internal/config"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p"
 )
 
 // DistributedModelManager extends Ollama's model management with distributed capabilities
@@ -28,7 +27,7 @@ type DistributedModelManager struct {
 	logger *slog.Logger
 	
 	// Ollama integration
-	ollamaServer *server.Server
+	// ollamaServer removed - using distributed architecture
 	
 	// Distributed model registry
 	registry       *DistributedRegistry

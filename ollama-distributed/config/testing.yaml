@@ -1,0 +1,102 @@
+# Testing Configuration for OllamaMax Distributed
+# This configuration is optimized for automated testing and CI/CD
+
+node:
+  id: "test-node-1"
+  name: "Test Node"
+  region: "test"
+  zone: "ci"
+  environment: "testing"
+  tags:
+    purpose: "testing"
+    ci: "true"
+
+api:
+  listen: "127.0.0.1:0"  # Random port for testing
+  timeout: "10s"
+  max_body_size: 10485760  # 10MB
+  tls:
+    enabled: false
+  cors:
+    enabled: true
+    allowed_origins: ["*"]
+    allowed_methods: ["*"]
+    allowed_headers: ["*"]
+  rate_limit:
+    enabled: false  # Disabled for testing
+
+p2p:
+  enabled: false  # Disabled for unit testing
+  listen: "127.0.0.1:0"
+  bootstrap_peers: []
+  discovery:
+    enabled: false
+    mdns_enabled: false
+    dht_enabled: false
+  nat:
+    enabled: false
+
+consensus:
+  enabled: false  # Disabled for unit testing
+  data_dir: "/tmp/ollama-test/consensus"
+  election_timeout: "100ms"
+  heartbeat_timeout: "50ms"
+  snapshot_interval: 100
+  snapshot_threshold: 1000
+
+scheduler:
+  enabled: true
+  algorithm: "round_robin"
+  max_concurrent_tasks: 5
+  task_timeout: "30s"
+  health_check_interval: "1s"
+
+storage:
+  data_dir: "/tmp/ollama-test"
+  model_dir: "/tmp/ollama-test/models"
+  cache_dir: "/tmp/ollama-test/cache"
+  max_cache_size: 104857600  # 100MB
+
+security:
+  auth:
+    enabled: false  # Disabled for testing
+    method: "jwt"
+    secret_key: "test-secret-key"
+    token_expiry: "1h"
+  tls:
+    enabled: false
+  encryption:
+    enabled: false
+
+web:
+  enabled: false  # Disabled for testing
+
+metrics:
+  enabled: false  # Disabled for testing
+
+logging:
+  level: "error"  # Minimal logging for tests
+  format: "text"
+  output: "console"
+  file: ""
+
+sync:
+  enabled: false  # Disabled for unit testing
+  interval: "1s"
+  batch_size: 10
+  delta_dir: "/tmp/ollama-test/deltas"
+  cas_dir: "/tmp/ollama-test/cas"
+
+replication:
+  enabled: false  # Disabled for unit testing
+  factor: 1
+  strategy: "simple"
+  health_check_interval: "1s"
+
+distributed:
+  enabled: false  # Disabled for unit testing
+  cluster_id: "test-cluster"
+  cas_dir: "/tmp/ollama-test/distributed/cas"
+  delta_dir: "/tmp/ollama-test/distributed/deltas"
+  sync_interval: "1s"
+  max_chunk_size: 1024  # 1KB for testing

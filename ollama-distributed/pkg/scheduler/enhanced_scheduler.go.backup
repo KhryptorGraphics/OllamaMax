@@ -1,0 +1,1135 @@
+package scheduler
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"math"
+	"sort"
+	"sync"
+	"time"
+
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/internal/config"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/consensus"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/scheduler/partitioning"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/scheduler/loadbalancer"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/scheduler/fault_tolerance"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/scheduler/orchestration"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/types"
+)
+
+// EnhancedDistributedScheduler extends the existing scheduler with advanced features
+type EnhancedDistributedScheduler struct {
+	*Engine // Embed existing engine
+	
+	// Enhanced components
+	enhancedPartitionManager *EnhancedPartitionManager
+	intelligentLoadBalancer  *IntelligentLoadBalancer
+	advancedFaultTolerance   *AdvancedFaultToleranceManager
+	
+	// Configuration
+	config *EnhancedSchedulerConfig
+	
+	// Performance tracking
+	performanceTracker *PerformanceTracker
+	
+	// Adaptive scheduling
+	schedulingAdvisor *SchedulingAdvisor
+	
+	// Lifecycle
+	mu       sync.RWMutex
+	started  bool
+	ctx      context.Context
+	cancel   context.CancelFunc
+}
+
+// EnhancedSchedulerConfig holds enhanced scheduler configuration
+type EnhancedSchedulerConfig struct {
+	// Inherit base config
+	*config.SchedulerConfig
+	
+	// Enhanced features
+	EnableAdaptiveScheduling bool          `json:"enable_adaptive_scheduling"`
+	EnablePerformanceTracking bool        `json:"enable_performance_tracking"`
+	EnableIntelligentLoadBalancing bool   `json:"enable_intelligent_load_balancing"`
+	EnableAdvancedFaultTolerance bool     `json:"enable_advanced_fault_tolerance"`
+	
+	// Performance tracking settings
+	PerformanceHistorySize   int           `json:"performance_history_size"`
+	PerformanceCollectionInterval time.Duration `json:"performance_collection_interval"`
+	
+	// Adaptive scheduling settings
+	AdaptiveThresholds   map[string]float64 `json:"adaptive_thresholds"`
+	LearningRate         float64           `json:"learning_rate"`
+	
+	// Load balancing settings
+	IntelligentLoadBalancingAlgorithm string `json:"intelligent_load_balancing_algorithm"`
+	LoadBalancingWeightFactors map[string]float64 `json:"load_balancing_weight_factors"`
+	
+	// Fault tolerance settings
+	AdvancedFaultToleranceStrategy string `json:"advanced_fault_tolerance_strategy"`
+	FaultRecoveryTimeout           time.Duration `json:"fault_recovery_timeout"`
+	
+	// Scheduling advisor settings
+	AdvisorDecisionTimeout         time.Duration `json:"advisor_decision_timeout"`
+	AdvisorLearningRate           float64       `json:"advisor_learning_rate"`
+}
+
+// EnhancedPartitionManager adds advanced partitioning capabilities
+type EnhancedPartitionManager struct {
+	baseManager *partitioning.PartitionManager
+	
+	// Enhanced strategies
+	enhancedStrategies map[string]partitioning.PartitionStrategy
+	
+	// Performance tracking
+	strategyPerformance map[string]*StrategyPerformance
+	
+	// Adaptive selection
+	selectionHistory []*StrategySelection
+	
+	// Lifecycle
+	mu sync.RWMutex
+}
+
+// StrategyPerformance tracks performance metrics for partitioning strategies
+type StrategyPerformance struct {
+	TotalExecutions    int64         `json:"total_executions"`
+	SuccessfulExecutions int64      `json:"successful_executions"`
+	FailedExecutions   int64         `json:"failed_executions"`
+	AverageLatency     time.Duration `json:"average_latency"`
+	AverageThroughput  float64       `json:"average_throughput"`
+	LastUsed           time.Time     `json:"last_used"`
+}
+
+// StrategySelection represents a strategy selection decision
+type StrategySelection struct {
+	StrategyName string        `json:"strategy_name"`
+	TaskID       string        `json:"task_id"`
+	ModelName    string        `json:"model_name"`
+	SelectedAt   time.Time     `json:"selected_at"`
+	ExecutionLatency time.Duration `json:"execution_latency"`
+	ExecutionThroughput float64   `json:"execution_throughput"`
+	Success      bool          `json:"success"`
+}
+
+// IntelligentLoadBalancer enhances the base load balancer with intelligent features
+type IntelligentLoadBalancer struct {
+	baseBalancer *loadbalancer.IntelligentLoadBalancer
+	
+	// Performance predictor
+	predictor *PerformancePredictor
+	
+	// Learning-based optimization
+	learningEngine *LearningEngine
+	
+	// Adaptive selection
+	selector *AdaptiveSelector
+	
+	// Metrics
+	metrics *IntelligentLoadBalancerMetrics
+	
+	// Lifecycle
+	mu sync.RWMutex
+}
+
+// PerformancePredictor predicts node performance based on historical data
+type PerformancePredictor struct {
+	history []*PerformanceSample
+	mu      sync.RWMutex
+	
+	// Prediction models
+	models map[string]*PredictionModel
+	
+	// Accuracy tracking
+	accuracy float64
+}
+
+// PerformanceSample represents a performance sample for learning
+type PerformanceSample struct {
+	NodeID          string        `json:"node_id"`
+	TaskType        string        `json:"task_type"`
+	ResourceState   *NodeResourceState `json:"resource_state"`
+	PredictedLatency time.Duration `json:"predicted_latency"`
+	ActualLatency   time.Duration `json:"actual_latency"`
+	PredictedThroughput float64   `json:"predicted_throughput"`
+	ActualThroughput float64      `json:"actual_throughput"`
+	Timestamp       time.Time     `json:"timestamp"`
+}
+
+// NodeResourceState represents the resource state of a node
+type NodeResourceState struct {
+	CPUUtilization    float64 `json:"cpu_utilization"`
+	MemoryUtilization float64 `json:"memory_utilization"`
+	GPUUtilization    float64 `json:"gpu_utilization"`
+	NetworkUtilization float64 `json:"network_utilization"`
+	ActiveRequests    int     `json:"active_requests"`
+	QueuedRequests    int     `json:"queued_requests"`
+	LoadAverage       float64 `json:"load_average"`
+}
+
+// PredictionModel represents a performance prediction model
+type PredictionModel struct {
+	Name       string                 `json:"name"`
+	Type       string                 `json:"type"`
+	Weights    map[string]float64     `json:"weights"`
+	Accuracy   float64                `json:"accuracy"`
+	LastTrained time.Time             `json:"last_trained"`
+	Metadata   map[string]interface{} `json:"metadata"`
+}
+
+// LearningEngine implements machine learning for optimization
+type LearningEngine struct {
+	// Historical data
+	trainingData []*TrainingSample
+	
+	// Models
+	models map[string]*LearningModel
+	
+	// Training settings
+	learningRate float64
+	batchSize    int
+	maxEpochs    int
+	
+	// Lifecycle
+	mu sync.RWMutex
+}
+
+// TrainingSample represents a training sample for the learning engine
+type TrainingSample struct {
+	Features    map[string]float64 `json:"features"`
+	Labels      map[string]float64 `json:"labels"`
+	Timestamp   time.Time          `json:"timestamp"`
+}
+
+// LearningModel represents a machine learning model for optimization
+type LearningModel struct {
+	Name       string                 `json:"name"`
+	Type       string                 `json:"type"`
+	Parameters map[string]float64    `json:"parameters"`
+	Accuracy   float64                `json:"accuracy"`
+	LastTrained time.Time             `json:"last_trained"`
+	Metadata   map[string]interface{} `json:"metadata"`
+}
+
+// AdaptiveSelector implements adaptive node selection
+type AdaptiveSelector struct {
+	// Selection history
+	history []*SelectionDecision
+	
+	// Performance tracking
+	performance map[string]*SelectionPerformance
+	
+	// Adaptive weights
+	weights map[string]float64
+	
+	// Learning rate
+	learningRate float64
+	
+	// Lifecycle
+	mu sync.RWMutex
+}
+
+// SelectionDecision represents a node selection decision
+type SelectionDecision struct {
+	NodeID     string        `json:"node_id"`
+	TaskType   string        `json:"task_type"`
+	SelectedAt time.Time     `json:"selected_at"`
+	Latency    time.Duration `json:"latency"`
+	Throughput float64       `json:"throughput"`
+	Success    bool          `json:"success"`
+}
+
+// SelectionPerformance tracks performance metrics for node selections
+type SelectionPerformance struct {
+	TotalSelections   int64         `json:"total_selections"`
+	SuccessfulSelections int64      `json:"successful_selections"`
+	FailedSelections  int64         `json:"failed_selections"`
+	AverageLatency    time.Duration `json:"average_latency"`
+	AverageThroughput float64       `json:"average_throughput"`
+	LastUsed          time.Time     `json:"last_used"`
+}
+
+// IntelligentLoadBalancerMetrics tracks metrics for the intelligent load balancer
+type IntelligentLoadBalancerMetrics struct {
+	TotalSelections      int64         `json:"total_selections"`
+	SuccessfulSelections int64         `json:"successful_selections"`
+	FailedSelections     int64         `json:"failed_selections"`
+	AverageLatency       time.Duration `json:"average_latency"`
+	AverageThroughput    float64       `json:"average_throughput"`
+	PredictionAccuracy   float64       `json:"prediction_accuracy"`
+	LastUpdated          time.Time     `json:"last_updated"`
+}
+
+// AdvancedFaultToleranceManager enhances fault tolerance with advanced features
+type AdvancedFaultToleranceManager struct {
+	baseManager *fault_tolerance.FaultToleranceManager
+	
+	// Enhanced recovery strategies
+	enhancedStrategies map[string]fault_tolerance.RecoveryStrategy
+	
+	// Fast recovery mechanisms
+	fastRecovery *FastRecoveryMechanism
+	
+	// Redundancy management
+	redundancyManager *RedundancyManager
+	
+	// Graceful degradation
+	degradationManager *DegradationManager
+	
+	// Metrics
+	metrics *AdvancedFaultToleranceMetrics
+	
+	// Lifecycle
+	mu sync.RWMutex
+}
+
+// FastRecoveryMechanism implements fast recovery using checkpointing
+type FastRecoveryMechanism struct {
+	// Checkpoint management
+	checkpointManager *CheckpointManager
+	
+	// Recovery history
+	recoveryHistory []*RecoveryAttempt
+	
+	// Settings
+	recoveryTimeout time.Duration
+	
+	// Lifecycle
+	mu sync.RWMutex
+}
+
+// CheckpointManager manages system checkpoints for fast recovery
+type CheckpointManager struct {
+	// Checkpoints
+	checkpoints map[string]*Checkpoint
+	
+	// Storage
+	storage CheckpointStorage
+	
+	// Lifecycle
+	mu sync.RWMutex
+}
+
+// Checkpoint represents a system checkpoint
+type Checkpoint struct {
+	ID            string                 `json:"id"`
+	Timestamp     time.Time              `json:"timestamp"`
+	State         map[string]interface{} `json:"state"`
+	Metadata      map[string]interface{} `json:"metadata"`
+	Size          int64                  `json:"size"`
+	Compressed    bool                   `json:"compressed"`
+	Encrypted     bool                   `json:"encrypted"`
+}
+
+// CheckpointStorage interface for checkpoint storage
+type CheckpointStorage interface {
+	Store(checkpoint *Checkpoint) error
+	Load(id string) (*Checkpoint, error)
+	List() ([]*Checkpoint, error)
+	Delete(id string) error
+}
+
+// RecoveryAttempt represents a recovery attempt
+type RecoveryAttempt struct {
+	ID          string        `json:"id"`
+	FaultID     string        `json:"fault_id"`
+	Strategy    string        `json:"strategy"`
+	StartTime   time.Time     `json:"start_time"`
+	EndTime     time.Time     `json:"end_time"`
+	Duration    time.Duration `json:"duration"`
+	Success     bool          `json:"success"`
+	Error       string        `json:"error,omitempty"`
+	Metadata    map[string]interface{} `json:"metadata"`
+}
+
+// RedundancyManager manages redundancy for fault tolerance
+type RedundancyManager struct {
+	// Redundancy policies
+	policies map[string]*RedundancyPolicy
+	
+	// Active redundancies
+	active map[string]*RedundancyInfo
+	
+	// Lifecycle
+	mu sync.RWMutex
+}
+
+// RedundancyPolicy defines redundancy policies
+type RedundancyPolicy struct {
+	Name           string                 `json:"name"`
+	Type           string                 `json:"type"` // "model", "data", "service"
+	ReplicationFactor int                 `json:"replication_factor"`
+	MinReplicas    int                    `json:"min_replicas"`
+	MaxReplicas    int                    `json:"max_replicas"`
+	SyncInterval   time.Duration          `json:"sync_interval"`
+	Metadata       map[string]interface{} `json:"metadata"`
+}
+
+// RedundancyInfo represents active redundancy information
+type RedundancyInfo struct {
+	ID             string                 `json:"id"`
+	Policy         *RedundancyPolicy      `json:"policy"`
+	PrimaryNode    string                 `json:"primary_node"`
+	ReplicaNodes   []string               `json:"replica_nodes"`
+	Status         string                 `json:"status"`
+	LastSync       time.Time              `json:"last_sync"`
+	Metadata       map[string]interface{} `json:"metadata"`
+}
+
+// DegradationManager handles graceful degradation during faults
+type DegradationManager struct {
+	// Degradation policies
+	policies map[string]*DegradationPolicy
+	
+	// Active degradations
+	active map[string]*DegradationInfo
+	
+	// Lifecycle
+	mu sync.RWMutex
+}
+
+// DegradationPolicy defines degradation policies
+type DegradationPolicy struct {
+	Name           string                 `json:"name"`
+	Service        string                 `json:"service"`
+	DegradationLevels []DegradationLevel  `json:"degradation_levels"`
+	RecoveryActions   []RecoveryAction    `json:"recovery_actions"`
+	Metadata       map[string]interface{} `json:"metadata"`
+}
+
+// DegradationLevel represents a degradation level
+type DegradationLevel struct {
+	Name        string                 `json:"name"`
+	Severity    string                 `json:"severity"`
+	Description string                 `json:"description"`
+	Actions     []string               `json:"actions"`
+	Threshold   float64                `json:"threshold"`
+	Metadata    map[string]interface{} `json:"metadata"`
+}
+
+// RecoveryAction represents a recovery action
+type RecoveryAction struct {
+	Name        string                 `json:"name"`
+	Type        string                 `json:"type"`
+	Parameters  map[string]interface{} `json:"parameters"`
+	Timeout     time.Duration          `json:"timeout"`
+	Metadata    map[string]interface{} `json:"metadata"`
+}
+
+// DegradationInfo represents active degradation information
+type DegradationInfo struct {
+	ID           string                 `json:"id"`
+	Policy       *DegradationPolicy     `json:"policy"`
+	CurrentLevel string                 `json:"current_level"`
+	StartTime    time.Time              `json:"start_time"`
+	LastUpdated  time.Time              `json:"last_updated"`
+	Metadata     map[string]interface{} `json:"metadata"`
+}
+
+// AdvancedFaultToleranceMetrics tracks metrics for the advanced fault tolerance manager
+type AdvancedFaultToleranceMetrics struct {
+	TotalFaults       int64         `json:"total_faults"`
+	ResolvedFaults    int64         `json:"resolved_faults"`
+	FailedRecoveries  int64         `json:"failed_recoveries"`
+	AverageRecoveryTime time.Duration `json:"average_recovery_time"`
+	FastRecoveryRate  float64       `json:"fast_recovery_rate"`
+	RedundancyRate    float64       `json:"redundancy_rate"`
+	LastUpdated       time.Time     `json:"last_updated"`
+}
+
+// PerformanceTracker tracks performance metrics for the scheduler
+type PerformanceTracker struct {
+	// Historical performance data
+	history []*PerformanceRecord
+	
+	// Aggregated metrics
+	metrics *AggregatedPerformanceMetrics
+	
+	// Collection settings
+	collectionInterval time.Duration
+	historySize        int
+	
+	// Lifecycle
+	mu sync.RWMutex
+}
+
+// PerformanceRecord represents a performance record
+type PerformanceRecord struct {
+	Timestamp      time.Time              `json:"timestamp"`
+	TaskID         string                 `json:"task_id"`
+	ModelName      string                 `json:"model_name"`
+	NodeID         string                 `json:"node_id"`
+	Latency        time.Duration          `json:"latency"`
+	Throughput     float64                `json:"throughput"`
+	ResourceUsage  *NodeResourceState     `json:"resource_usage"`
+	Success        bool                   `json:"success"`
+	Error          string                 `json:"error,omitempty"`
+	Metadata       map[string]interface{} `json:"metadata"`
+}
+
+// AggregatedPerformanceMetrics represents aggregated performance metrics
+type AggregatedPerformanceMetrics struct {
+	TotalTasks      int64         `json:"total_tasks"`
+	SuccessfulTasks int64         `json:"successful_tasks"`
+	FailedTasks     int64         `json:"failed_tasks"`
+	AverageLatency  time.Duration `json:"average_latency"`
+	AverageThroughput float64     `json:"average_throughput"`
+	ResourceUtilization map[string]float64 `json:"resource_utilization"`
+	SuccessRate     float64       `json:"success_rate"`
+	ErrorRate       float64       `json:"error_rate"`
+	LastUpdated     time.Time     `json:"last_updated"`
+}
+
+// SchedulingAdvisor provides scheduling recommendations based on learned patterns
+type SchedulingAdvisor struct {
+	// Decision history
+	history []*SchedulingDecision
+	
+	// Pattern recognition
+	patternMatcher *PatternMatcher
+	
+	// Recommendation engine
+	recommender *RecommendationEngine
+	
+	// Learning settings
+	learningRate float64
+	decisionTimeout time.Duration
+	
+	// Lifecycle
+	mu sync.RWMutex
+}
+
+// SchedulingDecision represents a scheduling decision
+type SchedulingDecision struct {
+	TaskID       string                 `json:"task_id"`
+	ModelName    string                 `json:"model_name"`
+	RecommendedStrategy string            `json:"recommended_strategy"`
+	ActualStrategy   string              `json:"actual_strategy"`
+	DecisionTime     time.Time          `json:"decision_time"`
+	ExecutionLatency time.Duration       `json:"execution_latency"`
+	Result           *SchedulingResult  `json:"result"`
+	Metadata         map[string]interface{} `json:"metadata"`
+}
+
+// SchedulingResult represents the result of a scheduling decision
+type SchedulingResult struct {
+	Success      bool                   `json:"success"`
+	Latency      time.Duration          `json:"latency"`
+	Throughput   float64                `json:"throughput"`
+	ResourceUsage *NodeResourceState    `json:"resource_usage"`
+	Error        string                 `json:"error,omitempty"`
+	Metadata     map[string]interface{} `json:"metadata"`
+}
+
+// PatternMatcher identifies patterns in scheduling performance
+type PatternMatcher struct {
+	// Patterns
+	patterns map[string]*SchedulingPattern
+	
+	// Matching algorithms
+	algorithms map[string]PatternMatchingAlgorithm
+	
+	// Lifecycle
+	mu sync.RWMutex
+}
+
+// SchedulingPattern represents a scheduling pattern
+type SchedulingPattern struct {
+	ID           string                 `json:"id"`
+	Name         string                 `json:"name"`
+	Description  string                 `json:"description"`
+	Conditions   map[string]interface{} `json:"conditions"`
+	Recommendations []string             `json:"recommendations"`
+	Confidence   float64                `json:"confidence"`
+	LastUpdated  time.Time              `json:"last_updated"`
+	Metadata     map[string]interface{} `json:"metadata"`
+}
+
+// PatternMatchingAlgorithm defines the interface for pattern matching algorithms
+type PatternMatchingAlgorithm interface {
+	Match(pattern *SchedulingPattern, data map[string]interface{}) (bool, float64)
+	GetName() string
+}
+
+// RecommendationEngine provides scheduling recommendations
+type RecommendationEngine struct {
+	// Recommendations
+	recommendations map[string]*SchedulingRecommendation
+	
+	// Scoring algorithms
+	scoringAlgorithms map[string]ScoringAlgorithm
+	
+	// Lifecycle
+	mu sync.RWMutex
+}
+
+// SchedulingRecommendation represents a scheduling recommendation
+type SchedulingRecommendation struct {
+	ID           string                 `json:"id"`
+	TaskType     string                 `json:"task_type"`
+	ModelName    string                 `json:"model_name"`
+	Strategy     string                 `json:"strategy"`
+	Reasoning    string                 `json:"reasoning"`
+	Confidence   float64                `json:"confidence"`
+	LastUpdated  time.Time              `json:"last_updated"`
+	Metadata     map[string]interface{} `json:"metadata"`
+}
+
+// ScoringAlgorithm defines the interface for scoring algorithms
+type ScoringAlgorithm interface {
+	CalculateScore(data map[string]interface{}) float64
+	GetName() string
+}
+
+// NewEnhancedDistributedScheduler creates a new enhanced distributed scheduler
+func NewEnhancedDistributedScheduler(
+	config *EnhancedSchedulerConfig,
+	p2pNode *p2p.Node,
+	consensusEngine *consensus.Engine,
+) (*EnhancedDistributedScheduler, error) {
+	ctx, cancel := context.WithCancel(context.Background())
+	
+	// Create base scheduler engine
+	baseConfig := config.SchedulerConfig
+	if baseConfig == nil {
+		baseConfig = config.DefaultConfig()
+	}
+	
+	baseEngine, err := NewEngine(baseConfig, p2pNode, consensusEngine)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create base engine: %w", err)
+	}
+	
+	// Create enhanced scheduler
+	scheduler := &EnhancedDistributedScheduler{
+		Engine: baseEngine,
+		config: config,
+		ctx:    ctx,
+		cancel: cancel,
+	}
+	
+	// Initialize enhanced components
+	if err := scheduler.initializeComponents(); err != nil {
+		return nil, fmt.Errorf("failed to initialize enhanced components: %w", err)
+	}
+	
+	return scheduler, nil
+}
+
+// initializeComponents initializes all enhanced scheduler components
+func (eds *EnhancedDistributedScheduler) initializeComponents() error {
+	// Initialize enhanced partition manager
+	eds.enhancedPartitionManager = NewEnhancedPartitionManager(eds.Engine.partitionManager)
+	
+	// Initialize intelligent load balancer
+	eds.intelligentLoadBalancer = NewIntelligentLoadBalancer(eds.Engine.loadBalancer)
+	
+	// Initialize advanced fault tolerance manager
+	eds.advancedFaultTolerance = NewAdvancedFaultToleranceManager(eds.Engine.faultTolerance)
+	
+	// Initialize performance tracker
+	eds.performanceTracker = NewPerformanceTracker(
+		eds.config.PerformanceHistorySize,
+		eds.config.PerformanceCollectionInterval,
+	)
+	
+	// Initialize scheduling advisor
+	eds.schedulingAdvisor = NewSchedulingAdvisor(
+		eds.config.AdvisorLearningRate,
+		eds.config.AdvisorDecisionTimeout,
+	)
+	
+	return nil
+}
+
+// Start starts the enhanced distributed scheduler
+func (eds *EnhancedDistributedScheduler) Start() error {
+	eds.mu.Lock()
+	defer eds.mu.Unlock()
+	
+	if eds.started {
+		return fmt.Errorf("scheduler already started")
+	}
+	
+	// Start base engine
+	if err := eds.Engine.Start(); err != nil {
+		return fmt.Errorf("failed to start base engine: %w", err)
+	}
+	
+	// Start enhanced components
+	if err := eds.startEnhancedComponents(); err != nil {
+		return fmt.Errorf("failed to start enhanced components: %w", err)
+	}
+	
+	eds.started = true
+	
+	slog.Info("enhanced distributed scheduler started",
+		"adaptive_scheduling", eds.config.EnableAdaptiveScheduling,
+		"performance_tracking", eds.config.EnablePerformanceTracking,
+		"intelligent_load_balancing", eds.config.EnableIntelligentLoadBalancing,
+		"advanced_fault_tolerance", eds.config.EnableAdvancedFaultTolerance)
+	
+	return nil
+}
+
+// startEnhancedComponents starts enhanced scheduler components
+func (eds *EnhancedDistributedScheduler) startEnhancedComponents() error {
+	// Start performance tracker
+	if eds.config.EnablePerformanceTracking {
+		go eds.performanceTracker.start(eds.ctx)
+	}
+	
+	// Start scheduling advisor
+	if eds.config.EnableAdaptiveScheduling {
+		go eds.schedulingAdvisor.start(eds.ctx)
+	}
+	
+	// Start intelligent load balancer components
+	if eds.config.EnableIntelligentLoadBalancing {
+		// Components are already started with the base load balancer
+	}
+	
+	// Start advanced fault tolerance components
+	if eds.config.EnableAdvancedFaultTolerance {
+		// Components are already started with the base fault tolerance manager
+	}
+	
+	return nil
+}
+
+// Schedule schedules a request for execution with enhanced features
+func (eds *EnhancedDistributedScheduler) Schedule(req *Request) error {
+	// Use scheduling advisor if enabled
+	if eds.config.EnableAdaptiveScheduling {
+		recommendedStrategy := eds.schedulingAdvisor.GetRecommendation(req)
+		if recommendedStrategy != "" {
+			slog.Debug("using recommended scheduling strategy",
+				"task_id", req.ID,
+				"model_name", req.ModelName,
+				"recommended_strategy", recommendedStrategy)
+		}
+	}
+	
+	// Track performance if enabled
+	if eds.config.EnablePerformanceTracking {
+		start := time.Now()
+		defer func() {
+			duration := time.Since(start)
+			eds.performanceTracker.RecordPerformance(&PerformanceRecord{
+				Timestamp: start,
+				TaskID:    req.ID,
+				ModelName: req.ModelName,
+				Latency:   duration,
+				Success:   true, // Assuming success for now
+				Metadata:  make(map[string]interface{}),
+			})
+		}()
+	}
+	
+	// Delegate to base scheduler
+	return eds.Engine.Schedule(req)
+}
+
+// GetEnhancedStats returns enhanced scheduler statistics
+func (eds *EnhancedDistributedScheduler) GetEnhancedStats() *EnhancedStats {
+	baseStats := eds.Engine.GetStats()
+	
+	enhancedStats := &EnhancedStats{
+		BaseStats: *baseStats,
+	}
+	
+	// Add performance metrics if tracking is enabled
+	if eds.config.EnablePerformanceTracking {
+		perfMetrics := eds.performanceTracker.GetAggregatedMetrics()
+		enhancedStats.PerformanceMetrics = perfMetrics
+	}
+	
+	// Add intelligent load balancer metrics if enabled
+	if eds.config.EnableIntelligentLoadBalancing {
+		lbMetrics := eds.intelligentLoadBalancer.GetMetrics()
+		enhancedStats.LoadBalancerMetrics = lbMetrics
+	}
+	
+	// Add fault tolerance metrics if enabled
+	if eds.config.EnableAdvancedFaultTolerance {
+		ftMetrics := eds.advancedFaultTolerance.GetMetrics()
+		enhancedStats.FaultToleranceMetrics = ftMetrics
+	}
+	
+	return enhancedStats
+}
+
+// EnhancedStats represents enhanced scheduler statistics
+type EnhancedStats struct {
+	BaseStats              Stats                        `json:"base_stats"`
+	PerformanceMetrics     *AggregatedPerformanceMetrics `json:"performance_metrics,omitempty"`
+	LoadBalancerMetrics    *IntelligentLoadBalancerMetrics `json:"load_balancer_metrics,omitempty"`
+	FaultToleranceMetrics *AdvancedFaultToleranceMetrics `json:"fault_tolerance_metrics,omitempty"`
+}
+
+// Shutdown gracefully shuts down the enhanced distributed scheduler
+func (eds *EnhancedDistributedScheduler) Shutdown(ctx context.Context) error {
+	eds.mu.Lock()
+	defer eds.mu.Unlock()
+	
+	if !eds.started {
+		return nil
+	}
+	
+	slog.Info("shutting down enhanced distributed scheduler")
+	
+	// Cancel context
+	eds.cancel()
+	
+	// Shutdown base engine
+	if err := eds.Engine.Shutdown(ctx); err != nil {
+		slog.Warn("failed to shutdown base engine", "error", err)
+	}
+	
+	// Shutdown enhanced components
+	if err := eds.shutdownEnhancedComponents(ctx); err != nil {
+		slog.Warn("failed to shutdown enhanced components", "error", err)
+	}
+	
+	eds.started = false
+	
+	slog.Info("enhanced distributed scheduler shutdown complete")
+	
+	return nil
+}
+
+// shutdownEnhancedComponents shuts down enhanced scheduler components
+func (eds *EnhancedDistributedScheduler) shutdownEnhancedComponents(ctx context.Context) error {
+	// Shutdown is handled through context cancellation
+	// Components that need explicit shutdown should implement it here
+	
+	return nil
+}
+
+// NewEnhancedPartitionManager creates a new enhanced partition manager
+func NewEnhancedPartitionManager(baseManager *partitioning.PartitionManager) *EnhancedPartitionManager {
+	return &EnhancedPartitionManager{
+		baseManager:        baseManager,
+		enhancedStrategies: make(map[string]partitioning.PartitionStrategy),
+		strategyPerformance: make(map[string]*StrategyPerformance),
+		selectionHistory:    make([]*StrategySelection, 0),
+	}
+}
+
+// NewIntelligentLoadBalancer creates a new intelligent load balancer
+func NewIntelligentLoadBalancer(baseBalancer *loadbalancer.IntelligentLoadBalancer) *IntelligentLoadBalancer {
+	return &IntelligentLoadBalancer{
+		baseBalancer: baseBalancer,
+		predictor: &PerformancePredictor{
+			history:  make([]*PerformanceSample, 0),
+			models:   make(map[string]*PredictionModel),
+			accuracy: 0.7, // Initial accuracy
+		},
+		learningEngine: &LearningEngine{
+			trainingData: make([]*TrainingSample, 0),
+			models:       make(map[string]*LearningModel),
+			learningRate: 0.1,
+			batchSize:    32,
+			maxEpochs:    100,
+		},
+		selector: &AdaptiveSelector{
+			history:      make([]*SelectionDecision, 0),
+			performance:  make(map[string]*SelectionPerformance),
+			weights: map[string]float64{
+				"latency":    0.4,
+				"throughput": 0.3,
+				"reliability": 0.2,
+				"capacity":   0.1,
+			},
+			learningRate: 0.1,
+		},
+		metrics: &IntelligentLoadBalancerMetrics{
+			LastUpdated: time.Now(),
+		},
+	}
+}
+
+// NewAdvancedFaultToleranceManager creates a new advanced fault tolerance manager
+func NewAdvancedFaultToleranceManager(baseManager *fault_tolerance.FaultToleranceManager) *AdvancedFaultToleranceManager {
+	return &AdvancedFaultToleranceManager{
+		baseManager:        baseManager,
+		enhancedStrategies: make(map[string]fault_tolerance.RecoveryStrategy),
+		fastRecovery: &FastRecoveryMechanism{
+			checkpointManager: &CheckpointManager{
+				checkpoints: make(map[string]*Checkpoint),
+			},
+			recoveryHistory: make([]*RecoveryAttempt, 0),
+			recoveryTimeout: 30 * time.Second,
+		},
+		redundancyManager: &RedundancyManager{
+			policies: make(map[string]*RedundancyPolicy),
+			active:   make(map[string]*RedundancyInfo),
+		},
+		degradationManager: &DegradationManager{
+			policies: make(map[string]*DegradationPolicy),
+			active:   make(map[string]*DegradationInfo),
+		},
+		metrics: &AdvancedFaultToleranceMetrics{
+			LastUpdated: time.Now(),
+		},
+	}
+}
+
+// NewPerformanceTracker creates a new performance tracker
+func NewPerformanceTracker(historySize int, collectionInterval time.Duration) *PerformanceTracker {
+	if historySize <= 0 {
+		historySize = 1000
+	}
+	
+	if collectionInterval <= 0 {
+		collectionInterval = 30 * time.Second
+	}
+	
+	return &PerformanceTracker{
+		history:            make([]*PerformanceRecord, 0, historySize),
+		metrics:            &AggregatedPerformanceMetrics{LastUpdated: time.Now()},
+		collectionInterval: collectionInterval,
+		historySize:        historySize,
+	}
+}
+
+// NewSchedulingAdvisor creates a new scheduling advisor
+func NewSchedulingAdvisor(learningRate float64, decisionTimeout time.Duration) *SchedulingAdvisor {
+	if learningRate <= 0 {
+		learningRate = 0.1
+	}
+	
+	if decisionTimeout <= 0 {
+		decisionTimeout = 5 * time.Second
+	}
+	
+	return &SchedulingAdvisor{
+		history:         make([]*SchedulingDecision, 0),
+		patternMatcher:  &PatternMatcher{patterns: make(map[string]*SchedulingPattern)},
+		recommender:     &RecommendationEngine{recommendations: make(map[string]*SchedulingRecommendation)},
+		learningRate:    learningRate,
+		decisionTimeout: decisionTimeout,
+	}
+}
+
+// GetMetrics returns metrics for the intelligent load balancer
+func (ilb *IntelligentLoadBalancer) GetMetrics() *IntelligentLoadBalancerMetrics {
+	ilb.mu.RLock()
+	defer ilb.mu.RUnlock()
+	
+	// Update prediction accuracy
+	ilb.metrics.PredictionAccuracy = ilb.predictor.accuracy
+	ilb.metrics.LastUpdated = time.Now()
+	
+	return ilb.metrics
+}
+
+// GetMetrics returns metrics for the advanced fault tolerance manager
+func (aftm *AdvancedFaultToleranceManager) GetMetrics() *AdvancedFaultToleranceMetrics {
+	aftm.mu.RLock()
+	defer aftm.mu.RUnlock()
+	
+	// Update metrics based on history
+	if len(aftm.fastRecovery.recoveryHistory) > 0 {
+		totalRecoveries := len(aftm.fastRecovery.recoveryHistory)
+		successfulRecoveries := 0
+		totalRecoveryTime := time.Duration(0)
+		
+		for _, attempt := range aftm.fastRecovery.recoveryHistory {
+			if attempt.Success {
+				successfulRecoveries++
+				totalRecoveryTime += attempt.Duration
+			}
+		}
+		
+		aftm.metrics.TotalFaults = int64(totalRecoveries)
+		aftm.metrics.ResolvedFaults = int64(successfulRecoveries)
+		aftm.metrics.FailedRecoveries = int64(totalRecoveries - successfulRecoveries)
+		
+		if successfulRecoveries > 0 {
+			aftm.metrics.AverageRecoveryTime = totalRecoveryTime / time.Duration(successfulRecoveries)
+		}
+		
+		if totalRecoveries > 0 {
+			aftm.metrics.FastRecoveryRate = float64(successfulRecoveries) / float64(totalRecoveries)
+		}
+	}
+	
+	aftm.metrics.LastUpdated = time.Now()
+	
+	return aftm.metrics
+}
+
+// GetAggregatedMetrics returns aggregated performance metrics
+func (pt *PerformanceTracker) GetAggregatedMetrics() *AggregatedPerformanceMetrics {
+	pt.mu.RLock()
+	defer pt.mu.RUnlock()
+	
+	// Calculate aggregated metrics from history
+	if len(pt.history) == 0 {
+		return pt.metrics
+	}
+	
+	totalTasks := len(pt.history)
+	successfulTasks := 0
+	failedTasks := 0
+	totalLatency := time.Duration(0)
+	totalThroughput := 0.0
+	resourceUsage := make(map[string]float64)
+	
+	for _, record := range pt.history {
+		if record.Success {
+			successfulTasks++
+			totalLatency += record.Latency
+			totalThroughput += record.Throughput
+			
+			// Aggregate resource usage
+			if record.ResourceUsage != nil {
+				resourceUsage["cpu"] += record.ResourceUsage.CPUUtilization
+				resourceUsage["memory"] += record.ResourceUsage.MemoryUtilization
+				resourceUsage["gpu"] += record.ResourceUsage.GPUUtilization
+				resourceUsage["network"] += record.ResourceUsage.NetworkUtilization
+			}
+		} else {
+			failedTasks++
+		}
+	}
+	
+	// Normalize resource usage averages
+	if totalTasks > 0 {
+		for key, value := range resourceUsage {
+			resourceUsage[key] = value / float64(totalTasks)
+		}
+	}
+	
+	// Update metrics
+	pt.metrics.TotalTasks = int64(totalTasks)
+	pt.metrics.SuccessfulTasks = int64(successfulTasks)
+	pt.metrics.FailedTasks = int64(failedTasks)
+	
+	if successfulTasks > 0 {
+		pt.metrics.AverageLatency = totalLatency / time.Duration(successfulTasks)
+		pt.metrics.AverageThroughput = totalThroughput / float64(successfulTasks)
+	}
+	
+	pt.metrics.ResourceUtilization = resourceUsage
+	
+	if totalTasks > 0 {
+		pt.metrics.SuccessRate = float64(successfulTasks) / float64(totalTasks)
+		pt.metrics.ErrorRate = float64(failedTasks) / float64(totalTasks)
+	}
+	
+	pt.metrics.LastUpdated = time.Now()
+	
+	return pt.metrics
+}
+
+// RecordPerformance records a performance record
+func (pt *PerformanceTracker) RecordPerformance(record *PerformanceRecord) {
+	pt.mu.Lock()
+	defer pt.mu.Unlock()
+	
+	// Add to history
+	pt.history = append(pt.history, record)
+	
+	// Maintain history size limit
+	if len(pt.history) > pt.historySize {
+		pt.history = pt.history[len(pt.history)-pt.historySize:]
+	}
+}
+
+// start starts the performance tracker
+func (pt *PerformanceTracker) start(ctx context.Context) {
+	ticker := time.NewTicker(pt.collectionInterval)
+	defer ticker.Stop()
+	
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			// Collection is done automatically when records are added
+			// This is just to maintain the ticker
+		}
+	}
+}
+
+// GetRecommendation returns a scheduling recommendation
+func (sa *SchedulingAdvisor) GetRecommendation(req *Request) string {
+	sa.mu.RLock()
+	defer sa.mu.RUnlock()
+	
+	// Simple recommendation based on model name and request type
+	// In a real implementation, this would use pattern matching and learning
+	modelName := req.ModelName
+	requestType := req.Type
+	
+	// Recommendations based on common patterns
+	if requestType == "inference" {
+		if contains(modelName, "llama") || contains(modelName, "mistral") {
+			return "layerwise"
+		} else if contains(modelName, "gemma") {
+			return "data_split"
+		}
+	} else if requestType == "embedding" {
+		return "data_split"
+	} else if requestType == "classification" {
+		return "task_parallel"
+	}
+	
+	// Default recommendation
+	return "round_robin"
+}
+
+// start starts the scheduling advisor
+func (sa *SchedulingAdvisor) start(ctx context.Context) {
+	// In a real implementation, this would start background learning tasks
+	// For now, we'll just maintain the ticker
+	ticker := time.NewTicker(1 * time.Minute)
+	defer ticker.Stop()
+	
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			// Background learning processing would go here
+		}
+	}
+}
+
+// DefaultConfig returns default enhanced scheduler configuration
+func (esc *EnhancedSchedulerConfig) DefaultConfig() *config.SchedulerConfig {
+	baseConfig := config.DefaultSchedulerConfig()
+	
+	return &config.SchedulerConfig{
+		Algorithm:           baseConfig.Algorithm,
+		LoadBalancing:       baseConfig.LoadBalancing,
+		HealthCheckInterval: baseConfig.HealthCheckInterval,
+		MaxRetries:          baseConfig.MaxRetries,
+		RetryDelay:          baseConfig.RetryDelay,
+		QueueSize:           baseConfig.QueueSize,
+		WorkerCount:         baseConfig.WorkerCount,
+	}
+}
+
+// contains checks if a string contains a substring (case-insensitive)
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && 
+		(LowerCase(s) == LowerCase(substr) || 
+		 LowerCase(s[:len(substr)]) == LowerCase(substr) ||
+		 LowerCase(s[len(s)-len(substr):]) == LowerCase(substr))
+}
+
+// LowerCase converts a string to lowercase
+func LowerCase(s string) string {
+	runes := []rune(s)
+	for i, r := range runes {
+		if r >= 'A' && r <= 'Z' {
+			runes[i] = r + ('a' - 'A')
+		}
+	}
+	return string(runes)
+}

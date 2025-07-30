@@ -15,8 +15,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/ollama/ollama-distributed/pkg/api"
-	"github.com/ollama/ollama-distributed/pkg/scheduler/distributed"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/api"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/scheduler/distributed"
 )
 
 // TestAPIServer tests the API server
