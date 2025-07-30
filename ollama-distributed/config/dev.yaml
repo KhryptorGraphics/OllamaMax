@@ -1,0 +1,156 @@
+# Development Environment Configuration
+# Optimized for local development and testing
+
+node:
+  id: ""
+  name: "ollama-dev-node"
+  region: "local"
+  zone: "dev"
+  environment: "development"
+  tags:
+    purpose: "development"
+    maintainer: "dev-team"
+
+api:
+  listen: "127.0.0.1:11434"
+  timeout: 30s
+  max_body_size: 33554432 # 32MB
+  tls:
+    enabled: false
+    min_version: "1.2"
+  cors:
+    enabled: true
+    allowed_origins:
+      - "http://localhost:3000"
+      - "http://localhost:8080"
+      - "http://127.0.0.1:3000" 
+      - "http://127.0.0.1:8080"
+    allowed_methods:
+      - "GET"
+      - "POST"
+      - "PUT"
+      - "DELETE"
+      - "OPTIONS"
+    allowed_headers:
+      - "Content-Type"
+      - "Authorization"
+      - "X-Requested-With"
+    allow_credentials: true
+    max_age: 3600
+  rate_limit:
+    enabled: false # Disabled for development
+    rps: 10000
+    burst: 20000
+    window: 1m
+
+p2p:
+  listen: "/ip4/127.0.0.1/tcp/4001"
+  bootstrap: []
+  enable_dht: true
+  enable_pubsub: true
+  conn_mgr_low: 10
+  conn_mgr_high: 20
+  conn_mgr_grace: "30s"
+  dial_timeout: 10s
+  max_streams: 100
+
+consensus:
+  node_id: ""
+  data_dir: "./data/dev/consensus"
+  bind_addr: "127.0.0.1:7000"
+  advertise_addr: ""
+  bootstrap: true # Single node bootstrap for dev
+  bootstrap_expect: 1
+  peers: []
+  log_level: "DEBUG"
+  heartbeat_timeout: 1s
+  election_timeout: 1s
+  commit_timeout: 50ms
+  max_append_entries: 64
+  snapshot_interval: 30s # More frequent snapshots for testing
+  snapshot_threshold: 1024
+
+scheduler:
+  algorithm: "round_robin"
+  load_balancing: "least_connections"
+  health_check_interval: 10s # More frequent health checks
+  max_retries: 2
+  retry_delay: 500ms
+  queue_size: 1000
+  worker_count: 2 # Fewer workers for dev
+
+storage:
+  data_dir: "./data/dev"
+  model_dir: "./data/dev/models"
+  cache_dir: "./data/dev/cache"
+  max_disk_size: 10737418240 # 10GB for dev
+  cleanup_age: 24h # Clean up daily in dev
+
+security:
+  tls:
+    enabled: false # Disabled for local development
+    min_version: "1.2"
+  auth:
+    enabled: false # Disabled for easier dev workflow
+    method: "jwt"
+    token_expiry: 24h
+  encryption:
+    algorithm: "AES-256-GCM"
+    key_size: 256
+  firewall:
+    enabled: false # Disabled for dev
+    allowed_ips: []
+    blocked_ips: []
+    rules: []
+  audit:
+    enabled: false # Disabled for dev
+    log_file: "./logs/dev/audit.log"
+    format: "json"
+
+web:
+  enabled: true
+  listen: "127.0.0.1:8080"
+  static_dir: "./web/static"
+  template_dir: "./web/templates"
+  tls:
+    enabled: false
+
+metrics:
+  enabled: true
+  listen: "127.0.0.1:9090"
+  path: "/metrics"
+  namespace: "ollama_dev"
+  subsystem: "distributed"
+
+logging:
+  level: "debug" # Verbose logging for development
+  format: "console" # Human-readable format for dev
+  output: "stdout"
+  file: ""
+  max_size: 100
+  max_age: 7
+  max_backups: 3
+  compress: false
+
+sync:
+  delta_dir: "./data/dev/deltas"
+  cas_dir: "./data/dev/cas"
+  worker_count: 1 # Single worker for dev
+  sync_interval: 30s # More frequent sync for testing
+  chunk_size: 1048576 # 1MB chunks
+  max_retries: 2
+  retry_delay: 1s
+
+replication:
+  worker_count: 1
+  default_min_replicas: 1 # Single replica for dev
+  default_max_replicas: 1
+  default_replication_factor: 1
+  default_sync_interval: 30s
+  policy_enforcement_interval: 10s
+  health_check_interval: 10s
+  health_check_timeout: 5s
+
+distributed:
+  cas_dir: "./data/dev/cas"
+  delta_dir: "./data/dev/deltas"

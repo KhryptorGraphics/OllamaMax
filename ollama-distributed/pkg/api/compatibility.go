@@ -9,9 +9,9 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ollama/ollama-distributed/pkg/integration"
-	"github.com/ollama/ollama-distributed/pkg/models"
-	"github.com/ollama/ollama-distributed/pkg/scheduler"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/integration"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/models"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/scheduler"
 )
 
 // ServerWrapper wraps the original server to implement integration.Server interface

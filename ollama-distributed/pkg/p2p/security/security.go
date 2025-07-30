@@ -22,17 +22,17 @@ import (
 const (
 	// Security protocols
 	SecureChannelProtocol = protocol.ID("/ollamacron/secure-channel/1.0.0")
-	AuthProtocol         = protocol.ID("/ollamacron/auth/1.0.0")
-	KeyExchangeProtocol  = protocol.ID("/ollamacron/key-exchange/1.0.0")
-	
+	AuthProtocol          = protocol.ID("/ollamacron/auth/1.0.0")
+	KeyExchangeProtocol   = protocol.ID("/ollamacron/key-exchange/1.0.0")
+
 	// Security levels
-	SecurityLevelNone   = "none"
-	SecurityLevelBasic  = "basic"
-	SecurityLevelHigh   = "high"
-	
+	SecurityLevelNone  = "none"
+	SecurityLevelBasic = "basic"
+	SecurityLevelHigh  = "high"
+
 	// Key rotation intervals
 	DefaultKeyRotationInterval = 24 * time.Hour
-	SessionKeyTTL             = 4 * time.Hour
+	SessionKeyTTL              = 4 * time.Hour
 )
 
 // ===============================
@@ -49,14 +49,14 @@ type SessionKey struct {
 
 // KeyManager manages cryptographic keys
 type KeyManager struct {
-	sessionKeys    map[string]*SessionKey
-	keysMu        sync.RWMutex
-	
+	sessionKeys map[string]*SessionKey
+	keysMu      sync.RWMutex
+
 	// Peer public keys
-	peerKeys      map[string]crypto.PubKey
-	peerKeysMu    sync.RWMutex
-	
-	config        *SecurityConfig
+	peerKeys   map[string]crypto.PubKey
+	peerKeysMu sync.RWMutex
+
+	config *SecurityConfig
 }
 
 // EncryptionManager handles encryption/decryption
@@ -67,9 +67,9 @@ type EncryptionManager struct {
 
 // AccessControl manages access control policies
 type AccessControl struct {
-	policies  map[peer.ID]*AccessPolicy
-	policyMu  sync.RWMutex
-	config    *SecurityConfig
+	policies map[peer.ID]*AccessPolicy
+	policyMu sync.RWMutex
+	config   *SecurityConfig
 }
 
 // AccessPolicy defines access permissions for a peer
@@ -82,9 +82,9 @@ type AccessPolicy struct {
 
 // RateLimiter manages rate limiting
 type RateLimiter struct {
-	limits   map[string]*RateLimit
-	limitMu  sync.RWMutex
-	config   *SecurityConfig
+	limits  map[string]*RateLimit
+	limitMu sync.RWMutex
+	config  *SecurityConfig
 }
 
 // RateLimit defines rate limiting parameters
@@ -107,19 +107,19 @@ type ProtocolAccessControl struct {
 // AuthManager manages authentication for P2P communications
 type AuthManager struct {
 	authenticatedPeers map[peer.ID]time.Time
-	peersMu           sync.RWMutex
-	
+	peersMu            sync.RWMutex
+
 	// Private key for signing
-	privateKey        crypto.PrivKey
-	publicKey         crypto.PubKey
-	
+	privateKey crypto.PrivKey
+	publicKey  crypto.PubKey
+
 	// Session management
-	sessions          map[string]*AuthSession
-	sessionsMu        sync.RWMutex
-	sessionTTL        time.Duration
-	
+	sessions   map[string]*AuthSession
+	sessionsMu sync.RWMutex
+	sessionTTL time.Duration
+
 	// Authentication configuration
-	config            *SecurityConfig
+	config *SecurityConfig
 }
 
 // AuthSession represents an authenticated session
@@ -133,50 +133,64 @@ type AuthSession struct {
 
 // SecurityManager manages security for P2P communications
 type SecurityManager struct {
-	host           host.Host
-	
+	host host.Host
+
 	// Key management
-	keyManager     *KeyManager
-	
+	keyManager *KeyManager
+
 	// Protocol handlers
-	protocols      map[protocol.ID]*SecureProtocol
-	protocolsMux   sync.RWMutex
-	
+	protocols    map[protocol.ID]*SecureProtocol
+	protocolsMux sync.RWMutex
+
 	// Authentication
-	authManager    *AuthManager
-	
+	authManager *AuthManager
+
 	// Encryption
-	encryptionMgr  *EncryptionManager
-	
+	encryptionMgr *EncryptionManager
+
 	// Access control
-	accessControl  *AccessControl
-	
+	accessControl *AccessControl
+
 	// Rate limiting
-	rateLimiter    *RateLimiter
-	
+	rateLimiter *RateLimiter
+
+	// Certificate management
+	certManager *CertificateManager
+
+	// Advanced security features
+	monitor *SecurityMonitor
+	ids     *IntrusionDetectionSystem
+
 	// Metrics
-	metrics        *SecurityMetrics
-	
+	metrics *SecurityMetrics
+
 	// Configuration
-	config         *SecurityConfig
-	
+	config *SecurityConfig
+
 	// Lifecycle
-	ctx            context.Context
-	cancel         context.CancelFunc
-	wg             sync.WaitGroup
+	ctx    context.Context
+	cancel context.CancelFunc
+	wg     sync.WaitGroup
 }
 
 // SecurityConfig holds security configuration
 type SecurityConfig struct {
-	SecurityLevel      string        `json:"security_level"`
-	EnableEncryption   bool          `json:"enable_encryption"`
-	EnableAuth         bool          `json:"enable_auth"`
-	KeyRotationInterval time.Duration `json:"key_rotation_interval"`
-	SessionKeyTTL      time.Duration `json:"session_key_ttl"`
-	MaxConnections     int           `json:"max_connections"`
-	RateLimits         map[string]int `json:"rate_limits"`
-	TrustedPeers       []string      `json:"trusted_peers"`
-	BlockedPeers       []string      `json:"blocked_peers"`
+	SecurityLevel       string         `json:"security_level"`
+	EnableEncryption    bool           `json:"enable_encryption"`
+	EnableAuth          bool           `json:"enable_auth"`
+	KeyRotationInterval time.Duration  `json:"key_rotation_interval"`
+	SessionKeyTTL       time.Duration  `json:"session_key_ttl"`
+	MaxConnections      int            `json:"max_connections"`
+	RateLimits          map[string]int `json:"rate_limits"`
+	TrustedPeers        []string       `json:"trusted_peers"`
+	BlockedPeers        []string       `json:"blocked_peers"`
+
+	// Certificate management
+	CertFile            string        `json:"cert_file"`
+	KeyFile             string        `json:"key_file"`
+	CAFile              string        `json:"ca_file"`
+	ClientAuth          string        `json:"client_auth"` // none, request, require, verify
+	CertRefreshInterval time.Duration `json:"cert_refresh_interval"`
 }
 
 // SecurityMetrics tracks security-related metrics
@@ -190,37 +204,37 @@ type SecurityMetrics struct {
 	RateLimitHits      int
 	LastKeyRotation    time.Time
 	StartTime          time.Time
-	
+
 	// Protocol metrics
-	ProtocolMetrics    map[protocol.ID]*ProtocolMetrics
+	ProtocolMetrics map[protocol.ID]*ProtocolMetrics
 }
 
 // ProtocolMetrics tracks metrics for specific protocols
 type ProtocolMetrics struct {
-	RequestCount       int
-	ErrorCount         int
-	AverageLatency     time.Duration
-	LastActivity       time.Time
+	RequestCount   int
+	ErrorCount     int
+	AverageLatency time.Duration
+	LastActivity   time.Time
 }
 
 // SecureProtocol represents a secure protocol handler
 type SecureProtocol struct {
-	ID                protocol.ID
-	Handler           network.StreamHandler
-	
+	ID      protocol.ID
+	Handler network.StreamHandler
+
 	// Security settings
 	RequireAuth       bool
 	RequireEncryption bool
 	SecurityLevel     string
-	
+
 	// Rate limiting
-	RateLimit         *RateLimit
-	
+	RateLimit *RateLimit
+
 	// Access control
-	AccessControl     *ProtocolAccessControl
-	
+	AccessControl *ProtocolAccessControl
+
 	// Metrics
-	Metrics           *ProtocolMetrics
+	Metrics *ProtocolMetrics
 }
 
 // NewSecurityManager creates a new security manager
@@ -228,9 +242,9 @@ func NewSecurityManager(ctx context.Context, host host.Host, config *SecurityCon
 	if config == nil {
 		config = DefaultSecurityConfig()
 	}
-	
+
 	ctx, cancel := context.WithCancel(ctx)
-	
+
 	sm := &SecurityManager{
 		host:      host,
 		config:    config,
@@ -242,18 +256,18 @@ func NewSecurityManager(ctx context.Context, host host.Host, config *SecurityCon
 		ctx:    ctx,
 		cancel: cancel,
 	}
-	
+
 	// Initialize components
 	if err := sm.initializeComponents(); err != nil {
 		return nil, fmt.Errorf("failed to initialize security components: %w", err)
 	}
-	
+
 	// Setup protocol handlers
 	sm.setupProtocolHandlers()
-	
+
 	// Start background tasks
 	sm.startBackgroundTasks()
-	
+
 	log.Printf("Security manager initialized with level: %s", config.SecurityLevel)
 	return sm, nil
 }
@@ -266,35 +280,58 @@ func (sm *SecurityManager) initializeComponents() error {
 		return fmt.Errorf("failed to initialize key manager: %w", err)
 	}
 	sm.keyManager = keyManager
-	
+
 	// Initialize authentication manager
 	authManager, err := NewAuthManager(sm.host, sm.config)
 	if err != nil {
 		return fmt.Errorf("failed to initialize auth manager: %w", err)
 	}
 	sm.authManager = authManager
-	
+
 	// Initialize encryption manager
 	encryptionMgr, err := NewEncryptionManager(sm.keyManager, sm.config)
 	if err != nil {
 		return fmt.Errorf("failed to initialize encryption manager: %w", err)
 	}
 	sm.encryptionMgr = encryptionMgr
-	
+
 	// Initialize access control
 	accessControl, err := NewAccessControl(sm.config)
 	if err != nil {
 		return fmt.Errorf("failed to initialize access control: %w", err)
 	}
 	sm.accessControl = accessControl
-	
+
 	// Initialize rate limiter
 	rateLimiter, err := NewRateLimiter(sm.config)
 	if err != nil {
 		return fmt.Errorf("failed to initialize rate limiter: %w", err)
 	}
 	sm.rateLimiter = rateLimiter
-	
+
+	// Initialize certificate manager
+	certManager, err := NewCertificateManager(sm.config)
+	if err != nil {
+		log.Printf("Failed to initialize certificate manager: %v", err)
+		// Continue without certificate manager if initialization fails
+	} else {
+		sm.certManager = certManager
+	}
+
+	// Initialize security monitor
+	monitorConfig := &MonitorConfig{
+		MaxEvents:          10000,
+		EventRetention:     24 * time.Hour,
+		MetricsInterval:    time.Minute,
+		AlertThreshold:     100,
+		EnableAuditLogging: true,
+		AuditLogPath:       "/var/log/ollama/security.log",
+	}
+	sm.monitor = NewSecurityMonitor(monitorConfig)
+
+	// Get IDS from monitor
+	sm.ids = sm.monitor.GetIntrusionDetectionSystem()
+
 	return nil
 }
 
@@ -311,7 +348,7 @@ func (sm *SecurityManager) setupProtocolHandlers() {
 		AccessControl:     &ProtocolAccessControl{AllowAll: false},
 		Metrics:           &ProtocolMetrics{},
 	})
-	
+
 	// Authentication protocol
 	sm.RegisterSecureProtocol(AuthProtocol, &SecureProtocol{
 		ID:                AuthProtocol,
@@ -323,7 +360,7 @@ func (sm *SecurityManager) setupProtocolHandlers() {
 		AccessControl:     &ProtocolAccessControl{AllowAll: true},
 		Metrics:           &ProtocolMetrics{},
 	})
-	
+
 	// Key exchange protocol
 	sm.RegisterSecureProtocol(KeyExchangeProtocol, &SecureProtocol{
 		ID:                KeyExchangeProtocol,
@@ -342,32 +379,37 @@ func (sm *SecurityManager) startBackgroundTasks() {
 	// Key rotation
 	sm.wg.Add(1)
 	go sm.keyRotationTask()
-	
+
 	// Metrics collection
 	sm.wg.Add(1)
 	go sm.metricsTask()
-	
+
 	// Rate limit cleanup
 	sm.wg.Add(1)
 	go sm.rateLimitCleanupTask()
-	
+
 	// Session cleanup
 	sm.wg.Add(1)
 	go sm.sessionCleanupTask()
+
+	// Certificate refresh
+	if sm.certManager != nil {
+		sm.certManager.Start(sm.ctx)
+	}
 }
 
 // RegisterSecureProtocol registers a secure protocol handler
 func (sm *SecurityManager) RegisterSecureProtocol(protocolID protocol.ID, protocol *SecureProtocol) {
 	sm.protocolsMux.Lock()
 	defer sm.protocolsMux.Unlock()
-	
+
 	// Wrap handler with security middleware
 	wrappedHandler := sm.wrapHandler(protocol)
-	
+
 	sm.host.SetStreamHandler(protocolID, wrappedHandler)
 	sm.protocols[protocolID] = protocol
 	sm.metrics.ProtocolMetrics[protocolID] = protocol.Metrics
-	
+
 	log.Printf("Registered secure protocol: %s", protocolID)
 }
 
@@ -376,18 +418,18 @@ func (sm *SecurityManager) wrapHandler(protocol *SecureProtocol) network.StreamH
 	return func(stream network.Stream) {
 		start := time.Now()
 		peerID := stream.Conn().RemotePeer()
-		
+
 		// Update metrics
 		protocol.Metrics.RequestCount++
 		protocol.Metrics.LastActivity = time.Now()
-		
+
 		// Check access control
 		if !sm.accessControl.IsAllowed(peerID, protocol.ID) {
 			log.Printf("Access denied for peer %s on protocol %s", peerID, protocol.ID)
 			stream.Reset()
 			return
 		}
-		
+
 		// Check rate limits
 		if !sm.rateLimiter.Allow(peerID, protocol.ID) {
 			log.Printf("Rate limit exceeded for peer %s on protocol %s", peerID, protocol.ID)
@@ -395,7 +437,7 @@ func (sm *SecurityManager) wrapHandler(protocol *SecureProtocol) network.StreamH
 			stream.Reset()
 			return
 		}
-		
+
 		// Check authentication if required
 		if protocol.RequireAuth {
 			if !sm.authManager.IsAuthenticated(peerID) {
@@ -404,7 +446,7 @@ func (sm *SecurityManager) wrapHandler(protocol *SecureProtocol) network.StreamH
 				return
 			}
 		}
-		
+
 		// Handle encryption if required
 		if protocol.RequireEncryption {
 			if !sm.isEncryptedConnection(stream.Conn()) {
@@ -413,10 +455,10 @@ func (sm *SecurityManager) wrapHandler(protocol *SecureProtocol) network.StreamH
 				return
 			}
 		}
-		
+
 		// Call original handler
 		protocol.Handler(stream)
-		
+
 		// Update latency metrics
 		protocol.Metrics.AverageLatency = time.Since(start)
 	}
@@ -429,14 +471,14 @@ func (sm *SecurityManager) EstablishSecureChannel(ctx context.Context, peerID pe
 	if err != nil {
 		return nil, fmt.Errorf("failed to create stream: %w", err)
 	}
-	
+
 	// Perform handshake
 	sessionKey, err := sm.performHandshake(ctx, stream)
 	if err != nil {
 		stream.Close()
 		return nil, fmt.Errorf("handshake failed: %w", err)
 	}
-	
+
 	// Create secure channel
 	channel := &SecureChannel{
 		Stream:     stream,
@@ -445,10 +487,10 @@ func (sm *SecurityManager) EstablishSecureChannel(ctx context.Context, peerID pe
 		CreatedAt:  time.Now(),
 		manager:    sm,
 	}
-	
+
 	sm.metrics.EncryptedSessions++
 	sm.metrics.ActiveSessions++
-	
+
 	return channel, nil
 }
 
@@ -459,30 +501,30 @@ func (sm *SecurityManager) performHandshake(ctx context.Context, stream network.
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate session key: %w", err)
 	}
-	
+
 	// Perform noise protocol handshake
 	handshake := &HandshakeMessage{
 		Type:      "key_exchange",
 		PublicKey: sessionKey.PublicKey,
 		Timestamp: time.Now(),
 	}
-	
+
 	// Send handshake
 	if err := sm.sendHandshake(stream, handshake); err != nil {
 		return nil, fmt.Errorf("failed to send handshake: %w", err)
 	}
-	
+
 	// Receive response
 	response, err := sm.receiveHandshake(stream)
 	if err != nil {
 		return nil, fmt.Errorf("failed to receive handshake response: %w", err)
 	}
-	
+
 	// Verify response
 	if err := sm.verifyHandshake(response); err != nil {
 		return nil, fmt.Errorf("handshake verification failed: %w", err)
 	}
-	
+
 	return sessionKey, nil
 }
 
@@ -491,52 +533,52 @@ func (sm *SecurityManager) performHandshake(ctx context.Context, stream network.
 // handleSecureChannel handles secure channel establishment
 func (sm *SecurityManager) handleSecureChannel(stream network.Stream) {
 	defer stream.Close()
-	
+
 	// Handle handshake
 	handshake, err := sm.receiveHandshake(stream)
 	if err != nil {
 		log.Printf("Failed to receive handshake: %v", err)
 		return
 	}
-	
+
 	// Verify handshake
 	if err := sm.verifyHandshake(handshake); err != nil {
 		log.Printf("Handshake verification failed: %v", err)
 		return
 	}
-	
+
 	// Generate session key
 	sessionKey, err := sm.keyManager.GenerateSessionKey()
 	if err != nil {
 		log.Printf("Failed to generate session key: %v", err)
 		return
 	}
-	
+
 	// Send response
 	response := &HandshakeMessage{
 		Type:      "key_exchange_response",
 		PublicKey: sessionKey.PublicKey,
 		Timestamp: time.Now(),
 	}
-	
+
 	if err := sm.sendHandshake(stream, response); err != nil {
 		log.Printf("Failed to send handshake response: %v", err)
 		return
 	}
-	
+
 	log.Printf("Secure channel established with peer: %s", stream.Conn().RemotePeer())
 }
 
 // handleAuth handles authentication requests
 func (sm *SecurityManager) handleAuth(stream network.Stream) {
 	defer stream.Close()
-	
+
 	// Handle authentication
 	if err := sm.authManager.HandleAuthRequest(stream); err != nil {
 		log.Printf("Authentication failed: %v", err)
 		return
 	}
-	
+
 	sm.metrics.AuthAttempts++
 	log.Printf("Authentication successful for peer: %s", stream.Conn().RemotePeer())
 }
@@ -544,13 +586,13 @@ func (sm *SecurityManager) handleAuth(stream network.Stream) {
 // handleKeyExchange handles key exchange requests
 func (sm *SecurityManager) handleKeyExchange(stream network.Stream) {
 	defer stream.Close()
-	
+
 	// Handle key exchange
 	if err := sm.keyManager.HandleKeyExchange(stream); err != nil {
 		log.Printf("Key exchange failed: %v", err)
 		return
 	}
-	
+
 	log.Printf("Key exchange successful with peer: %s", stream.Conn().RemotePeer())
 }
 
@@ -559,10 +601,10 @@ func (sm *SecurityManager) handleKeyExchange(stream network.Stream) {
 // keyRotationTask handles periodic key rotation
 func (sm *SecurityManager) keyRotationTask() {
 	defer sm.wg.Done()
-	
+
 	ticker := time.NewTicker(sm.config.KeyRotationInterval)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-sm.ctx.Done():
@@ -582,10 +624,10 @@ func (sm *SecurityManager) keyRotationTask() {
 // metricsTask collects security metrics
 func (sm *SecurityManager) metricsTask() {
 	defer sm.wg.Done()
-	
+
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-sm.ctx.Done():
@@ -600,7 +642,7 @@ func (sm *SecurityManager) metricsTask() {
 func (sm *SecurityManager) updateMetrics() {
 	// Update active sessions
 	sm.metrics.ActiveSessions = sm.keyManager.GetActiveSessionCount()
-	
+
 	// Update protocol metrics
 	for protocolID, protocol := range sm.protocols {
 		if metrics, exists := sm.metrics.ProtocolMetrics[protocolID]; exists {
@@ -615,10 +657,10 @@ func (sm *SecurityManager) updateMetrics() {
 // rateLimitCleanupTask cleans up expired rate limit entries
 func (sm *SecurityManager) rateLimitCleanupTask() {
 	defer sm.wg.Done()
-	
+
 	ticker := time.NewTicker(5 * time.Minute)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-sm.ctx.Done():
@@ -632,10 +674,10 @@ func (sm *SecurityManager) rateLimitCleanupTask() {
 // sessionCleanupTask cleans up expired sessions
 func (sm *SecurityManager) sessionCleanupTask() {
 	defer sm.wg.Done()
-	
+
 	ticker := time.NewTicker(10 * time.Minute)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-sm.ctx.Done():
@@ -661,7 +703,7 @@ func (sm *SecurityManager) sendHandshake(stream network.Stream, handshake *Hands
 	if err != nil {
 		return fmt.Errorf("failed to marshal handshake: %w", err)
 	}
-	
+
 	_, err = stream.Write(data)
 	return err
 }
@@ -673,12 +715,12 @@ func (sm *SecurityManager) receiveHandshake(stream network.Stream) (*HandshakeMe
 	if err != nil {
 		return nil, fmt.Errorf("failed to read handshake: %w", err)
 	}
-	
+
 	var handshake HandshakeMessage
 	if err := json.Unmarshal(buf[:n], &handshake); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal handshake: %w", err)
 	}
-	
+
 	return &handshake, nil
 }
 
@@ -688,7 +730,7 @@ func (sm *SecurityManager) verifyHandshake(handshake *HandshakeMessage) error {
 	if time.Since(handshake.Timestamp) > 5*time.Minute {
 		return fmt.Errorf("handshake timestamp too old")
 	}
-	
+
 	// Verify signature if present
 	if handshake.Signature != nil {
 		// Implement proper signature verification
@@ -696,7 +738,7 @@ func (sm *SecurityManager) verifyHandshake(handshake *HandshakeMessage) error {
 			return fmt.Errorf("signature verification failed: %w", err)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -704,23 +746,23 @@ func (sm *SecurityManager) verifyHandshake(handshake *HandshakeMessage) error {
 func (sm *SecurityManager) verifyHandshakeSignature(handshake *HandshakeMessage) error {
 	// Create message hash for signature verification
 	messageData := fmt.Sprintf("%s:%x:%d", handshake.Type, handshake.PublicKey, handshake.Timestamp.Unix())
-	
+
 	// Get peer's public key from key manager
 	peerPubKey, err := sm.keyManager.GetPeerPublicKey(handshake.PublicKey)
 	if err != nil {
 		return fmt.Errorf("failed to get peer public key: %w", err)
 	}
-	
+
 	// Verify signature using libp2p crypto
 	valid, err := peerPubKey.Verify([]byte(messageData), handshake.Signature)
 	if err != nil {
 		return fmt.Errorf("signature verification error: %w", err)
 	}
-	
+
 	if !valid {
 		return fmt.Errorf("invalid signature")
 	}
-	
+
 	return nil
 }
 
@@ -739,11 +781,19 @@ func (sm *SecurityManager) Close() error {
 	log.Printf("Closing security manager")
 	sm.cancel()
 	sm.wg.Wait()
-	
+
 	if sm.keyManager != nil {
 		sm.keyManager.Close()
 	}
-	
+
+	if sm.certManager != nil {
+		sm.certManager.Close()
+	}
+
+	if sm.monitor != nil {
+		sm.monitor.Close()
+	}
+
 	return nil
 }
 
@@ -763,6 +813,13 @@ func DefaultSecurityConfig() *SecurityConfig {
 		},
 		TrustedPeers: []string{},
 		BlockedPeers: []string{},
+
+		// Certificate management defaults
+		CertFile:            "",
+		KeyFile:             "",
+		CAFile:              "",
+		ClientAuth:          "none",
+		CertRefreshInterval: 24 * time.Hour,
 	}
 }
 
@@ -795,7 +852,7 @@ func (sc *SecureChannel) Send(data []byte) error {
 	if err != nil {
 		return fmt.Errorf("failed to encrypt data: %w", err)
 	}
-	
+
 	_, err = sc.Stream.Write(encrypted)
 	return err
 }
@@ -807,7 +864,7 @@ func (sc *SecureChannel) Receive() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to read data: %w", err)
 	}
-	
+
 	return sc.manager.encryptionMgr.Decrypt(buf[:n], sc.SessionKey)
 }
 
@@ -905,7 +962,7 @@ func (km *KeyManager) GetPeerPublicKey(publicKey []byte) (crypto.PubKey, error) 
 func (km *KeyManager) GetActiveSessionCount() int {
 	km.keysMu.RLock()
 	defer km.keysMu.RUnlock()
-	
+
 	activeCount := 0
 	now := time.Now()
 	for _, session := range km.sessionKeys {
@@ -920,7 +977,7 @@ func (km *KeyManager) GetActiveSessionCount() int {
 func (km *KeyManager) CleanupExpiredSessions() {
 	km.keysMu.Lock()
 	defer km.keysMu.Unlock()
-	
+
 	now := time.Now()
 	for keyStr, session := range km.sessionKeys {
 		if session.ExpiresAt.Before(now) {
@@ -941,7 +998,7 @@ func (km *KeyManager) RotateKeys() error {
 	// Generate new session keys and mark old ones for expiration
 	km.keysMu.Lock()
 	defer km.keysMu.Unlock()
-	
+
 	// Mark all current keys as expiring soon
 	expireTime := time.Now().Add(1 * time.Hour)
 	for _, session := range km.sessionKeys {
@@ -949,7 +1006,7 @@ func (km *KeyManager) RotateKeys() error {
 			session.ExpiresAt = expireTime
 		}
 	}
-	
+
 	return nil
 }
 
@@ -957,11 +1014,11 @@ func (km *KeyManager) RotateKeys() error {
 func (km *KeyManager) Close() error {
 	km.keysMu.Lock()
 	defer km.keysMu.Unlock()
-	
+
 	// Clear all sessions
 	km.sessionKeys = make(map[string]*SessionKey)
 	km.peerKeys = make(map[string]crypto.PubKey)
-	
+
 	return nil
 }
 
@@ -987,7 +1044,7 @@ func NewAuthManager(host host.Host, config *SecurityConfig) (*AuthManager, error
 func (am *AuthManager) IsAuthenticated(peerID peer.ID) bool {
 	am.peersMu.RLock()
 	defer am.peersMu.RUnlock()
-	
+
 	if authTime, exists := am.authenticatedPeers[peerID]; exists {
 		return time.Since(authTime) < am.sessionTTL
 	}
@@ -1033,21 +1090,21 @@ func NewAccessControl(config *SecurityConfig) (*AccessControl, error) {
 func (ac *AccessControl) IsAllowed(peerID peer.ID, protocolID protocol.ID) bool {
 	ac.policyMu.RLock()
 	defer ac.policyMu.RUnlock()
-	
+
 	// Check if peer is in blocked list
 	for _, blockedPeer := range ac.config.BlockedPeers {
 		if blockedPeer == peerID.String() {
 			return false
 		}
 	}
-	
+
 	// Check if peer is in trusted list
 	for _, trustedPeer := range ac.config.TrustedPeers {
 		if trustedPeer == peerID.String() {
 			return true
 		}
 	}
-	
+
 	// Default policy - allow if no specific policy
 	return true
 }
@@ -1064,44 +1121,89 @@ func NewRateLimiter(config *SecurityConfig) (*RateLimiter, error) {
 func (rl *RateLimiter) Allow(peerID peer.ID, protocolID protocol.ID) bool {
 	rl.limitMu.Lock()
 	defer rl.limitMu.Unlock()
-	
+
 	key := fmt.Sprintf("%s:%s", peerID.String(), protocolID)
-	
+
 	limit, exists := rl.limits[key]
 	if !exists {
 		// Create new rate limit for this peer/protocol
 		limit = &RateLimit{
 			RequestsPerSecond: 10, // Default
-			BurstSize:        20,
-			Window:           1 * time.Second,
-			lastReset:        time.Now(),
-			currentCount:     0,
+			BurstSize:         20,
+			Window:            1 * time.Second,
+			lastReset:         time.Now(),
+			currentCount:      0,
 		}
 		rl.limits[key] = limit
 	}
-	
+
 	now := time.Now()
-	
+
 	// Reset counter if window has passed
 	if now.Sub(limit.lastReset) >= limit.Window {
 		limit.currentCount = 0
 		limit.lastReset = now
 	}
-	
+
 	// Check if limit is exceeded
 	if limit.currentCount >= limit.RequestsPerSecond {
 		return false
 	}
-	
+
 	limit.currentCount++
 	return true
+}
+
+// GetSecurityMonitor returns the security monitor
+func (sm *SecurityManager) GetSecurityMonitor() *SecurityMonitor {
+	return sm.monitor
+}
+
+// GetIntrusionDetectionSystem returns the IDS
+func (sm *SecurityManager) GetIntrusionDetectionSystem() *IntrusionDetectionSystem {
+	return sm.ids
+}
+
+// RecordSecurityEvent records a security event
+func (sm *SecurityManager) RecordSecurityEvent(event *SecurityEvent) {
+	if sm.monitor != nil {
+		sm.monitor.RecordEvent(event)
+	}
+}
+
+// GetPeerThreatLevel returns the threat level for a peer
+func (sm *SecurityManager) GetPeerThreatLevel(peerID peer.ID) ThreatLevel {
+	if sm.ids != nil {
+		return sm.ids.GetPeerThreatLevel(peerID)
+	}
+	return ThreatLevelNone
+}
+
+// RecordPeerActivity records activity for intrusion detection
+func (sm *SecurityManager) RecordPeerActivity(peerID peer.ID, activityType string, data map[string]interface{}) {
+	if sm.ids != nil {
+		sm.ids.RecordActivity(peerID, activityType, data)
+	}
+}
+
+// GetSecurityStatus returns overall security status
+func (sm *SecurityManager) GetSecurityStatus() map[string]interface{} {
+	if sm.monitor != nil {
+		return sm.monitor.GetSecurityStatus()
+	}
+
+	return map[string]interface{}{
+		"status":         "unknown",
+		"security_score": 0,
+		"last_updated":   time.Now(),
+	}
 }
 
 // Cleanup removes old rate limit entries
 func (rl *RateLimiter) Cleanup() {
 	rl.limitMu.Lock()
 	defer rl.limitMu.Unlock()
-	
+
 	now := time.Now()
 	for key, limit := range rl.limits {
 		if now.Sub(limit.lastReset) > 5*time.Minute {

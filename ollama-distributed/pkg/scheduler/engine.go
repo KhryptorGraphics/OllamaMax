@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/ollama/ollama-distributed/internal/config"
-	"github.com/ollama/ollama-distributed/pkg/consensus"
-	"github.com/ollama/ollama-distributed/pkg/p2p"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/internal/config"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/consensus"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p"
 )
 
 // Engine represents the distributed scheduling engine

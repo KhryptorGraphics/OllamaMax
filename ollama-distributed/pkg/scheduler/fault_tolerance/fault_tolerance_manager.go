@@ -484,6 +484,9 @@ func (ftm *FaultToleranceManager) registerDefaultStrategies() {
 		&PerformanceTuningStrategy{},
 		&LoadBalancingStrategy{},
 	}
+	
+	// Register advanced strategies
+	ftm.registerAdvancedStrategies()
 }
 
 // registerDefaultHealthCheckers registers default health checkers
@@ -560,7 +563,43 @@ func (cm *CheckpointManager) CreateCheckpoint() *Checkpoint {
 	checkpoint.Metadata["active_connections"] = 100
 	checkpoint.Metadata["memory_usage"] = "500MB"
 	
+	// Store in checkpoints map
+	cm.checkpointsMu.Lock()
+	cm.checkpoints[checkpoint.ID] = checkpoint
+	cm.checkpointsMu.Unlock()
+	
 	return checkpoint
+}
+
+// GetLatestCheckpoint returns the latest checkpoint
+func (cm *CheckpointManager) GetLatestCheckpoint() (*Checkpoint, error) {
+	cm.checkpointsMu.RLock()
+	defer cm.checkpointsMu.RUnlock()
+	
+	if len(cm.checkpoints) == 0 {
+		return nil, nil
+	}
+	
+	// Find the most recent checkpoint
+	var latest *Checkpoint
+	var latestTime time.Time
+	
+	for _, checkpoint := range cm.checkpoints {
+		if latest == nil || checkpoint.Timestamp.After(latestTime) {
+			latest = checkpoint
+			latestTime = checkpoint.Timestamp
+		}
+	}
+	
+	return latest, nil
+}
+
+// RestoreFromCheckpoint restores system state from a checkpoint
+func (cm *CheckpointManager) RestoreFromCheckpoint(checkpoint *Checkpoint) error {
+	// In a real implementation, this would restore the system state
+	// For now, we'll just log the action
+	fmt.Printf("Restoring system state from checkpoint: %s\n", checkpoint.ID)
+	return nil
 }
 
 // Start method for CheckpointManager

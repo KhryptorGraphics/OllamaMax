@@ -1,0 +1,15 @@
+# github.com/ollama/ollama-distributed/tests/consensus [github.com/ollama/ollama-distributed/tests/consensus.test]
+tests/consensus/comprehensive_consensus_test.go:27:23: undefined: consensus.Config
+tests/consensus/comprehensive_consensus_test.go:43:40: engine.GetNodeID undefined (type *"github.com/ollama/ollama-distributed/pkg/consensus".Engine has no field or method GetNodeID)
+tests/consensus/comprehensive_consensus_test.go:44:25: engine.IsStarted undefined (type *"github.com/ollama/ollama-distributed/pkg/consensus".Engine has no field or method IsStarted)
+tests/consensus/comprehensive_consensus_test.go:48:9: engine.Close undefined (type *"github.com/ollama/ollama-distributed/pkg/consensus".Engine has no field or method Close)
+tests/consensus/comprehensive_consensus_test.go:54:15: engine.Close undefined (type *"github.com/ollama/ollama-distributed/pkg/consensus".Engine has no field or method Close)
+tests/consensus/comprehensive_consensus_test.go:59:24: engine.IsStarted undefined (type *"github.com/ollama/ollama-distributed/pkg/consensus".Engine has no field or method IsStarted)
+tests/consensus/comprehensive_consensus_test.go:69:24: engine.IsStarted undefined (type *"github.com/ollama/ollama-distributed/pkg/consensus".Engine has no field or method IsStarted)
+tests/consensus/comprehensive_consensus_test.go:84:15: engine.Close undefined (type *"github.com/ollama/ollama-distributed/pkg/consensus".Engine has no field or method Close)
+tests/consensus/comprehensive_consensus_test.go:925:23: undefined: consensus.Config
+tests/consensus/comprehensive_consensus_test.go:1230:6: createTestEngine redeclared in this block
+	tests/consensus/comprehensive_consensus_test.go:930:6: other declaration of createTestEngine
+tests/consensus/comprehensive_consensus_test.go:84:15: too many errors
+FAIL	github.com/ollama/ollama-distributed/tests/consensus [build failed]
+FAIL

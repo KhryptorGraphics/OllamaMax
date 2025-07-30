@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ollama/ollama-distributed/internal/config"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/internal/config"
 	"github.com/rs/zerolog/log"
 )
 

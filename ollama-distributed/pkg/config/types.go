@@ -8,6 +8,16 @@ import (
 	"github.com/multiformats/go-multiaddr"
 )
 
+// TURNServerConfig holds TURN server configuration
+type TURNServerConfig struct {
+	Address   string `yaml:"address"`
+	Port      int    `yaml:"port"`
+	Username  string `yaml:"username"`
+	Password  string `yaml:"password"`
+	Realm     string `yaml:"realm"`
+	Transport string `yaml:"transport"`
+}
+
 // NodeConfig holds all configuration for a P2P node
 type NodeConfig struct {
 	// Network Settings
@@ -25,6 +35,7 @@ type NodeConfig struct {
 	EnableHolePunching  bool                `yaml:"enable_hole_punching"`
 	EnableAutoRelay     bool                `yaml:"enable_auto_relay"`
 	StaticRelays        []string            `yaml:"static_relays"`
+	TURNServers         []TURNServerConfig  `yaml:"turn_servers"`
 	ForceReachability   string              `yaml:"force_reachability"` // public/private
 	
 	// DHT Settings

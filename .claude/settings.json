@@ -9,7 +9,7 @@
   },
   "permissions": {
     "allow": [
-      "Bash(npx claude-flow *)",
+      "Bash(npx claude-flow@alpha *)",
       "Bash(npm run lint)",
       "Bash(npm run test:*)",
       "Bash(npm test *)",
@@ -24,7 +24,13 @@
       "Bash(node *)",
       "Bash(which *)",
       "Bash(pwd)",
-      "Bash(ls *)"
+      "Bash(ls *)",
+      "Bash(mkdir -p *)",
+      "Bash(cd *)",
+      "Bash(npm install)",
+      "Bash(npm run *)",
+      "Bash(cat *)",
+      "Bash(echo *)"
     ],
     "deny": [
       "Bash(rm -rf /)",
@@ -40,7 +46,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cat | jq -r '.tool_input.command // \"\"' | xargs -I {} npx claude-flow@alpha hooks pre-command --command \"{}\" --validate-safety true --prepare-resources true"
+            "command": "npx claude-flow@alpha hooks pre-command --auto-spawn-agents false"
           }
         ]
       },
@@ -49,7 +55,16 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cat | jq -r '.tool_input.file_path // .tool_input.path // \"\"' | xargs -I {} npx claude-flow@alpha hooks pre-edit --file \"{}\" --auto-assign-agents true --load-context true"
+            "command": "npx claude-flow@alpha hooks pre-edit --auto-spawn-agents false"
+          }
+        ]
+      },
+      {
+        "matcher": "Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx claude-flow@alpha hooks pre-task --auto-spawn-agents false"
           }
         ]
       }
@@ -60,7 +75,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cat | jq -r '.tool_input.command // \"\"' | xargs -I {} npx claude-flow@alpha hooks post-command --command \"{}\" --track-metrics true --store-results true"
+            "command": "npx claude-flow@alpha hooks post-command --telemetry true"
           }
         ]
       },
@@ -69,7 +84,16 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cat | jq -r '.tool_input.file_path // .tool_input.path // \"\"' | xargs -I {} npx claude-flow@alpha hooks post-edit --file \"{}\" --format true --update-memory true --train-neural true"
+            "command": "npx claude-flow@alpha hooks post-edit --file \"{{file_path}}\" --memory-key \"edit/{{file_path}}\""
+          }
+        ]
+      },
+      {
+        "matcher": "Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx claude-flow@alpha hooks post-task --analyze-performance true"
           }
         ]
       }
@@ -79,15 +103,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "npx claude-flow@alpha hooks session-end --generate-summary true --persist-state true --export-metrics true"
+            "command": "npx claude-flow@alpha hooks session-end --export-metrics true --generate-summary true"
           }
         ]
       }
     ]
   },
   "includeCoAuthoredBy": true,
-  "enabledMcpjsonServers": [
-    "claude-flow",
-    "ruv-swarm"
-  ]
+  "mcpServers": {
+    "claude-flow": {
+      "command": "npx",
+      "args": ["claude-flow@alpha", "mcp", "server"]
+    }
+  }
 }

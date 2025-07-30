@@ -1,0 +1,536 @@
+FAIL	github.com/ollama/ollama-distributed/tests [setup failed]
+FAIL	github.com/ollama/ollama-distributed/tests/swarm [setup failed]
+FAIL	github.com/ollama/ollama-distributed [build failed]
+	github.com/ollama/ollama-distributed/cmd/node		coverage: 0.0% of statements
+=== RUN   TestNewManager
+Created default admin user (username: admin, password: admin123)
+WARNING: Please change the default password immediately!
+--- PASS: TestNewManager (1.01s)
+=== RUN   TestAuthenticate
+Created default admin user (username: admin, password: admin123)
+WARNING: Please change the default password immediately!
+--- PASS: TestAuthenticate (1.85s)
+=== RUN   TestValidateToken
+Created default admin user (username: admin, password: admin123)
+WARNING: Please change the default password immediately!
+--- PASS: TestValidateToken (1.71s)
+=== RUN   TestCreateUser
+Created default admin user (username: admin, password: admin123)
+WARNING: Please change the default password immediately!
+--- PASS: TestCreateUser (2.40s)
+=== RUN   TestCreateAPIKey
+Created default admin user (username: admin, password: admin123)
+WARNING: Please change the default password immediately!
+--- PASS: TestCreateAPIKey (1.51s)
+=== RUN   TestHasPermission
+Created default admin user (username: admin, password: admin123)
+WARNING: Please change the default password immediately!
+--- PASS: TestHasPermission (2.33s)
+=== RUN   TestJWTManager
+--- PASS: TestJWTManager (0.66s)
+=== RUN   TestServiceToken
+--- PASS: TestServiceToken (0.34s)
+=== RUN   TestTokenBlacklist
+Created default admin user (username: admin, password: admin123)
+WARNING: Please change the default password immediately!
+--- PASS: TestTokenBlacklist (1.97s)
+=== RUN   TestRolePermissions
+--- PASS: TestRolePermissions (0.00s)
+PASS
+coverage: 18.1% of statements
+ok  	github.com/ollama/ollama-distributed/internal/auth	14.824s	coverage: 18.1% of statements
+	github.com/ollama/ollama-distributed/internal/config		coverage: 0.0% of statements
+	github.com/ollama/ollama-distributed/internal/metrics		coverage: 0.0% of statements
+=== RUN   TestLocalStorage
+--- PASS: TestLocalStorage (0.04s)
+=== RUN   TestMetadataManager
+==================
+WARNING: DATA RACE
+Write at 0x00c00011ad80 by goroutine 12:
+  runtime.mapassign_faststr()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/internal/runtime/maps/runtime_faststr_swiss.go:263 +0x0
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).updateIndex()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:794 +0x2d7
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).updateIndexes()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:773 +0x21e
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).Store()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:257 +0x64d
+  github.com/ollama/ollama-distributed/internal/storage.TestMetadataManager()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/storage_test.go:214 +0xcd2
+  testing.tRunner()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1792 +0x225
+  testing.(*T).Run.gowrap1()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1851 +0x44
+
+Previous read at 0x00c00011ad80 by goroutine 13:
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).buildIndex()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:857 +0x3e4
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).CreateIndex.gowrap2()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:463 +0x5d
+
+Goroutine 12 (running) created at:
+  testing.(*T).Run()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1851 +0x8f2
+  testing.runTests.func1()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:2279 +0x85
+  testing.tRunner()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1792 +0x225
+  testing.runTests()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:2277 +0x96c
+  testing.(*M).Run()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:2142 +0xeea
+  main.main()
+      _testmain.go:61 +0x164
+
+Goroutine 13 (finished) created at:
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).CreateIndex()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:463 +0x83e
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).createDefaultIndexes()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:762 +0x645
+  github.com/ollama/ollama-distributed/internal/storage.NewMetadataManager()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:183 +0x9e4
+  github.com/ollama/ollama-distributed/internal/storage.TestMetadataManager()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/storage_test.go:185 +0x629
+  testing.tRunner()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1792 +0x225
+  testing.(*T).Run.gowrap1()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1851 +0x44
+==================
+==================
+WARNING: DATA RACE
+Write at 0x00c00015e158 by goroutine 12:
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).updateIndex()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:799 +0x371
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).updateIndexes()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:773 +0x21e
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).Store()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:257 +0x64d
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).Update()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:335 +0x72d
+  github.com/ollama/ollama-distributed/internal/storage.TestMetadataManager()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/storage_test.go:238 +0x1675
+  testing.tRunner()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1792 +0x225
+  testing.(*T).Run.gowrap1()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1851 +0x44
+
+Previous write at 0x00c00015e158 by goroutine 15:
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).updateIndex()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:799 +0x371
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).buildIndex()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:853 +0x345
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).CreateIndex.gowrap2()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:463 +0x5d
+
+Goroutine 12 (running) created at:
+  testing.(*T).Run()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1851 +0x8f2
+  testing.runTests.func1()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:2279 +0x85
+  testing.tRunner()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1792 +0x225
+  testing.runTests()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:2277 +0x96c
+  testing.(*M).Run()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:2142 +0xeea
+  main.main()
+      _testmain.go:61 +0x164
+
+Goroutine 15 (finished) created at:
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).CreateIndex()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:463 +0x83e
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).createDefaultIndexes()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:762 +0x645
+  github.com/ollama/ollama-distributed/internal/storage.NewMetadataManager()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:183 +0x9e4
+  github.com/ollama/ollama-distributed/internal/storage.TestMetadataManager()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/storage_test.go:185 +0x629
+  testing.tRunner()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1792 +0x225
+  testing.(*T).Run.gowrap1()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1851 +0x44
+==================
+==================
+WARNING: DATA RACE
+Read at 0x00c000120328 by goroutine 12:
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).updateIndex()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:800 +0x3eb
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).updateIndexes()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:773 +0x21e
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).Store()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:257 +0x64d
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).Update()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:335 +0x72d
+  github.com/ollama/ollama-distributed/internal/storage.TestMetadataManager()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/storage_test.go:238 +0x1675
+  testing.tRunner()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1792 +0x225
+  testing.(*T).Run.gowrap1()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1851 +0x44
+
+Previous write at 0x00c000120328 by goroutine 15:
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).updateIndex()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:800 +0x409
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).buildIndex()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:853 +0x345
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).CreateIndex.gowrap2()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:463 +0x5d
+
+Goroutine 12 (running) created at:
+  testing.(*T).Run()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1851 +0x8f2
+  testing.runTests.func1()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:2279 +0x85
+  testing.tRunner()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1792 +0x225
+  testing.runTests()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:2277 +0x96c
+  testing.(*M).Run()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:2142 +0xeea
+  main.main()
+      _testmain.go:61 +0x164
+
+Goroutine 15 (finished) created at:
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).CreateIndex()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:463 +0x83e
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).createDefaultIndexes()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:762 +0x645
+  github.com/ollama/ollama-distributed/internal/storage.NewMetadataManager()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:183 +0x9e4
+  github.com/ollama/ollama-distributed/internal/storage.TestMetadataManager()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/storage_test.go:185 +0x629
+  testing.tRunner()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1792 +0x225
+  testing.(*T).Run.gowrap1()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1851 +0x44
+==================
+==================
+WARNING: DATA RACE
+Read at 0x00c00015e358 by goroutine 12:
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).GetIndexes()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:497 +0x364
+  github.com/ollama/ollama-distributed/internal/storage.TestMetadataManager()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/storage_test.go:294 +0x1f84
+  testing.tRunner()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1792 +0x225
+  testing.(*T).Run.gowrap1()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1851 +0x44
+
+Previous write at 0x00c00015e358 by goroutine 22:
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).updateIndex()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:799 +0x371
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).buildIndex()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:853 +0x345
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).CreateIndex.gowrap2()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:463 +0x5d
+
+Goroutine 12 (running) created at:
+  testing.(*T).Run()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1851 +0x8f2
+  testing.runTests.func1()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:2279 +0x85
+  testing.tRunner()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1792 +0x225
+  testing.runTests()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:2277 +0x96c
+  testing.(*M).Run()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:2142 +0xeea
+  main.main()
+      _testmain.go:61 +0x164
+
+Goroutine 22 (finished) created at:
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).CreateIndex()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:463 +0x83e
+  github.com/ollama/ollama-distributed/internal/storage.TestMetadataManager()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/storage_test.go:254 +0x19da
+  testing.tRunner()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1792 +0x225
+  testing.(*T).Run.gowrap1()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1851 +0x44
+==================
+==================
+WARNING: DATA RACE
+Read at 0x00c00011b020 by goroutine 12:
+  runtime.mapIterStart()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/runtime/map_swiss.go:165 +0x0
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).GetIndexes()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:499 +0x487
+  github.com/ollama/ollama-distributed/internal/storage.TestMetadataManager()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/storage_test.go:294 +0x1f84
+  testing.tRunner()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1792 +0x225
+  testing.(*T).Run.gowrap1()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1851 +0x44
+
+Previous write at 0x00c00011b020 by goroutine 22:
+  runtime.mapassign_faststr()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/internal/runtime/maps/runtime_faststr_swiss.go:263 +0x0
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).updateIndex()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:794 +0x2d7
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).buildIndex()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:853 +0x345
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).CreateIndex.gowrap2()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:463 +0x5d
+
+Goroutine 12 (running) created at:
+  testing.(*T).Run()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1851 +0x8f2
+  testing.runTests.func1()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:2279 +0x85
+  testing.tRunner()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1792 +0x225
+  testing.runTests()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:2277 +0x96c
+  testing.(*M).Run()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:2142 +0xeea
+  main.main()
+      _testmain.go:61 +0x164
+
+Goroutine 22 (finished) created at:
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).CreateIndex()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:463 +0x83e
+  github.com/ollama/ollama-distributed/internal/storage.TestMetadataManager()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/storage_test.go:254 +0x19da
+  testing.tRunner()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1792 +0x225
+  testing.(*T).Run.gowrap1()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1851 +0x44
+==================
+==================
+WARNING: DATA RACE
+Read at 0x00c00016a6f8 by goroutine 12:
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).GetIndexes()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:499 +0x6a7
+  github.com/ollama/ollama-distributed/internal/storage.TestMetadataManager()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/storage_test.go:294 +0x1f84
+  testing.tRunner()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1792 +0x225
+  testing.(*T).Run.gowrap1()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1851 +0x44
+
+Previous write at 0x00c00016a6f8 by goroutine 22:
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).updateIndex()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:794 +0x2e6
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).buildIndex()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:853 +0x345
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).CreateIndex.gowrap2()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:463 +0x5d
+
+Goroutine 12 (running) created at:
+  testing.(*T).Run()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1851 +0x8f2
+  testing.runTests.func1()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:2279 +0x85
+  testing.tRunner()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1792 +0x225
+  testing.runTests()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:2277 +0x96c
+  testing.(*M).Run()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:2142 +0xeea
+  main.main()
+      _testmain.go:61 +0x164
+
+Goroutine 22 (finished) created at:
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).CreateIndex()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:463 +0x83e
+  github.com/ollama/ollama-distributed/internal/storage.TestMetadataManager()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/storage_test.go:254 +0x19da
+  testing.tRunner()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1792 +0x225
+  testing.(*T).Run.gowrap1()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1851 +0x44
+==================
+==================
+WARNING: DATA RACE
+Read at 0x00c000130570 by goroutine 12:
+  runtime.slicecopy()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/runtime/slice.go:355 +0x0
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).GetIndexes()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:500 +0x738
+  github.com/ollama/ollama-distributed/internal/storage.TestMetadataManager()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/storage_test.go:294 +0x1f84
+  testing.tRunner()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1792 +0x225
+  testing.(*T).Run.gowrap1()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1851 +0x44
+
+Previous write at 0x00c000130570 by goroutine 22:
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).updateIndex()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:794 +0x264
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).buildIndex()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:853 +0x345
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).CreateIndex.gowrap2()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:463 +0x5d
+
+Goroutine 12 (running) created at:
+  testing.(*T).Run()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1851 +0x8f2
+  testing.runTests.func1()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:2279 +0x85
+  testing.tRunner()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1792 +0x225
+  testing.runTests()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:2277 +0x96c
+  testing.(*M).Run()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:2142 +0xeea
+  main.main()
+      _testmain.go:61 +0x164
+
+Goroutine 22 (finished) created at:
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).CreateIndex()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:463 +0x83e
+  github.com/ollama/ollama-distributed/internal/storage.TestMetadataManager()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/storage_test.go:254 +0x19da
+  testing.tRunner()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1792 +0x225
+  testing.(*T).Run.gowrap1()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1851 +0x44
+==================
+    storage_test.go:311: Expected 1 object in stats, got 2
+==================
+WARNING: DATA RACE
+Write at 0x00c00011ae40 by goroutine 12:
+  runtime.mapdelete_faststr()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/internal/runtime/maps/runtime_faststr_swiss.go:396 +0x0
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).removeFromIndex()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:830 +0x29a
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).removeFromIndexes()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:812 +0x25e
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).Delete()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:362 +0x8b1
+  github.com/ollama/ollama-distributed/internal/storage.TestMetadataManager()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/storage_test.go:315 +0x222b
+  testing.tRunner()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1792 +0x225
+  testing.(*T).Run.gowrap1()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1851 +0x44
+
+Previous read at 0x00c00011ae40 by goroutine 15:
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).buildIndex()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:857 +0x3e4
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).CreateIndex.gowrap2()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:463 +0x5d
+
+Goroutine 12 (running) created at:
+  testing.(*T).Run()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1851 +0x8f2
+  testing.runTests.func1()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:2279 +0x85
+  testing.tRunner()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1792 +0x225
+  testing.runTests()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:2277 +0x96c
+  testing.(*M).Run()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:2142 +0xeea
+  main.main()
+      _testmain.go:61 +0x164
+
+Goroutine 15 (finished) created at:
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).CreateIndex()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:463 +0x83e
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).createDefaultIndexes()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:762 +0x645
+  github.com/ollama/ollama-distributed/internal/storage.NewMetadataManager()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:183 +0x9e4
+  github.com/ollama/ollama-distributed/internal/storage.TestMetadataManager()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/storage_test.go:185 +0x629
+  testing.tRunner()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1792 +0x225
+  testing.(*T).Run.gowrap1()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1851 +0x44
+==================
+    testing.go:1490: race detected during execution of test
+--- FAIL: TestMetadataManager (0.11s)
+=== RUN   TestReplicationEngine
+    storage_test.go:511: Expected 2 total nodes, got 0
+--- FAIL: TestReplicationEngine (0.21s)
+=== RUN   TestStorageIntegration
+==================
+WARNING: DATA RACE
+Write at 0x00c00011bdd0 by goroutine 35:
+  runtime.mapassign_faststr()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/internal/runtime/maps/runtime_faststr_swiss.go:263 +0x0
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).updateIndex()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:794 +0x2d7
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).updateIndexes()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:773 +0x21e
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).Store()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:257 +0x64d
+  github.com/ollama/ollama-distributed/internal/storage.TestStorageIntegration()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/storage_test.go:601 +0xf4d
+  testing.tRunner()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1792 +0x225
+  testing.(*T).Run.gowrap1()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1851 +0x44
+
+Previous read at 0x00c00011bdd0 by goroutine 40:
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).buildIndex()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:857 +0x3e4
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).CreateIndex.gowrap2()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:463 +0x5d
+
+Goroutine 35 (running) created at:
+  testing.(*T).Run()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1851 +0x8f2
+  testing.runTests.func1()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:2279 +0x85
+  testing.tRunner()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1792 +0x225
+  testing.runTests()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:2277 +0x96c
+  testing.(*M).Run()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:2142 +0xeea
+  main.main()
+      _testmain.go:61 +0x164
+
+Goroutine 40 (finished) created at:
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).CreateIndex()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:463 +0x83e
+  github.com/ollama/ollama-distributed/internal/storage.(*MetadataManager).createDefaultIndexes()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:762 +0x645
+  github.com/ollama/ollama-distributed/internal/storage.NewMetadataManager()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/metadata.go:183 +0x9e4
+  github.com/ollama/ollama-distributed/internal/storage.TestStorageIntegration()
+      /home/kp/ollamamax/ollama-distributed/internal/storage/storage_test.go:565 +0x8cb
+  testing.tRunner()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1792 +0x225
+  testing.(*T).Run.gowrap1()
+      /home/kp/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.5.linux-amd64/src/testing/testing.go:1851 +0x44
+==================
+    storage_test.go:716: Storage stats: 1 objects, 34 bytes
+    storage_test.go:717: Metadata stats: 1 objects, cache hit rate: 0.00%
+    testing.go:1490: race detected during execution of test
+--- FAIL: TestStorageIntegration (0.02s)
+FAIL
+coverage: 48.9% of statements
+FAIL	github.com/ollama/ollama-distributed/internal/storage	0.426s
+	github.com/ollama/ollama-distributed/pkg/api		coverage: 0.0% of statements
+	github.com/ollama/ollama-distributed/pkg/config		coverage: 0.0% of statements
+	github.com/ollama/ollama-distributed/pkg/consensus		coverage: 0.0% of statements
+	github.com/ollama/ollama-distributed/pkg/integration		coverage: 0.0% of statements
+	github.com/ollama/ollama-distributed/pkg/models		coverage: 0.0% of statements
+	github.com/ollama/ollama-distributed/pkg/p2p		coverage: 0.0% of statements
+	github.com/ollama/ollama-distributed/pkg/p2p/discovery		coverage: 0.0% of statements
+	github.com/ollama/ollama-distributed/pkg/p2p/host		coverage: 0.0% of statements
+	github.com/ollama/ollama-distributed/pkg/p2p/resources		coverage: 0.0% of statements
+	github.com/ollama/ollama-distributed/pkg/p2p/routing		coverage: 0.0% of statements
+	github.com/ollama/ollama-distributed/pkg/p2p/security		coverage: 0.0% of statements
+	github.com/ollama/ollama-distributed/pkg/scheduler		coverage: 0.0% of statements
+FAIL	github.com/ollama/ollama-distributed/pkg/scheduler/distributed [build failed]
+	github.com/ollama/ollama-distributed/pkg/scheduler/fault_tolerance		coverage: 0.0% of statements
+FAIL	github.com/ollama/ollama-distributed/pkg/scheduler/integration [build failed]
+	github.com/ollama/ollama-distributed/pkg/scheduler/loadbalancer		coverage: 0.0% of statements
+	github.com/ollama/ollama-distributed/pkg/scheduler/orchestration		coverage: 0.0% of statements
+FAIL	github.com/ollama/ollama-distributed/pkg/scheduler/partitioning [build failed]
+FAIL	github.com/ollama/ollama-distributed/pkg/security [build failed]
+FAIL	github.com/ollama/ollama-distributed/tests/chaos [build failed]
+FAIL	github.com/ollama/ollama-distributed/tests/consensus [build failed]
+FAIL	github.com/ollama/ollama-distributed/tests/e2e [build failed]
+FAIL	github.com/ollama/ollama-distributed/tests/fault_tolerance [build failed]
+FAIL	github.com/ollama/ollama-distributed/tests/integration [build failed]
+FAIL	github.com/ollama/ollama-distributed/tests/loadbalancer [build failed]
+FAIL	github.com/ollama/ollama-distributed/tests/p2p [build failed]
+FAIL	github.com/ollama/ollama-distributed/tests/performance [build failed]
+FAIL	github.com/ollama/ollama-distributed/tests/security [build failed]
+FAIL	github.com/ollama/ollama-distributed/tests/unit [build failed]
+FAIL

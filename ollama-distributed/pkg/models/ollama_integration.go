@@ -9,8 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ollama/ollama/api"
-	"github.com/ollama/ollama/types/model"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/types"
 )
 
 // OllamaIntegration provides integration with Ollama's existing model management
@@ -134,8 +133,8 @@ func NewOllamaIntegration(distributedManager *DistributedModelManager, logger *s
 // setupAPIMappings sets up API mappings between Ollama and distributed APIs
 func (oi *OllamaIntegration) setupAPIMappings() {
 	// Map Ollama model requests to distributed model requests
-	oi.compatibility.apiTranslator.requestMappings["model.Name"] = RequestMapping{
-		SourceType: "model.Name",
+	oi.compatibility.apiTranslator.requestMappings["types.Name"] = RequestMapping{
+		SourceType: "types.Name",
 		TargetType: "DistributedModel",
 		FieldMapping: map[string]string{
 			"name":    "Name",
@@ -143,11 +142,11 @@ func (oi *OllamaIntegration) setupAPIMappings() {
 			"digest":  "Hash",
 		},
 		Transform: func(src interface{}) interface{} {
-			if name, ok := src.(model.Name); ok {
+			if name, ok := src.(types.Name); ok {
 				return &DistributedModel{
 					Name:    name.String(),
 					Version: name.Tag,
-					Hash:    "", // Note: model.Name doesn't have Digest field
+					Hash:    "", // Note: types.Name doesn't have Digest field
 				}
 			}
 			return src
@@ -157,7 +156,7 @@ func (oi *OllamaIntegration) setupAPIMappings() {
 	// Map distributed model responses to Ollama responses
 	oi.compatibility.apiTranslator.responseMappings["DistributedModel"] = ResponseMapping{
 		SourceType: "DistributedModel",
-		TargetType: "api.ListModelResponse",
+		TargetType: "types.ListModelResponse",
 		FieldMapping: map[string]string{
 			"Name":      "name",
 			"Version":   "model",
@@ -168,7 +167,7 @@ func (oi *OllamaIntegration) setupAPIMappings() {
 		},
 		Transform: func(src interface{}) interface{} {
 			if dm, ok := src.(*DistributedModel); ok {
-				return &api.ListModelResponse{
+				return &types.ModelResponse{
 					Name:       dm.Name,
 					Model:      dm.Name,
 					Size:       dm.Size,
@@ -182,7 +181,7 @@ func (oi *OllamaIntegration) setupAPIMappings() {
 }
 
 // InterceptModelPull intercepts Ollama model pull operations
-func (oi *OllamaIntegration) InterceptModelPull(ctx context.Context, name model.Name, fn func(api.ProgressResponse)) error {
+func (oi *OllamaIntegration) InterceptModelPull(ctx context.Context, name types.Name, fn func(types.ProgressResponse)) error {
 	oi.logger.Info("intercepting model pull", "model", name.String())
 	
 	// Create operation record
@@ -216,7 +215,7 @@ func (oi *OllamaIntegration) InterceptModelPull(ctx context.Context, name model.
 		
 		// Report progress
 		if fn != nil {
-			fn(api.ProgressResponse{
+			fn(types.ProgressResponse{
 				Status:    "pulling model",
 				Digest:    distributedModel.Hash,
 				Total:     distributedModel.Size,
@@ -228,7 +227,7 @@ func (oi *OllamaIntegration) InterceptModelPull(ctx context.Context, name model.
 		chunkSize := distributedModel.Size / 10
 		for i := int64(0); i < 10; i++ {
 			if fn != nil {
-				fn(api.ProgressResponse{
+				fn(types.ProgressResponse{
 					Status:    "downloading",
 					Digest:    distributedModel.Hash,
 					Total:     distributedModel.Size,
@@ -239,7 +238,7 @@ func (oi *OllamaIntegration) InterceptModelPull(ctx context.Context, name model.
 		}
 		
 		if fn != nil {
-			fn(api.ProgressResponse{
+			fn(types.ProgressResponse{
 				Status:    "verifying sha256 digest",
 				Digest:    distributedModel.Hash,
 				Total:     distributedModel.Size,
@@ -301,16 +300,16 @@ func (oi *OllamaIntegration) InterceptModelPull(ctx context.Context, name model.
 }
 
 // InterceptModelList intercepts Ollama model list operations
-func (oi *OllamaIntegration) InterceptModelList() ([]api.ListModelResponse, error) {
+func (oi *OllamaIntegration) InterceptModelList() ([]types.ListModelResponse, error) {
 	oi.logger.Info("intercepting model list")
 	
 	// Get distributed models
 	distributedModels := oi.distributedManager.GetDistributedModels()
 	
 	// Convert to Ollama API responses
-	var responses []api.ListModelResponse
+	var responses []types.ListModelResponse
 	for _, dm := range distributedModels {
-		response := api.ListModelResponse{
+		response := types.ListModelResponse{
 			Name:       dm.Name,
 			Model:      dm.Name,
 			Size:       dm.Size,
@@ -344,13 +343,13 @@ func (oi *OllamaIntegration) InterceptModelList() ([]api.ListModelResponse, erro
 }
 
 // InterceptModelShow intercepts Ollama model show operations
-func (oi *OllamaIntegration) InterceptModelShow(name model.Name) (*api.ShowResponse, error) {
+func (oi *OllamaIntegration) InterceptModelShow(name types.Name) (*types.ShowResponse, error) {
 	oi.logger.Info("intercepting model show", "model", name.String())
 	
 	// Try to get from distributed system first
 	if distributedModel, err := oi.distributedManager.GetModel(name.String()); err == nil {
 		// Create ModelInfo from map[string]interface{}
-		modelInfo := map[string]interface{}{
+		_ = map[string]interface{}{
 			"name":        distributedModel.Name,
 			"size":        distributedModel.Size,
 			"digest":      distributedModel.Hash,
@@ -358,9 +357,9 @@ func (oi *OllamaIntegration) InterceptModelShow(name model.Name) (*api.ShowRespo
 			"modified_at": distributedModel.UpdatedAt,
 		}
 		
-		return &api.ShowResponse{
-			ModelInfo: modelInfo,
-			Details: api.ModelDetails{
+		return &types.ShowResponse{
+			// ModelInfo removed - not in types.ShowResponse
+			Details: types.ModelDetails{
 				Format:   "gguf",
 				Family:   "llama",
 				Families: []string{"llama"},
@@ -373,7 +372,7 @@ func (oi *OllamaIntegration) InterceptModelShow(name model.Name) (*api.ShowRespo
 }
 
 // InterceptModelDelete intercepts Ollama model delete operations
-func (oi *OllamaIntegration) InterceptModelDelete(name model.Name) error {
+func (oi *OllamaIntegration) InterceptModelDelete(name types.Name) error {
 	oi.logger.Info("intercepting model delete", "model", name.String())
 	
 	// Execute pre-delete hooks
@@ -456,23 +455,19 @@ func (oi *OllamaIntegration) getModelPath(modelName string) (string, error) {
 }
 
 // getLocalModels gets models from local Ollama installation
-func (oi *OllamaIntegration) getLocalModels() ([]api.ListModelResponse, error) {
+func (oi *OllamaIntegration) getLocalModels() ([]types.ListModelResponse, error) {
 	// This would need to integrate with Ollama's model listing
 	// For now, return empty list
-	return []api.ListModelResponse{}, nil
+	return []types.ModelResponse{}, nil
 }
 
 // getOriginalModelShow gets model show from original Ollama
-func (oi *OllamaIntegration) getOriginalModelShow(name model.Name) (*api.ShowResponse, error) {
+func (oi *OllamaIntegration) getOriginalModelShow(name types.Name) (*types.ShowResponse, error) {
 	// This would need to integrate with Ollama's model show
 	// For now, return a placeholder response
-	return &api.ShowResponse{
-		ModelInfo: map[string]interface{}{
-			"name":   name.String(),
-			"size":   int64(0),
-			"digest": "",
-		},
-		Details: api.ModelDetails{
+	return &types.ShowResponse{
+		// ModelInfo removed - not in types.ShowResponse
+		Details: types.ModelDetails{
 			Format:   "gguf",
 			Family:   "llama",
 			Families: []string{"llama"},
@@ -481,7 +476,7 @@ func (oi *OllamaIntegration) getOriginalModelShow(name model.Name) (*api.ShowRes
 }
 
 // executeOriginalDelete executes the original model delete
-func (oi *OllamaIntegration) executeOriginalDelete(name model.Name) error {
+func (oi *OllamaIntegration) executeOriginalDelete(name types.Name) error {
 	// This would need to integrate with Ollama's model deletion
 	// For now, return success
 	return nil
@@ -497,12 +492,12 @@ func (oi *OllamaIntegration) removeFromDistributedSystem(modelName string) error
 
 // fallbackPullModel provides a fallback implementation for pulling models
 // since server.PullModel is not available in the current Ollama API
-func (oi *OllamaIntegration) fallbackPullModel(ctx context.Context, modelName string, fn func(api.ProgressResponse)) error {
+func (oi *OllamaIntegration) fallbackPullModel(ctx context.Context, modelName string, fn func(types.ProgressResponse)) error {
 	oi.logger.Info("fallback pull model implementation", "model", modelName)
 	
 	// Simulate progress reporting
 	if fn != nil {
-		fn(api.ProgressResponse{
+		fn(types.ProgressResponse{
 			Status: "pulling model",
 			Total:  100,
 			Completed: 0,
@@ -510,14 +505,14 @@ func (oi *OllamaIntegration) fallbackPullModel(ctx context.Context, modelName st
 		
 		// Simulate download progress
 		for i := 0; i <= 100; i += 10 {
-			fn(api.ProgressResponse{
+			fn(types.ProgressResponse{
 				Status: "downloading",
 				Total:  100,
 				Completed: int64(i),
 			})
 		}
 		
-		fn(api.ProgressResponse{
+		fn(types.ProgressResponse{
 			Status: "verifying sha256 digest",
 			Total:  100,
 			Completed: 100,
@@ -552,7 +547,7 @@ func (oi *OllamaIntegration) GetAllOperations() []*ModelOperation {
 }
 
 // CreateFromModelfile creates a model from a Modelfile with distributed support
-func (oi *OllamaIntegration) CreateFromModelfile(ctx context.Context, name model.Name, modelfile io.Reader, fn func(api.ProgressResponse)) error {
+func (oi *OllamaIntegration) CreateFromModelfile(ctx context.Context, name types.Name, modelfile io.Reader, fn func(types.ProgressResponse)) error {
 	oi.logger.Info("creating model from Modelfile with distributed support", "model", name.String())
 	
 	// Create operation record

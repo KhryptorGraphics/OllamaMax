@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ollama/ollama-distributed/internal/config"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

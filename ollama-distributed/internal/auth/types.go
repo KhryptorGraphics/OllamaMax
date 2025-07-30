@@ -63,11 +63,11 @@ type Claims struct {
 
 // AuthContext contains authentication information for a request
 type AuthContext struct {
-	User        *User     `json:"user"`
-	Session     *Session  `json:"session,omitempty"`
-	APIKey      *APIKey   `json:"api_key,omitempty"`
-	Claims      *Claims   `json:"claims"`
-	TokenString string    `json:"-"`
+	User        *User      `json:"user"`
+	Session     *Session   `json:"session,omitempty"`
+	APIKey      *APIKey    `json:"api_key,omitempty"`
+	Claims      *Claims    `json:"claims"`
+	TokenString string     `json:"-"`
 	Method      AuthMethod `json:"method"`
 }
 
@@ -101,11 +101,11 @@ const (
 
 // Role constants
 const (
-	RoleAdmin     = "admin"
-	RoleOperator  = "operator"
-	RoleUser      = "user"
-	RoleReadOnly  = "readonly"
-	RoleService   = "service"
+	RoleAdmin    = "admin"
+	RoleOperator = "operator"
+	RoleUser     = "user"
+	RoleReadOnly = "readonly"
+	RoleService  = "service"
 )
 
 // Default role permissions
@@ -147,76 +147,12 @@ var DefaultRolePermissions = map[string][]string{
 	},
 }
 
-// AuthError represents authentication errors
-type AuthError struct {
-	Code    string `json:"code"`
-	Message string `json:"message"`
-	Details string `json:"details,omitempty"`
-}
-
-func (e AuthError) Error() string {
-	if e.Details != "" {
-		return e.Message + ": " + e.Details
-	}
-	return e.Message
-}
-
-// Common authentication errors
-var (
-	ErrInvalidCredentials = AuthError{
-		Code:    "INVALID_CREDENTIALS",
-		Message: "Invalid credentials provided",
-	}
-	ErrTokenExpired = AuthError{
-		Code:    "TOKEN_EXPIRED",
-		Message: "Authentication token has expired",
-	}
-	ErrTokenInvalid = AuthError{
-		Code:    "TOKEN_INVALID",
-		Message: "Authentication token is invalid",
-	}
-	ErrTokenBlacklisted = AuthError{
-		Code:    "TOKEN_BLACKLISTED",
-		Message: "Authentication token has been revoked",
-	}
-	ErrInsufficientPermissions = AuthError{
-		Code:    "INSUFFICIENT_PERMISSIONS",
-		Message: "Insufficient permissions for this operation",
-	}
-	ErrUserNotFound = AuthError{
-		Code:    "USER_NOT_FOUND",
-		Message: "User not found",
-	}
-	ErrUserInactive = AuthError{
-		Code:    "USER_INACTIVE",
-		Message: "User account is inactive",
-	}
-	ErrAPIKeyNotFound = AuthError{
-		Code:    "API_KEY_NOT_FOUND",
-		Message: "API key not found",
-	}
-	ErrAPIKeyInactive = AuthError{
-		Code:    "API_KEY_INACTIVE",
-		Message: "API key is inactive",
-	}
-	ErrAPIKeyExpired = AuthError{
-		Code:    "API_KEY_EXPIRED",
-		Message: "API key has expired",
-	}
-	ErrSessionNotFound = AuthError{
-		Code:    "SESSION_NOT_FOUND",
-		Message: "Session not found",
-	}
-	ErrSessionExpired = AuthError{
-		Code:    "SESSION_EXPIRED",
-		Message: "Session has expired",
-	}
-)
+// Note: AuthError and error constants are defined in errors.go to avoid duplication
 
 // LoginRequest represents a login request
 type LoginRequest struct {
-	Username string `json:"username" binding:"required"`
-	Password string `json:"password" binding:"required"`
+	Username string            `json:"username" binding:"required"`
+	Password string            `json:"password" binding:"required"`
 	Metadata map[string]string `json:"metadata,omitempty"`
 }
 

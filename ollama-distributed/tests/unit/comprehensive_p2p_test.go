@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/ollama/ollama-distributed/pkg/config"
-	"github.com/ollama/ollama-distributed/pkg/p2p"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/config"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p"
 )
 
 // TestP2PNodeCreation tests P2P node creation and initialization

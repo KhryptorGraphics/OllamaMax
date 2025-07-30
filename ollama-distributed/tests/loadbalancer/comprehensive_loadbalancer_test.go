@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/ollama/ollama-distributed/pkg/scheduler/loadbalancer"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/scheduler/loadbalancer"
 )
 
 // TestLoadBalancingAlgorithms tests various load balancing algorithms

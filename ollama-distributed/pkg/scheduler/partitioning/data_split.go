@@ -276,7 +276,8 @@ func (ds *DataSplitStrategy) estimateComputePerItem(task *PartitionTask) float64
 	
 	// Adjust based on model complexity
 	if task.GGML != nil {
-		modelSize := float64(task.GGML.Size())
+		// Use GGML length as approximation for model complexity
+		modelSize := float64(task.GGML.Length)
 		baseCompute = modelSize / (1024 * 1024 * 1024) // GFLOPS based on model size
 	}
 	

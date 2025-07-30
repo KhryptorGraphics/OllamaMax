@@ -6,11 +6,12 @@ import (
 	"crypto/subtle"
 	"encoding/hex"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/ollama/ollama-distributed/internal/config"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/internal/config"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -91,8 +92,18 @@ func (m *Manager) createDefaultAdmin() error {
 		return nil
 	}
 	
-	// Create default admin user
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte("admin123"), m.bcryptCost)
+	// Create default admin user - get password from environment
+	defaultPassword := os.Getenv("ADMIN_DEFAULT_PASSWORD")
+	if defaultPassword == "" {
+		// Generate a random password if none provided
+		randomBytes := make([]byte, 16)
+		if _, err := rand.Read(randomBytes); err != nil {
+			return fmt.Errorf("failed to generate random password: %w", err)
+		}
+		defaultPassword = hex.EncodeToString(randomBytes)
+	}
+	
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(defaultPassword), m.bcryptCost)
 	if err != nil {
 		return fmt.Errorf("failed to hash default password: %w", err)
 	}
@@ -114,7 +125,10 @@ func (m *Manager) createDefaultAdmin() error {
 	
 	m.users[adminUser.ID] = adminUser
 	
-	fmt.Printf("Created default admin user (username: admin, password: admin123)\n")
+	fmt.Printf("Created default admin user (username: admin)\n")
+	if os.Getenv("ADMIN_DEFAULT_PASSWORD") == "" {
+		fmt.Printf("Generated random admin password: %s\n", defaultPassword)
+	}
 	fmt.Printf("WARNING: Please change the default password immediately!\n")
 	
 	return nil

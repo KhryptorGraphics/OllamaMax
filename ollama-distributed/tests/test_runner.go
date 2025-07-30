@@ -1,4 +1,4 @@
-package tests
+package main
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ollama/ollama-distributed/internal/config"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/internal/config"
 )
 
 // TestRunner manages test execution across different test types

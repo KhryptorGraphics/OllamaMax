@@ -208,6 +208,11 @@ func NewIntelligentLoadBalancer(config *Config) *IntelligentLoadBalancer {
 	ilb.RegisterAlgorithm(NewPredictiveAlgorithm(ilb.predictor))
 	ilb.RegisterAlgorithm(NewAdaptiveAlgorithm(ilb.history))
 	
+	// Register advanced algorithms
+	ilb.RegisterAlgorithm(NewPredictiveLoadBalancingAlgorithm(ilb.predictor))
+	ilb.RegisterAlgorithm(NewAdaptiveLoadBalancingAlgorithm(ilb.history))
+	ilb.RegisterAlgorithm(NewResourceAwareLoadBalancingAlgorithm())
+	
 	return ilb
 }
 

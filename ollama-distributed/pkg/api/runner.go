@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	ollamaapi "github.com/ollama/ollama/api"
-	"github.com/ollama/ollama-distributed/pkg/scheduler"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/types"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/scheduler"
 )
 
 // Stub types for missing llm package
@@ -127,7 +127,7 @@ func (dr *DistributedRunner) ExecuteRequest(req *RunnerRequest) (*RunnerResponse
 
 // HandleGeneration handles generation requests
 func (dr *DistributedRunner) HandleGeneration(c *gin.Context) {
-	var req ollamaapi.GenerateRequest
+	var req types.GenerateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -160,7 +160,7 @@ func (dr *DistributedRunner) HandleGeneration(c *gin.Context) {
 
 // HandleChat handles chat requests
 func (dr *DistributedRunner) HandleChat(c *gin.Context) {
-	var req ollamaapi.ChatRequest
+	var req types.ChatRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -193,7 +193,7 @@ func (dr *DistributedRunner) HandleChat(c *gin.Context) {
 
 // HandleEmbedding handles embedding requests
 func (dr *DistributedRunner) HandleEmbedding(c *gin.Context) {
-	var req ollamaapi.EmbedRequest
+	var req types.EmbedRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

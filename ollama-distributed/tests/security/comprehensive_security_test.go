@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/ollama/ollama-distributed/pkg/security"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/security"
 )
 
 // TestAuthenticationSuite tests all authentication mechanisms

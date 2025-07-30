@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/ollama/ollama-distributed/pkg/api"
-	"github.com/ollama/ollama-distributed/tests/integration"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/api"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/tests/integration"
 )
 
 // ByzantineTestSuite represents a Byzantine failure testing suite

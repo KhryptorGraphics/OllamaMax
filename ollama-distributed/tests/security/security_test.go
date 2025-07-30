@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/ollama/ollama-distributed/pkg/p2p/security"
-	"github.com/ollama/ollama-distributed/tests/integration"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p/security"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/tests/integration"
 )
 
 // SecurityTestSuite provides comprehensive security testing

@@ -7,9 +7,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/ollama/ollama-distributed/pkg/api"
-	"github.com/ollama/ollama-distributed/pkg/integration"
-	"github.com/ollama/ollama-distributed/internal/config"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/api"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/integration"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/internal/config"
 )
 
 // Test_API_Server_Initialization tests the API server initialization

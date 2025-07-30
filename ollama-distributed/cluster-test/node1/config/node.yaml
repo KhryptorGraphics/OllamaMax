@@ -1,0 +1,36 @@
+node:
+  id: "node-1"
+  name: "ollama-node-1"
+  address: "127.0.0.1:8080"
+  data_dir: "./data"
+  log_level: "info"
+
+p2p:
+  listen_addr: "/ip4/127.0.0.1/tcp/4001"
+  bootstrap: []  # This is the bootstrap node
+  conn_mgr_low: 10
+  conn_mgr_high: 50
+  conn_mgr_grace: "30s"
+
+consensus:
+  raft_addr: "127.0.0.1:9000"
+  raft_id: "node-1"
+  bootstrap: true  # This node bootstraps the cluster
+  data_dir: "./data/raft"
+
+api:
+  listen_addr: "127.0.0.1:8080"
+  cors_origins: ["*"]
+  
+auth:
+  enabled: true
+  jwt_secret: "test-cluster-secret-key-12345"
+  
+scheduler:
+  algorithm: "adaptive"
+  load_balancer: "intelligent"
+  
+models:
+  storage_type: "distributed"
+  replication_factor: 2
+  cache_size: "1GB"
