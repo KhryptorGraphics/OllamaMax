@@ -22,12 +22,13 @@ type DistributedScheduler struct {
 	scheduler types.Scheduler // Compose with scheduler interface
 
 	// Distributed components
-	engine           *DistributedEngine
-	clusterManager   *ClusterManager
-	loadBalancer     *loadbalancer.IntelligentLoadBalancer
-	partitionManager *partitioning.PartitionManager
-	faultTolerance   *fault_tolerance.FaultToleranceManager
-	orchestrator     *orchestration.OrchestrationEngine
+	engine                 *DistributedEngine
+	clusterManager         *ClusterManager
+	loadBalancer           *loadbalancer.IntelligentLoadBalancer
+	partitionManager       *partitioning.PartitionManager
+	faultTolerance         *fault_tolerance.FaultToleranceManager
+	enhancedFaultTolerance *fault_tolerance.EnhancedFaultToleranceManager
+	orchestrator           *orchestration.OrchestrationEngine
 
 	// Network components
 	p2pNode   *p2p.Node
@@ -360,13 +361,28 @@ func (ds *DistributedScheduler) initializeComponents() error {
 	}
 	ds.loadBalancer = loadbalancer.NewIntelligentLoadBalancer(lbConfig)
 
-	// Initialize fault tolerance manager
+	// Initialize enhanced fault tolerance manager
 	ftConfig := &fault_tolerance.Config{
-		ReplicationFactor:   ds.config.ReplicationFactor,
-		HealthCheckInterval: ds.config.HealthCheckInterval,
-		RecoveryTimeout:     ds.config.RecoveryTimeout,
+		ReplicationFactor:     ds.config.ReplicationFactor,
+		HealthCheckInterval:   ds.config.HealthCheckInterval,
+		RecoveryTimeout:       ds.config.RecoveryTimeout,
+		CircuitBreakerEnabled: true,
+		CheckpointInterval:    30 * time.Second,
+		MaxRetries:            3,
+		RetryBackoff:          5 * time.Second,
 	}
-	ds.faultTolerance = fault_tolerance.NewFaultToleranceManager(ftConfig)
+
+	// Create base fault tolerance manager first
+	baseFT := fault_tolerance.NewFaultToleranceManager(ftConfig)
+
+	// Create enhanced configuration
+	enhancedConfig := fault_tolerance.NewEnhancedFaultToleranceConfig(ftConfig)
+
+	// Create enhanced fault tolerance manager with all advanced features
+	enhancedFT := fault_tolerance.NewEnhancedFaultToleranceManager(enhancedConfig, baseFT)
+
+	ds.faultTolerance = baseFT             // Use base interface for compatibility
+	ds.enhancedFaultTolerance = enhancedFT // Store enhanced reference
 
 	// Initialize orchestration engine
 	orchConfig := &orchestration.Config{
@@ -402,6 +418,11 @@ func (ds *DistributedScheduler) Start() error {
 
 	// Start base scheduler (stub - interface doesn't have Run method)
 	// TODO: Implement proper scheduler integration
+
+	// Start enhanced fault tolerance system
+	if err := ds.enhancedFaultTolerance.Start(); err != nil {
+		return fmt.Errorf("failed to start enhanced fault tolerance: %v", err)
+	}
 
 	// Start cluster manager
 	if err := ds.clusterManager.Start(ds.ctx); err != nil {

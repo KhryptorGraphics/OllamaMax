@@ -315,16 +315,29 @@ func (fp *FaultPredictorImpl) predictFault(fault *FaultDetection) {
 }
 
 // getCurrentSystemState gets the current system state (stub implementation)
-func (fp *FaultPredictorImpl) getCurrentSystemState() *SystemStateImpl {
+func (fp *FaultPredictorImpl) getCurrentSystemState() *types.SystemState {
 	// Stub implementation - return minimal state
-	return &SystemStateImpl{
-		Nodes:       make([]*types.NodeInfo, 0),
-		Resources:   &types.ResourceMetrics{},
-		Performance: &types.PerformanceMetrics{},
-		Health:      &types.HealthMetrics{},
-		Faults:      make([]*types.FaultDetection, 0),
-		Metadata:    make(map[string]interface{}),
-		Timestamp:   time.Now(),
+	return &types.SystemState{
+		Timestamp:        time.Now(),
+		TotalNodes:       1,
+		HealthyNodes:     1,
+		UnhealthyNodes:   0,
+		TotalCPU:         8,
+		AvailableCPU:     4,
+		TotalMemory:      16000000000,
+		AvailableMemory:  8000000000,
+		AverageLatency:   100.0,
+		TotalThroughput:  1000.0,
+		ErrorRate:        0.01,
+		ActiveFaults:     0,
+		CriticalFaults:   0,
+		AverageLoad:      0.5,
+		LoadDistribution: make(map[string]float64),
+		Nodes:            make([]*types.NodeInfo, 0),
+		Resources:        &types.ResourceMetrics{},
+		Performance:      &types.PerformanceMetrics{},
+		Health:           &types.HealthMetrics{},
+		Faults:           make([]*types.FaultDetection, 0),
 	}
 }
 
