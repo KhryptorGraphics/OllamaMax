@@ -16,6 +16,7 @@ alerting:
 # Load rules once and periodically evaluate them
 rule_files:
   - "rules/*.yml"
+  - "rules/ollama_distributed.yml"
 
 # Scrape configurations
 scrape_configs:
@@ -26,16 +27,16 @@ scrape_configs:
     metrics_path: /metrics
     scrape_interval: 30s
 
-  # Ollamacron nodes
-  - job_name: 'ollamacron'
+  # Ollama Distributed nodes
+  - job_name: 'ollama-distributed'
     static_configs:
-      - targets: 
-        - 'ollamacron:9090'
-        - 'ollamacron-node-1:9090'
-        - 'ollamacron-node-2:9090'
-        - 'ollamacron-node-3:9090'
+      - targets:
+        - 'ollama-distributed:9090'
+        - 'ollama-distributed-node-1:9090'
+        - 'ollama-distributed-node-2:9090'
+        - 'ollama-distributed-node-3:9090'
     metrics_path: /metrics
-    scrape_interval: 30s
+    scrape_interval: 15s
     scrape_timeout: 10s
     honor_labels: true
     params:
@@ -46,7 +47,28 @@ scrape_configs:
       - source_labels: [__param_target]
         target_label: instance
       - target_label: __address__
-        replacement: ollamacron:9090
+        replacement: ollama-distributed:9090
+
+  # Ollama Distributed Health Checks
+  - job_name: 'ollama-distributed-health'
+    static_configs:
+      - targets:
+        - 'ollama-distributed:8080'
+        - 'ollama-distributed-node-1:8080'
+        - 'ollama-distributed-node-2:8080'
+        - 'ollama-distributed-node-3:8080'
+    metrics_path: /health
+    scrape_interval: 30s
+    scrape_timeout: 5s
+
+  # Ollama Distributed Dashboard
+  - job_name: 'ollama-distributed-dashboard'
+    static_configs:
+      - targets:
+        - 'ollama-distributed-dashboard:8081'
+    metrics_path: /api/dashboard/metrics
+    scrape_interval: 30s
+    scrape_timeout: 10s
 
   # Docker containers (if running in Docker)
   - job_name: 'docker'
