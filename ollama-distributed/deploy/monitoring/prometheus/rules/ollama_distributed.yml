@@ -1,0 +1,335 @@
+# Prometheus Alerting Rules for Ollama Distributed System
+groups:
+  - name: ollama_distributed.scheduler
+    rules:
+      # Scheduler Health Alerts
+      - alert: SchedulerHighTaskFailureRate
+        expr: |
+          (
+            rate(ollama_distributed_scheduler_tasks_total{status="failed"}[5m])
+            /
+            rate(ollama_distributed_scheduler_tasks_total[5m])
+          ) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: scheduler
+          team: platform
+        annotations:
+          summary: "High task failure rate in scheduler"
+          description: "Task failure rate is {{ $value | humanizePercentage }} over the last 5 minutes on node {{ $labels.node_id }}"
+          runbook_url: "https://docs.ollama-distributed.com/runbooks/scheduler/high-failure-rate"
+
+      - alert: SchedulerHighLatency
+        expr: |
+          histogram_quantile(0.95, 
+            rate(ollama_distributed_scheduler_task_duration_seconds_bucket[5m])
+          ) > 30
+        for: 5m
+        labels:
+          severity: warning
+          component: scheduler
+          team: platform
+        annotations:
+          summary: "High scheduler task latency"
+          description: "95th percentile task duration is {{ $value }}s on node {{ $labels.node_id }}"
+          runbook_url: "https://docs.ollama-distributed.com/runbooks/scheduler/high-latency"
+
+      - alert: SchedulerNoAvailableWorkers
+        expr: ollama_distributed_scheduler_workers_available == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: scheduler
+          team: platform
+        annotations:
+          summary: "No available workers for task scheduling"
+          description: "No workers are available for task scheduling on node {{ $labels.node_id }}"
+          runbook_url: "https://docs.ollama-distributed.com/runbooks/scheduler/no-workers"
+
+      - alert: SchedulerHighQueueDepth
+        expr: ollama_distributed_scheduler_tasks_queued > 100
+        for: 5m
+        labels:
+          severity: warning
+          component: scheduler
+          team: platform
+        annotations:
+          summary: "High task queue depth"
+          description: "{{ $value }} tasks are queued on node {{ $labels.node_id }}"
+          runbook_url: "https://docs.ollama-distributed.com/runbooks/scheduler/high-queue"
+
+  - name: ollama_distributed.p2p
+    rules:
+      # P2P Network Alerts
+      - alert: P2PLowPeerConnectivity
+        expr: ollama_distributed_p2p_connections_active < 2
+        for: 5m
+        labels:
+          severity: warning
+          component: p2p
+          team: platform
+        annotations:
+          summary: "Low P2P peer connectivity"
+          description: "Only {{ $value }} peers connected on node {{ $labels.node_id }}, minimum recommended is 2"
+          runbook_url: "https://docs.ollama-distributed.com/runbooks/p2p/low-connectivity"
+
+      - alert: P2PHighNetworkLatency
+        expr: |
+          histogram_quantile(0.95, 
+            rate(ollama_distributed_p2p_network_latency_seconds_bucket[5m])
+          ) > 1
+        for: 5m
+        labels:
+          severity: warning
+          component: p2p
+          team: platform
+        annotations:
+          summary: "High P2P network latency"
+          description: "95th percentile network latency is {{ $value }}s on node {{ $labels.node_id }}"
+          runbook_url: "https://docs.ollama-distributed.com/runbooks/p2p/high-latency"
+
+      - alert: P2PMessageFailures
+        expr: rate(ollama_distributed_p2p_messages_total{status="failed"}[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: p2p
+          team: platform
+        annotations:
+          summary: "High P2P message failure rate"
+          description: "P2P message failure rate is {{ $value }} per second on node {{ $labels.node_id }}"
+          runbook_url: "https://docs.ollama-distributed.com/runbooks/p2p/message-failures"
+
+      - alert: P2PNodeIsolated
+        expr: ollama_distributed_p2p_connections_active == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: p2p
+          team: platform
+        annotations:
+          summary: "P2P node is isolated"
+          description: "Node {{ $labels.node_id }} has no active P2P connections"
+          runbook_url: "https://docs.ollama-distributed.com/runbooks/p2p/node-isolated"
+
+  - name: ollama_distributed.consensus
+    rules:
+      # Consensus Alerts
+      - alert: ConsensusNoLeader
+        expr: |
+          (
+            count(ollama_distributed_consensus_node_state{state="leader"}) == 0
+          ) and (
+            count(ollama_distributed_consensus_node_state) > 0
+          )
+        for: 30s
+        labels:
+          severity: critical
+          component: consensus
+          team: platform
+        annotations:
+          summary: "No consensus leader elected"
+          description: "No leader is currently elected in the consensus cluster"
+          runbook_url: "https://docs.ollama-distributed.com/runbooks/consensus/no-leader"
+
+      - alert: ConsensusHighCommitLatency
+        expr: |
+          histogram_quantile(0.95, 
+            rate(ollama_distributed_consensus_commit_latency_seconds_bucket[5m])
+          ) > 1
+        for: 5m
+        labels:
+          severity: warning
+          component: consensus
+          team: platform
+        annotations:
+          summary: "High consensus commit latency"
+          description: "95th percentile commit latency is {{ $value }}s"
+          runbook_url: "https://docs.ollama-distributed.com/runbooks/consensus/high-latency"
+
+      - alert: ConsensusQuorumLost
+        expr: ollama_distributed_consensus_quorum_status == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: consensus
+          team: platform
+        annotations:
+          summary: "Consensus quorum lost"
+          description: "Consensus cluster has lost quorum on cluster {{ $labels.cluster_id }}"
+          runbook_url: "https://docs.ollama-distributed.com/runbooks/consensus/quorum-lost"
+
+  - name: ollama_distributed.api
+    rules:
+      # API Gateway Alerts
+      - alert: APIHighErrorRate
+        expr: |
+          (
+            rate(ollama_distributed_api_requests_total{status=~"5.."}[5m])
+            /
+            rate(ollama_distributed_api_requests_total[5m])
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          component: api
+          team: platform
+        annotations:
+          summary: "High API error rate"
+          description: "API error rate is {{ $value | humanizePercentage }} for endpoint {{ $labels.endpoint }}"
+          runbook_url: "https://docs.ollama-distributed.com/runbooks/api/high-error-rate"
+
+      - alert: APIHighLatency
+        expr: |
+          histogram_quantile(0.95, 
+            rate(ollama_distributed_api_request_duration_seconds_bucket[5m])
+          ) > 10
+        for: 5m
+        labels:
+          severity: warning
+          component: api
+          team: platform
+        annotations:
+          summary: "High API latency"
+          description: "95th percentile API latency is {{ $value }}s for endpoint {{ $labels.endpoint }}"
+          runbook_url: "https://docs.ollama-distributed.com/runbooks/api/high-latency"
+
+      - alert: APIHighConnectionCount
+        expr: ollama_distributed_api_connections_active > 1000
+        for: 5m
+        labels:
+          severity: warning
+          component: api
+          team: platform
+        annotations:
+          summary: "High API connection count"
+          description: "{{ $value }} active connections on API gateway {{ $labels.instance }}"
+          runbook_url: "https://docs.ollama-distributed.com/runbooks/api/high-connections"
+
+  - name: ollama_distributed.models
+    rules:
+      # Model Management Alerts
+      - alert: ModelLoadFailures
+        expr: rate(ollama_distributed_model_requests_total{status="failed",operation="load"}[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: models
+          team: ml
+        annotations:
+          summary: "High model load failure rate"
+          description: "Model load failure rate is {{ $value }} per second for model {{ $labels.model_name }}"
+          runbook_url: "https://docs.ollama-distributed.com/runbooks/models/load-failures"
+
+      - alert: ModelHighInferenceLatency
+        expr: |
+          histogram_quantile(0.95, 
+            rate(ollama_distributed_model_inference_duration_seconds_bucket[5m])
+          ) > 30
+        for: 5m
+        labels:
+          severity: warning
+          component: models
+          team: ml
+        annotations:
+          summary: "High model inference latency"
+          description: "95th percentile inference latency is {{ $value }}s for model {{ $labels.model_name }}"
+          runbook_url: "https://docs.ollama-distributed.com/runbooks/models/high-latency"
+
+      - alert: ModelStorageSpaceLow
+        expr: |
+          (
+            ollama_distributed_model_storage_used_bytes
+            /
+            ollama_distributed_model_storage_total_bytes
+          ) > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          component: models
+          team: ml
+        annotations:
+          summary: "Low model storage space"
+          description: "Model storage is {{ $value | humanizePercentage }} full on node {{ $labels.node_id }}"
+          runbook_url: "https://docs.ollama-distributed.com/runbooks/models/low-storage"
+
+  - name: ollama_distributed.health
+    rules:
+      # Health Check Alerts
+      - alert: ServiceUnhealthy
+        expr: up{job=~"ollama-distributed-.*"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: health
+          team: platform
+        annotations:
+          summary: "Service is down"
+          description: "Service {{ $labels.job }} on instance {{ $labels.instance }} is down"
+          runbook_url: "https://docs.ollama-distributed.com/runbooks/health/service-down"
+
+      - alert: HealthCheckFailing
+        expr: |
+          probe_success{job="ollama-distributed-health"} == 0
+        for: 2m
+        labels:
+          severity: warning
+          component: health
+          team: platform
+        annotations:
+          summary: "Health check failing"
+          description: "Health check is failing for {{ $labels.instance }}"
+          runbook_url: "https://docs.ollama-distributed.com/runbooks/health/check-failing"
+
+      - alert: ComponentDegraded
+        expr: |
+          ollama_distributed_health_component_status{status="degraded"} == 1
+        for: 5m
+        labels:
+          severity: warning
+          component: health
+          team: platform
+        annotations:
+          summary: "Component is degraded"
+          description: "Component {{ $labels.component }} is in degraded state on node {{ $labels.node_id }}"
+          runbook_url: "https://docs.ollama-distributed.com/runbooks/health/component-degraded"
+
+  - name: ollama_distributed.fault_tolerance
+    rules:
+      # Fault Tolerance Alerts
+      - alert: HighFaultDetectionRate
+        expr: rate(ollama_distributed_fault_tolerance_faults_detected_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: fault_tolerance
+          team: platform
+        annotations:
+          summary: "High fault detection rate"
+          description: "Fault detection rate is {{ $value }} per second on node {{ $labels.node_id }}"
+          runbook_url: "https://docs.ollama-distributed.com/runbooks/fault-tolerance/high-detection-rate"
+
+      - alert: RecoveryFailures
+        expr: rate(ollama_distributed_fault_tolerance_recovery_attempts_total{status="failed"}[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          component: fault_tolerance
+          team: platform
+        annotations:
+          summary: "High recovery failure rate"
+          description: "Recovery failure rate is {{ $value }} per second on node {{ $labels.node_id }}"
+          runbook_url: "https://docs.ollama-distributed.com/runbooks/fault-tolerance/recovery-failures"
+
+      - alert: SystemHealthDegraded
+        expr: ollama_distributed_fault_tolerance_system_health < 0.8
+        for: 5m
+        labels:
+          severity: warning
+          component: fault_tolerance
+          team: platform
+        annotations:
+          summary: "System health degraded"
+          description: "Overall system health is {{ $value | humanizePercentage }} on node {{ $labels.node_id }}"
+          runbook_url: "https://docs.ollama-distributed.com/runbooks/fault-tolerance/health-degraded"

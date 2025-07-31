@@ -1,0 +1,295 @@
+# Alertmanager Configuration for Ollama Distributed System
+global:
+  # Global configuration
+  smtp_smarthost: 'localhost:587'
+  smtp_from: 'alerts@ollama-distributed.com'
+  smtp_auth_username: 'alerts@ollama-distributed.com'
+  smtp_auth_password: 'your-smtp-password'
+  
+  # Slack configuration
+  slack_api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+
+# Templates for notifications
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# Routing configuration
+route:
+  # Default route configuration
+  group_by: ['alertname', 'cluster', 'service']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 1h
+  receiver: 'default-receiver'
+  
+  # Specific routing rules
+  routes:
+    # Critical alerts go to on-call immediately
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+      group_wait: 0s
+      group_interval: 5m
+      repeat_interval: 15m
+      continue: true
+    
+    # Platform team alerts
+    - match:
+        team: platform
+      receiver: 'platform-team'
+      group_interval: 5m
+      repeat_interval: 30m
+      continue: true
+    
+    # ML team alerts
+    - match:
+        team: ml
+      receiver: 'ml-team'
+      group_interval: 5m
+      repeat_interval: 30m
+      continue: true
+    
+    # Component-specific routing
+    - match:
+        component: scheduler
+      receiver: 'scheduler-alerts'
+      group_interval: 5m
+      repeat_interval: 1h
+    
+    - match:
+        component: p2p
+      receiver: 'network-alerts'
+      group_interval: 5m
+      repeat_interval: 1h
+    
+    - match:
+        component: consensus
+      receiver: 'consensus-alerts'
+      group_interval: 2m
+      repeat_interval: 30m
+    
+    - match:
+        component: api
+      receiver: 'api-alerts'
+      group_interval: 5m
+      repeat_interval: 1h
+    
+    - match:
+        component: models
+      receiver: 'model-alerts'
+      group_interval: 5m
+      repeat_interval: 1h
+    
+    - match:
+        component: health
+      receiver: 'health-alerts'
+      group_interval: 2m
+      repeat_interval: 30m
+    
+    - match:
+        component: fault_tolerance
+      receiver: 'fault-tolerance-alerts'
+      group_interval: 5m
+      repeat_interval: 1h
+
+# Inhibition rules to reduce noise
+inhibit_rules:
+  # Inhibit warning alerts if critical alert is firing
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'cluster', 'service']
+  
+  # Inhibit component alerts if service is down
+  - source_match:
+      alertname: 'ServiceUnhealthy'
+    target_match_re:
+      alertname: '.*High.*|.*Failure.*'
+    equal: ['instance']
+
+# Receiver configurations
+receivers:
+  # Default receiver
+  - name: 'default-receiver'
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+        channel: '#ollama-alerts'
+        title: 'Ollama Distributed Alert'
+        text: |
+          {{ range .Alerts }}
+          *Alert:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          *Severity:* {{ .Labels.severity }}
+          *Component:* {{ .Labels.component }}
+          {{ if .Annotations.runbook_url }}*Runbook:* {{ .Annotations.runbook_url }}{{ end }}
+          {{ end }}
+        send_resolved: true
+
+  # Critical alerts - immediate notification
+  - name: 'critical-alerts'
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+        channel: '#ollama-critical'
+        title: '🚨 CRITICAL: Ollama Distributed Alert'
+        text: |
+          {{ range .Alerts }}
+          🚨 *CRITICAL ALERT* 🚨
+          *Alert:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          *Component:* {{ .Labels.component }}
+          *Node:* {{ .Labels.node_id }}
+          {{ if .Annotations.runbook_url }}*Runbook:* {{ .Annotations.runbook_url }}{{ end }}
+          {{ end }}
+        send_resolved: true
+    email_configs:
+      - to: 'oncall@ollama-distributed.com'
+        subject: '🚨 CRITICAL: {{ .GroupLabels.alertname }} - Ollama Distributed'
+        body: |
+          Critical alert fired in Ollama Distributed system:
+          
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Component: {{ .Labels.component }}
+          Node: {{ .Labels.node_id }}
+          Severity: {{ .Labels.severity }}
+          {{ if .Annotations.runbook_url }}
+          Runbook: {{ .Annotations.runbook_url }}
+          {{ end }}
+          
+          {{ end }}
+    webhook_configs:
+      - url: 'http://pagerduty-webhook.example.com/alerts'
+        send_resolved: true
+
+  # Platform team alerts
+  - name: 'platform-team'
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+        channel: '#platform-team'
+        title: 'Platform Alert - Ollama Distributed'
+        text: |
+          {{ range .Alerts }}
+          *Alert:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          *Component:* {{ .Labels.component }}
+          *Severity:* {{ .Labels.severity }}
+          {{ if .Annotations.runbook_url }}*Runbook:* {{ .Annotations.runbook_url }}{{ end }}
+          {{ end }}
+        send_resolved: true
+
+  # ML team alerts
+  - name: 'ml-team'
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+        channel: '#ml-team'
+        title: 'ML Alert - Ollama Distributed'
+        text: |
+          {{ range .Alerts }}
+          *Alert:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          *Model:* {{ .Labels.model_name }}
+          *Severity:* {{ .Labels.severity }}
+          {{ if .Annotations.runbook_url }}*Runbook:* {{ .Annotations.runbook_url }}{{ end }}
+          {{ end }}
+        send_resolved: true
+
+  # Component-specific receivers
+  - name: 'scheduler-alerts'
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+        channel: '#scheduler-alerts'
+        title: 'Scheduler Alert'
+        text: |
+          {{ range .Alerts }}
+          📋 *Scheduler Alert*
+          *Alert:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          *Node:* {{ .Labels.node_id }}
+          {{ if .Annotations.runbook_url }}*Runbook:* {{ .Annotations.runbook_url }}{{ end }}
+          {{ end }}
+
+  - name: 'network-alerts'
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+        channel: '#network-alerts'
+        title: 'P2P Network Alert'
+        text: |
+          {{ range .Alerts }}
+          🌐 *P2P Network Alert*
+          *Alert:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          *Node:* {{ .Labels.node_id }}
+          {{ if .Annotations.runbook_url }}*Runbook:* {{ .Annotations.runbook_url }}{{ end }}
+          {{ end }}
+
+  - name: 'consensus-alerts'
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+        channel: '#consensus-alerts'
+        title: 'Consensus Alert'
+        text: |
+          {{ range .Alerts }}
+          🗳️ *Consensus Alert*
+          *Alert:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          *Cluster:* {{ .Labels.cluster_id }}
+          {{ if .Annotations.runbook_url }}*Runbook:* {{ .Annotations.runbook_url }}{{ end }}
+          {{ end }}
+
+  - name: 'api-alerts'
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+        channel: '#api-alerts'
+        title: 'API Gateway Alert'
+        text: |
+          {{ range .Alerts }}
+          🔌 *API Gateway Alert*
+          *Alert:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          *Endpoint:* {{ .Labels.endpoint }}
+          {{ if .Annotations.runbook_url }}*Runbook:* {{ .Annotations.runbook_url }}{{ end }}
+          {{ end }}
+
+  - name: 'model-alerts'
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+        channel: '#model-alerts'
+        title: 'Model Management Alert'
+        text: |
+          {{ range .Alerts }}
+          🤖 *Model Alert*
+          *Alert:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          *Model:* {{ .Labels.model_name }}
+          {{ if .Annotations.runbook_url }}*Runbook:* {{ .Annotations.runbook_url }}{{ end }}
+          {{ end }}
+
+  - name: 'health-alerts'
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+        channel: '#health-alerts'
+        title: 'Health Check Alert'
+        text: |
+          {{ range .Alerts }}
+          ❤️ *Health Alert*
+          *Alert:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          *Component:* {{ .Labels.component }}
+          {{ if .Annotations.runbook_url }}*Runbook:* {{ .Annotations.runbook_url }}{{ end }}
+          {{ end }}
+
+  - name: 'fault-tolerance-alerts'
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+        channel: '#fault-tolerance-alerts'
+        title: 'Fault Tolerance Alert'
+        text: |
+          {{ range .Alerts }}
+          🛡️ *Fault Tolerance Alert*
+          *Alert:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          *Node:* {{ .Labels.node_id }}
+          {{ if .Annotations.runbook_url }}*Runbook:* {{ .Annotations.runbook_url }}{{ end }}
+          {{ end }}
