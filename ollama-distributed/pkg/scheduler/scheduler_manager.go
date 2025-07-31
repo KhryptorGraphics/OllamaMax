@@ -8,6 +8,7 @@ import (
 
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/internal/config"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/consensus"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/observability"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p/messaging"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p/monitoring"
@@ -39,7 +40,9 @@ type SchedulerManager struct {
 	stateMu sync.RWMutex
 
 	// Metrics and monitoring
-	metrics *SchedulerMetrics
+	metrics            *SchedulerMetrics
+	metricsIntegration *observability.MetricsIntegration
+	healthManager      *observability.HealthCheckManager
 
 	// Lifecycle
 	ctx       context.Context
@@ -398,7 +401,7 @@ const (
 )
 
 // NewSchedulerManager creates a new scheduler manager
-func NewSchedulerManager(config *SchedulerManagerConfig, p2pNode *p2p.Node, consensusManager *consensus.ConsensusManager, messageRouter *messaging.MessageRouter, networkMonitor *monitoring.NetworkMonitor) (*SchedulerManager, error) {
+func NewSchedulerManager(config *SchedulerManagerConfig, p2pNode *p2p.Node, consensusManager *consensus.ConsensusManager, messageRouter *messaging.MessageRouter, networkMonitor *monitoring.NetworkMonitor, metricsIntegration *observability.MetricsIntegration, healthManager *observability.HealthCheckManager) (*SchedulerManager, error) {
 	if config == nil {
 		config = &SchedulerManagerConfig{
 			MaxQueueSize:         10000,
@@ -418,11 +421,13 @@ func NewSchedulerManager(config *SchedulerManagerConfig, p2pNode *p2p.Node, cons
 	ctx, cancel := context.WithCancel(context.Background())
 
 	manager := &SchedulerManager{
-		config:           config,
-		p2pNode:          p2pNode,
-		consensusManager: consensusManager,
-		messageRouter:    messageRouter,
-		networkMonitor:   networkMonitor,
+		config:             config,
+		p2pNode:            p2pNode,
+		consensusManager:   consensusManager,
+		messageRouter:      messageRouter,
+		networkMonitor:     networkMonitor,
+		metricsIntegration: metricsIntegration,
+		healthManager:      healthManager,
 		state: &SchedulerState{
 			Status:      SchedulerStatusStopped,
 			LastUpdated: time.Now(),
@@ -822,6 +827,21 @@ func (sm *SchedulerManager) updateSchedulingMetrics(task *Task, worker *WorkerNo
 	sm.state.QueuedTasks--
 	sm.state.RunningTasks++
 	sm.state.LastUpdated = time.Now()
+
+	// Report task scheduling to Prometheus if integration is available
+	if sm.metricsIntegration != nil {
+		schedulerIntegrator := sm.metricsIntegration.GetSchedulerIntegrator()
+
+		// Report task scheduled
+		taskType := "inference" // Default task type, could be extracted from task
+		if task != nil && task.Type != "" {
+			taskType = string(task.Type)
+		}
+		schedulerIntegrator.ReportTaskScheduled(taskType, "scheduled")
+
+		// Report active tasks
+		schedulerIntegrator.ReportTaskActive(taskType, float64(sm.state.RunningTasks))
+	}
 }
 
 // updateSchedulerMetrics updates overall scheduler metrics
@@ -855,6 +875,27 @@ func (sm *SchedulerManager) updateSchedulerMetrics() {
 	sm.state.SystemLoad = workerMetrics.AverageLoad
 	sm.state.LastUpdated = time.Now()
 	sm.stateMu.Unlock()
+
+	// Report metrics to Prometheus if integration is available
+	if sm.metricsIntegration != nil {
+		schedulerIntegrator := sm.metricsIntegration.GetSchedulerIntegrator()
+
+		// Report active tasks
+		schedulerIntegrator.ReportTaskActive("all", float64(taskMetrics.ActiveTasks))
+
+		// Report node utilization
+		schedulerIntegrator.ReportNodeUtilization("cpu", workerMetrics.AverageLoad)
+		schedulerIntegrator.ReportNodeUtilization("memory", sm.metrics.WorkerUtilization)
+
+		// Report completed and failed tasks
+		schedulerIntegrator.ReportTaskScheduled("all", "completed")
+		if taskMetrics.FailedTasks > 0 {
+			schedulerIntegrator.ReportTaskError("all", "execution_error")
+		}
+
+		// Report load balancer requests
+		schedulerIntegrator.ReportLoadBalancerRequest(sm.config.LoadBalanceAlgorithm)
+	}
 }
 
 // reportToNetworkMonitor reports metrics to the network monitor
@@ -874,6 +915,56 @@ func (sm *SchedulerManager) sendTaskAssignment(task *Task, worker *WorkerNode) e
 func (sm *SchedulerManager) directTaskAssignment(task *Task, worker *WorkerNode) error {
 	// Direct assignment logic (placeholder)
 	return nil
+}
+
+// Health check interface implementation for SchedulerManager
+
+// IsHealthy returns whether the scheduler is healthy
+func (sm *SchedulerManager) IsHealthy() bool {
+	sm.stateMu.RLock()
+	defer sm.stateMu.RUnlock()
+
+	return sm.state.Status == SchedulerStatusRunning
+}
+
+// GetClusterSize returns the current cluster size
+func (sm *SchedulerManager) GetClusterSize() int {
+	sm.stateMu.RLock()
+	defer sm.stateMu.RUnlock()
+
+	return int(sm.state.TotalWorkers)
+}
+
+// GetActiveTaskCount returns the number of active tasks
+func (sm *SchedulerManager) GetActiveTaskCount() int {
+	sm.stateMu.RLock()
+	defer sm.stateMu.RUnlock()
+
+	return int(sm.state.RunningTasks)
+}
+
+// GetQueuedTaskCount returns the number of queued tasks
+func (sm *SchedulerManager) GetQueuedTaskCount() int {
+	sm.stateMu.RLock()
+	defer sm.stateMu.RUnlock()
+
+	return int(sm.state.QueuedTasks)
+}
+
+// GetWorkerCount returns the number of workers
+func (sm *SchedulerManager) GetWorkerCount() int {
+	sm.stateMu.RLock()
+	defer sm.stateMu.RUnlock()
+
+	return int(sm.state.TotalWorkers)
+}
+
+// GetLastActivity returns the last activity time
+func (sm *SchedulerManager) GetLastActivity() time.Time {
+	sm.stateMu.RLock()
+	defer sm.stateMu.RUnlock()
+
+	return sm.state.LastUpdated
 }
 
 // Message handlers for P2P communication

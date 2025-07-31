@@ -18,6 +18,7 @@ import (
 
 	internalconfig "github.com/khryptorgraphics/ollamamax/ollama-distributed/internal/config"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/config"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/observability"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p/discovery"
 	p2phost "github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p/host"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p/resources"
@@ -50,7 +51,8 @@ type P2PNode struct {
 	eventMux      sync.RWMutex
 
 	// Metrics
-	metrics *NodeMetrics
+	metrics            *NodeMetrics
+	metricsIntegration *observability.MetricsIntegration
 
 	// Lifecycle
 	ctx        context.Context
@@ -185,6 +187,58 @@ func NewP2PNode(ctx context.Context, nodeConfig *config.NodeConfig) (*P2PNode, e
 
 	log.Printf("P2P node initialized with ID: %s", node.ID())
 	return node, nil
+}
+
+// SetMetricsIntegration sets the metrics integration for the P2P node
+func (n *P2PNode) SetMetricsIntegration(metricsIntegration *observability.MetricsIntegration) {
+	n.metricsIntegration = metricsIntegration
+}
+
+// SetHealthManager sets the health manager for the P2P node
+func (n *P2PNode) SetHealthManager(healthManager *observability.HealthCheckManager) {
+	// Register P2P health monitor
+	if healthManager != nil {
+		p2pMonitor := observability.NewP2PHealthMonitor(n)
+		healthManager.RegisterComponentMonitor(p2pMonitor)
+	}
+}
+
+// Health check interface implementation for P2PNode
+
+// IsHealthy returns whether the P2P node is healthy
+func (n *P2PNode) IsHealthy() bool {
+	n.startedMux.RLock()
+	defer n.startedMux.RUnlock()
+
+	return n.started && n.host != nil
+}
+
+// GetConnectedPeerCount returns the number of connected peers
+func (n *P2PNode) GetConnectedPeerCount() int {
+	if n.host == nil {
+		return 0
+	}
+	return n.host.GetPeerCount()
+}
+
+// GetNetworkLatency returns the average network latency
+func (n *P2PNode) GetNetworkLatency() time.Duration {
+	// This is a simplified implementation
+	// In a real implementation, you would track actual latency measurements
+	return 50 * time.Millisecond
+}
+
+// GetLastActivity returns the last activity time
+func (n *P2PNode) GetLastActivity() time.Time {
+	if n.metrics != nil {
+		return n.metrics.LastActivity
+	}
+	return time.Now()
+}
+
+// IsNetworkConnected returns whether the node is connected to the network
+func (n *P2PNode) IsNetworkConnected() bool {
+	return n.GetConnectedPeerCount() > 0
 }
 
 // initializeComponents initializes all node components
@@ -617,6 +671,26 @@ func (n *P2PNode) updateMetrics() {
 		n.metrics.ContentPublished = routerMetrics.ContentPublished
 		n.metrics.ContentRequests = routerMetrics.ContentRequests
 		n.metrics.ContentProvided = routerMetrics.ContentProvided
+	}
+
+	// Report metrics to Prometheus if integration is available
+	if n.metricsIntegration != nil {
+		p2pIntegrator := n.metricsIntegration.GetP2PIntegrator()
+
+		// Report active connections
+		p2pIntegrator.ReportActiveConnections("tcp", float64(n.metrics.ConnectedPeers))
+
+		// Report peer discovery
+		if n.metrics.PeersDiscovered > 0 {
+			p2pIntegrator.ReportPeerDiscovery("mdns", "success")
+		}
+		if n.metrics.DiscoveryErrors > 0 {
+			p2pIntegrator.ReportPeerDiscovery("mdns", "error")
+		}
+
+		// Report bandwidth usage (placeholder values)
+		p2pIntegrator.ReportBandwidthUsage("inbound", "all", float64(n.metrics.MessageThroughput))
+		p2pIntegrator.ReportBandwidthUsage("outbound", "all", float64(n.metrics.MessageThroughput))
 	}
 }
 
