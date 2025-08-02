@@ -15,16 +15,18 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/internal/config"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/consensus"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/integration"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/scheduler"
 )
 
 // Server represents the API server
 type Server struct {
-	config    *config.APIConfig
-	p2p       *p2p.Node
-	consensus *consensus.Engine
-	scheduler *scheduler.Engine
+	config      *config.APIConfig
+	p2p         *p2p.Node
+	consensus   *consensus.Engine
+	scheduler   *scheduler.Engine
+	integration *integration.SimpleOllamaIntegration
 
 	router   *gin.Engine
 	server   *http.Server
@@ -52,6 +54,7 @@ func NewServer(config *config.APIConfig, p2pNode *p2p.Node, consensusEngine *con
 		p2p:           p2pNode,
 		consensus:     consensusEngine,
 		scheduler:     schedulerEngine,
+		integration:   nil, // Will be set later via SetIntegration
 		wsConnections: make(map[string]*WSConnection),
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
@@ -77,6 +80,11 @@ func NewServer(config *config.APIConfig, p2pNode *p2p.Node, consensusEngine *con
 	server.setupRoutes()
 
 	return server, nil
+}
+
+// SetIntegration sets the Ollama integration for the server
+func (s *Server) SetIntegration(integration *integration.SimpleOllamaIntegration) {
+	s.integration = integration
 }
 
 // setupRoutes sets up the API routes
@@ -165,6 +173,12 @@ func (s *Server) setupRoutes() {
 		api.GET("/health", s.healthCheck)
 		api.GET("/transfers", s.getTransfers)
 		api.GET("/transfers/:id", s.getTransfer)
+
+		// Ollama Integration endpoints
+		api.GET("/integration/status", s.getIntegrationStatus)
+		api.POST("/integration/test", s.testIntegration)
+		api.GET("/integration/models", s.getIntegrationModels)
+		api.POST("/integration/models/pull", s.pullModel)
 
 		// WebSocket endpoint
 		api.GET("/ws", s.handleWebSocket)
@@ -1282,6 +1296,111 @@ func (s *Server) inputValidationMiddleware() gin.HandlerFunc {
 // incrementRequestCounter increments request counters for metrics
 func (s *Server) incrementRequestCounter(endpoint string, success bool) {
 	// Stub implementation - would update metrics
+}
+
+// Integration handler methods
+
+// getIntegrationStatus returns the status of Ollama integration
+func (s *Server) getIntegrationStatus(c *gin.Context) {
+	if s.integration == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error":   "Integration not available",
+			"message": "Ollama integration is not initialized",
+			"status":  "disabled",
+		})
+		return
+	}
+
+	status := s.integration.GetStatus()
+	c.JSON(http.StatusOK, gin.H{
+		"status": "enabled",
+		"data":   status,
+	})
+}
+
+// testIntegration tests the Ollama integration
+func (s *Server) testIntegration(c *gin.Context) {
+	if s.integration == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error":   "Integration not available",
+			"message": "Ollama integration is not initialized",
+		})
+		return
+	}
+
+	if err := s.integration.TestIntegration(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Integration test failed",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Integration test passed",
+		"status":  "healthy",
+	})
+}
+
+// getIntegrationModels returns models available through integration
+func (s *Server) getIntegrationModels(c *gin.Context) {
+	if s.integration == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error":   "Integration not available",
+			"message": "Ollama integration is not initialized",
+		})
+		return
+	}
+
+	models, err := s.integration.ListModels()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failed to list models",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"models": models,
+		"count":  len(models),
+	})
+}
+
+// pullModel pulls a model through the integration
+func (s *Server) pullModel(c *gin.Context) {
+	if s.integration == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error":   "Integration not available",
+			"message": "Ollama integration is not initialized",
+		})
+		return
+	}
+
+	var request struct {
+		Model string `json:"model" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Invalid request",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	if err := s.integration.PullModel(request.Model); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failed to pull model",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": fmt.Sprintf("Model %s pulled successfully", request.Model),
+		"model":   request.Model,
+	})
 }
 
 // getRequestCounter gets total request counter for metrics
