@@ -10,13 +10,17 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/multiformats/go-multiaddr"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/internal/config"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/api"
+	pkgConfig "github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/config"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/consensus"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/integration"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p/messaging"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p/monitoring"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/scheduler"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/multiformats/go-multiaddr"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -110,13 +114,20 @@ func runStart(cmd *cobra.Command, args []string) error {
 	defer cancel()
 
 	// Initialize P2P networking
-	p2pNode, err := p2p.NewNode(ctx, &cfg.P2P)
+	p2pConfig := &pkgConfig.NodeConfig{
+		Listen: []string{cfg.P2P.Listen},
+	}
+	p2pNode, err := p2p.NewP2PNode(ctx, p2pConfig)
 	if err != nil {
 		return fmt.Errorf("failed to create P2P node: %w", err)
 	}
 
+	// Create messaging and monitoring components
+	messageRouter := messaging.NewMessageRouter(nil)
+	networkMonitor := monitoring.NewNetworkMonitor(nil)
+
 	// Initialize consensus engine
-	consensusEngine, err := consensus.NewEngine(&cfg.Consensus, p2pNode)
+	consensusEngine, err := consensus.NewEngine(&cfg.Consensus, p2pNode, messageRouter, networkMonitor)
 	if err != nil {
 		return fmt.Errorf("failed to create consensus engine: %w", err)
 	}
@@ -148,6 +159,22 @@ func runStart(cmd *cobra.Command, args []string) error {
 
 	if err := apiServer.Start(); err != nil {
 		return fmt.Errorf("failed to start API server: %w", err)
+	}
+
+	// Initialize and start Ollama integration
+	log.Printf("🤖 Initializing Ollama integration...")
+	ollamaIntegration := integration.NewSimpleOllamaIntegration(cfg)
+	if err := ollamaIntegration.Start(); err != nil {
+		log.Printf("⚠️  Ollama integration failed to start: %v", err)
+		log.Printf("   The distributed system will run without Ollama integration")
+		log.Printf("   To enable integration, install Ollama: https://ollama.com/download")
+	} else {
+		log.Printf("✅ Ollama integration started successfully")
+		log.Printf("   Ollama API: %s", ollamaIntegration.GetOllamaAPIURL())
+		log.Printf("   Distributed API: %s", ollamaIntegration.GetDistributedAPIURL())
+
+		// Connect integration to API server
+		apiServer.SetIntegration(ollamaIntegration)
 	}
 
 	log.Printf("Distributed Ollama node started successfully")
@@ -215,7 +242,7 @@ func runStatus(cmd *cobra.Command, args []string) error {
 		fmt.Printf("❌ Failed to start P2P node: %v\n", err)
 	} else {
 		defer p2pNode.Stop()
-		
+
 		// Wait a moment for peer discovery
 		time.Sleep(2 * time.Second)
 
@@ -239,7 +266,7 @@ func runStatus(cmd *cobra.Command, args []string) error {
 		fmt.Printf("   Total Connections: %d\n", metrics.TotalConnections)
 		fmt.Printf("   Connection Errors: %d\n", metrics.ConnectionErrors)
 		fmt.Printf("   Peers Discovered: %d\n", metrics.PeersDiscovered)
-		
+
 		// Show listen addresses
 		fmt.Printf("   Listen Addresses:\n")
 		for _, addr := range nodeStatus.ListenAddresses {
@@ -347,7 +374,7 @@ func runJoin(cmd *cobra.Command, args []string) error {
 
 	for i, peerAddr := range peers {
 		fmt.Printf("   [%d/%d] Connecting to %s...", i+1, len(peers), peerAddr)
-		
+
 		if err := connectToPeer(ctx, p2pNode, peerAddr); err != nil {
 			fmt.Printf(" ❌ Failed: %v\n", err)
 			connectionErrors = append(connectionErrors, fmt.Sprintf("%s: %v", peerAddr, err))
@@ -375,9 +402,13 @@ func runJoin(cmd *cobra.Command, args []string) error {
 	connectedPeers := p2pNode.GetConnectedPeers()
 	fmt.Printf("   Found %d peers in cluster\n", len(connectedPeers))
 
+	// Create messaging and monitoring components
+	messageRouter := messaging.NewMessageRouter(nil)
+	networkMonitor := monitoring.NewNetworkMonitor(nil)
+
 	// Initialize consensus engine and join cluster
 	fmt.Printf("🗳️  Joining consensus cluster...\n")
-	consensusEngine, err := consensus.NewEngine(&cfg.Consensus, p2pNode)
+	consensusEngine, err := consensus.NewEngine(&cfg.Consensus, p2pNode, messageRouter, networkMonitor)
 	if err != nil {
 		return fmt.Errorf("failed to create consensus engine: %w", err)
 	}
