@@ -17,7 +17,9 @@ import (
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/consensus"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/integration"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/proxy"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/scheduler"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/scheduler/loadbalancer"
 )
 
 // Server represents the API server
@@ -27,6 +29,10 @@ type Server struct {
 	consensus   *consensus.Engine
 	scheduler   *scheduler.Engine
 	integration *integration.SimpleOllamaIntegration
+
+	// Proxy for multi-node Ollama routing
+	ollamaProxy  *proxy.OllamaProxy
+	loadBalancer *loadbalancer.LoadBalancer
 
 	router   *gin.Engine
 	server   *http.Server
@@ -76,6 +82,36 @@ func NewServer(config *config.APIConfig, p2pNode *p2p.Node, consensusEngine *con
 			unregister: make(chan *WSConnection),
 		},
 	}
+
+	// Initialize load balancer
+	loadBalancerConfig := &loadbalancer.LoadBalancerConfig{
+		DefaultStrategy:        "least_loaded",
+		RebalanceThreshold:     0.3,
+		LoadImbalanceThreshold: 0.2,
+		MetricsInterval:        10 * time.Second,
+		HistoryRetention:       time.Hour,
+		MaxHistorySize:         1000,
+		EnablePrediction:       true,
+		PredictionWindow:       time.Hour,
+		PredictionAccuracy:     0.8,
+		MaxRebalanceFrequency:  30 * time.Second,
+		RebalanceBatchSize:     10,
+		GracefulRebalance:      true,
+		HighLoadThreshold:      0.8,
+		LowLoadThreshold:       0.2,
+		CriticalLoadThreshold:  0.95,
+		CPUWeight:              0.4,
+		MemoryWeight:           0.3,
+	}
+	server.loadBalancer = loadbalancer.NewLoadBalancer(loadBalancerConfig)
+
+	// Initialize Ollama proxy
+	proxyConfig := proxy.DefaultProxyConfig()
+	ollamaProxy, err := proxy.NewOllamaProxy(schedulerEngine, server.loadBalancer, proxyConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Ollama proxy: %w", err)
+	}
+	server.ollamaProxy = ollamaProxy
 
 	server.setupRoutes()
 
@@ -180,6 +216,13 @@ func (s *Server) setupRoutes() {
 		api.GET("/integration/models", s.getIntegrationModels)
 		api.POST("/integration/models/pull", s.pullModel)
 
+		// Ollama Proxy endpoints
+		api.GET("/proxy/status", s.getProxyStatus)
+		api.GET("/proxy/instances", s.getProxyInstances)
+		api.GET("/proxy/metrics", s.getProxyMetrics)
+		api.POST("/proxy/instances/register", s.registerProxyInstance)
+		api.DELETE("/proxy/instances/:id", s.unregisterProxyInstance)
+
 		// WebSocket endpoint
 		api.GET("/ws", s.handleWebSocket)
 	}
@@ -205,6 +248,15 @@ func (s *Server) Start() error {
 	// Start WebSocket hub
 	go s.wsHub.run()
 
+	// Start Ollama proxy if available
+	if s.ollamaProxy != nil {
+		if err := s.ollamaProxy.Start(); err != nil {
+			fmt.Printf("Warning: Failed to start Ollama proxy: %v\n", err)
+		} else {
+			fmt.Printf("Ollama proxy started successfully\n")
+		}
+	}
+
 	// Start metrics broadcasting
 	s.StartMetricsBroadcasting()
 
@@ -224,6 +276,13 @@ func (s *Server) Start() error {
 
 // Shutdown gracefully shuts down the API server
 func (s *Server) Shutdown(ctx context.Context) error {
+	// Stop Ollama proxy if available
+	if s.ollamaProxy != nil {
+		if err := s.ollamaProxy.Stop(); err != nil {
+			fmt.Printf("Warning: Failed to stop Ollama proxy: %v\n", err)
+		}
+	}
+
 	return s.server.Shutdown(ctx)
 }
 
@@ -1407,4 +1466,185 @@ func (s *Server) pullModel(c *gin.Context) {
 func (s *Server) getRequestCounter() int64 {
 	// Stub implementation - would return total request count
 	return 0
+}
+
+// Proxy handler methods
+
+// getProxyStatus returns the status of the Ollama proxy
+func (s *Server) getProxyStatus(c *gin.Context) {
+	if s.ollamaProxy == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error":   "Proxy not available",
+			"message": "Ollama proxy is not initialized",
+			"status":  "disabled",
+		})
+		return
+	}
+
+	instances := s.ollamaProxy.GetInstances()
+	healthyCount := 0
+	for _, instance := range instances {
+		if instance.Status == proxy.InstanceStatusHealthy {
+			healthyCount++
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":            "running",
+		"instance_count":    len(instances),
+		"healthy_instances": healthyCount,
+		"load_balancer":     s.loadBalancer != nil,
+	})
+}
+
+// getProxyInstances returns the list of registered Ollama instances
+func (s *Server) getProxyInstances(c *gin.Context) {
+	if s.ollamaProxy == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error":   "Proxy not available",
+			"message": "Ollama proxy is not initialized",
+		})
+		return
+	}
+
+	instances := s.ollamaProxy.GetInstances()
+
+	// Convert instances to response format
+	instanceList := make([]gin.H, 0, len(instances))
+	for _, instance := range instances {
+		instanceInfo := gin.H{
+			"id":            instance.ID,
+			"node_id":       instance.NodeID,
+			"endpoint":      instance.Endpoint,
+			"status":        string(instance.Status),
+			"request_count": instance.RequestCount,
+			"error_count":   instance.ErrorCount,
+			"last_request":  instance.LastRequestTime,
+		}
+
+		if instance.Load != nil {
+			instanceInfo["load"] = gin.H{
+				"active_requests": instance.Load.ActiveRequests,
+				"queued_requests": instance.Load.QueuedRequests,
+				"cpu_usage":       instance.Load.CPUUsage,
+				"memory_usage":    instance.Load.MemoryUsage,
+				"gpu_usage":       instance.Load.GPUUsage,
+				"last_updated":    instance.Load.LastUpdated,
+			}
+		}
+
+		if instance.Health != nil {
+			instanceInfo["health"] = gin.H{
+				"is_healthy":        instance.Health.IsHealthy,
+				"last_health_check": instance.Health.LastHealthCheck,
+				"response_time":     instance.Health.ResponseTime,
+				"error_rate":        instance.Health.ErrorRate,
+				"uptime":            instance.Health.Uptime,
+			}
+		}
+
+		instanceList = append(instanceList, instanceInfo)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"instances": instanceList,
+		"count":     len(instanceList),
+	})
+}
+
+// getProxyMetrics returns proxy performance metrics
+func (s *Server) getProxyMetrics(c *gin.Context) {
+	if s.ollamaProxy == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error":   "Proxy not available",
+			"message": "Ollama proxy is not initialized",
+		})
+		return
+	}
+
+	metrics := s.ollamaProxy.GetMetrics()
+
+	c.JSON(http.StatusOK, gin.H{
+		"total_requests":      metrics.TotalRequests,
+		"successful_requests": metrics.SuccessfulRequests,
+		"failed_requests":     metrics.FailedRequests,
+		"average_latency":     metrics.AverageLatency,
+		"requests_per_second": metrics.RequestsPerSecond,
+		"load_balancing": gin.H{
+			"decisions": metrics.LoadBalancingDecisions,
+			"errors":    metrics.LoadBalancingErrors,
+		},
+		"instance_metrics": metrics.InstanceMetrics,
+	})
+}
+
+// registerProxyInstance registers a new Ollama instance with the proxy
+func (s *Server) registerProxyInstance(c *gin.Context) {
+	if s.ollamaProxy == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error":   "Proxy not available",
+			"message": "Ollama proxy is not initialized",
+		})
+		return
+	}
+
+	var request struct {
+		NodeID   string `json:"node_id" binding:"required"`
+		Endpoint string `json:"endpoint" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Invalid request",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	if err := s.ollamaProxy.RegisterInstance(request.NodeID, request.Endpoint); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failed to register instance",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message":  "Instance registered successfully",
+		"node_id":  request.NodeID,
+		"endpoint": request.Endpoint,
+	})
+}
+
+// unregisterProxyInstance unregisters an Ollama instance from the proxy
+func (s *Server) unregisterProxyInstance(c *gin.Context) {
+	if s.ollamaProxy == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error":   "Proxy not available",
+			"message": "Ollama proxy is not initialized",
+		})
+		return
+	}
+
+	instanceID := c.Param("id")
+	if instanceID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Invalid request",
+			"message": "Instance ID is required",
+		})
+		return
+	}
+
+	if err := s.ollamaProxy.UnregisterInstance(instanceID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failed to unregister instance",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":     "Instance unregistered successfully",
+		"instance_id": instanceID,
+	})
 }

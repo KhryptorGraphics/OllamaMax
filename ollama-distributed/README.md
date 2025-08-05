@@ -9,6 +9,7 @@ Ollama Distributed extends the original Ollama project with:
 - **Automatic Peer Discovery**: libp2p-based mesh networking
 - **Horizontal Scaling**: Linear scaling to 10,000+ nodes
 - **99.9% Availability**: Fault tolerance with <30s recovery
+- **Proxy Management CLI**: Comprehensive command-line tools for cluster management
 - **Modern Web UI**: Real-time monitoring and management
 - **Enterprise Security**: Zero-trust security model
 - **100% Compatibility**: Backward compatible with existing Ollama API
@@ -93,8 +94,86 @@ go build -o bin/ollama-distributed cmd/node/main.go
 # Start a node
 ./bin/ollama-distributed start --config config/node.yaml
 
+# Monitor proxy and cluster status
+./bin/ollama-distributed proxy status
+./bin/ollama-distributed proxy instances
+
 # Access the web control panel
 open http://localhost:8080
+```
+
+## 🎛️ Command Line Interface
+
+### Node Management
+
+```bash
+# Start a distributed node
+./ollama-distributed start [options]
+
+# Check node status
+./ollama-distributed status
+
+# Join existing cluster
+./ollama-distributed join --peers node1:8080,node2:8080
+```
+
+### Proxy Management
+
+The distributed system includes a comprehensive proxy management CLI for monitoring and controlling the load balancer:
+
+#### Proxy Status
+```bash
+# Basic status check
+./ollama-distributed proxy status
+
+# JSON output for scripting
+./ollama-distributed proxy status --json
+
+# Check specific API endpoint
+./ollama-distributed proxy status --api-url http://node2:8080
+```
+
+#### Instance Management
+```bash
+# List all registered instances
+./ollama-distributed proxy instances
+
+# JSON output with full details
+./ollama-distributed proxy instances --json
+
+# Filter healthy instances (using jq)
+./ollama-distributed proxy instances --json | jq '.instances[] | select(.status=="healthy")'
+```
+
+#### Performance Metrics
+```bash
+# View current metrics
+./ollama-distributed proxy metrics
+
+# Real-time monitoring
+./ollama-distributed proxy metrics --watch
+
+# Custom update interval
+./ollama-distributed proxy metrics --watch --interval 10
+
+# JSON output for monitoring systems
+./ollama-distributed proxy metrics --json
+```
+
+### Advanced Usage
+
+```bash
+# Monitor cluster health
+watch -n 5 './ollama-distributed proxy status'
+
+# Export metrics for analysis
+./ollama-distributed proxy metrics --json > metrics.json
+
+# Check instance distribution
+./ollama-distributed proxy instances --json | jq '.instances | group_by(.status) | map({status: .[0].status, count: length})'
+
+# Monitor specific node
+./ollama-distributed proxy status --api-url http://node3:8080 --json
 ```
 
 ## 📊 Monitoring

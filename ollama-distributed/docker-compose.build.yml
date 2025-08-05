@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  # Build service for OllamaMax
+  ollama-build:
+    build:
+      context: .
+      dockerfile: Dockerfile.build
+      args:
+        - GO_VERSION=1.21
+    image: ollama-distributed:latest
+    container_name: ollama-build
+    volumes:
+      - ./bin:/app/bin
+    environment:
+      - GOPROXY=direct
+      - GOSUMDB=off
+    command: >
+      sh -c "
+        echo '🏗️ Building OllamaMax...' &&
+        go mod download &&
+        go build -o bin/ollama-distributed ./cmd/node &&
+        echo '✅ Build complete: bin/ollama-distributed' &&
+        echo '🧪 Testing CLI...' &&
+        ./bin/ollama-distributed --help &&
+        echo '✅ CLI test successful'
+      "
+
+  # Development environment
+  ollama-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    image: ollama-distributed:dev
+    container_name: ollama-dev
+    volumes:
+      - .:/app
+      - go-mod-cache:/go/pkg/mod
+      - go-build-cache:/root/.cache/go-build
+    working_dir: /app
+    environment:
+      - GOPROXY=direct
+      - GOSUMDB=off
+    ports:
+      - "8080:8080"
+      - "9090:9090"
+    command: tail -f /dev/null
+
+  # Test runner
+  ollama-test:
+    build:
+      context: .
+      dockerfile: Dockerfile.build
+    image: ollama-distributed:test
+    container_name: ollama-test
+    volumes:
+      - .:/app
+    working_dir: /app
+    environment:
+      - GOPROXY=direct
+      - GOSUMDB=off
+    command: >
+      sh -c "
+        echo '🧪 Running tests...' &&
+        go test -v ./cmd/node -run TestProxy &&
+        echo '✅ Tests complete'
+      "
+
+volumes:
+  go-mod-cache:
+  go-build-cache:

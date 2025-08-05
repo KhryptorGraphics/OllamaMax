@@ -1,0 +1,50 @@
+# Development Dockerfile for OllamaMax
+FROM golang:1.21-alpine
+
+# Install development tools
+RUN apk add --no-cache \
+    git \
+    make \
+    curl \
+    bash \
+    vim \
+    htop
+
+# Install Go development tools
+RUN go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+RUN go install github.com/onsi/ginkgo/v2/ginkgo@latest
+
+# Set working directory
+WORKDIR /app
+
+# Configure Go environment for development
+ENV GOPROXY=direct
+ENV GOSUMDB=off
+ENV CGO_ENABLED=0
+
+# Create directories for caching
+RUN mkdir -p /go/pkg/mod
+RUN mkdir -p /root/.cache/go-build
+
+# Copy go mod files first for better caching
+COPY go.mod go.sum ./
+
+# Download dependencies
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Create development scripts
+RUN echo '#!/bin/bash\necho "🏗️ Building OllamaMax..."\ngo build -o ollama-distributed ./cmd/node\necho "✅ Build complete"' > /usr/local/bin/build.sh
+RUN echo '#!/bin/bash\necho "🧪 Running tests..."\ngo test -v ./...\necho "✅ Tests complete"' > /usr/local/bin/test.sh
+RUN echo '#!/bin/bash\necho "🔍 Running linter..."\ngolangci-lint run\necho "✅ Lint complete"' > /usr/local/bin/lint.sh
+RUN echo '#!/bin/bash\necho "🚀 Starting development server..."\n./ollama-distributed start' > /usr/local/bin/dev.sh
+
+RUN chmod +x /usr/local/bin/*.sh
+
+# Expose ports
+EXPOSE 8080 9090 11434
+
+# Default command
+CMD ["bash"]

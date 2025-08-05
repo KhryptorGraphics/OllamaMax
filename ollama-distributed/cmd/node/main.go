@@ -1,10 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -43,6 +47,7 @@ the single-node architecture into a horizontally scalable, fault-tolerant platfo
 	rootCmd.AddCommand(startCmd())
 	rootCmd.AddCommand(statusCmd())
 	rootCmd.AddCommand(joinCmd())
+	rootCmd.AddCommand(proxyCmd())
 
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatal(err)
@@ -86,6 +91,64 @@ func joinCmd() *cobra.Command {
 
 	cmd.Flags().StringSlice("peers", []string{}, "Peer addresses to join")
 	cmd.MarkFlagRequired("peers")
+
+	return cmd
+}
+
+func proxyCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "proxy",
+		Short: "Manage Ollama proxy and load balancing",
+		Long:  "Manage the distributed Ollama proxy, instances, and load balancing",
+	}
+
+	cmd.AddCommand(proxyStatusCmd())
+	cmd.AddCommand(proxyInstancesCmd())
+	cmd.AddCommand(proxyMetricsCmd())
+
+	return cmd
+}
+
+func proxyStatusCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "status",
+		Short: "Show proxy status",
+		Long:  "Show the current status of the Ollama proxy and registered instances",
+		RunE:  runProxyStatus,
+	}
+
+	cmd.Flags().String("api-url", "http://localhost:8080", "API server URL")
+	cmd.Flags().Bool("json", false, "Output in JSON format")
+
+	return cmd
+}
+
+func proxyInstancesCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "instances",
+		Short: "Manage proxy instances",
+		Long:  "List and manage Ollama instances registered with the proxy",
+		RunE:  runProxyInstances,
+	}
+
+	cmd.Flags().String("api-url", "http://localhost:8080", "API server URL")
+	cmd.Flags().Bool("json", false, "Output in JSON format")
+
+	return cmd
+}
+
+func proxyMetricsCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "metrics",
+		Short: "Show proxy metrics",
+		Long:  "Show performance metrics for the Ollama proxy",
+		RunE:  runProxyMetrics,
+	}
+
+	cmd.Flags().String("api-url", "http://localhost:8080", "API server URL")
+	cmd.Flags().Bool("json", false, "Output in JSON format")
+	cmd.Flags().Bool("watch", false, "Watch metrics in real-time")
+	cmd.Flags().Int("interval", 5, "Update interval in seconds (for watch mode)")
 
 	return cmd
 }
@@ -551,6 +614,171 @@ func getSchedulerStatus(engine *scheduler.Engine) string {
 		return fmt.Sprintf("Healthy (%d nodes, %d models)", stats.NodesOnline, stats.ModelsTotal)
 	}
 	return "Initializing"
+}
+
+// Proxy command implementations
+
+func runProxyStatus(cmd *cobra.Command, args []string) error {
+	apiURL, _ := cmd.Flags().GetString("api-url")
+	jsonOutput, _ := cmd.Flags().GetBool("json")
+
+	fmt.Printf("🔄 Ollama Proxy Status\n")
+	fmt.Printf("=====================\n\n")
+
+	// Make API request to get proxy status
+	url := apiURL + "/api/v1/proxy/status"
+	resp, err := makeHTTPRequest("GET", url, nil)
+	if err != nil {
+		return fmt.Errorf("failed to get proxy status: %w", err)
+	}
+
+	if jsonOutput {
+		fmt.Println(string(resp))
+		return nil
+	}
+
+	// Display formatted output
+	fmt.Printf("API URL: %s\n", apiURL)
+	fmt.Printf("Response: %s\n", string(resp))
+
+	return nil
+}
+
+func runProxyInstances(cmd *cobra.Command, args []string) error {
+	apiURL, _ := cmd.Flags().GetString("api-url")
+	jsonOutput, _ := cmd.Flags().GetBool("json")
+
+	fmt.Printf("🖥️  Proxy Instances\n")
+	fmt.Printf("==================\n\n")
+
+	// Make API request to get instances
+	url := apiURL + "/api/v1/proxy/instances"
+	resp, err := makeHTTPRequest("GET", url, nil)
+	if err != nil {
+		return fmt.Errorf("failed to get proxy instances: %w", err)
+	}
+
+	if jsonOutput {
+		fmt.Println(string(resp))
+		return nil
+	}
+
+	// Display formatted output
+	fmt.Printf("API URL: %s\n", apiURL)
+	fmt.Printf("Response: %s\n", string(resp))
+
+	return nil
+}
+
+func runProxyMetrics(cmd *cobra.Command, args []string) error {
+	apiURL, _ := cmd.Flags().GetString("api-url")
+	jsonOutput, _ := cmd.Flags().GetBool("json")
+	watch, _ := cmd.Flags().GetBool("watch")
+	interval, _ := cmd.Flags().GetInt("interval")
+
+	if watch {
+		return watchProxyMetrics(apiURL, jsonOutput, interval)
+	}
+
+	fmt.Printf("📊 Proxy Metrics\n")
+	fmt.Printf("================\n\n")
+
+	// Make API request to get metrics
+	url := apiURL + "/api/v1/proxy/metrics"
+	resp, err := makeHTTPRequest("GET", url, nil)
+	if err != nil {
+		return fmt.Errorf("failed to get proxy metrics: %w", err)
+	}
+
+	if jsonOutput {
+		fmt.Println(string(resp))
+		return nil
+	}
+
+	// Display formatted output
+	fmt.Printf("API URL: %s\n", apiURL)
+	fmt.Printf("Response: %s\n", string(resp))
+
+	return nil
+}
+
+func watchProxyMetrics(apiURL string, jsonOutput bool, interval int) error {
+	fmt.Printf("👀 Watching proxy metrics (interval: %ds, press Ctrl+C to stop)\n\n", interval)
+
+	ticker := time.NewTicker(time.Duration(interval) * time.Second)
+	defer ticker.Stop()
+
+	// Handle Ctrl+C
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+
+	for {
+		select {
+		case <-ticker.C:
+			// Clear screen and show updated metrics
+			fmt.Print("\033[2J\033[H") // Clear screen and move cursor to top
+
+			url := apiURL + "/api/v1/proxy/metrics"
+			resp, err := makeHTTPRequest("GET", url, nil)
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+				continue
+			}
+
+			if jsonOutput {
+				fmt.Println(string(resp))
+			} else {
+				fmt.Printf("📊 Proxy Metrics (Updated: %s)\n", time.Now().Format("15:04:05"))
+				fmt.Printf("=====================================\n\n")
+				fmt.Printf("Response: %s\n", string(resp))
+			}
+
+		case <-c:
+			fmt.Printf("\n👋 Stopping metrics watch...\n")
+			return nil
+		}
+	}
+}
+
+func makeHTTPRequest(method, url string, body interface{}) ([]byte, error) {
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	var reqBody io.Reader
+	if body != nil {
+		jsonData, err := json.Marshal(body)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal request body: %w", err)
+		}
+		reqBody = bytes.NewBuffer(jsonData)
+	}
+
+	req, err := http.NewRequest(method, url, reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+
+	if resp.StatusCode >= 400 {
+		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	return respBody, nil
 }
 
 func init() {

@@ -12,8 +12,9 @@
 OllamaMax is a comprehensive distributed AI model platform built for enterprise-scale deployments. It provides:
 
 - **🌐 Distributed Architecture**: Horizontal scaling across multiple nodes with P2P networking
-- **🔄 Consensus Engine**: Raft-based consensus for cluster coordination and consistency  
+- **🔄 Consensus Engine**: Raft-based consensus for cluster coordination and consistency
 - **⚡ Intelligent Scheduling**: Advanced load balancing and resource optimization
+- **🎛️ Proxy Management CLI**: Comprehensive command-line tools for proxy monitoring and control
 - **🛡️ Enterprise Security**: JWT authentication, TLS encryption, audit logging
 - **📊 Comprehensive Monitoring**: Prometheus metrics, health checks, observability
 - **🔧 Production Ready**: Kubernetes deployment, Helm charts, operational runbooks
@@ -119,6 +120,7 @@ graph TB
 | **P2P Network** | Peer-to-peer networking and discovery | libp2p, DHT, PubSub |
 | **Consensus Engine** | Cluster coordination and leader election | HashiCorp Raft |
 | **Scheduler** | Intelligent request routing and load balancing | Custom algorithms |
+| **Proxy Manager** | Load balancing and instance management | HTTP reverse proxy, CLI tools |
 | **Model Manager** | Distributed model registry and replication | Content-addressed storage |
 | **Security Layer** | Authentication, authorization, encryption | JWT, TLS, Audit logging |
 | **Monitoring** | Metrics, health checks, observability | Prometheus, Grafana |
@@ -147,6 +149,15 @@ make build
 
 # Run with default configuration
 ./bin/ollama-distributed start
+
+# Monitor proxy status
+./bin/ollama-distributed proxy status
+
+# View cluster instances
+./bin/ollama-distributed proxy instances
+
+# Monitor metrics in real-time
+./bin/ollama-distributed proxy metrics --watch
 ```
 
 ### 2. Docker Deployment
@@ -171,6 +182,56 @@ helm install ollamamax ollamamax/ollamamax-cluster
 
 # Or deploy with kubectl
 kubectl apply -f k8s/
+```
+
+## 🎛️ CLI Reference
+
+### Core Commands
+
+```bash
+# Start a distributed node
+./ollama-distributed start [--config config.yaml] [--peers peer1,peer2]
+
+# Check node status
+./ollama-distributed status
+
+# Join existing cluster
+./ollama-distributed join --peers node1:8080,node2:8080
+```
+
+### Proxy Management
+
+The proxy CLI provides comprehensive tools for managing the distributed Ollama proxy:
+
+```bash
+# Check proxy status
+./ollama-distributed proxy status [--json] [--api-url URL]
+
+# List registered instances
+./ollama-distributed proxy instances [--json] [--api-url URL]
+
+# Monitor performance metrics
+./ollama-distributed proxy metrics [--json] [--api-url URL]
+
+# Real-time metrics monitoring
+./ollama-distributed proxy metrics --watch [--interval 5]
+```
+
+### Examples
+
+```bash
+# Start node and monitor proxy
+./ollama-distributed start &
+./ollama-distributed proxy status
+
+# Monitor cluster health
+./ollama-distributed proxy instances --json | jq '.instances[] | select(.status=="healthy")'
+
+# Watch metrics in real-time
+./ollama-distributed proxy metrics --watch --interval 10
+
+# Check specific API endpoint
+./ollama-distributed proxy status --api-url http://node2:8080
 ```
 
 ## 🔧 Configuration
@@ -584,6 +645,21 @@ git push origin feature/your-feature
 - **Code Style**: Use `gofmt` and `golint` for consistent formatting
 - **Documentation**: All public APIs must be documented
 - **Security**: Security review required for auth/crypto changes
+
+## 📚 Documentation
+
+### Quick References
+- **[CLI Reference](ollama-distributed/CLI_REFERENCE.md)** - Complete command-line guide
+- **[Proxy CLI Implementation](ollama-distributed/PROXY_CLI_IMPLEMENTATION.md)** - Technical implementation details
+
+### Comprehensive Guides
+- **[Architecture Overview](docs/architecture.md)** - System design and components
+- **[API Reference](docs/api.md)** - REST API documentation
+- **[Configuration Guide](docs/configuration.md)** - Setup and configuration
+- **[Deployment Guide](docs/deployment.md)** - Production deployment
+- **[Security Guide](docs/security.md)** - Security best practices
+- **[Monitoring Guide](docs/monitoring.md)** - Observability and metrics
+- **[Troubleshooting](docs/troubleshooting.md)** - Common issues and solutions
 
 ## 📞 Support
 
