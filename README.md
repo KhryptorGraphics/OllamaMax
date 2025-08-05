@@ -1,3 +1,5 @@
+In development 
+
 # OllamaMax: Enterprise-Grade Distributed AI Model Platform
 
 [![Go Version](https://img.shields.io/badge/Go-1.24.5+-blue.svg)](https://golang.org)
