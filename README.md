@@ -675,9 +675,8 @@ git push origin feature/your-feature
 
 For enterprise support, consulting, and professional services:
 
-- **Email**: enterprise@ollamamax.com
-- **Support Portal**: https://support.ollamamax.com
-- **Phone**: +1-800-OLLAMA-X
+- **Email**: admin@giggahost.com
+- **Support Portal**: https://giggahost.com
 
 ## 📄 License
 
