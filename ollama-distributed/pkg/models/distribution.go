@@ -228,9 +228,10 @@ func NewManager(config *config.StorageConfig, p2pNode *p2p.Node) (*Manager, erro
 
 	// Initialize metrics collector
 	manager.metricsCollector = observability.NewMetricsCollector(&observability.MetricsConfig{
-		Namespace:    "ollama_distributed",
-		Subsystem:    "models",
-		EnableExport: false,
+		Namespace:          "ollama_distributed",
+		Subsystem:          "models",
+		CollectionInterval: 15 * time.Second,
+		EnableExport:       false,
 	})
 
 	// Initialize tracer

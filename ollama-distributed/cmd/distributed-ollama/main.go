@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/internal/config"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/api"
-	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/config"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/inference"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/models"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p"
@@ -36,7 +36,7 @@ type DistributedOllamaServer struct {
 	router     *gin.Engine
 
 	// Configuration
-	config *config.DistributedConfig
+	config *config.Config
 	logger *slog.Logger
 
 	// Lifecycle
@@ -64,7 +64,7 @@ func main() {
 		"p2p_port", *p2pPort)
 
 	// Load configuration
-	cfg, err := config.LoadDistributedConfig(*configPath)
+	cfg, err := config.Load(*configPath)
 	if err != nil {
 		logger.Error("Failed to load configuration", "error", err)
 		os.Exit(1)
@@ -72,7 +72,8 @@ func main() {
 
 	// Override config with command line flags
 	if *port != 11434 {
-		cfg.API.Port = *port
+		// For now, we'll handle port override in the HTTP server setup
+		// cfg.API.Listen would need to be modified
 	}
 	// P2P port will be handled when creating the P2P node
 
@@ -81,7 +82,7 @@ func main() {
 	defer cancel()
 
 	// Create and start the distributed server
-	server, err := NewDistributedOllamaServer(ctx, cfg, logger)
+	server, err := NewDistributedOllamaServer(ctx, cfg, logger, *port)
 	if err != nil {
 		logger.Error("Failed to create distributed server", "error", err)
 		os.Exit(1)
@@ -123,8 +124,9 @@ func main() {
 // NewDistributedOllamaServer creates a new distributed Ollama server
 func NewDistributedOllamaServer(
 	ctx context.Context,
-	cfg *config.DistributedConfig,
+	cfg *config.Config,
 	logger *slog.Logger,
+	port int,
 ) (*DistributedOllamaServer, error) {
 	serverCtx, cancel := context.WithCancel(ctx)
 
@@ -136,13 +138,8 @@ func NewDistributedOllamaServer(
 		return nil, fmt.Errorf("failed to create P2P node: %w", err)
 	}
 
-	// Initialize model manager with basic config
-	// Create a minimal config for the model manager
-	basicConfig := &config.DistributedConfig{}
-	basicConfig.Models.StoragePath = "./models"
-	basicConfig.Models.CacheSize = "1GB"
-
-	modelManager, err := models.NewDistributedModelManager(basicConfig, p2pNode, logger)
+	// Initialize model manager with distributed config from main config
+	modelManager, err := models.NewDistributedModelManager(&cfg.Distributed, p2pNode, logger)
 	if err != nil {
 		cancel()
 		return nil, fmt.Errorf("failed to create model manager: %w", err)
@@ -232,8 +229,13 @@ func NewDistributedOllamaServer(
 	server.setupRoutes()
 
 	// Create HTTP server
+	// Use the port from command line if specified, otherwise use config
+	addr := cfg.API.Listen
+	if port != 11434 {
+		addr = fmt.Sprintf(":%d", port)
+	}
 	server.httpServer = &http.Server{
-		Addr:    fmt.Sprintf(":%d", cfg.API.Port),
+		Addr:    addr,
 		Handler: router,
 	}
 

@@ -1,0 +1,122 @@
+time=2025-08-08T10:05:03.326-05:00 level=INFO msg="Starting Distributed Ollama Server" version=1.0.0 port=11434 p2p_port=4001
+Using config file: config.yaml
+Configuration loaded for environment: production
+Node ID: Lenovo-development
+API Listen: 0.0.0.0:11434
+Metrics Enabled: true
+TLS Enabled: false
+Auth Enabled: true
+2025/08/08 10:05:04 Added STUN server: stun.l.google.com:19302
+2025/08/08 10:05:04 Added STUN server: stun1.l.google.com:19302
+2025/08/08 10:05:04 Added STUN server: stun2.l.google.com:19302
+2025/08/08 10:05:04 P2P host created with ID: QmXHiLv4D78EwyX6rJXMJQffamKyQ56MH47we4AAjms5FN
+2025/08/08 10:05:04 Listen addresses: [/ip4/127.0.0.1/tcp/36093 /ip4/172.31.233.13/tcp/36093 /ip6/::1/tcp/40983]
+2025/08/08 10:05:04 No bootstrap peers configured
+2025/08/08 10:05:04 DHT initialized in auto mode
+2025/08/08 10:05:04 mDNS discovery initialized
+2025/08/08 10:05:04 Bootstrap discovery initialized with 0 peers
+2025/08/08 10:05:04 Rendezvous discovery initialized
+2025/08/08 10:05:04 Hybrid discovery strategy initialized
+2025/08/08 10:05:04 P2P node initialized with ID: QmXHiLv4D78EwyX6rJXMJQffamKyQ56MH47we4AAjms5FN
+{"level":"info","strategies":5,"time":"2025-08-08T10:05:04-05:00","message":"Healing strategies initialized"}
+{"level":"info","time":"2025-08-08T10:05:04-05:00","message":"Self-healing engine components initialized"}
+2025/08/08 10:05:04 INFO Self-healing engine initialized
+[GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
+ - using env:	export GIN_MODE=release
+ - using code:	gin.SetMode(gin.ReleaseMode)
+
+[GIN-debug] POST   /api/generate             --> main.(*DistributedOllamaServer).handleGenerate-fm (3 handlers)
+[GIN-debug] POST   /api/chat                 --> main.(*DistributedOllamaServer).handleChat-fm (3 handlers)
+[GIN-debug] GET    /api/tags                 --> main.(*DistributedOllamaServer).handleListModels-fm (3 handlers)
+[GIN-debug] POST   /api/pull                 --> main.(*DistributedOllamaServer).handlePullModel-fm (3 handlers)
+[GIN-debug] DELETE /api/delete               --> main.(*DistributedOllamaServer).handleDeleteModel-fm (3 handlers)
+[GIN-debug] POST   /api/push                 --> main.(*DistributedOllamaServer).handlePushModel-fm (3 handlers)
+[GIN-debug] POST   /api/create               --> main.(*DistributedOllamaServer).handleCreateModel-fm (3 handlers)
+[GIN-debug] POST   /api/copy                 --> main.(*DistributedOllamaServer).handleCopyModel-fm (3 handlers)
+[GIN-debug] POST   /api/show                 --> main.(*DistributedOllamaServer).handleShowModel-fm (3 handlers)
+[GIN-debug] POST   /api/embed                --> main.(*DistributedOllamaServer).handleEmbed-fm (3 handlers)
+[GIN-debug] GET    /api/distributed/status   --> main.(*DistributedOllamaServer).handleDistributedStatus-fm (3 handlers)
+[GIN-debug] GET    /api/distributed/nodes    --> main.(*DistributedOllamaServer).handleListNodes-fm (3 handlers)
+[GIN-debug] GET    /api/distributed/models   --> main.(*DistributedOllamaServer).handleDistributedModels-fm (3 handlers)
+[GIN-debug] GET    /api/distributed/metrics  --> main.(*DistributedOllamaServer).handleMetrics-fm (3 handlers)
+[GIN-debug] GET    /api/distributed/requests --> main.(*DistributedOllamaServer).handleActiveRequests-fm (3 handlers)
+[GIN-debug] GET    /health                   --> main.(*DistributedOllamaServer).handleHealth-fm (3 handlers)
+time=2025-08-08T10:05:04.531-05:00 level=INFO msg="Starting distributed Ollama server components"
+2025/08/08 10:05:04 Starting P2P node...
+2025/08/08 10:05:04 Starting discovery engine with 5 strategies
+2025/08/08 10:05:04 Discovery engine started
+2025/08/08 10:05:04 Starting resource advertiser
+2025/08/08 10:05:04 Resource advertiser started
+2025/08/08 10:05:04 Starting content router
+2025/08/08 10:05:04 Content router started
+2025/08/08 10:05:04 P2P node started successfully
+2025/08/08 10:05:04 Node ID: QmXHiLv4D78EwyX6rJXMJQffamKyQ56MH47we4AAjms5FN
+2025/08/08 10:05:04 Listen addresses: [/ip4/127.0.0.1/tcp/36093 /ip4/172.31.233.13/tcp/36093 /ip6/::1/tcp/40983]
+time=2025-08-08T10:05:04.531-05:00 level=INFO msg="sync manager started" workers=3
+time=2025-08-08T10:05:04.531-05:00 level=INFO msg="replication manager started" workers=3
+time=2025-08-08T10:05:04.531-05:00 level=INFO msg="distributed model manager started"
+2025/08/08 10:05:04 INFO fault tolerance manager started replication_factor=2 health_check_interval=30s circuit_breaker_enabled=true
+{"level":"info","time":"2025-08-08T10:05:04-05:00","message":"Self-healing engine started"}
+{"level":"info","integration":"scheduler","time":"2025-08-08T10:05:04-05:00","message":"System integration started"}
+{"level":"info","integration":"p2p","time":"2025-08-08T10:05:04-05:00","message":"System integration started"}
+{"level":"info","integration":"consensus","time":"2025-08-08T10:05:04-05:00","message":"System integration started"}
+{"level":"info","time":"2025-08-08T10:05:04-05:00","message":"All system integrations started"}
+2025/08/08 10:05:04 INFO enhanced fault tolerance manager started prediction_enabled=true self_healing_enabled=true redundancy_enabled=true performance_tracking_enabled=true config_adaptation_enabled=true
+2025/08/08 10:05:04 INFO cluster manager started
+2025/08/08 10:05:04 INFO orchestration engine started max_concurrent_tasks=0 coordination_mode=""
+2025/08/08 10:05:04 INFO starting distributed engine
+2025/08/08 10:05:04 INFO distributed scheduler started cluster_id=default-cluster node_id=default-node
+time=2025-08-08T10:05:04.531-05:00 level=INFO msg="Starting distributed Ollama integration"
+time=2025-08-08T10:05:04.531-05:00 level=INFO msg="Distributed Ollama server started successfully"
+time=2025-08-08T10:05:04.532-05:00 level=INFO msg="sync worker started" worker_id=0
+2025/08/08 10:05:04 INFO fault detector started
+2025/08/08 10:05:04 INFO recovery engine started
+time=2025-08-08T10:05:04.532-05:00 level=INFO msg="sync worker started" worker_id=1
+2025/08/08 10:05:04 INFO checkpoint manager started
+time=2025-08-08T10:05:04.532-05:00 level=INFO msg="sync worker started" worker_id=2
+2025/08/08 10:05:04 INFO orchestration monitor started
+time=2025-08-08T10:05:04.532-05:00 level=INFO msg="replication worker started" worker_id=0
+2025/08/08 10:05:04 INFO aggregation processor started
+time=2025-08-08T10:05:04.532-05:00 level=INFO msg="Starting HTTP server" address=0.0.0.0:11434
+2025/08/08 10:05:04 INFO request processor started
+time=2025-08-08T10:05:04.532-05:00 level=INFO msg="health checker started"
+time=2025-08-08T10:05:04.532-05:00 level=INFO msg="replication worker started" worker_id=1
+time=2025-08-08T10:05:04.532-05:00 level=INFO msg="replication worker started" worker_id=2
+2025/08/08 10:05:04 INFO node joined cluster node_id=default-node
+2025/08/08 10:05:04 Local geographic location detected
+2025/08/08 10:05:12 NAT discovery failed: NAT discovery failed: all STUN servers failed, last error: failed to read STUN response: read udp 172.31.233.13:35288->74.125.250.129:19302: i/o timeout
+[GIN] 2025/08/08 - 10:05:14 | 200 |     111.771µs |             ::1 | GET      "/health"
+[GIN] 2025/08/08 - 10:05:14 | 200 |     132.537µs |             ::1 | GET      "/api/distributed/status"
+[GIN] 2025/08/08 - 10:05:14 | 200 |     115.943µs |             ::1 | GET      "/api/distributed/nodes"
+[GIN] 2025/08/08 - 10:05:14 | 200 |     135.107µs |             ::1 | GET      "/api/distributed/models"
+[GIN] 2025/08/08 - 10:05:14 | 200 |     132.755µs |             ::1 | GET      "/api/tags"
+time=2025-08-08T10:05:14.694-05:00 level=INFO msg="Received shutdown signal, stopping server..."
+time=2025-08-08T10:05:14.694-05:00 level=INFO msg="Stopping distributed Ollama server"
+time=2025-08-08T10:05:14.695-05:00 level=INFO msg="Stopping distributed Ollama integration"
+2025/08/08 10:05:14 INFO shutting down distributed scheduler
+2025/08/08 10:05:14 INFO shutting down distributed engine
+2025/08/08 10:05:14 INFO shutting down orchestration engine
+2025/08/08 10:05:14 INFO cluster manager shutdown
+time=2025-08-08T10:05:14.695-05:00 level=INFO msg="replication manager shutdown complete"
+time=2025-08-08T10:05:14.695-05:00 level=INFO msg="replication worker stopped" worker_id=0
+time=2025-08-08T10:05:14.695-05:00 level=INFO msg="sync worker stopped" worker_id=0
+time=2025-08-08T10:05:14.695-05:00 level=INFO msg="sync worker stopped" worker_id=1
+time=2025-08-08T10:05:14.695-05:00 level=INFO msg="health checker stopped"
+time=2025-08-08T10:05:14.695-05:00 level=INFO msg="sync worker stopped" worker_id=2
+time=2025-08-08T10:05:14.695-05:00 level=INFO msg="closing content-addressed store"
+time=2025-08-08T10:05:14.695-05:00 level=INFO msg="replication worker stopped" worker_id=2
+time=2025-08-08T10:05:14.695-05:00 level=INFO msg="replication worker stopped" worker_id=1
+time=2025-08-08T10:05:14.695-05:00 level=INFO msg="sync manager shutdown complete"
+time=2025-08-08T10:05:14.695-05:00 level=INFO msg="closing content-addressed store"
+time=2025-08-08T10:05:14.695-05:00 level=INFO msg="distributed model manager shutdown complete"
+2025/08/08 10:05:14 Stopping P2P node...
+2025/08/08 10:05:14 Stopping discovery engine
+2025/08/08 10:05:14 Discovery engine stopped
+2025/08/08 10:05:14 Stopping resource advertiser
+2025/08/08 10:05:14 Resource advertiser stopped
+2025/08/08 10:05:14 Stopping content router
+2025/08/08 10:05:14 Content router stopped
+2025/08/08 10:05:14 NAT traversal manager closed
+2025/08/08 10:05:14 P2P node stopped
+time=2025-08-08T10:05:14.696-05:00 level=INFO msg="Distributed Ollama server stopped"
+time=2025-08-08T10:05:14.696-05:00 level=INFO msg="Server stopped successfully"

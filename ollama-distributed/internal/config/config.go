@@ -39,82 +39,82 @@ type NodeConfig struct {
 
 // APIConfig holds API server configuration
 type APIConfig struct {
-	Listen      string        `yaml:"listen"`
-	TLS         TLSConfig     `yaml:"tls"`
-	Cors        CorsConfig    `yaml:"cors"`
+	Listen      string          `yaml:"listen"`
+	TLS         TLSConfig       `yaml:"tls"`
+	Cors        CorsConfig      `yaml:"cors"`
 	RateLimit   RateLimitConfig `yaml:"rate_limit"`
-	Timeout     time.Duration `yaml:"timeout"`
-	MaxBodySize int64         `yaml:"max_body_size"`
+	Timeout     time.Duration   `yaml:"timeout"`
+	MaxBodySize int64           `yaml:"max_body_size"`
 }
 
 // P2PConfig holds P2P networking configuration
 type P2PConfig struct {
-	Listen        string   `yaml:"listen"`
-	Bootstrap     []string `yaml:"bootstrap"`
-	PrivateKey    string   `yaml:"private_key"`
-	EnableDHT     bool     `yaml:"enable_dht"`
-	EnablePubSub  bool     `yaml:"enable_pubsub"`
-	ConnMgrLow    int      `yaml:"conn_mgr_low"`
-	ConnMgrHigh   int      `yaml:"conn_mgr_high"`
-	ConnMgrGrace  string   `yaml:"conn_mgr_grace"`
-	DialTimeout   time.Duration `yaml:"dial_timeout"`
-	MaxStreams    int      `yaml:"max_streams"`
+	Listen       string        `yaml:"listen"`
+	Bootstrap    []string      `yaml:"bootstrap"`
+	PrivateKey   string        `yaml:"private_key"`
+	EnableDHT    bool          `yaml:"enable_dht"`
+	EnablePubSub bool          `yaml:"enable_pubsub"`
+	ConnMgrLow   int           `yaml:"conn_mgr_low"`
+	ConnMgrHigh  int           `yaml:"conn_mgr_high"`
+	ConnMgrGrace string        `yaml:"conn_mgr_grace"`
+	DialTimeout  time.Duration `yaml:"dial_timeout"`
+	MaxStreams   int           `yaml:"max_streams"`
 }
 
 // ConsensusConfig holds consensus engine configuration
 type ConsensusConfig struct {
-	NodeID           string        `yaml:"node_id"`
-	DataDir          string        `yaml:"data_dir"`
-	BindAddr         string        `yaml:"bind_addr"`
-	AdvertiseAddr    string        `yaml:"advertise_addr"`
-	Bootstrap        bool          `yaml:"bootstrap"`
-	BootstrapExpect  int           `yaml:"bootstrap_expect"`
-	Peers            []string      `yaml:"peers"`
-	LogLevel         string        `yaml:"log_level"`
-	HeartbeatTimeout time.Duration `yaml:"heartbeat_timeout"`
-	ElectionTimeout  time.Duration `yaml:"election_timeout"`
-	CommitTimeout    time.Duration `yaml:"commit_timeout"`
-	MaxAppendEntries int           `yaml:"max_append_entries"`
-	SnapshotInterval time.Duration `yaml:"snapshot_interval"`
-	SnapshotThreshold uint64       `yaml:"snapshot_threshold"`
+	NodeID            string        `yaml:"node_id"`
+	DataDir           string        `yaml:"data_dir"`
+	BindAddr          string        `yaml:"bind_addr"`
+	AdvertiseAddr     string        `yaml:"advertise_addr"`
+	Bootstrap         bool          `yaml:"bootstrap"`
+	BootstrapExpect   int           `yaml:"bootstrap_expect"`
+	Peers             []string      `yaml:"peers"`
+	LogLevel          string        `yaml:"log_level"`
+	HeartbeatTimeout  time.Duration `yaml:"heartbeat_timeout"`
+	ElectionTimeout   time.Duration `yaml:"election_timeout"`
+	CommitTimeout     time.Duration `yaml:"commit_timeout"`
+	MaxAppendEntries  int           `yaml:"max_append_entries"`
+	SnapshotInterval  time.Duration `yaml:"snapshot_interval"`
+	SnapshotThreshold uint64        `yaml:"snapshot_threshold"`
 }
 
 // SchedulerConfig holds scheduler configuration
 type SchedulerConfig struct {
-	Algorithm        string        `yaml:"algorithm"`
-	LoadBalancing    string        `yaml:"load_balancing"`
+	Algorithm           string        `yaml:"algorithm"`
+	LoadBalancing       string        `yaml:"load_balancing"`
 	HealthCheckInterval time.Duration `yaml:"health_check_interval"`
-	MaxRetries       int           `yaml:"max_retries"`
-	RetryDelay       time.Duration `yaml:"retry_delay"`
-	QueueSize        int           `yaml:"queue_size"`
-	WorkerCount      int           `yaml:"worker_count"`
+	MaxRetries          int           `yaml:"max_retries"`
+	RetryDelay          time.Duration `yaml:"retry_delay"`
+	QueueSize           int           `yaml:"queue_size"`
+	WorkerCount         int           `yaml:"worker_count"`
 }
 
 // StorageConfig holds storage configuration
 type StorageConfig struct {
-	DataDir     string `yaml:"data_dir"`
-	ModelDir    string `yaml:"model_dir"`
-	CacheDir    string `yaml:"cache_dir"`
-	MaxDiskSize int64  `yaml:"max_disk_size"`
+	DataDir     string        `yaml:"data_dir"`
+	ModelDir    string        `yaml:"model_dir"`
+	CacheDir    string        `yaml:"cache_dir"`
+	MaxDiskSize int64         `yaml:"max_disk_size"`
 	CleanupAge  time.Duration `yaml:"cleanup_age"`
 }
 
 // SecurityConfig holds security configuration
 type SecurityConfig struct {
-	TLS         TLSConfig         `yaml:"tls"`
-	Auth        AuthConfig        `yaml:"auth"`
-	Encryption  EncryptionConfig  `yaml:"encryption"`
-	Firewall    FirewallConfig    `yaml:"firewall"`
-	Audit       AuditConfig       `yaml:"audit"`
+	TLS        TLSConfig        `yaml:"tls"`
+	Auth       AuthConfig       `yaml:"auth"`
+	Encryption EncryptionConfig `yaml:"encryption"`
+	Firewall   FirewallConfig   `yaml:"firewall"`
+	Audit      AuditConfig      `yaml:"audit"`
 }
 
 // TLSConfig holds TLS configuration
 type TLSConfig struct {
-	Enabled    bool   `yaml:"enabled"`
-	CertFile   string `yaml:"cert_file"`
-	KeyFile    string `yaml:"key_file"`
-	CAFile     string `yaml:"ca_file"`
-	MinVersion string `yaml:"min_version"`
+	Enabled      bool     `yaml:"enabled"`
+	CertFile     string   `yaml:"cert_file"`
+	KeyFile      string   `yaml:"key_file"`
+	CAFile       string   `yaml:"ca_file"`
+	MinVersion   string   `yaml:"min_version"`
 	CipherSuites []string `yaml:"cipher_suites"`
 }
 
@@ -137,9 +137,9 @@ type EncryptionConfig struct {
 
 // FirewallConfig holds firewall configuration
 type FirewallConfig struct {
-	Enabled    bool     `yaml:"enabled"`
-	AllowedIPs []string `yaml:"allowed_ips"`
-	BlockedIPs []string `yaml:"blocked_ips"`
+	Enabled    bool           `yaml:"enabled"`
+	AllowedIPs []string       `yaml:"allowed_ips"`
+	BlockedIPs []string       `yaml:"blocked_ips"`
 	Rules      []FirewallRule `yaml:"rules"`
 }
 
@@ -171,63 +171,72 @@ type CorsConfig struct {
 
 // RateLimitConfig holds rate limiting configuration
 type RateLimitConfig struct {
-	Enabled bool  `yaml:"enabled"`
-	RPS     int   `yaml:"rps"`
-	Burst   int   `yaml:"burst"`
+	Enabled bool          `yaml:"enabled"`
+	RPS     int           `yaml:"rps"`
+	Burst   int           `yaml:"burst"`
 	Window  time.Duration `yaml:"window"`
 }
 
 // WebConfig holds web interface configuration
 type WebConfig struct {
-	Enabled    bool   `yaml:"enabled"`
-	Listen     string `yaml:"listen"`
-	StaticDir  string `yaml:"static_dir"`
-	TemplateDir string `yaml:"template_dir"`
-	TLS        TLSConfig `yaml:"tls"`
+	Enabled     bool      `yaml:"enabled"`
+	Listen      string    `yaml:"listen"`
+	StaticDir   string    `yaml:"static_dir"`
+	TemplateDir string    `yaml:"template_dir"`
+	TLS         TLSConfig `yaml:"tls"`
 }
 
 // MetricsConfig holds metrics configuration
 type MetricsConfig struct {
-	Enabled    bool   `yaml:"enabled"`
-	Listen     string `yaml:"listen"`
-	Path       string `yaml:"path"`
-	Namespace  string `yaml:"namespace"`
-	Subsystem  string `yaml:"subsystem"`
+	Enabled   bool   `yaml:"enabled"`
+	Listen    string `yaml:"listen"`
+	Path      string `yaml:"path"`
+	Namespace string `yaml:"namespace"`
+	Subsystem string `yaml:"subsystem"`
 }
 
 // LoggingConfig holds logging configuration
 type LoggingConfig struct {
-	Level      string `yaml:"level"`
-	Format     string `yaml:"format"`
-	Output     string `yaml:"output"`
-	File       string `yaml:"file"`
-	MaxSize    int    `yaml:"max_size"`
-	MaxAge     int    `yaml:"max_age"`
+	Level      string     `yaml:"level"`
+	Format     string     `yaml:"format"`
+	Output     string     `yaml:"output"`
+	File       FileConfig `yaml:"file"`
+	MaxSize    int        `yaml:"max_size"`
+	MaxAge     int        `yaml:"max_age"`
+	MaxBackups int        `yaml:"max_backups"`
+	Compress   bool       `yaml:"compress"`
+}
+
+// FileConfig holds file logging configuration
+type FileConfig struct {
+	Enabled    bool   `yaml:"enabled"`
+	Path       string `yaml:"path"`
+	MaxSize    string `yaml:"max_size"`
 	MaxBackups int    `yaml:"max_backups"`
-	Compress   bool   `yaml:"compress"`
+	MaxAge     int    `yaml:"max_age"`
 }
 
 // SyncConfig holds model synchronization configuration
 type SyncConfig struct {
-	DeltaDir       string        `yaml:"delta_dir"`
-	CASDir         string        `yaml:"cas_dir"`
-	WorkerCount    int           `yaml:"worker_count"`
-	SyncInterval   time.Duration `yaml:"sync_interval"`
-	ChunkSize      int64         `yaml:"chunk_size"`
-	MaxRetries     int           `yaml:"max_retries"`
-	RetryDelay     time.Duration `yaml:"retry_delay"`
+	DeltaDir     string        `yaml:"delta_dir"`
+	CASDir       string        `yaml:"cas_dir"`
+	WorkerCount  int           `yaml:"worker_count"`
+	SyncInterval time.Duration `yaml:"sync_interval"`
+	ChunkSize    int64         `yaml:"chunk_size"`
+	MaxRetries   int           `yaml:"max_retries"`
+	RetryDelay   time.Duration `yaml:"retry_delay"`
 }
 
 // ReplicationConfig holds model replication configuration
 type ReplicationConfig struct {
-	WorkerCount                int           `yaml:"worker_count"`
-	DefaultMinReplicas         int           `yaml:"default_min_replicas"`
-	DefaultMaxReplicas         int           `yaml:"default_max_replicas"`
-	DefaultReplicationFactor   int           `yaml:"default_replication_factor"`
-	DefaultSyncInterval        time.Duration `yaml:"default_sync_interval"`
-	PolicyEnforcementInterval  time.Duration `yaml:"policy_enforcement_interval"`
-	HealthCheckInterval        time.Duration `yaml:"health_check_interval"`
-	HealthCheckTimeout         time.Duration `yaml:"health_check_timeout"`
+	WorkerCount               int           `yaml:"worker_count"`
+	DefaultMinReplicas        int           `yaml:"default_min_replicas"`
+	DefaultMaxReplicas        int           `yaml:"default_max_replicas"`
+	DefaultReplicationFactor  int           `yaml:"default_replication_factor"`
+	DefaultSyncInterval       time.Duration `yaml:"default_sync_interval"`
+	PolicyEnforcementInterval time.Duration `yaml:"policy_enforcement_interval"`
+	HealthCheckInterval       time.Duration `yaml:"health_check_interval"`
+	HealthCheckTimeout        time.Duration `yaml:"health_check_timeout"`
 }
 
 // DistributedConfig holds distributed model management configuration
@@ -249,7 +258,7 @@ func DefaultConfig() *Config {
 		MaxDiskSize: 100 * 1024 * 1024 * 1024, // 100GB
 		CleanupAge:  7 * 24 * time.Hour,       // 7 days
 	}
-	
+
 	// Create sync config
 	syncConfig := SyncConfig{
 		DeltaDir:     "./data/deltas",
@@ -260,19 +269,19 @@ func DefaultConfig() *Config {
 		MaxRetries:   3,
 		RetryDelay:   time.Second,
 	}
-	
+
 	// Create replication config
 	replicationConfig := ReplicationConfig{
-		WorkerCount:                3,
-		DefaultMinReplicas:         1,
-		DefaultMaxReplicas:         3,
-		DefaultReplicationFactor:   2,
-		DefaultSyncInterval:        10 * time.Minute,
-		PolicyEnforcementInterval:  30 * time.Second,
-		HealthCheckInterval:        30 * time.Second,
-		HealthCheckTimeout:         10 * time.Second,
+		WorkerCount:               3,
+		DefaultMinReplicas:        1,
+		DefaultMaxReplicas:        3,
+		DefaultReplicationFactor:  2,
+		DefaultSyncInterval:       10 * time.Minute,
+		PolicyEnforcementInterval: 30 * time.Second,
+		HealthCheckInterval:       30 * time.Second,
+		HealthCheckTimeout:        10 * time.Second,
 	}
-	
+
 	return &Config{
 		Node: NodeConfig{
 			ID:          "",
@@ -306,15 +315,15 @@ func DefaultConfig() *Config {
 			},
 		},
 		P2P: P2PConfig{
-			Listen:        "/ip4/0.0.0.0/tcp/4001",
-			Bootstrap:     []string{},
-			EnableDHT:     true,
-			EnablePubSub:  true,
-			ConnMgrLow:    50,
-			ConnMgrHigh:   200,
-			ConnMgrGrace:  "30s",
-			DialTimeout:   30 * time.Second,
-			MaxStreams:    1000,
+			Listen:       "/ip4/0.0.0.0/tcp/4001",
+			Bootstrap:    []string{},
+			EnableDHT:    true,
+			EnablePubSub: true,
+			ConnMgrLow:   50,
+			ConnMgrHigh:  200,
+			ConnMgrGrace: "30s",
+			DialTimeout:  30 * time.Second,
+			MaxStreams:   1000,
 		},
 		Consensus: ConsensusConfig{
 			DataDir:           "./data/consensus",
@@ -402,13 +411,13 @@ func DefaultConfig() *Config {
 // Load loads configuration from file with environment-specific support
 func Load(configFile string) (*Config, error) {
 	config := DefaultConfig()
-	
+
 	// Determine environment from environment variable or default to development
 	environment := os.Getenv("OLLAMA_ENVIRONMENT")
 	if environment == "" {
 		environment = "development"
 	}
-	
+
 	if configFile != "" {
 		viper.SetConfigFile(configFile)
 	} else {
@@ -426,43 +435,43 @@ func Load(configFile string) (*Config, error) {
 			viper.AddConfigPath("/etc/ollama-distributed")
 		}
 	}
-	
+
 	// Environment variables with automatic env mapping
 	viper.SetEnvPrefix("OLLAMA")
 	viper.AutomaticEnv()
-	
+
 	// Map environment variables to nested config keys
 	viper.BindEnv("node.id", "OLLAMA_NODE_ID")
 	viper.BindEnv("node.name", "OLLAMA_NODE_NAME")
 	viper.BindEnv("node.region", "OLLAMA_NODE_REGION")
 	viper.BindEnv("node.zone", "OLLAMA_NODE_ZONE")
 	viper.BindEnv("node.environment", "OLLAMA_ENVIRONMENT")
-	
+
 	viper.BindEnv("api.listen", "OLLAMA_API_LISTEN")
 	viper.BindEnv("api.tls.enabled", "OLLAMA_TLS_ENABLED")
 	viper.BindEnv("api.tls.cert_file", "OLLAMA_TLS_CERT_FILE")
 	viper.BindEnv("api.tls.key_file", "OLLAMA_TLS_KEY_FILE")
-	
+
 	viper.BindEnv("security.auth.enabled", "OLLAMA_AUTH_ENABLED")
 	viper.BindEnv("security.auth.secret_key", "OLLAMA_JWT_SECRET")
 	viper.BindEnv("security.auth.method", "OLLAMA_AUTH_METHOD")
-	
+
 	viper.BindEnv("metrics.enabled", "OLLAMA_METRICS_ENABLED")
 	viper.BindEnv("metrics.listen", "OLLAMA_METRICS_LISTEN")
-	
+
 	viper.BindEnv("logging.level", "OLLAMA_LOG_LEVEL")
 	viper.BindEnv("logging.format", "OLLAMA_LOG_FORMAT")
 	viper.BindEnv("logging.output", "OLLAMA_LOG_OUTPUT")
 	viper.BindEnv("logging.file", "OLLAMA_LOG_FILE")
-	
+
 	viper.BindEnv("consensus.bootstrap", "OLLAMA_CONSENSUS_BOOTSTRAP")
 	viper.BindEnv("consensus.bind_addr", "OLLAMA_CONSENSUS_BIND_ADDR")
 	viper.BindEnv("consensus.advertise_addr", "OLLAMA_CONSENSUS_ADVERTISE_ADDR")
-	
+
 	viper.BindEnv("storage.data_dir", "OLLAMA_DATA_DIR")
 	viper.BindEnv("storage.model_dir", "OLLAMA_MODEL_DIR")
 	viper.BindEnv("storage.cache_dir", "OLLAMA_CACHE_DIR")
-	
+
 	// Read configuration
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
@@ -473,33 +482,33 @@ func Load(configFile string) (*Config, error) {
 	} else {
 		fmt.Printf("Using config file: %s\n", viper.ConfigFileUsed())
 	}
-	
+
 	// Unmarshal into config struct
 	if err := viper.Unmarshal(config); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
-	
+
 	// Set environment in config if not already set
 	if config.Node.Environment == "" {
 		config.Node.Environment = environment
 	}
-	
+
 	// Generate node ID if not provided
 	if config.Node.ID == "" {
 		hostname, _ := os.Hostname()
 		config.Node.ID = fmt.Sprintf("%s-%s", hostname, environment)
 	}
-	
+
 	// Set consensus node ID if not provided
 	if config.Consensus.NodeID == "" {
 		config.Consensus.NodeID = config.Node.ID
 	}
-	
+
 	// Validate and set defaults
 	if err := config.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid configuration: %w", err)
 	}
-	
+
 	// Log configuration summary
 	fmt.Printf("Configuration loaded for environment: %s\n", config.Node.Environment)
 	fmt.Printf("Node ID: %s\n", config.Node.ID)
@@ -507,7 +516,7 @@ func Load(configFile string) (*Config, error) {
 	fmt.Printf("Metrics Enabled: %t\n", config.Metrics.Enabled)
 	fmt.Printf("TLS Enabled: %t\n", config.Security.TLS.Enabled)
 	fmt.Printf("Auth Enabled: %t\n", config.Security.Auth.Enabled)
-	
+
 	return config, nil
 }
 
@@ -524,28 +533,28 @@ func (c *Config) Validate() error {
 		c.Distributed.CASDir,
 		c.Distributed.DeltaDir,
 	}
-	
+
 	for _, dir := range dirs {
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			return fmt.Errorf("failed to create directory %s: %w", dir, err)
 		}
 	}
-	
+
 	// Validate log directory
-	if c.Logging.Output == "file" && c.Logging.File != "" {
-		logDir := filepath.Dir(c.Logging.File)
+	if c.Logging.Output == "file" && c.Logging.File.Enabled && c.Logging.File.Path != "" {
+		logDir := filepath.Dir(c.Logging.File.Path)
 		if err := os.MkdirAll(logDir, 0755); err != nil {
 			return fmt.Errorf("failed to create log directory %s: %w", logDir, err)
 		}
 	}
-	
+
 	// Validate TLS certificates if enabled
 	if c.Security.TLS.Enabled {
 		if c.Security.TLS.CertFile == "" || c.Security.TLS.KeyFile == "" {
 			return fmt.Errorf("TLS enabled but cert_file or key_file not specified")
 		}
 	}
-	
+
 	return nil
 }
 

@@ -17,6 +17,41 @@ import (
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/types"
 )
 
+// MockScheduler provides a simple implementation of the Scheduler interface
+type MockScheduler struct {
+	id     string
+	status string
+}
+
+func (m *MockScheduler) ScheduleTask(ctx context.Context, task *types.DistributedTask) error {
+	// Mock implementation - just return success
+	return nil
+}
+
+func (m *MockScheduler) GetTaskStatus(ctx context.Context, taskID types.TaskID) (*types.DistributedTask, error) {
+	// Mock implementation - return a placeholder task
+	return &types.DistributedTask{
+		ID:     taskID,
+		Status: types.TaskStatusCompleted,
+	}, nil
+}
+
+func (m *MockScheduler) CancelTask(ctx context.Context, taskID types.TaskID) error {
+	// Mock implementation - just return success
+	return nil
+}
+
+func (m *MockScheduler) GetMetrics(ctx context.Context) (*types.SchedulerMetrics, error) {
+	// Mock implementation - return empty metrics
+	return &types.SchedulerMetrics{
+		TotalTasks:     0,
+		CompletedTasks: 0,
+		FailedTasks:    0,
+		QueueLength:    0,
+		LastUpdated:    time.Now(),
+	}, nil
+}
+
 // DistributedScheduler extends the existing Ollama scheduler with distributed capabilities
 type DistributedScheduler struct {
 	scheduler types.Scheduler // Compose with scheduler interface
@@ -301,9 +336,42 @@ type MetricSample struct {
 func NewDistributedScheduler(baseScheduler *types.Scheduler, config *DistributedConfig, p2pNode *p2p.Node, consensusEngine *consensus.Engine) (*DistributedScheduler, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
+	// Create default scheduler if none provided
+	var scheduler types.Scheduler
+	if baseScheduler != nil {
+		scheduler = *baseScheduler
+	} else {
+		// Create a default mock scheduler implementation
+		scheduler = &MockScheduler{
+			id:     "default-scheduler",
+			status: "active",
+		}
+	}
+
+	// Create default config if none provided
+	if config == nil {
+		config = &DistributedConfig{
+			ClusterID:             "default-cluster",
+			NodeID:                "default-node",
+			MaxNodes:              10,
+			HeartbeatInterval:     30 * time.Second,
+			DefaultStrategy:       "layerwise",
+			LayerThreshold:        10,
+			BatchSizeLimit:        1024,
+			LBAlgorithm:           "round_robin",
+			LatencyTarget:         100 * time.Millisecond,
+			ReplicationFactor:     2,
+			HealthCheckInterval:   30 * time.Second,
+			RecoveryTimeout:       2 * time.Minute,
+			CommunicationProtocol: "grpc",
+			Encryption:            false,
+			Compression:           true,
+		}
+	}
+
 	// Create distributed scheduler
 	ds := &DistributedScheduler{
-		scheduler: *baseScheduler,
+		scheduler: scheduler,
 		config:    config,
 		p2pNode:   p2pNode,
 		consensus: consensusEngine,
