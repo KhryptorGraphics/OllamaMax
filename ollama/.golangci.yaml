@@ -1,0 +1,41 @@
+run:
+  timeout: 5m
+linters:
+  enable:
+    - asasalint
+    - bidichk
+    - bodyclose
+    - containedctx
+    - gocheckcompilerdirectives
+    - gofmt
+    - gofumpt
+    - gosimple
+    - govet
+    - ineffassign
+    - intrange
+    - makezero
+    - misspell
+    - nilerr
+    - nolintlint
+    - nosprintfhostport
+    - staticcheck
+    - unconvert
+    - usetesting
+    - wastedassign
+    - whitespace
+  disable:
+    - usestdlibvars
+    - errcheck
+linters-settings:
+  staticcheck:
+    checks:
+      - all
+      - -SA1019 # omit Deprecated check
+severity:
+  default-severity: error
+  rules:
+    - linters:
+        - gofmt
+        - goimports
+        - intrange
+      severity: info
