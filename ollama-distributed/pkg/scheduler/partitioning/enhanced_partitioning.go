@@ -12,77 +12,77 @@ import (
 // EnhancedPartitionManager extends the partition manager with advanced features
 type EnhancedPartitionManager struct {
 	*PartitionManager // Embed base manager
-	
+
 	// Enhanced strategies
 	enhancedStrategies map[string]PartitionStrategy
-	
+
 	// Performance tracking
 	strategyPerformance map[string]*StrategyPerformance
-	
+
 	// Adaptive selection
 	selectionHistory []*StrategySelection
-	
+
 	// Metrics
 	metrics *EnhancedPartitionMetrics
-	
+
 	// Lifecycle
-	mu       sync.RWMutex
-	started  bool
-	ctx      context.Context
-	cancel   context.CancelFunc
-	wg       sync.WaitGroup
+	mu      sync.RWMutex
+	started bool
+	ctx     context.Context
+	cancel  context.CancelFunc
+	wg      sync.WaitGroup
 }
 
 // EnhancedPartitionMetrics tracks enhanced partitioning metrics
 type EnhancedPartitionMetrics struct {
 	// Performance tracking
-	PerformanceHistorySize int64         `json:"performance_history_size"`
-	AveragePerformanceScore float64      `json:"average_performance_score"`
-	PerformanceTrackingEnabled bool       `json:"performance_tracking_enabled"`
-	
+	PerformanceHistorySize     int64   `json:"performance_history_size"`
+	AveragePerformanceScore    float64 `json:"average_performance_score"`
+	PerformanceTrackingEnabled bool    `json:"performance_tracking_enabled"`
+
 	// Adaptive selection
 	SelectionHistorySize int64         `json:"selection_history_size"`
 	SelectionSuccessRate float64       `json:"selection_success_rate"`
 	AverageSelectionTime time.Duration `json:"average_selection_time"`
-	
+
 	// Strategy weights
 	StrategyWeights map[string]float64 `json:"strategy_weights"`
-	
+
 	// Learning metrics
-	LearningRate   float64       `json:"learning_rate"`
-	Accuracy       float64       `json:"accuracy"`
-	LastUpdated    time.Time     `json:"last_updated"`
-	
+	LearningRate float64   `json:"learning_rate"`
+	Accuracy     float64   `json:"accuracy"`
+	LastUpdated  time.Time `json:"last_updated"`
+
 	// Timestamps
-	LastSelection  *time.Time    `json:"last_selection,omitempty"`
+	LastSelection         *time.Time `json:"last_selection,omitempty"`
 	LastPerformanceUpdate *time.Time `json:"last_performance_update,omitempty"`
 }
 
 // StrategyPerformance tracks performance metrics for partitioning strategies
 type StrategyPerformance struct {
-	TotalExecutions    int64         `json:"total_executions"`
-	SuccessfulExecutions int64      `json:"successful_executions"`
-	FailedExecutions   int64         `json:"failed_executions"`
-	AverageLatency     time.Duration `json:"average_latency"`
-	AverageThroughput  float64       `json:"average_throughput"`
-	LastUsed           time.Time     `json:"last_used"`
-	SuccessRate        float64       `json:"success_rate"`
-	ErrorRate          float64       `json:"error_rate"`
-	PerformanceScore   float64       `json:"performance_score"`
+	TotalExecutions      int64         `json:"total_executions"`
+	SuccessfulExecutions int64         `json:"successful_executions"`
+	FailedExecutions     int64         `json:"failed_executions"`
+	AverageLatency       time.Duration `json:"average_latency"`
+	AverageThroughput    float64       `json:"average_throughput"`
+	LastUsed             time.Time     `json:"last_used"`
+	SuccessRate          float64       `json:"success_rate"`
+	ErrorRate            float64       `json:"error_rate"`
+	PerformanceScore     float64       `json:"performance_score"`
 }
 
 // StrategySelection represents a strategy selection decision
 type StrategySelection struct {
-	ID           string                 `json:"id"`
-	Timestamp    time.Time              `json:"timestamp"`
-	StrategyName string                 `json:"strategy_name"`
-	TaskID       string                 `json:"task_id"`
-	ModelName    string                 `json:"model_name"`
-	SelectedAt   time.Time              `json:"selected_at"`
-	ExecutionLatency time.Duration      `json:"execution_latency"`
-	ExecutionThroughput float64         `json:"execution_throughput"`
-	Success      bool                   `json:"success"`
-	Metadata     map[string]interface{} `json:"metadata"`
+	ID                  string                 `json:"id"`
+	Timestamp           time.Time              `json:"timestamp"`
+	StrategyName        string                 `json:"strategy_name"`
+	TaskID              string                 `json:"task_id"`
+	ModelName           string                 `json:"model_name"`
+	SelectedAt          time.Time              `json:"selected_at"`
+	ExecutionLatency    time.Duration          `json:"execution_latency"`
+	ExecutionThroughput float64                `json:"execution_throughput"`
+	Success             bool                   `json:"success"`
+	Metadata            map[string]interface{} `json:"metadata"`
 }
 
 // PipelineParallelismStrategy implements pipeline parallelism for sequential models
@@ -117,7 +117,7 @@ type AdaptivePartitioningStrategy struct {
 // NewEnhancedPartitionManager creates a new enhanced partition manager
 func NewEnhancedPartitionManager(baseManager *PartitionManager) *EnhancedPartitionManager {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	// Create enhanced manager
 	epm := &EnhancedPartitionManager{
 		PartitionManager:    baseManager,
@@ -125,15 +125,15 @@ func NewEnhancedPartitionManager(baseManager *PartitionManager) *EnhancedPartiti
 		strategyPerformance: make(map[string]*StrategyPerformance),
 		selectionHistory:    make([]*StrategySelection, 0),
 		metrics: &EnhancedPartitionMetrics{
-			LastUpdated:      time.Now(),
+			LastUpdated: time.Now(),
 		},
 		ctx:    ctx,
 		cancel: cancel,
 	}
-	
+
 	// Initialize components
 	epm.initializeComponents()
-	
+
 	return epm
 }
 
@@ -141,10 +141,10 @@ func NewEnhancedPartitionManager(baseManager *PartitionManager) *EnhancedPartiti
 func (epm *EnhancedPartitionManager) initializeComponents() {
 	// Initialize enhanced strategies
 	epm.registerEnhancedStrategies()
-	
+
 	// Initialize performance tracking
 	epm.initializePerformanceTracking()
-	
+
 	// Initialize metrics
 	epm.initializeMetrics()
 }
@@ -153,16 +153,16 @@ func (epm *EnhancedPartitionManager) initializeComponents() {
 func (epm *EnhancedPartitionManager) registerEnhancedStrategies() {
 	// Register pipeline parallelism strategy
 	epm.enhancedStrategies["pipeline_parallel"] = NewPipelineParallelismStrategy()
-	
+
 	// Register tensor parallelism strategy
 	epm.enhancedStrategies["tensor_parallel"] = NewTensorParallelismStrategy()
-	
+
 	// Register hybrid parallelism strategy
 	epm.enhancedStrategies["hybrid_parallel"] = NewHybridParallelismStrategy()
-	
+
 	// Register adaptive partitioning strategy
 	epm.enhancedStrategies["adaptive"] = NewAdaptivePartitioningStrategy()
-	
+
 	// Initialize strategy performance tracking
 	for name := range epm.enhancedStrategies {
 		epm.strategyPerformance[name] = &StrategyPerformance{
@@ -177,40 +177,40 @@ func (epm *EnhancedPartitionManager) initializePerformanceTracking() {
 	epm.metrics.PerformanceTrackingEnabled = true
 	epm.metrics.PerformanceHistorySize = 1000
 	epm.metrics.AveragePerformanceScore = 0.7 // Initial score
-	
+
 	// Initialize selection history settings
 	epm.metrics.SelectionHistorySize = 1000
-	
+
 	// Initialize adaptive selection settings
-	epm.metrics.SelectionSuccessRate = 0.8 // Initial success rate
+	epm.metrics.SelectionSuccessRate = 0.8                   // Initial success rate
 	epm.metrics.AverageSelectionTime = 50 * time.Millisecond // Initial average
-	
+
 	// Initialize strategy weights
 	epm.metrics.StrategyWeights = map[string]float64{
-		"layerwise":  0.25,
-		"data_split": 0.20,
-		"task_parallel": 0.15,
-		"sequence_parallel": 0.10,
+		"layerwise":          0.25,
+		"data_split":         0.20,
+		"task_parallel":      0.15,
+		"sequence_parallel":  0.10,
 		"attention_parallel": 0.10,
-		"pipeline_parallel": 0.10,
-		"tensor_parallel": 0.05,
-		"hybrid_parallel": 0.03,
-		"adaptive":    0.02,
+		"pipeline_parallel":  0.10,
+		"tensor_parallel":    0.05,
+		"hybrid_parallel":    0.03,
+		"adaptive":           0.02,
 	}
-	
+
 	// Initialize learning settings
 	epm.metrics.LearningRate = 0.1
 	epm.metrics.Accuracy = 0.7 // Initial accuracy
-	
+
 	// Initialize timestamps
 	epm.metrics.LastUpdated = time.Now()
-	
+
 	// Initialize performance tracking
 	if epm.metrics.PerformanceTrackingEnabled {
 		epm.wg.Add(1)
 		go epm.performanceTrackingTask()
 	}
-	
+
 	// Initialize adaptive selection
 	epm.wg.Add(1)
 	go epm.adaptiveSelectionTask()
@@ -220,14 +220,14 @@ func (epm *EnhancedPartitionManager) initializePerformanceTracking() {
 func (epm *EnhancedPartitionManager) initializeMetrics() {
 	// Initialize enhanced metrics
 	epm.metrics.LastUpdated = time.Now()
-	
+
 	// Initialize strategy metrics
 	epm.metrics.StrategyWeights = make(map[string]float64)
-	
+
 	// Initialize learning metrics
 	epm.metrics.LearningRate = 0.1
 	epm.metrics.Accuracy = 0.7 // Initial accuracy
-	
+
 	// Initialize timestamps
 	epm.metrics.LastUpdated = time.Now()
 }
@@ -235,10 +235,10 @@ func (epm *EnhancedPartitionManager) initializeMetrics() {
 // performanceTrackingTask tracks performance metrics
 func (epm *EnhancedPartitionManager) performanceTrackingTask() {
 	defer epm.wg.Done()
-	
+
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-epm.ctx.Done():
@@ -253,25 +253,25 @@ func (epm *EnhancedPartitionManager) performanceTrackingTask() {
 func (epm *EnhancedPartitionManager) trackPerformance() {
 	epm.mu.Lock()
 	defer epm.mu.Unlock()
-	
+
 	now := time.Now()
-	
+
 	// Update metrics
 	epm.metrics.LastPerformanceUpdate = &now
 	epm.metrics.LastUpdated = now
-	
+
 	// Calculate performance score based on recent selections
 	if len(epm.selectionHistory) > 0 {
 		recentSelections := epm.selectionHistory
 		if len(recentSelections) > 100 {
 			recentSelections = recentSelections[len(recentSelections)-100:]
 		}
-		
+
 		totalSelections := len(recentSelections)
 		successfulSelections := 0
 		totalLatency := time.Duration(0)
 		totalThroughput := 0.0
-		
+
 		for _, selection := range recentSelections {
 			if selection.Success {
 				successfulSelections++
@@ -279,12 +279,12 @@ func (epm *EnhancedPartitionManager) trackPerformance() {
 				totalThroughput += selection.ExecutionThroughput
 			}
 		}
-		
+
 		if totalSelections > 0 {
 			epm.metrics.SelectionHistorySize = int64(totalSelections)
 			epm.metrics.SelectionSuccessRate = float64(successfulSelections) / float64(totalSelections)
 		}
-		
+
 		if successfulSelections > 0 {
 			epm.metrics.AverageSelectionTime = totalLatency / time.Duration(successfulSelections)
 			epm.metrics.AveragePerformanceScore = totalThroughput / float64(successfulSelections)
@@ -295,10 +295,10 @@ func (epm *EnhancedPartitionManager) trackPerformance() {
 // adaptiveSelectionTask performs adaptive selection
 func (epm *EnhancedPartitionManager) adaptiveSelectionTask() {
 	defer epm.wg.Done()
-	
+
 	ticker := time.NewTicker(60 * time.Second)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-epm.ctx.Done():
@@ -313,21 +313,21 @@ func (epm *EnhancedPartitionManager) adaptiveSelectionTask() {
 func (epm *EnhancedPartitionManager) adaptSelection() {
 	epm.mu.Lock()
 	defer epm.mu.Unlock()
-	
+
 	start := time.Now()
-	
+
 	// Update metrics
 	epm.metrics.LastUpdated = time.Now()
-	
+
 	// Calculate performance score
 	if len(epm.selectionHistory) > 10 {
 		// Calculate recent performance
 		recentSelections := epm.selectionHistory[len(epm.selectionHistory)-10:]
-		
+
 		totalLatency := time.Duration(0)
 		totalThroughput := 0.0
 		successfulSelections := 0
-		
+
 		for _, selection := range recentSelections {
 			if selection.Success {
 				successfulSelections++
@@ -335,23 +335,23 @@ func (epm *EnhancedPartitionManager) adaptSelection() {
 				totalThroughput += selection.ExecutionThroughput
 			}
 		}
-		
+
 		if successfulSelections > 0 {
 			avgLatency := totalLatency / time.Duration(successfulSelections)
 			avgThroughput := totalThroughput / float64(successfulSelections)
-			
+
 			// Update accuracy with exponential moving average
 			alpha := epm.metrics.LearningRate
-			performanceScore := 1.0 - (float64(avgLatency)/float64(100*time.Millisecond) + 
-				(1.0-avgThroughput/100.0)) / 2.0
-			
+			performanceScore := 1.0 - (float64(avgLatency)/float64(100*time.Millisecond)+
+				(1.0-avgThroughput/100.0))/2.0
+
 			epm.metrics.Accuracy = alpha*performanceScore + (1-alpha)*epm.metrics.Accuracy
-			
+
 			// Update strategy weights based on performance
 			epm.updateStrategyWeights(performanceScore)
 		}
 	}
-	
+
 	// Update timestamps
 	now := time.Now()
 	epm.metrics.LastUpdated = now
@@ -365,27 +365,27 @@ func (epm *EnhancedPartitionManager) updateStrategyWeights(performanceScore floa
 	if len(recentHistory) > 100 {
 		recentHistory = recentHistory[len(recentHistory)-100:]
 	}
-	
+
 	// Calculate performance for each strategy
 	strategyPerformance := make(map[string]float64)
 	strategyCounts := make(map[string]int)
-	
+
 	for _, selection := range recentHistory {
 		strategyPerformance[selection.StrategyName] += performanceScore
 		strategyCounts[selection.StrategyName]++
 	}
-	
+
 	// Calculate average performance for each strategy
 	for strategy, totalPerformance := range strategyPerformance {
 		count := strategyCounts[strategy]
 		if count > 0 {
 			avgPerformance := totalPerformance / float64(count)
-			
+
 			// Update weight with exponential moving average
 			alpha := epm.metrics.LearningRate
 			currentWeight := epm.metrics.StrategyWeights[strategy]
 			newWeight := alpha*avgPerformance + (1-alpha)*currentWeight
-			
+
 			// Clamp weight between 0.01 and 0.99
 			if newWeight < 0.01 {
 				newWeight = 0.01
@@ -393,17 +393,17 @@ func (epm *EnhancedPartitionManager) updateStrategyWeights(performanceScore floa
 			if newWeight > 0.99 {
 				newWeight = 0.99
 			}
-			
+
 			epm.metrics.StrategyWeights[strategy] = newWeight
 		}
 	}
-	
+
 	// Normalize weights to sum to 1.0
 	totalWeight := 0.0
 	for _, weight := range epm.metrics.StrategyWeights {
 		totalWeight += weight
 	}
-	
+
 	if totalWeight > 0 {
 		for strategy, weight := range epm.metrics.StrategyWeights {
 			epm.metrics.StrategyWeights[strategy] = weight / totalWeight
@@ -415,21 +415,21 @@ func (epm *EnhancedPartitionManager) updateStrategyWeights(performanceScore floa
 func (epm *EnhancedPartitionManager) GetAvailableStrategies() []string {
 	epm.mu.RLock()
 	defer epm.mu.RUnlock()
-	
+
 	// Get base strategies
 	baseStrategies := epm.PartitionManager.GetAvailableStrategies()
-	
+
 	// Get enhanced strategies
 	enhancedStrategies := make([]string, 0, len(baseStrategies)+len(epm.enhancedStrategies))
-	
+
 	// Add base strategies
 	enhancedStrategies = append(enhancedStrategies, baseStrategies...)
-	
+
 	// Add enhanced strategies
 	for name := range epm.enhancedStrategies {
 		enhancedStrategies = append(enhancedStrategies, name)
 	}
-	
+
 	return enhancedStrategies
 }
 
@@ -437,26 +437,26 @@ func (epm *EnhancedPartitionManager) GetAvailableStrategies() []string {
 func (epm *EnhancedPartitionManager) GetStrategyMetrics() map[string]*StrategyMetrics {
 	epm.mu.RLock()
 	defer epm.mu.RUnlock()
-	
+
 	// Get base metrics
 	baseMetrics := make(map[string]*StrategyMetrics)
 	for _, strategy := range epm.PartitionManager.strategies {
 		baseMetrics[strategy.GetName()] = strategy.GetMetrics()
 	}
-	
+
 	// Get enhanced metrics
 	enhancedMetrics := make(map[string]*StrategyMetrics)
-	
+
 	// Add base metrics
 	for name, metrics := range baseMetrics {
 		enhancedMetrics[name] = metrics
 	}
-	
+
 	// Add enhanced strategy metrics
 	for name, strategy := range epm.enhancedStrategies {
 		enhancedMetrics[name] = strategy.GetMetrics()
 	}
-	
+
 	return enhancedMetrics
 }
 
@@ -464,11 +464,11 @@ func (epm *EnhancedPartitionManager) GetStrategyMetrics() map[string]*StrategyMe
 func (epm *EnhancedPartitionManager) GetSelectionHistory() []*StrategySelection {
 	epm.mu.RLock()
 	defer epm.mu.RUnlock()
-	
+
 	// Create a copy to avoid race conditions
 	history := make([]*StrategySelection, len(epm.selectionHistory))
 	copy(history, epm.selectionHistory)
-	
+
 	return history
 }
 
@@ -476,25 +476,25 @@ func (epm *EnhancedPartitionManager) GetSelectionHistory() []*StrategySelection 
 func (epm *EnhancedPartitionManager) GetEnhancedMetrics() *EnhancedPartitionMetrics {
 	epm.mu.RLock()
 	defer epm.mu.RUnlock()
-	
+
 	// Update enhanced metrics
 	epm.metrics.LastUpdated = time.Now()
-	
+
 	// Update performance tracking metrics
 	epm.metrics.PerformanceHistorySize = int64(len(epm.selectionHistory))
-	
+
 	// Update selection history metrics
 	if len(epm.selectionHistory) > 0 {
 		recentSelections := epm.selectionHistory
 		if len(recentSelections) > 1000 {
 			recentSelections = recentSelections[len(recentSelections)-1000:]
 		}
-		
+
 		totalSelections := len(recentSelections)
 		successfulSelections := 0
 		totalLatency := time.Duration(0)
 		totalThroughput := 0.0
-		
+
 		for _, selection := range recentSelections {
 			if selection.Success {
 				successfulSelections++
@@ -502,39 +502,39 @@ func (epm *EnhancedPartitionManager) GetEnhancedMetrics() *EnhancedPartitionMetr
 				totalThroughput += selection.ExecutionThroughput
 			}
 		}
-		
+
 		if totalSelections > 0 {
 			epm.metrics.SelectionHistorySize = int64(totalSelections)
 			epm.metrics.SelectionSuccessRate = float64(successfulSelections) / float64(totalSelections)
 		}
-		
+
 		if successfulSelections > 0 {
 			epm.metrics.AverageSelectionTime = totalLatency / time.Duration(successfulSelections)
 			epm.metrics.AveragePerformanceScore = totalThroughput / float64(successfulSelections)
 		}
 	}
-	
+
 	// Create a copy to avoid race conditions
 	metrics := &EnhancedPartitionMetrics{
-		PerformanceHistorySize: epm.metrics.PerformanceHistorySize,
-		AveragePerformanceScore: epm.metrics.AveragePerformanceScore,
+		PerformanceHistorySize:     epm.metrics.PerformanceHistorySize,
+		AveragePerformanceScore:    epm.metrics.AveragePerformanceScore,
 		PerformanceTrackingEnabled: epm.metrics.PerformanceTrackingEnabled,
-		SelectionHistorySize: epm.metrics.SelectionHistorySize,
-		SelectionSuccessRate: epm.metrics.SelectionSuccessRate,
-		AverageSelectionTime: epm.metrics.AverageSelectionTime,
-		StrategyWeights: make(map[string]float64),
-		LearningRate: epm.metrics.LearningRate,
-		Accuracy: epm.metrics.Accuracy,
-		LastUpdated: epm.metrics.LastUpdated,
-		LastSelection: epm.metrics.LastSelection,
-		LastPerformanceUpdate: epm.metrics.LastPerformanceUpdate,
+		SelectionHistorySize:       epm.metrics.SelectionHistorySize,
+		SelectionSuccessRate:       epm.metrics.SelectionSuccessRate,
+		AverageSelectionTime:       epm.metrics.AverageSelectionTime,
+		StrategyWeights:            make(map[string]float64),
+		LearningRate:               epm.metrics.LearningRate,
+		Accuracy:                   epm.metrics.Accuracy,
+		LastUpdated:                epm.metrics.LastUpdated,
+		LastSelection:              epm.metrics.LastSelection,
+		LastPerformanceUpdate:      epm.metrics.LastPerformanceUpdate,
 	}
-	
+
 	// Copy strategy weights
 	for k, v := range epm.metrics.StrategyWeights {
 		metrics.StrategyWeights[k] = v
 	}
-	
+
 	return metrics
 }
 
@@ -542,24 +542,24 @@ func (epm *EnhancedPartitionManager) GetEnhancedMetrics() *EnhancedPartitionMetr
 func (epm *EnhancedPartitionManager) Shutdown(ctx context.Context) error {
 	epm.mu.Lock()
 	defer epm.mu.Unlock()
-	
+
 	if !epm.started {
 		return nil
 	}
-	
+
 	slog.Info("shutting down enhanced partition manager")
-	
+
 	// Cancel context
 	epm.cancel()
-	
+
 	// Wait for background tasks
 	epm.wg.Wait()
-	
+
 	// Shutdown base manager
 	// Shutdown is handled through context cancellation
 	// epm.PartitionManager doesn't have a Shutdown method in the base implementation
 	epm.started = false
-	
+
 	return nil
 }
 
@@ -598,7 +598,7 @@ func (pps *PipelineParallelismStrategy) CanHandle(task *PartitionTask) bool {
 // Partition implements pipeline parallelism partitioning
 func (pps *PipelineParallelismStrategy) Partition(ctx context.Context, task *PartitionTask) (*PartitionPlan, error) {
 	start := time.Now()
-	
+
 	// Get number of layers
 	layerCount := 0
 	if task.GGML != nil {
@@ -607,37 +607,37 @@ func (pps *PipelineParallelismStrategy) Partition(ctx context.Context, task *Par
 			layerCount = int(layers)
 		}
 	}
-	
+
 	if layerCount == 0 {
 		return nil, fmt.Errorf("unable to determine layer count")
 	}
-	
+
 	nodeCount := len(task.Nodes)
 	if nodeCount == 0 {
 		return nil, fmt.Errorf("no nodes available")
 	}
-	
+
 	// Calculate layers per stage
 	layersPerStage := int(math.Ceil(float64(layerCount) / float64(nodeCount)))
-	
+
 	// Create partitions
 	partitions := make([]*Partition, 0)
 	stageIndex := 0
-	
+
 	for i := 0; i < layerCount; i += layersPerStage {
 		end := i + layersPerStage
 		if end > layerCount {
 			end = layerCount
 		}
-		
+
 		// Assign to node in round-robin fashion
 		nodeIndex := stageIndex % nodeCount
 		nodeID := task.Nodes[nodeIndex].ID
-		
+
 		partition := &Partition{
-			ID:          fmt.Sprintf("partition_%d_stage_%d", task.ID, stageIndex),
-			NodeID:      nodeID,
-			Type:        PartitionTypeLayer,
+			ID:     fmt.Sprintf("partition_%s_stage_%d", task.ID, stageIndex),
+			NodeID: nodeID,
+			Type:   PartitionTypeLayer,
 			Data: map[string]interface{}{
 				"start_layer": i,
 				"end_layer":   end,
@@ -648,37 +648,37 @@ func (pps *PipelineParallelismStrategy) Partition(ctx context.Context, task *Par
 				"stage": stageIndex,
 			},
 			EstimatedLatency: time.Duration((end-i)*10) * time.Millisecond, // Rough estimate
-			EstimatedMemory:  int64((end - i) * 100 * 1024 * 1024),       // Rough estimate (100MB per layer)
+			EstimatedMemory:  int64((end - i) * 100 * 1024 * 1024),         // Rough estimate (100MB per layer)
 		}
-		
+
 		// Set dependencies (each stage depends on the previous one)
 		if stageIndex > 0 {
-			partition.Dependencies = append(partition.Dependencies, fmt.Sprintf("partition_%d_stage_%d", task.ID, stageIndex-1))
+			partition.Dependencies = append(partition.Dependencies, fmt.Sprintf("partition_%s_stage_%d", task.ID, stageIndex-1))
 		}
-		
+
 		partitions = append(partitions, partition)
 		stageIndex++
 	}
-	
+
 	// Create plan
 	plan := &PartitionPlan{
-		ID:           fmt.Sprintf("plan_%s", task.ID),
-		Strategy:     pps.GetName(),
-		Partitions:   partitions,
-		Metadata:     make(map[string]interface{}),
-		CreatedAt:    time.Now(),
-		EstimatedLatency: time.Duration(layerCount*10) * time.Millisecond,
+		ID:                  fmt.Sprintf("plan_%s", task.ID),
+		Strategy:            pps.GetName(),
+		Partitions:          partitions,
+		Metadata:            make(map[string]interface{}),
+		CreatedAt:           time.Now(),
+		EstimatedLatency:    time.Duration(layerCount*10) * time.Millisecond,
 		EstimatedThroughput: 1.0, // Placeholder
-		OptimizationScore: 0.8,   // Placeholder
+		OptimizationScore:   0.8, // Placeholder
 	}
-	
+
 	// Update metrics
 	pps.metrics.TotalPartitions += int64(len(partitions))
 	pps.metrics.SuccessfulPartitions += int64(len(partitions))
 	pps.metrics.LastUsed = time.Now()
-	pps.metrics.AverageLatency = (pps.metrics.AverageLatency*time.Duration(pps.metrics.SuccessfulPartitions-1) + 
+	pps.metrics.AverageLatency = (pps.metrics.AverageLatency*time.Duration(pps.metrics.SuccessfulPartitions-1) +
 		time.Since(start)) / time.Duration(pps.metrics.SuccessfulPartitions)
-	
+
 	return plan, nil
 }
 
@@ -712,26 +712,26 @@ func (tps *TensorParallelismStrategy) CanHandle(task *PartitionTask) bool {
 // Partition implements tensor parallelism partitioning
 func (tps *TensorParallelismStrategy) Partition(ctx context.Context, task *PartitionTask) (*PartitionPlan, error) {
 	start := time.Now()
-	
+
 	nodeCount := len(task.Nodes)
 	if nodeCount == 0 {
 		return nil, fmt.Errorf("no nodes available")
 	}
-	
+
 	// Get context length
 	contextLength := task.Options.NumCtx
 	if contextLength == 0 {
 		contextLength = 2048 // Default context length
 	}
-	
+
 	// For tensor parallelism, we split the computation across nodes
 	// rather than splitting layers
 	partitions := make([]*Partition, nodeCount)
-	
+
 	// Split the context across nodes
 	contextPerNode := contextLength / nodeCount
 	remainder := contextLength % nodeCount
-	
+
 	for i := 0; i < nodeCount; i++ {
 		startToken := i * contextPerNode
 		endToken := startToken + contextPerNode
@@ -742,9 +742,9 @@ func (tps *TensorParallelismStrategy) Partition(ctx context.Context, task *Parti
 			startToken += remainder
 			endToken += remainder
 		}
-		
+
 		partition := &Partition{
-			ID:     fmt.Sprintf("partition_%d_tensor_%d", task.ID, i),
+			ID:     fmt.Sprintf("partition_%s_tensor_%d", task.ID, i),
 			NodeID: task.Nodes[i].ID,
 			Type:   PartitionTypeData,
 			Data: map[string]interface{}{
@@ -757,31 +757,31 @@ func (tps *TensorParallelismStrategy) Partition(ctx context.Context, task *Parti
 				"tensor_split": i,
 			},
 			EstimatedLatency: time.Duration((endToken-startToken)*5) * time.Millisecond, // Rough estimate
-			EstimatedMemory:  int64((endToken - startToken) * 2 * 1024),       // Rough estimate (2KB per token)
+			EstimatedMemory:  int64((endToken - startToken) * 2 * 1024),                 // Rough estimate (2KB per token)
 		}
-		
+
 		partitions[i] = partition
 	}
-	
+
 	// Create plan
 	plan := &PartitionPlan{
-		ID:           fmt.Sprintf("plan_%s", task.ID),
-		Strategy:     tps.GetName(),
-		Partitions:   partitions,
-		Metadata:     make(map[string]interface{}),
-		CreatedAt:    time.Now(),
-		EstimatedLatency: time.Duration(contextLength*5) * time.Millisecond / time.Duration(nodeCount),
+		ID:                  fmt.Sprintf("plan_%s", task.ID),
+		Strategy:            tps.GetName(),
+		Partitions:          partitions,
+		Metadata:            make(map[string]interface{}),
+		CreatedAt:           time.Now(),
+		EstimatedLatency:    time.Duration(contextLength*5) * time.Millisecond / time.Duration(nodeCount),
 		EstimatedThroughput: float64(nodeCount), // Placeholder
-		OptimizationScore: 0.7,                 // Placeholder
+		OptimizationScore:   0.7,                // Placeholder
 	}
-	
+
 	// Update metrics
 	tps.metrics.TotalPartitions += int64(len(partitions))
 	tps.metrics.SuccessfulPartitions += int64(len(partitions))
 	tps.metrics.LastUsed = time.Now()
-	tps.metrics.AverageLatency = (tps.metrics.AverageLatency*time.Duration(tps.metrics.SuccessfulPartitions-1) + 
+	tps.metrics.AverageLatency = (tps.metrics.AverageLatency*time.Duration(tps.metrics.SuccessfulPartitions-1) +
 		time.Since(start)) / time.Duration(tps.metrics.SuccessfulPartitions)
-	
+
 	return plan, nil
 }
 
@@ -815,19 +815,19 @@ func (hps *HybridParallelismStrategy) CanHandle(task *PartitionTask) bool {
 			layerCount = int(layers)
 		}
 	}
-	
+
 	contextLength := task.Options.NumCtx
 	if contextLength == 0 {
 		contextLength = 2048 // Default context length
 	}
-	
+
 	return layerCount > 20 && contextLength > 2048
 }
 
 // Partition implements hybrid parallelism partitioning
 func (hps *HybridParallelismStrategy) Partition(ctx context.Context, task *PartitionTask) (*PartitionPlan, error) {
 	start := time.Now()
-	
+
 	// Get number of layers
 	layerCount := 0
 	if task.GGML != nil {
@@ -836,19 +836,19 @@ func (hps *HybridParallelismStrategy) Partition(ctx context.Context, task *Parti
 			layerCount = int(layers)
 		}
 	}
-	
+
 	if layerCount == 0 {
 		return nil, fmt.Errorf("unable to determine layer count")
 	}
-	
+
 	nodeCount := len(task.Nodes)
 	if nodeCount == 0 {
 		return nil, fmt.Errorf("no nodes available")
 	}
-	
+
 	// For hybrid approach, we divide nodes into pipeline stages
 	// and split context within each stage
-	
+
 	// Determine pipeline stages (sqrt of nodes for balanced approach)
 	pipelineStages := int(math.Sqrt(float64(nodeCount)))
 	if pipelineStages < 2 {
@@ -857,28 +857,28 @@ func (hps *HybridParallelismStrategy) Partition(ctx context.Context, task *Parti
 	if pipelineStages > layerCount {
 		pipelineStages = layerCount
 	}
-	
+
 	nodesPerStage := nodeCount / pipelineStages
 	if nodesPerStage == 0 {
 		nodesPerStage = 1
 	}
-	
+
 	// Calculate layers per stage
 	layersPerStage := layerCount / pipelineStages
 	if layersPerStage == 0 {
 		layersPerStage = 1
 	}
-	
+
 	partitions := make([]*Partition, 0)
 	stageIndex := 0
-	
+
 	// Create pipeline stages
 	for i := 0; i < layerCount; i += layersPerStage {
 		endLayer := i + layersPerStage
 		if endLayer > layerCount {
 			endLayer = layerCount
 		}
-		
+
 		// For each pipeline stage, split context across nodes in that stage
 		stageNodes := make([]*NodeInfo, 0)
 		for j := 0; j < nodesPerStage && (stageIndex*nodesPerStage+j) < nodeCount; j++ {
@@ -887,15 +887,15 @@ func (hps *HybridParallelismStrategy) Partition(ctx context.Context, task *Parti
 				stageNodes = append(stageNodes, task.Nodes[nodeIndex])
 			}
 		}
-		
+
 		if len(stageNodes) == 0 {
 			continue
 		}
-		
+
 		// Split context across nodes in this stage
 		contextPerNode := task.Options.NumCtx / len(stageNodes)
 		remainder := task.Options.NumCtx % len(stageNodes)
-		
+
 		for j, node := range stageNodes {
 			startToken := j * contextPerNode
 			endToken := startToken + contextPerNode
@@ -906,18 +906,18 @@ func (hps *HybridParallelismStrategy) Partition(ctx context.Context, task *Parti
 				startToken += remainder
 				endToken += remainder
 			}
-			
+
 			partition := &Partition{
-				ID:     fmt.Sprintf("partition_%d_hybrid_%d_%d", task.ID, stageIndex, j),
+				ID:     fmt.Sprintf("partition_%s_hybrid_%d_%d", task.ID, stageIndex, j),
 				NodeID: node.ID,
 				Type:   PartitionTypeLayer,
 				Data: map[string]interface{}{
-					"start_layer":  i,
-					"end_layer":    endLayer,
-					"layer_count":  endLayer - i,
-					"start_token":  startToken,
-					"end_token":    endToken,
-					"token_count":  endToken - startToken,
+					"start_layer": i,
+					"end_layer":   endLayer,
+					"layer_count": endLayer - i,
+					"start_token": startToken,
+					"end_token":   endToken,
+					"token_count": endToken - startToken,
 				},
 				Dependencies: []string{}, // Will be set later
 				Metadata: map[string]interface{}{
@@ -927,41 +927,41 @@ func (hps *HybridParallelismStrategy) Partition(ctx context.Context, task *Parti
 				EstimatedLatency: time.Duration((endLayer-i)*(endToken-startToken)*2) * time.Millisecond,
 				EstimatedMemory:  int64((endLayer - i) * (endToken - startToken) * 2 * 1024), // Rough estimate
 			}
-			
+
 			// Set dependencies (depends on previous pipeline stage)
 			if stageIndex > 0 {
 				// Depend on all partitions from previous stage
 				for k := 0; k < len(stageNodes); k++ {
-					partition.Dependencies = append(partition.Dependencies, 
-						fmt.Sprintf("partition_%d_hybrid_%d_%d", task.ID, stageIndex-1, k))
+					partition.Dependencies = append(partition.Dependencies,
+						fmt.Sprintf("partition_%s_hybrid_%d_%d", task.ID, stageIndex-1, k))
 				}
 			}
-			
+
 			partitions = append(partitions, partition)
 		}
-		
+
 		stageIndex++
 	}
-	
+
 	// Create plan
 	plan := &PartitionPlan{
-		ID:           fmt.Sprintf("plan_%s", task.ID),
-		Strategy:     hps.GetName(),
-		Partitions:   partitions,
-		Metadata:     make(map[string]interface{}),
-		CreatedAt:    time.Now(),
-		EstimatedLatency: time.Duration(layerCount*task.Options.NumCtx*2) * time.Millisecond / time.Duration(nodeCount),
+		ID:                  fmt.Sprintf("plan_%s", task.ID),
+		Strategy:            hps.GetName(),
+		Partitions:          partitions,
+		Metadata:            make(map[string]interface{}),
+		CreatedAt:           time.Now(),
+		EstimatedLatency:    time.Duration(layerCount*task.Options.NumCtx*2) * time.Millisecond / time.Duration(nodeCount),
 		EstimatedThroughput: float64(nodeCount), // Placeholder
-		OptimizationScore: 0.9,                 // High score for hybrid approach
+		OptimizationScore:   0.9,                // High score for hybrid approach
 	}
-	
+
 	// Update metrics
 	hps.metrics.TotalPartitions += int64(len(partitions))
 	hps.metrics.SuccessfulPartitions += int64(len(partitions))
 	hps.metrics.LastUsed = time.Now()
-	hps.metrics.AverageLatency = (hps.metrics.AverageLatency*time.Duration(hps.metrics.SuccessfulPartitions-1) + 
+	hps.metrics.AverageLatency = (hps.metrics.AverageLatency*time.Duration(hps.metrics.SuccessfulPartitions-1) +
 		time.Since(start)) / time.Duration(hps.metrics.SuccessfulPartitions)
-	
+
 	return plan, nil
 }
 
@@ -973,9 +973,9 @@ func NewAdaptivePartitioningStrategy() *AdaptivePartitioningStrategy {
 			LastUsed: time.Now(),
 		},
 		thresholds: map[string]float64{
-			"large_model":     5.0 * 1024 * 1024 * 1024, // 5GB
-			"large_context":   2048,
-			"many_layers":     20,
+			"large_model":      5.0 * 1024 * 1024 * 1024, // 5GB
+			"large_context":    2048,
+			"many_layers":      20,
 			"high_parallelism": 0.8,
 		},
 		learning: true,
@@ -1003,18 +1003,18 @@ func (aps *AdaptivePartitioningStrategy) CanHandle(task *PartitionTask) bool {
 // Partition implements adaptive partitioning based on workload analysis
 func (aps *AdaptivePartitioningStrategy) Partition(ctx context.Context, task *PartitionTask) (*PartitionPlan, error) {
 	start := time.Now()
-	
+
 	// Analyze workload characteristics
 	modelSize := aps.estimateModelSize(task)
 	contextLength := task.Options.NumCtx
 	layerCount := aps.estimateLayerCount(task)
 	parallelizability := aps.estimateParallelizability(task)
 	nodeCount := len(task.Nodes)
-	
+
 	// Select the best strategy based on workload analysis
 	var plan *PartitionPlan
 	var err error
-	
+
 	// For very large models, use pipeline parallelism
 	if modelSize > aps.thresholds["large_model"] && layerCount > int(aps.thresholds["many_layers"]) {
 		strategy := NewPipelineParallelismStrategy()
@@ -1036,19 +1036,19 @@ func (aps *AdaptivePartitioningStrategy) Partition(ctx context.Context, task *Pa
 		strategy := NewLayerwiseStrategy()
 		plan, err = strategy.Partition(ctx, task)
 	}
-	
+
 	if err != nil {
 		aps.metrics.FailedPartitions++
 		return nil, fmt.Errorf("failed to partition task: %w", err)
 	}
-	
+
 	// Update metrics
 	aps.metrics.TotalPartitions += int64(len(plan.Partitions))
 	aps.metrics.SuccessfulPartitions += int64(len(plan.Partitions))
 	aps.metrics.LastUsed = time.Now()
-	aps.metrics.AverageLatency = (aps.metrics.AverageLatency*time.Duration(aps.metrics.SuccessfulPartitions-1) + 
+	aps.metrics.AverageLatency = (aps.metrics.AverageLatency*time.Duration(aps.metrics.SuccessfulPartitions-1) +
 		time.Since(start)) / time.Duration(aps.metrics.SuccessfulPartitions)
-	
+
 	return plan, nil
 }
 
@@ -1079,13 +1079,13 @@ func (aps *AdaptivePartitioningStrategy) estimateParallelizability(task *Partiti
 	// 1. Model architecture (transformers are more parallelizable)
 	// 2. Context length (longer contexts are more parallelizable)
 	// 3. Batch size (larger batches are more parallelizable)
-	
+
 	contextLength := float64(task.Options.NumCtx)
 	batchSize := float64(1) // Default batch size
-	
+
 	// Base parallelizability on context length and batch size
 	parallelizability := math.Min((contextLength/2048.0)*(batchSize/4.0), 1.0)
-	
+
 	// Adjust based on model type
 	if task.Model != nil {
 		// Check if model is a transformer (more parallelizable)
@@ -1093,7 +1093,6 @@ func (aps *AdaptivePartitioningStrategy) estimateParallelizability(task *Partiti
 			parallelizability *= 1.2
 		}
 	}
-	
+
 	return math.Min(parallelizability, 1.0)
 }
-

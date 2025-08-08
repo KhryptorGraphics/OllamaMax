@@ -18,22 +18,22 @@ import (
 // Manager handles all authentication operations
 type Manager struct {
 	config *config.AuthConfig
-	
+
 	// JWT signing key
 	signingKey []byte
-	
+
 	// In-memory stores (in production, these would be backed by persistent storage)
 	users          map[string]*User
 	apiKeys        map[string]*APIKey
 	sessions       map[string]*Session
 	blacklistCache map[string]time.Time
-	
+
 	// Password hasher
 	bcryptCost int
-	
+
 	// Mutex for thread safety
 	mu sync.RWMutex
-	
+
 	// Background cleanup
 	stopCleanup chan struct{}
 }
@@ -43,7 +43,7 @@ func NewManager(cfg *config.AuthConfig) (*Manager, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("auth config is required")
 	}
-	
+
 	// Generate or use provided signing key
 	signingKey := []byte(cfg.SecretKey)
 	if len(signingKey) == 0 {
@@ -53,7 +53,7 @@ func NewManager(cfg *config.AuthConfig) (*Manager, error) {
 			return nil, fmt.Errorf("failed to generate signing key: %w", err)
 		}
 	}
-	
+
 	manager := &Manager{
 		config:         cfg,
 		signingKey:     signingKey,
@@ -64,16 +64,16 @@ func NewManager(cfg *config.AuthConfig) (*Manager, error) {
 		bcryptCost:     bcrypt.DefaultCost,
 		stopCleanup:    make(chan struct{}),
 	}
-	
+
 	// Create default admin user if none exists
 	if err := manager.createDefaultAdmin(); err != nil {
 		return nil, fmt.Errorf("failed to create default admin: %w", err)
 	}
-	
+
 	// Start background cleanup routines
 	go manager.cleanupExpiredSessions()
 	go manager.cleanupBlacklist()
-	
+
 	return manager, nil
 }
 
@@ -86,12 +86,12 @@ func (m *Manager) Close() {
 func (m *Manager) createDefaultAdmin() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	// Check if any users exist
 	if len(m.users) > 0 {
 		return nil
 	}
-	
+
 	// Create default admin user - get password from environment
 	defaultPassword := os.Getenv("ADMIN_DEFAULT_PASSWORD")
 	if defaultPassword == "" {
@@ -102,12 +102,12 @@ func (m *Manager) createDefaultAdmin() error {
 		}
 		defaultPassword = hex.EncodeToString(randomBytes)
 	}
-	
+
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(defaultPassword), m.bcryptCost)
 	if err != nil {
 		return fmt.Errorf("failed to hash default password: %w", err)
 	}
-	
+
 	adminUser := &User{
 		ID:          generateID(),
 		Username:    "admin",
@@ -122,15 +122,15 @@ func (m *Manager) createDefaultAdmin() error {
 		UpdatedAt: time.Now(),
 		Active:    true,
 	}
-	
+
 	m.users[adminUser.ID] = adminUser
-	
+
 	fmt.Printf("Created default admin user (username: admin)\n")
 	if os.Getenv("ADMIN_DEFAULT_PASSWORD") == "" {
 		fmt.Printf("Generated random admin password: %s\n", defaultPassword)
 	}
 	fmt.Printf("WARNING: Please change the default password immediately!\n")
-	
+
 	return nil
 }
 
@@ -138,7 +138,7 @@ func (m *Manager) createDefaultAdmin() error {
 func (m *Manager) Authenticate(username, password string, metadata map[string]string) (*AuthContext, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	// Find user by username
 	var user *User
 	for _, u := range m.users {
@@ -147,22 +147,22 @@ func (m *Manager) Authenticate(username, password string, metadata map[string]st
 			break
 		}
 	}
-	
+
 	if user == nil {
 		return nil, ErrInvalidCredentials
 	}
-	
+
 	// Verify password
 	passwordHash := user.Metadata["password_hash"]
 	if err := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(password)); err != nil {
 		return nil, ErrInvalidCredentials
 	}
-	
+
 	// Update last login
 	now := time.Now()
 	user.LastLoginAt = &now
 	user.UpdatedAt = now
-	
+
 	// Create session
 	session := &Session{
 		ID:        generateID(),
@@ -174,9 +174,9 @@ func (m *Manager) Authenticate(username, password string, metadata map[string]st
 		ExpiresAt: now.Add(m.config.TokenExpiry),
 		Active:    true,
 	}
-	
+
 	m.sessions[session.ID] = session
-	
+
 	// Generate JWT token
 	claims := &Claims{
 		UserID:      user.ID,
@@ -196,15 +196,15 @@ func (m *Manager) Authenticate(username, password string, metadata map[string]st
 			Audience:  []string{m.config.Audience},
 		},
 	}
-	
+
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenString, err := token.SignedString(m.signingKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign token: %w", err)
 	}
-	
+
 	session.TokenID = claims.ID
-	
+
 	return &AuthContext{
 		User:        user,
 		Session:     session,
@@ -222,30 +222,30 @@ func (m *Manager) ValidateToken(tokenString string) (*AuthContext, error) {
 		}
 		return m.signingKey, nil
 	})
-	
+
 	if err != nil {
 		return nil, ErrTokenInvalid
 	}
-	
+
 	claims, ok := token.Claims.(*Claims)
 	if !ok || !token.Valid {
 		return nil, ErrTokenInvalid
 	}
-	
+
 	// Check if token is blacklisted
 	if m.isTokenBlacklisted(claims.ID) {
 		return nil, ErrTokenBlacklisted
 	}
-	
+
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	// Get user
 	user, exists := m.users[claims.UserID]
 	if !exists || !user.Active {
 		return nil, ErrUserNotFound
 	}
-	
+
 	// Get session if available
 	var session *Session
 	if claims.SessionID != "" {
@@ -256,7 +256,7 @@ func (m *Manager) ValidateToken(tokenString string) (*AuthContext, error) {
 			session = s
 		}
 	}
-	
+
 	return &AuthContext{
 		User:        user,
 		Session:     session,
@@ -269,10 +269,10 @@ func (m *Manager) ValidateToken(tokenString string) (*AuthContext, error) {
 // ValidateAPIKey validates an API key and returns the auth context
 func (m *Manager) ValidateAPIKey(key string) (*AuthContext, error) {
 	keyHash := hashAPIKey(key)
-	
+
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	// Find API key
 	var apiKey *APIKey
 	for _, ak := range m.apiKeys {
@@ -281,26 +281,26 @@ func (m *Manager) ValidateAPIKey(key string) (*AuthContext, error) {
 			break
 		}
 	}
-	
+
 	if apiKey == nil {
 		return nil, ErrAPIKeyNotFound
 	}
-	
+
 	// Check expiration
 	if apiKey.ExpiresAt != nil && time.Now().After(*apiKey.ExpiresAt) {
 		return nil, ErrAPIKeyExpired
 	}
-	
+
 	// Get user
 	user, exists := m.users[apiKey.UserID]
 	if !exists || !user.Active {
 		return nil, ErrUserNotFound
 	}
-	
+
 	// Update last used
 	now := time.Now()
 	apiKey.LastUsedAt = &now
-	
+
 	return &AuthContext{
 		User:   user,
 		APIKey: apiKey,
@@ -312,20 +312,20 @@ func (m *Manager) ValidateAPIKey(key string) (*AuthContext, error) {
 func (m *Manager) CreateUser(req *CreateUserRequest) (*User, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	// Check if username already exists
 	for _, u := range m.users {
 		if u.Username == req.Username {
 			return nil, fmt.Errorf("username already exists")
 		}
 	}
-	
+
 	// Hash password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), m.bcryptCost)
 	if err != nil {
 		return nil, fmt.Errorf("failed to hash password: %w", err)
 	}
-	
+
 	// Set permissions based on role if not provided
 	permissions := req.Permissions
 	if len(permissions) == 0 {
@@ -333,7 +333,7 @@ func (m *Manager) CreateUser(req *CreateUserRequest) (*User, error) {
 			permissions = rolePerms
 		}
 	}
-	
+
 	// Create user
 	user := &User{
 		ID:          generateID(),
@@ -348,38 +348,120 @@ func (m *Manager) CreateUser(req *CreateUserRequest) (*User, error) {
 		UpdatedAt: time.Now(),
 		Active:    true,
 	}
-	
+
 	// Add custom metadata
 	for k, v := range req.Metadata {
 		user.Metadata[k] = v
 	}
-	
+
 	m.users[user.ID] = user
-	
+
 	return user, nil
+}
+
+// GetUser retrieves a user by ID
+func (m *Manager) GetUser(userID string) (*User, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	user, exists := m.users[userID]
+	if !exists {
+		return nil, ErrUserNotFound
+	}
+
+	return user, nil
+}
+
+// UpdateUser updates an existing user
+func (m *Manager) UpdateUser(user *User) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	existingUser, exists := m.users[user.ID]
+	if !exists {
+		return ErrUserNotFound
+	}
+
+	// Preserve creation time
+	user.CreatedAt = existingUser.CreatedAt
+	user.UpdatedAt = time.Now()
+
+	m.users[user.ID] = user
+	return nil
+}
+
+// AuthenticateUser creates an authentication context for a user
+func (m *Manager) AuthenticateUser(user *User) (*AuthContext, error) {
+	// Generate JWT token
+	claims := &Claims{
+		UserID:      user.ID,
+		Username:    user.Username,
+		Email:       user.Email,
+		Role:        user.Role,
+		Permissions: user.Permissions,
+		Metadata:    user.Metadata,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			NotBefore: jwt.NewNumericDate(time.Now()),
+			ID:        generateTokenID(),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString(m.signingKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to sign token: %w", err)
+	}
+
+	// Create session
+	session := &Session{
+		ID:        generateSessionID(),
+		UserID:    user.ID,
+		TokenID:   claims.ID,
+		CreatedAt: time.Now(),
+		ExpiresAt: claims.ExpiresAt.Time,
+		Active:    true,
+	}
+
+	m.mu.Lock()
+	m.sessions[session.ID] = session
+	m.mu.Unlock()
+
+	// Update last login time
+	now := time.Now()
+	user.LastLoginAt = &now
+
+	return &AuthContext{
+		User:        user,
+		Session:     session,
+		Claims:      claims,
+		TokenString: tokenString,
+		Method:      AuthMethodJWT,
+	}, nil
 }
 
 // CreateAPIKey creates a new API key for a user
 func (m *Manager) CreateAPIKey(userID string, req *CreateAPIKeyRequest) (*APIKey, string, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	// Check if user exists
 	user, exists := m.users[userID]
 	if !exists || !user.Active {
 		return nil, "", ErrUserNotFound
 	}
-	
+
 	// Generate API key
 	rawKey := generateAPIKey()
 	keyHash := hashAPIKey(rawKey)
-	
+
 	// Set permissions
 	permissions := req.Permissions
 	if len(permissions) == 0 {
 		permissions = user.Permissions
 	}
-	
+
 	apiKey := &APIKey{
 		ID:          generateID(),
 		Name:        req.Name,
@@ -391,13 +473,13 @@ func (m *Manager) CreateAPIKey(userID string, req *CreateAPIKeyRequest) (*APIKey
 		CreatedAt:   time.Now(),
 		Active:      true,
 	}
-	
+
 	if apiKey.Metadata == nil {
 		apiKey.Metadata = make(map[string]string)
 	}
-	
+
 	m.apiKeys[apiKey.ID] = apiKey
-	
+
 	return apiKey, rawKey, nil
 }
 
@@ -405,7 +487,7 @@ func (m *Manager) CreateAPIKey(userID string, req *CreateAPIKeyRequest) (*APIKey
 func (m *Manager) RevokeToken(tokenID string, expiry time.Time) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	m.blacklistCache[tokenID] = expiry
 }
 
@@ -413,19 +495,19 @@ func (m *Manager) RevokeToken(tokenID string, expiry time.Time) {
 func (m *Manager) RevokeSession(sessionID string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	session, exists := m.sessions[sessionID]
 	if !exists {
 		return ErrSessionNotFound
 	}
-	
+
 	session.Active = false
-	
+
 	// Also blacklist the associated token
 	if session.TokenID != "" {
 		m.blacklistCache[session.TokenID] = session.ExpiresAt
 	}
-	
+
 	return nil
 }
 
@@ -433,14 +515,14 @@ func (m *Manager) RevokeSession(sessionID string) error {
 func (m *Manager) RevokeAPIKey(keyID string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	apiKey, exists := m.apiKeys[keyID]
 	if !exists {
 		return ErrAPIKeyNotFound
 	}
-	
+
 	apiKey.Active = false
-	
+
 	return nil
 }
 
@@ -449,19 +531,19 @@ func (m *Manager) HasPermission(ctx *AuthContext, permission string) bool {
 	if ctx == nil || ctx.User == nil {
 		return false
 	}
-	
+
 	// Admin role has all permissions
 	if ctx.User.Role == RoleAdmin {
 		return true
 	}
-	
+
 	// Check user permissions
 	for _, perm := range ctx.User.Permissions {
 		if perm == permission || perm == PermissionSystemAdmin {
 			return true
 		}
 	}
-	
+
 	// Check API key permissions if using API key auth
 	if ctx.Method == AuthMethodAPIKey && ctx.APIKey != nil {
 		for _, perm := range ctx.APIKey.Permissions {
@@ -470,7 +552,7 @@ func (m *Manager) HasPermission(ctx *AuthContext, permission string) bool {
 			}
 		}
 	}
-	
+
 	return false
 }
 
@@ -478,18 +560,18 @@ func (m *Manager) HasPermission(ctx *AuthContext, permission string) bool {
 func (m *Manager) isTokenBlacklisted(tokenID string) bool {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	expiry, exists := m.blacklistCache[tokenID]
 	if !exists {
 		return false
 	}
-	
+
 	// Check if blacklist entry has expired
 	if time.Now().After(expiry) {
 		delete(m.blacklistCache, tokenID)
 		return false
 	}
-	
+
 	return true
 }
 
@@ -497,7 +579,7 @@ func (m *Manager) isTokenBlacklisted(tokenID string) bool {
 func (m *Manager) cleanupExpiredSessions() {
 	ticker := time.NewTicker(30 * time.Minute)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-ticker.C:
@@ -518,7 +600,7 @@ func (m *Manager) cleanupExpiredSessions() {
 func (m *Manager) cleanupBlacklist() {
 	ticker := time.NewTicker(time.Hour)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-ticker.C:
@@ -552,4 +634,16 @@ func generateAPIKey() string {
 func hashAPIKey(key string) string {
 	hash := sha256.Sum256([]byte(key))
 	return hex.EncodeToString(hash[:])
+}
+
+func generateTokenID() string {
+	bytes := make([]byte, 16)
+	rand.Read(bytes)
+	return hex.EncodeToString(bytes)
+}
+
+func generateSessionID() string {
+	bytes := make([]byte, 16)
+	rand.Read(bytes)
+	return "sess_" + hex.EncodeToString(bytes)
 }

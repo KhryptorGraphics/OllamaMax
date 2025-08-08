@@ -14,6 +14,8 @@ import (
 	"github.com/hashicorp/raft"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/internal/config"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p/messaging"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p/monitoring"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -63,16 +65,18 @@ func TestEngine_NewEngine(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create mock P2P node
 			mockP2P := createMockP2PNode(t)
-			
-			engine, err := NewEngine(tt.config, mockP2P)
-			
+			mockRouter := createMockMessageRouter(t)
+			mockMonitor := createMockNetworkMonitor(t)
+
+			engine, err := NewEngine(tt.config, mockP2P, mockRouter, mockMonitor)
+
 			if tt.expectError {
 				assert.Error(t, err)
 				assert.Nil(t, engine)
 			} else {
 				assert.NoError(t, err)
 				assert.NotNil(t, engine)
-				
+
 				// Clean up
 				if engine != nil {
 					ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -100,7 +104,9 @@ func TestEngine_StartShutdown(t *testing.T) {
 	}
 
 	mockP2P := createMockP2PNode(t)
-	engine, err := NewEngine(config, mockP2P)
+	mockRouter := createMockMessageRouter(t)
+	mockMonitor := createMockNetworkMonitor(t)
+	engine, err := NewEngine(config, mockP2P, mockRouter, mockMonitor)
 	require.NoError(t, err)
 	require.NotNil(t, engine)
 
@@ -119,7 +125,7 @@ func TestEngine_StartShutdown(t *testing.T) {
 	// Test shutdown
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	
+
 	err = engine.Shutdown(ctx)
 	assert.NoError(t, err)
 }
@@ -204,7 +210,9 @@ func TestEngine_NonLeaderOperations(t *testing.T) {
 	}
 
 	mockP2P := createMockP2PNode(t)
-	engine, err := NewEngine(config, mockP2P)
+	mockRouter := createMockMessageRouter(t)
+	mockMonitor := createMockNetworkMonitor(t)
+	engine, err := NewEngine(config, mockP2P, mockRouter, mockMonitor)
 	require.NoError(t, err)
 	require.NotNil(t, engine)
 	defer cleanupTestEngine(t, engine)
@@ -236,7 +244,7 @@ func TestEngine_LeadershipMonitoring(t *testing.T) {
 
 	// Monitor leadership changes
 	leadershipCh := engine.LeadershipChanges()
-	
+
 	var leadershipEvents []bool
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -404,7 +412,7 @@ func TestFSM_Apply(t *testing.T) {
 				fsm.state[tt.event.Key] = "initial-value"
 				fsm.stateMu.Unlock()
 			}
-			
+
 			// Create raft log
 			data, err := json.Marshal(tt.event)
 			require.NoError(t, err)
@@ -419,7 +427,7 @@ func TestFSM_Apply(t *testing.T) {
 				assert.Error(t, result.(error))
 			} else {
 				assert.Nil(t, result)
-				
+
 				// For set operations, verify state was updated
 				if tt.event.Type == "set" || tt.event.Type == "update" {
 					fsm.stateMu.RLock()
@@ -554,7 +562,7 @@ func TestEngine_ConcurrentOperations(t *testing.T) {
 func TestEngine_ErrorScenarios(t *testing.T) {
 	t.Run("corrupt data directory", func(t *testing.T) {
 		dataDir := t.TempDir()
-		
+
 		// Create a file where directory should be
 		corruptPath := filepath.Join(dataDir, "raft-log.db")
 		err := ioutil.WriteFile(corruptPath, []byte("corrupt"), 0644)
@@ -566,7 +574,9 @@ func TestEngine_ErrorScenarios(t *testing.T) {
 		}
 
 		mockP2P := createMockP2PNode(t)
-		_, err = NewEngine(config, mockP2P)
+		mockRouter := createMockMessageRouter(t)
+		mockMonitor := createMockNetworkMonitor(t)
+		_, err = NewEngine(config, mockP2P, mockRouter, mockMonitor)
 		assert.Error(t, err)
 	})
 
@@ -602,7 +612,9 @@ func setupTestEngine(t *testing.T) *Engine {
 	}
 
 	mockP2P := createMockP2PNode(t)
-	engine, err := NewEngine(config, mockP2P)
+	mockRouter := createMockMessageRouter(t)
+	mockMonitor := createMockNetworkMonitor(t)
+	engine, err := NewEngine(config, mockP2P, mockRouter, mockMonitor)
 	require.NoError(t, err)
 	require.NotNil(t, engine)
 
@@ -624,6 +636,16 @@ func createMockP2PNode(t *testing.T) *p2p.Node {
 	node, err := p2p.NewP2PNode(ctx, nil) // Use default config
 	require.NoError(t, err)
 	return node
+}
+
+func createMockMessageRouter(t *testing.T) *messaging.MessageRouter {
+	// Create a properly initialized message router for testing
+	return messaging.NewMessageRouter(nil) // Use default config
+}
+
+func createMockNetworkMonitor(t *testing.T) *monitoring.NetworkMonitor {
+	// Create a minimal mock network monitor for testing
+	return &monitoring.NetworkMonitor{}
 }
 
 // testSnapshotSink implements raft.SnapshotSink for testing
@@ -717,7 +739,9 @@ func setupBenchEngine(b *testing.B) *Engine {
 	}
 
 	mockP2P := createMockP2PNode(&testing.T{})
-	engine, err := NewEngine(config, mockP2P)
+	mockRouter := createMockMessageRouter(&testing.T{})
+	mockMonitor := createMockNetworkMonitor(&testing.T{})
+	engine, err := NewEngine(config, mockP2P, mockRouter, mockMonitor)
 	require.NoError(b, err)
 	require.NotNil(b, engine)
 
