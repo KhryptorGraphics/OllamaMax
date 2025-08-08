@@ -12,7 +12,7 @@ import {
   faTimes
 } from '@fortawesome/free-solid-svg-icons';
 
-const Sidebar = ({ activeTab, onTabChange, onClose }) => {
+const Sidebar = ({ activeTab, onTabChange, onClose, isOpen = true }) => {
   return (
     <div className={`sidebar ${isOpen ? 'show' : ''}`}>
       <div className="sidebar-content p-3">

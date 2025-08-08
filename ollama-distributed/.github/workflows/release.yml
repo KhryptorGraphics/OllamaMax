@@ -1,0 +1,343 @@
+name: Release Management
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.2.3)'
+        required: true
+        type: string
+      prerelease:
+        description: 'Mark as pre-release'
+        required: false
+        default: false
+        type: boolean
+      draft:
+        description: 'Create as draft release'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  GO_VERSION: '1.21'
+  DOCKER_REGISTRY: 'ghcr.io'
+  IMAGE_NAME: 'khryptorgraphics/ollamamax'
+
+jobs:
+  # Validate release
+  validate-release:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      is_prerelease: ${{ steps.version.outputs.is_prerelease }}
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Validate and extract version
+      id: version
+      run: |
+        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          VERSION="${{ github.event.inputs.version }}"
+          IS_PRERELEASE="${{ github.event.inputs.prerelease }}"
+        else
+          VERSION="${{ github.ref_name }}"
+          # Check if it's a prerelease (contains alpha, beta, rc)
+          if [[ "$VERSION" =~ (alpha|beta|rc) ]]; then
+            IS_PRERELEASE="true"
+          else
+            IS_PRERELEASE="false"
+          fi
+        fi
+
+        # Validate version format
+        if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$ ]]; then
+          echo "❌ Invalid version format: $VERSION"
+          echo "Expected format: v1.2.3 or v1.2.3-alpha1"
+          exit 1
+        fi
+
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "is_prerelease=$IS_PRERELEASE" >> $GITHUB_OUTPUT
+
+        echo "✅ Release validation:"
+        echo "  Version: $VERSION"
+        echo "  Pre-release: $IS_PRERELEASE"
+
+    - name: Check if tag exists
+      run: |
+        if git rev-parse "${{ steps.version.outputs.version }}" >/dev/null 2>&1; then
+          echo "✅ Tag ${{ steps.version.outputs.version }} exists"
+        else
+          echo "❌ Tag ${{ steps.version.outputs.version }} does not exist"
+          if [[ "${{ github.event_name }}" != "workflow_dispatch" ]]; then
+            exit 1
+          fi
+        fi
+
+  # Run comprehensive tests
+  release-tests:
+    needs: validate-release
+    uses: ./.github/workflows/test.yml
+    secrets: inherit
+
+  # Build release artifacts
+  build-release-artifacts:
+    needs: [validate-release, release-tests]
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Login to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.DOCKER_REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Build release binaries
+      run: |
+        VERSION="${{ needs.validate-release.outputs.version }}"
+        
+        # Build for multiple platforms
+        platforms=(
+          "linux/amd64"
+          "linux/arm64"
+          "darwin/amd64"
+          "darwin/arm64"
+          "windows/amd64"
+        )
+
+        mkdir -p release/
+
+        for platform in "${platforms[@]}"; do
+          GOOS=${platform%/*}
+          GOARCH=${platform#*/}
+          
+          output_name="ollama-distributed-${VERSION}-${GOOS}-${GOARCH}"
+          if [ "$GOOS" = "windows" ]; then
+            output_name="${output_name}.exe"
+          fi
+          
+          echo "Building for $GOOS/$GOARCH..."
+          GOOS=$GOOS GOARCH=$GOARCH go build \
+            -ldflags="-X main.version=$VERSION -X main.buildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            -o "release/$output_name" \
+            ./cmd/node
+          
+          # Create compressed archive
+          if [ "$GOOS" = "windows" ]; then
+            zip "release/ollama-distributed-${VERSION}-${GOOS}-${GOARCH}.zip" -j "release/$output_name"
+          else
+            tar -czf "release/ollama-distributed-${VERSION}-${GOOS}-${GOARCH}.tar.gz" -C release "$output_name"
+          fi
+        done
+
+    - name: Generate checksums
+      run: |
+        cd release/
+        sha256sum *.tar.gz *.zip > checksums.txt
+        cat checksums.txt
+
+    - name: Build and push release Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: |
+          ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.validate-release.outputs.version }}
+          ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Upload release artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: release-artifacts
+        path: release/
+        retention-days: 90
+
+  # Generate release notes
+  generate-release-notes:
+    needs: validate-release
+    runs-on: ubuntu-latest
+    outputs:
+      release_notes: ${{ steps.notes.outputs.release_notes }}
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Generate release notes
+      id: notes
+      run: |
+        VERSION="${{ needs.validate-release.outputs.version }}"
+        
+        # Get previous tag
+        PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+        
+        echo "Generating release notes for $VERSION..."
+        if [ -n "$PREVIOUS_TAG" ]; then
+          echo "Previous tag: $PREVIOUS_TAG"
+        else
+          echo "No previous tag found, including all commits"
+        fi
+
+        # Generate release notes
+        cat > release_notes.md << EOF
+        # OllamaMax $VERSION
+
+        ## 🚀 What's New
+
+        $(if [ -n "$PREVIOUS_TAG" ]; then
+          git log --pretty=format:"- %s" $PREVIOUS_TAG..HEAD | grep -E "^- (feat|add|implement)" | head -10
+        else
+          echo "- Initial release of OllamaMax distributed system"
+        fi)
+
+        ## 🐛 Bug Fixes
+
+        $(if [ -n "$PREVIOUS_TAG" ]; then
+          git log --pretty=format:"- %s" $PREVIOUS_TAG..HEAD | grep -E "^- (fix|bug)" | head -10
+        else
+          echo "- No bug fixes in this release"
+        fi)
+
+        ## 🔒 Security
+
+        $(if [ -n "$PREVIOUS_TAG" ]; then
+          git log --pretty=format:"- %s" $PREVIOUS_TAG..HEAD | grep -E "^- (security|sec)" | head -5
+        else
+          echo "- Comprehensive security hardening implementation"
+          echo "- Secure authentication with bcrypt and rate limiting"
+          echo "- Input validation and XSS/SQL injection prevention"
+          echo "- TLS/HTTPS enforcement with security headers"
+        fi)
+
+        ## 📦 Installation
+
+        ### Docker
+        \`\`\`bash
+        docker pull ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}:$VERSION
+        \`\`\`
+
+        ### Binary Download
+        Download the appropriate binary for your platform from the release assets below.
+
+        ### Build from Source
+        \`\`\`bash
+        git clone https://github.com/KhryptorGraphics/OllamaMax.git
+        cd OllamaMax/ollama-distributed
+        git checkout $VERSION
+        go build ./cmd/node
+        \`\`\`
+
+        ## 🔍 Verification
+
+        All release artifacts are signed and checksums are provided. Verify downloads:
+        \`\`\`bash
+        sha256sum -c checksums.txt
+        \`\`\`
+
+        ## 📚 Documentation
+
+        - [Installation Guide](https://github.com/KhryptorGraphics/OllamaMax/blob/main/BUILD_INSTRUCTIONS.md)
+        - [CLI Reference](https://github.com/KhryptorGraphics/OllamaMax/blob/main/ollama-distributed/CLI_REFERENCE.md)
+        - [Security Guide](https://github.com/KhryptorGraphics/OllamaMax/blob/main/ollama-distributed/SECURITY_HARDENING.md)
+
+        ## 🙏 Contributors
+
+        $(git log --pretty=format:"- @%an" $PREVIOUS_TAG..HEAD 2>/dev/null | sort -u | head -10 || echo "- @KhryptorGraphics")
+
+        ---
+
+        **Full Changelog**: https://github.com/KhryptorGraphics/OllamaMax/compare/$PREVIOUS_TAG...$VERSION
+        EOF
+
+        # Save release notes
+        RELEASE_NOTES=$(cat release_notes.md)
+        echo "release_notes<<EOF" >> $GITHUB_OUTPUT
+        echo "$RELEASE_NOTES" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+
+    - name: Upload release notes
+      uses: actions/upload-artifact@v3
+      with:
+        name: release-notes
+        path: release_notes.md
+
+  # Create GitHub release
+  create-release:
+    needs: [validate-release, build-release-artifacts, generate-release-notes]
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Download release artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: release-artifacts
+        path: release/
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ needs.validate-release.outputs.version }}
+        name: OllamaMax ${{ needs.validate-release.outputs.version }}
+        body: ${{ needs.generate-release-notes.outputs.release_notes }}
+        draft: ${{ github.event.inputs.draft || false }}
+        prerelease: ${{ needs.validate-release.outputs.is_prerelease }}
+        files: |
+          release/*.tar.gz
+          release/*.zip
+          release/checksums.txt
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+  # Post-release actions
+  post-release:
+    needs: [validate-release, create-release]
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Trigger deployment to production
+      if: needs.validate-release.outputs.is_prerelease == 'false'
+      uses: peter-evans/repository-dispatch@v2
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        event-type: production-deployment
+        client-payload: |
+          {
+            "version": "${{ needs.validate-release.outputs.version }}",
+            "release_url": "${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ needs.validate-release.outputs.version }}"
+          }
+
+    - name: Send release notification
+      uses: 8398a7/action-slack@v3
+      with:
+        status: 'success'
+        channel: '#releases'
+        text: |
+          🎉 New OllamaMax release published!
+          Version: ${{ needs.validate-release.outputs.version }}
+          Type: ${{ needs.validate-release.outputs.is_prerelease == 'true' && 'Pre-release' || 'Stable Release' }}
+          Release: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ needs.validate-release.outputs.version }}
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

@@ -1,0 +1,178 @@
+# Production Kustomization for OllamaMax
+# Optimized configuration for production deployment
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: ollama-production
+  annotations:
+    config.kubernetes.io/local-config: "true"
+
+# Base resources
+resources:
+  - ../base
+  - monitoring.yaml
+  - autoscaling.yaml
+  - security.yaml
+  - ingress.yaml
+  - storage.yaml
+
+# Production-specific patches
+patches:
+  # Resource optimization
+  - target:
+      kind: StatefulSet
+      name: ollama-distributed
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            cpu: "1"
+            memory: "2Gi"
+            ephemeral-storage: "10Gi"
+          limits:
+            cpu: "4"
+            memory: "8Gi"
+            ephemeral-storage: "50Gi"
+
+  # Production image tag
+  - target:
+      kind: StatefulSet
+      name: ollama-distributed
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/image
+        value: ghcr.io/khryptorgraphics/ollama-distributed:v1.0.0
+
+  # Production environment variables
+  - target:
+      kind: StatefulSet
+      name: ollama-distributed
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: GIN_MODE
+          value: "release"
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: OLLAMA_LOG_LEVEL
+          value: "info"
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: OLLAMA_PERFORMANCE_OPTIMIZATION
+          value: "true"
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: GOMAXPROCS
+          value: "4"
+
+  # Production storage configuration
+  - target:
+      kind: StatefulSet
+      name: ollama-distributed
+    patch: |-
+      - op: replace
+        path: /spec/volumeClaimTemplates/0/spec/resources/requests/storage
+        value: "500Gi"
+      - op: replace
+        path: /spec/volumeClaimTemplates/0/spec/storageClassName
+        value: "fast-ssd"
+
+  # Production replica count
+  - target:
+      kind: StatefulSet
+      name: ollama-distributed
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 5
+
+  # Production service configuration
+  - target:
+      kind: Service
+      name: ollama-loadbalancer
+    patch: |-
+      - op: add
+        path: /metadata/annotations
+        value:
+          service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+          service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+          service.beta.kubernetes.io/aws-load-balancer-backend-protocol: "tcp"
+
+# ConfigMap patches for production
+configMapGenerator:
+  - name: ollama-production-config
+    files:
+      - config.yaml=production-config.yaml
+    options:
+      disableNameSuffixHash: true
+
+# Secret generator for production
+secretGenerator:
+  - name: ollama-production-secrets
+    literals:
+      - jwt-secret=CHANGE_THIS_IN_PRODUCTION
+      - admin-password=CHANGE_THIS_IN_PRODUCTION
+      - monitoring-password=CHANGE_THIS_IN_PRODUCTION
+    options:
+      disableNameSuffixHash: true
+
+# Production-specific labels
+commonLabels:
+  environment: production
+  app.kubernetes.io/version: v1.0.0
+  app.kubernetes.io/managed-by: kustomize
+
+# Production annotations
+commonAnnotations:
+  deployment.kubernetes.io/revision: "1"
+  config.kubernetes.io/origin: |
+    path: deploy/kubernetes/production/kustomization.yaml
+  config.kubernetes.io/path: deploy/kubernetes/production/kustomization.yaml
+
+# Namespace for production
+namespace: ollama-production
+
+# Image transformations
+images:
+  - name: ghcr.io/khryptorgraphics/ollama-distributed
+    newTag: v1.0.0
+
+# Replica transformations
+replicas:
+  - name: ollama-distributed
+    count: 5
+
+# Resource transformations
+replacements:
+  - source:
+      kind: ConfigMap
+      name: ollama-production-config
+      fieldPath: data.config\.yaml
+    targets:
+      - select:
+          kind: StatefulSet
+          name: ollama-distributed
+        fieldPaths:
+          - spec.template.spec.volumes.[name=config].configMap.name
+
+  - source:
+      kind: Secret
+      name: ollama-production-secrets
+    targets:
+      - select:
+          kind: StatefulSet
+          name: ollama-distributed
+        fieldPaths:
+          - spec.template.spec.containers.[name=ollama-distributed].env.[name=JWT_SECRET].valueFrom.secretKeyRef.name
+
+# Production-specific generators
+generators:
+  - monitoring-config.yaml
+  - security-config.yaml

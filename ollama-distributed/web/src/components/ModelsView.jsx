@@ -1,14 +1,15 @@
 import React from 'react';
 import { Card, Badge, ProgressBar } from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { 
-  faBrain, 
-  faDownload, 
-  faPlay, 
+import {
+  faBrain,
+  faDownload,
+  faPlay,
   faTrash,
   faCheck,
   faSpinner,
-  faClock
+  faClock,
+  faPlus
 } from '@fortawesome/free-solid-svg-icons';
 
 const ModelsView = ({ models, onDownload, onDelete, autoDistribution, onToggleAutoDistribution }) => {

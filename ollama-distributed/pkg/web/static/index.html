@@ -1,0 +1,3433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ollama Distributed - Enhanced Control Panel</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --success-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            --warning-gradient: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            --danger-gradient: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+
+            --bg-light: #f8f9fa;
+            --bg-dark: #1a1a1a;
+            --card-light: #ffffff;
+            --card-dark: #2d2d2d;
+            --text-light: #333333;
+            --text-dark: #ffffff;
+            --border-light: #e9ecef;
+            --border-dark: #404040;
+
+            --shadow-light: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+            --shadow-medium: 0 0.5rem 1rem rgba(0,0,0,0.15);
+            --shadow-heavy: 0 1rem 3rem rgba(0,0,0,0.175);
+        }
+
+        [data-theme="light"] {
+            --bg-color: var(--bg-light);
+            --card-color: var(--card-light);
+            --text-color: var(--text-light);
+            --border-color: var(--border-light);
+        }
+
+        [data-theme="dark"] {
+            --bg-color: var(--bg-dark);
+            --card-color: var(--card-dark);
+            --text-color: var(--text-dark);
+            --border-color: var(--border-dark);
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: all 0.3s ease;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        .sidebar {
+            min-height: 100vh;
+            background: var(--primary-gradient);
+            color: white;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow-medium);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .sidebar::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="white" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.1"/><circle cx="50" cy="10" r="0.5" fill="white" opacity="0.05"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            pointer-events: none;
+        }
+
+        .main-content {
+            background-color: var(--bg-color);
+            min-height: 100vh;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .nav-link {
+            color: rgba(255,255,255,0.8) !important;
+            border-radius: 0.5rem;
+            margin: 0.25rem 0;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-link:hover, .nav-link.active {
+            background-color: rgba(255,255,255,0.1) !important;
+            color: white !important;
+            transform: translateX(5px);
+        }
+        
+        .card {
+            border: none;
+            border-radius: 1rem;
+            background-color: var(--card-color);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-light);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            transition: left 0.5s;
+        }
+
+        .card:hover {
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: var(--shadow-heavy);
+        }
+
+        .card:hover::before {
+            left: 100%;
+        }
+
+        .card-header {
+            background: transparent;
+            border-bottom: 1px solid var(--border-color);
+            padding: 1.25rem;
+            font-weight: 600;
+        }
+
+        .card-body {
+            padding: 1.25rem;
+        }
+        
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 1rem 1rem 0 0 !important;
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 0.5rem;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .status-online { background-color: #28a745; }
+        .status-offline { background-color: #dc3545; }
+        .status-draining { background-color: #ffc107; }
+        .status-maintenance { background-color: #6c757d; }
+        .status-ready { background-color: #17a2b8; }
+        .status-loading { background-color: #fd7e14; }
+        
+        .metric-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .metric-card:hover {
+            transform: scale(1.05);
+        }
+        
+        .progress-bar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s ease;
+        }
+        
+        .progress-bar-success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        }
+        
+        .progress-bar-warning {
+            background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
+        }
+        
+        .progress-bar-danger {
+            background: linear-gradient(135deg, #dc3545 0%, #e83e8c 100%);
+        }
+        
+        .table-container {
+            background: white;
+            border-radius: 1rem;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .websocket-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+        
+        .model-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .model-card {
+            background: white;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .model-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+        }
+        
+        .node-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .node-card {
+            background: white;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .node-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        
+        .transfer-progress {
+            background: #f8f9fa;
+            border-radius: 0.5rem;
+            height: 8px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+        
+        .transfer-progress-bar {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s ease;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-top: 1rem;
+        }
+
+        /* Security Dashboard Styles */
+        .audit-results, .encryption-status, .optimization-stats {
+            font-size: 0.9rem;
+        }
+
+        .audit-results .badge, .encryption-status .badge, .optimization-stats .badge {
+            font-size: 0.75rem;
+        }
+
+        /* Performance Dashboard Styles */
+        .optimization-history, .tuning-status {
+            font-size: 0.9rem;
+        }
+
+        .optimization-history .text-success, .tuning-status .badge {
+            font-weight: 500;
+        }
+
+        /* Enhanced metric cards */
+        .metric-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: none;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .metric-card.primary {
+            background: var(--primary-gradient);
+            color: white;
+        }
+
+        .metric-card.success {
+            background: var(--success-gradient);
+            color: white;
+        }
+
+        .metric-card.warning {
+            background: var(--warning-gradient);
+            color: white;
+        }
+
+        .metric-card.danger {
+            background: var(--danger-gradient);
+            color: white;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-6px) scale(1.05);
+            box-shadow: var(--shadow-heavy);
+        }
+
+        .metric-card .card-body {
+            position: relative;
+            z-index: 2;
+        }
+
+        .metric-card::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            transform: rotate(45deg);
+            transition: all 0.3s ease;
+        }
+
+        .metric-card:hover::after {
+            top: -30%;
+            right: -30%;
+        }
+
+        /* Loading and skeleton styles */
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        .skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+            border-radius: 4px;
+        }
+
+        .skeleton-text {
+            height: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .skeleton-title {
+            height: 1.5rem;
+            width: 60%;
+            margin-bottom: 1rem;
+        }
+
+        .skeleton-card {
+            height: 200px;
+            border-radius: 1rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* Theme toggle button */
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: var(--primary-gradient);
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow-medium);
+        }
+
+        .theme-toggle:hover {
+            transform: scale(1.1);
+            box-shadow: var(--shadow-heavy);
+        }
+
+        /* Enhanced animations */
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        .slide-up {
+            animation: slideUp 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Security status indicators */
+        .text-success { color: #28a745 !important; }
+        .text-warning { color: #ffc107 !important; }
+        .text-danger { color: #dc3545 !important; }
+        .text-info { color: #17a2b8 !important; }
+        .text-primary { color: #007bff !important; }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .alert-container {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 1001;
+            max-width: 400px;
+        }
+        
+        .alert {
+            margin-bottom: 0.5rem;
+            border-radius: 0.5rem;
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
+        }
+        
+        .auto-distribution-toggle {
+            background: white;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 1rem;
+        }
+        
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+        
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: 0.4s;
+            border-radius: 34px;
+        }
+        
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: 0.4s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .toggle-slider {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        input:checked + .toggle-slider:before {
+            transform: translateX(26px);
+        }
+        
+        .bandwidth-chart {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 1rem;
+            padding: 1rem;
+            color: white;
+            margin-top: 1rem;
+        }
+        
+        .bandwidth-indicator {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        
+        .bandwidth-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-left: 0.5rem;
+        }
+        
+        .copy-button {
+            background: none;
+            border: none;
+            color: #6c757d;
+            cursor: pointer;
+            padding: 0.25rem;
+            border-radius: 0.25rem;
+            transition: all 0.3s ease;
+        }
+        
+        .copy-button:hover {
+            background-color: #f8f9fa;
+            color: #495057;
+        }
+        
+        .mobile-toggle {
+            display: none;
+        }
+        
+        @media (max-width: 768px) {
+            .mobile-toggle {
+                display: block;
+                background: none;
+                border: none;
+                color: #667eea;
+                font-size: 1.5rem;
+                padding: 0.5rem;
+                margin-right: 1rem;
+            }
+            
+            .sidebar {
+                position: fixed;
+                top: 0;
+                left: -100%;
+                width: 280px;
+                height: 100vh;
+                z-index: 1000;
+                transition: left 0.3s ease;
+            }
+            
+            .sidebar.show {
+                left: 0;
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+            
+            .metrics-grid {
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            }
+            
+            .node-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .model-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <div id="alerts"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // Enhanced WebSocket connection with advanced features
+        const useWebSocket = (url) => {
+            const [socket, setSocket] = useState(null);
+            const [isConnected, setIsConnected] = useState(false);
+            const [lastMessage, setLastMessage] = useState(null);
+            const [reconnectAttempts, setReconnectAttempts] = useState(0);
+            const [connectionQuality, setConnectionQuality] = useState('unknown');
+            const [latency, setLatency] = useState(0);
+            const [isReconnecting, setIsReconnecting] = useState(false);
+            const [messageQueue, setMessageQueue] = useState([]);
+
+            const reconnectTimeout = useRef(null);
+            const pingInterval = useRef(null);
+            const lastPingTime = useRef(null);
+
+            const connect = () => {
+                setIsReconnecting(true);
+                const ws = new WebSocket(url);
+
+                ws.onopen = () => {
+                    setIsConnected(true);
+                    setSocket(ws);
+                    setReconnectAttempts(0);
+                    setIsReconnecting(false);
+                    setConnectionQuality('good');
+
+                    // Start ping/pong for latency monitoring
+                    pingInterval.current = setInterval(() => {
+                        if (ws.readyState === WebSocket.OPEN) {
+                            lastPingTime.current = Date.now();
+                            ws.send(JSON.stringify({ type: 'ping', timestamp: lastPingTime.current }));
+                        }
+                    }, 5000);
+
+                    // Send queued messages
+                    messageQueue.forEach(message => {
+                        ws.send(JSON.stringify(message));
+                    });
+                    setMessageQueue([]);
+
+                    showAlert('WebSocket connected', 'success');
+                };
+
+                ws.onmessage = (event) => {
+                    try {
+                        const message = JSON.parse(event.data);
+
+                        if (message.type === 'pong') {
+                            const currentLatency = Date.now() - message.timestamp;
+                            setLatency(currentLatency);
+
+                            // Update connection quality based on latency
+                            if (currentLatency < 100) {
+                                setConnectionQuality('excellent');
+                            } else if (currentLatency < 300) {
+                                setConnectionQuality('good');
+                            } else if (currentLatency < 1000) {
+                                setConnectionQuality('fair');
+                            } else {
+                                setConnectionQuality('poor');
+                            }
+                        } else {
+                            setLastMessage(message);
+
+                            // Handle specific message types
+                            if (message.type === 'alert') {
+                                showAlert(message.message, message.level || 'info');
+                            } else if (message.type === 'notification') {
+                                showNotification(message.title, message.body, message.icon);
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Failed to parse WebSocket message:', error);
+                    }
+                };
+
+                ws.onclose = (event) => {
+                    setIsConnected(false);
+                    setSocket(null);
+                    setIsReconnecting(false);
+                    clearInterval(pingInterval.current);
+
+                    console.log('WebSocket disconnected:', event.code, event.reason);
+
+                    // Auto-reconnect with exponential backoff
+                    if (reconnectAttempts < 10) {
+                        const delay = Math.min(Math.pow(2, reconnectAttempts) * 1000, 30000);
+                        reconnectTimeout.current = setTimeout(() => {
+                            setReconnectAttempts(prev => prev + 1);
+                            connect();
+                        }, delay);
+                    } else {
+                        setConnectionQuality('failed');
+                        showAlert('WebSocket connection failed after multiple attempts', 'danger');
+                    }
+                };
+
+                ws.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                    setConnectionQuality('error');
+                    showAlert('WebSocket connection error', 'danger');
+                };
+            };
+
+            const sendMessage = (message) => {
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify(message));
+                } else {
+                    // Queue message for when connection is restored
+                    setMessageQueue(prev => [...prev, message]);
+                }
+            };
+
+            const forceReconnect = () => {
+                if (socket) {
+                    socket.close();
+                }
+                setReconnectAttempts(0);
+            };
+
+            useEffect(() => {
+                connect();
+
+                return () => {
+                    if (reconnectTimeout.current) {
+                        clearTimeout(reconnectTimeout.current);
+                    }
+                    if (pingInterval.current) {
+                        clearInterval(pingInterval.current);
+                    }
+                    if (socket) {
+                        socket.close();
+                    }
+                };
+            }, [url]);
+
+            return {
+                socket,
+                isConnected,
+                lastMessage,
+                reconnectAttempts,
+                connectionQuality,
+                latency,
+                isReconnecting,
+                sendMessage,
+                forceReconnect
+            };
+        };
+
+        // Notification system
+        const showNotification = (title, body, icon = '/favicon.ico') => {
+            if ('Notification' in window) {
+                if (Notification.permission === 'granted') {
+                    new Notification(title, { body, icon });
+                } else if (Notification.permission !== 'denied') {
+                    Notification.requestPermission().then(permission => {
+                        if (permission === 'granted') {
+                            new Notification(title, { body, icon });
+                        }
+                    });
+                }
+            }
+        };
+
+        // Performance optimization hooks
+        const useVirtualScrolling = (items, itemHeight = 50, containerHeight = 400) => {
+            const [scrollTop, setScrollTop] = useState(0);
+            const [visibleItems, setVisibleItems] = useState([]);
+
+            useEffect(() => {
+                const startIndex = Math.floor(scrollTop / itemHeight);
+                const endIndex = Math.min(
+                    startIndex + Math.ceil(containerHeight / itemHeight) + 1,
+                    items.length
+                );
+
+                setVisibleItems(
+                    items.slice(startIndex, endIndex).map((item, index) => ({
+                        ...item,
+                        index: startIndex + index,
+                        top: (startIndex + index) * itemHeight
+                    }))
+                );
+            }, [items, scrollTop, itemHeight, containerHeight]);
+
+            const handleScroll = (e) => {
+                setScrollTop(e.target.scrollTop);
+            };
+
+            return {
+                visibleItems,
+                totalHeight: items.length * itemHeight,
+                handleScroll
+            };
+        };
+
+        const useDebounce = (value, delay) => {
+            const [debouncedValue, setDebouncedValue] = useState(value);
+
+            useEffect(() => {
+                const handler = setTimeout(() => {
+                    setDebouncedValue(value);
+                }, delay);
+
+                return () => {
+                    clearTimeout(handler);
+                };
+            }, [value, delay]);
+
+            return debouncedValue;
+        };
+
+        const useMemoizedData = (data, dependencies = []) => {
+            return useMemo(() => data, dependencies);
+        };
+
+        // Enhanced API client with error handling and caching
+        const api = {
+            async get(endpoint) {
+                try {
+                    const response = await fetch(`/api/v1${endpoint}`);
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    return await response.json();
+                } catch (error) {
+                    showAlert(`API Error: ${error.message}`, 'danger');
+                    throw error;
+                }
+            },
+            
+            async post(endpoint, data) {
+                try {
+                    const response = await fetch(`/api/v1${endpoint}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(data),
+                    });
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    return await response.json();
+                } catch (error) {
+                    showAlert(`API Error: ${error.message}`, 'danger');
+                    throw error;
+                }
+            },
+            
+            async delete(endpoint) {
+                try {
+                    const response = await fetch(`/api/v1${endpoint}`, {
+                        method: 'DELETE',
+                    });
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    return await response.json();
+                } catch (error) {
+                    showAlert(`API Error: ${error.message}`, 'danger');
+                    throw error;
+                }
+            },
+
+            // Security API functions
+            async getSecurityStatus() {
+                return await this.get('/security/status');
+            },
+
+            async getSecurityThreats() {
+                return await this.get('/security/threats');
+            },
+
+            async getSecurityAlerts() {
+                return await this.get('/security/alerts');
+            },
+
+            async getSecurityAudit() {
+                return await this.get('/security/audit');
+            },
+
+            // Performance API functions
+            async getPerformanceMetrics() {
+                return await this.get('/performance/metrics');
+            },
+
+            async getPerformanceOptimizations() {
+                return await this.get('/performance/optimizations');
+            },
+
+            async getPerformanceBottlenecks() {
+                return await this.get('/performance/bottlenecks');
+            },
+
+            async getPerformanceReport() {
+                return await this.get('/performance/report');
+            }
+        };
+
+        // Alert system
+        const showAlert = (message, type = 'info') => {
+            const alertContainer = document.getElementById('alerts');
+            const alertId = `alert-${Date.now()}`;
+            
+            const alertElement = document.createElement('div');
+            alertElement.id = alertId;
+            alertElement.className = `alert alert-${type} alert-dismissible fade show`;
+            alertElement.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'danger' ? 'exclamation-triangle' : 'info-circle'} me-2"></i>
+                ${message}
+                <button type="button" class="btn-close" onclick="document.getElementById('${alertId}').remove()"></button>
+            `;
+            
+            alertContainer.appendChild(alertElement);
+            
+            // Auto-dismiss after 5 seconds
+            setTimeout(() => {
+                const alert = document.getElementById(alertId);
+                if (alert) {
+                    alert.remove();
+                }
+            }, 5000);
+        };
+
+        // Advanced analytics dashboard component
+        const AnalyticsDashboard = ({ data, title }) => {
+            const [selectedMetric, setSelectedMetric] = useState('cpu');
+            const [timeRange, setTimeRange] = useState('1h');
+            const [viewType, setViewType] = useState('overview');
+
+            const metrics = {
+                cpu: { label: 'CPU Usage', color: '#667eea', data: data.cpu || { labels: [], values: [] } },
+                memory: { label: 'Memory Usage', color: '#764ba2', data: data.memory || { labels: [], values: [] } },
+                network: { label: 'Network I/O', color: '#28a745', data: data.network || { labels: [], values: [] } },
+                disk: { label: 'Disk I/O', color: '#ffc107', data: data.disk || { labels: [], values: [] } }
+            };
+
+            return (
+                <div className="analytics-dashboard">
+                    <div className="d-flex justify-content-between align-items-center mb-4">
+                        <h4>{title}</h4>
+                        <div className="analytics-controls">
+                            <div className="btn-group btn-group-sm me-3">
+                                <button
+                                    className={`btn ${viewType === 'overview' ? 'btn-primary' : 'btn-outline-primary'}`}
+                                    onClick={() => setViewType('overview')}
+                                >
+                                    Overview
+                                </button>
+                                <button
+                                    className={`btn ${viewType === 'detailed' ? 'btn-primary' : 'btn-outline-primary'}`}
+                                    onClick={() => setViewType('detailed')}
+                                >
+                                    Detailed
+                                </button>
+                                <button
+                                    className={`btn ${viewType === 'comparison' ? 'btn-primary' : 'btn-outline-primary'}`}
+                                    onClick={() => setViewType('comparison')}
+                                >
+                                    Compare
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {viewType === 'overview' && (
+                        <div className="row">
+                            {Object.entries(metrics).map(([key, metric]) => (
+                                <div key={key} className="col-md-6 mb-4">
+                                    <div className="card">
+                                        <div className="card-header">
+                                            <h6 className="mb-0">{metric.label}</h6>
+                                        </div>
+                                        <div className="card-body">
+                                            <AdvancedMetricsChart
+                                                data={metric.data}
+                                                title={metric.label}
+                                                color={metric.color}
+                                                type="line"
+                                                showControls={false}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {viewType === 'detailed' && (
+                        <div className="row">
+                            <div className="col-md-3">
+                                <div className="list-group">
+                                    {Object.entries(metrics).map(([key, metric]) => (
+                                        <button
+                                            key={key}
+                                            className={`list-group-item list-group-item-action ${selectedMetric === key ? 'active' : ''}`}
+                                            onClick={() => setSelectedMetric(key)}
+                                        >
+                                            <i className="fas fa-chart-line me-2"></i>
+                                            {metric.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="col-md-9">
+                                <div className="card">
+                                    <div className="card-header">
+                                        <h5 className="mb-0">{metrics[selectedMetric].label} - Detailed Analysis</h5>
+                                    </div>
+                                    <div className="card-body">
+                                        <AdvancedMetricsChart
+                                            data={metrics[selectedMetric].data}
+                                            title={metrics[selectedMetric].label}
+                                            color={metrics[selectedMetric].color}
+                                            type="line"
+                                            showControls={true}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {viewType === 'comparison' && (
+                        <div className="card">
+                            <div className="card-header">
+                                <h5 className="mb-0">Metrics Comparison</h5>
+                            </div>
+                            <div className="card-body">
+                                <ComparisonChart data={metrics} />
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // Comparison chart component
+        const ComparisonChart = ({ data }) => {
+            const chartRef = useRef(null);
+            const chartInstance = useRef(null);
+
+            useEffect(() => {
+                if (chartRef.current) {
+                    const ctx = chartRef.current.getContext('2d');
+
+                    if (chartInstance.current) {
+                        chartInstance.current.destroy();
+                    }
+
+                    const datasets = Object.entries(data).map(([key, metric]) => ({
+                        label: metric.label,
+                        data: metric.data.values || [],
+                        borderColor: metric.color,
+                        backgroundColor: metric.color + '20',
+                        borderWidth: 2,
+                        fill: false,
+                        tension: 0.4
+                    }));
+
+                    chartInstance.current = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: data.cpu?.data?.labels || [],
+                            datasets: datasets
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    display: true,
+                                    position: 'top'
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    max: 100
+                                }
+                            }
+                        }
+                    });
+                }
+
+                return () => {
+                    if (chartInstance.current) {
+                        chartInstance.current.destroy();
+                    }
+                };
+            }, [data]);
+
+            return <canvas ref={chartRef} style={{height: '400px'}} />;
+        };
+
+        // Advanced metrics chart with multiple visualization types
+        const AdvancedMetricsChart = ({ data, title, color, type = 'line', showControls = true }) => {
+            const chartRef = useRef(null);
+            const chartInstance = useRef(null);
+            const [chartType, setChartType] = useState(type);
+            const [timeRange, setTimeRange] = useState('1h');
+            const [showTrend, setShowTrend] = useState(true);
+
+            const calculateTrend = (values) => {
+                if (values.length < 2) return [];
+
+                const n = values.length;
+                const sumX = (n * (n - 1)) / 2;
+                const sumY = values.reduce((a, b) => a + b, 0);
+                const sumXY = values.reduce((sum, y, x) => sum + x * y, 0);
+                const sumXX = (n * (n - 1) * (2 * n - 1)) / 6;
+
+                const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+                const intercept = (sumY - slope * sumX) / n;
+
+                return values.map((_, i) => slope * i + intercept);
+            };
+
+            useEffect(() => {
+                if (chartRef.current && data) {
+                    const ctx = chartRef.current.getContext('2d');
+
+                    if (chartInstance.current) {
+                        chartInstance.current.destroy();
+                    }
+
+                    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+                    gradient.addColorStop(0, color + '40');
+                    gradient.addColorStop(1, color + '10');
+
+                    const trendData = showTrend ? calculateTrend(data.values || []) : [];
+
+                    chartInstance.current = new Chart(ctx, {
+                        type: chartType,
+                        data: {
+                            labels: data.labels || [],
+                            datasets: [
+                                {
+                                    label: title,
+                                    data: data.values || [],
+                                    borderColor: color,
+                                    backgroundColor: chartType === 'line' ? gradient : color + '80',
+                                    borderWidth: 3,
+                                    fill: chartType === 'line',
+                                    tension: 0.4,
+                                    pointBackgroundColor: color,
+                                    pointBorderColor: '#fff',
+                                    pointBorderWidth: 2,
+                                    pointRadius: 4,
+                                    pointHoverRadius: 6
+                                },
+                                ...(showTrend && trendData.length > 0 ? [{
+                                    label: 'Trend',
+                                    data: trendData,
+                                    borderColor: '#ff6b6b',
+                                    backgroundColor: 'transparent',
+                                    borderWidth: 2,
+                                    borderDash: [5, 5],
+                                    fill: false,
+                                    pointRadius: 0
+                                }] : [])
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            interaction: {
+                                intersect: false,
+                                mode: 'index'
+                            },
+                            plugins: {
+                                legend: {
+                                    display: showTrend,
+                                    position: 'top',
+                                    labels: {
+                                        usePointStyle: true,
+                                        padding: 20
+                                    }
+                                },
+                                tooltip: {
+                                    backgroundColor: 'rgba(0,0,0,0.8)',
+                                    titleColor: '#fff',
+                                    bodyColor: '#fff',
+                                    borderColor: color,
+                                    borderWidth: 1,
+                                    cornerRadius: 8,
+                                    displayColors: false,
+                                    callbacks: {
+                                        label: function(context) {
+                                            return `${context.dataset.label}: ${context.parsed.y.toFixed(2)}%`;
+                                        }
+                                    }
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    grid: {
+                                        display: false
+                                    },
+                                    ticks: {
+                                        maxTicksLimit: 8
+                                    }
+                                },
+                                y: {
+                                    beginAtZero: true,
+                                    max: chartType === 'bar' ? undefined : 100,
+                                    grid: {
+                                        color: 'rgba(0,0,0,0.1)'
+                                    },
+                                    ticks: {
+                                        callback: function(value) {
+                                            return value + '%';
+                                        }
+                                    }
+                                }
+                            },
+                            animation: {
+                                duration: 1000,
+                                easing: 'easeInOutQuart'
+                            }
+                        }
+                    });
+                }
+
+                return () => {
+                    if (chartInstance.current) {
+                        chartInstance.current.destroy();
+                    }
+                };
+            }, [data, title, color, chartType, showTrend]);
+
+            return (
+                <div className="chart-container">
+                    {showControls && (
+                        <div className="chart-controls mb-3">
+                            <div className="btn-group btn-group-sm me-3">
+                                <button
+                                    className={`btn ${chartType === 'line' ? 'btn-primary' : 'btn-outline-primary'}`}
+                                    onClick={() => setChartType('line')}
+                                >
+                                    <i className="fas fa-chart-line"></i>
+                                </button>
+                                <button
+                                    className={`btn ${chartType === 'bar' ? 'btn-primary' : 'btn-outline-primary'}`}
+                                    onClick={() => setChartType('bar')}
+                                >
+                                    <i className="fas fa-chart-bar"></i>
+                                </button>
+                                <button
+                                    className={`btn ${chartType === 'doughnut' ? 'btn-primary' : 'btn-outline-primary'}`}
+                                    onClick={() => setChartType('doughnut')}
+                                >
+                                    <i className="fas fa-chart-pie"></i>
+                                </button>
+                            </div>
+                            <div className="btn-group btn-group-sm me-3">
+                                {['15m', '1h', '6h', '24h'].map(range => (
+                                    <button
+                                        key={range}
+                                        className={`btn ${timeRange === range ? 'btn-success' : 'btn-outline-success'}`}
+                                        onClick={() => setTimeRange(range)}
+                                    >
+                                        {range}
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="form-check form-switch">
+                                <input
+                                    className="form-check-input"
+                                    type="checkbox"
+                                    checked={showTrend}
+                                    onChange={(e) => setShowTrend(e.target.checked)}
+                                />
+                                <label className="form-check-label">Show Trend</label>
+                            </div>
+                        </div>
+                    )}
+                    <canvas ref={chartRef} />
+                </div>
+            );
+        };
+
+        // Real-time metrics chart (legacy compatibility)
+        const MetricsChart = ({ data, title, color }) => {
+            const chartRef = useRef(null);
+            const chartInstance = useRef(null);
+
+            useEffect(() => {
+                if (chartRef.current) {
+                    const ctx = chartRef.current.getContext('2d');
+                    
+                    // Destroy previous chart instance
+                    if (chartInstance.current) {
+                        chartInstance.current.destroy();
+                    }
+                    
+                    chartInstance.current = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: data.labels || [],
+                            datasets: [{
+                                label: title,
+                                data: data.values || [],
+                                borderColor: color,
+                                backgroundColor: color + '20',
+                                fill: true,
+                                tension: 0.4,
+                                pointRadius: 0,
+                                pointHoverRadius: 5,
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    display: false
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    display: false
+                                },
+                                y: {
+                                    beginAtZero: true,
+                                    max: 100,
+                                    ticks: {
+                                        callback: function(value) {
+                                            return value + '%';
+                                        }
+                                    }
+                                }
+                            },
+                            animation: {
+                                duration: 1000,
+                                easing: 'easeInOutQuart'
+                            }
+                        }
+                    });
+                }
+                
+                return () => {
+                    if (chartInstance.current) {
+                        chartInstance.current.destroy();
+                    }
+                };
+            }, [data, title, color]);
+
+            return <canvas ref={chartRef} />;
+        };
+
+        // Theme management
+        const useTheme = () => {
+            const [theme, setTheme] = useState(() => {
+                return localStorage.getItem('theme') || 'light';
+            });
+
+            useEffect(() => {
+                document.documentElement.setAttribute('data-theme', theme);
+                localStorage.setItem('theme', theme);
+            }, [theme]);
+
+            const toggleTheme = () => {
+                setTheme(prev => prev === 'light' ? 'dark' : 'light');
+            };
+
+            return { theme, toggleTheme };
+        };
+
+        // Loading component
+        const LoadingSpinner = ({ size = 'sm' }) => (
+            <div className={`loading-spinner ${size === 'lg' ? 'loading-spinner-lg' : ''}`}></div>
+        );
+
+        // Skeleton component
+        const SkeletonCard = () => (
+            <div className="card">
+                <div className="card-body">
+                    <div className="skeleton skeleton-title"></div>
+                    <div className="skeleton skeleton-text"></div>
+                    <div className="skeleton skeleton-text" style={{width: '80%'}}></div>
+                    <div className="skeleton skeleton-text" style={{width: '60%'}}></div>
+                </div>
+            </div>
+        );
+
+        // Enhanced metric card component
+        const MetricCard = ({ title, value, icon, type = 'primary', loading = false, trend = null }) => (
+            <div className={`card metric-card ${type} fade-in`}>
+                <div className="card-body text-center">
+                    {loading ? (
+                        <>
+                            <div className="skeleton skeleton-text mx-auto" style={{width: '60px', height: '60px', borderRadius: '50%'}}></div>
+                            <div className="skeleton skeleton-text mt-2"></div>
+                            <div className="skeleton skeleton-text" style={{width: '80%'}}></div>
+                        </>
+                    ) : (
+                        <>
+                            <i className={`${icon} fa-2x mb-2`}></i>
+                            <h3 className="mb-1">
+                                {value}
+                                {trend && (
+                                    <small className={`ms-2 ${trend > 0 ? 'text-success' : 'text-danger'}`}>
+                                        <i className={`fas fa-arrow-${trend > 0 ? 'up' : 'down'}`}></i>
+                                        {Math.abs(trend)}%
+                                    </small>
+                                )}
+                            </h3>
+                            <p className="mb-0">{title}</p>
+                        </>
+                    )}
+                </div>
+            </div>
+        );
+
+        // Main App Component
+        const App = () => {
+            const [activeTab, setActiveTab] = useState('dashboard');
+            const [clusterStatus, setClusterStatus] = useState({});
+            const [nodes, setNodes] = useState([]);
+            const [models, setModels] = useState([]);
+            const [transfers, setTransfers] = useState([]);
+            const [metrics, setMetrics] = useState({});
+            const [realTimeMetrics, setRealTimeMetrics] = useState({
+                cpu: { labels: [], values: [] },
+                memory: { labels: [], values: [] },
+                network: { labels: [], values: [] }
+            });
+            const [autoDistribution, setAutoDistribution] = useState(false);
+            const [sidebarOpen, setSidebarOpen] = useState(false);
+
+            // Security state
+            const [securityStatus, setSecurityStatus] = useState({
+                overallScore: 85,
+                compliance: 'CIS',
+                auditResults: {},
+                encryptionStatus: {}
+            });
+            const [threats, setThreats] = useState([]);
+            const [securityAlerts, setSecurityAlerts] = useState([]);
+
+            // Performance state
+            const [performanceMetrics, setPerformanceMetrics] = useState({
+                overallScore: 92,
+                cacheHitRatio: 85,
+                cpuUsage: 32,
+                memoryUsage: 68
+            });
+            const [optimizations, setOptimizations] = useState({
+                totalOptimizations: 15,
+                successfulOptimizations: 13,
+                recentOptimizations: []
+            });
+            const [bottlenecks, setBottlenecks] = useState([]);
+
+            // Theme management
+            const { theme, toggleTheme } = useTheme();
+
+            // Loading states
+            const [loading, setLoading] = useState({
+                dashboard: true,
+                security: true,
+                performance: true,
+                nodes: true,
+                models: true
+            });
+
+            const wsUrl = `ws://${window.location.host}/api/v1/ws`;
+            const {
+                socket,
+                isConnected,
+                lastMessage,
+                reconnectAttempts,
+                connectionQuality,
+                latency,
+                isReconnecting,
+                sendMessage,
+                forceReconnect
+            } = useWebSocket(wsUrl);
+
+            // Update real-time metrics
+            useEffect(() => {
+                if (lastMessage && lastMessage.type === 'metrics') {
+                    const timestamp = new Date().toLocaleTimeString();
+                    setRealTimeMetrics(prev => ({
+                        cpu: {
+                            labels: [...prev.cpu.labels.slice(-49), timestamp],
+                            values: [...prev.cpu.values.slice(-49), lastMessage.data.cpu || 0]
+                        },
+                        memory: {
+                            labels: [...prev.memory.labels.slice(-49), timestamp],
+                            values: [...prev.memory.values.slice(-49), lastMessage.data.memory || 0]
+                        },
+                        network: {
+                            labels: [...prev.network.labels.slice(-49), timestamp],
+                            values: [...prev.network.values.slice(-49), lastMessage.data.network || 0]
+                        }
+                    }));
+                }
+            }, [lastMessage]);
+
+            useEffect(() => {
+                fetchData();
+                fetchSecurityData();
+                fetchPerformanceData();
+
+                const interval = setInterval(() => {
+                    fetchData();
+                    fetchSecurityData();
+                    fetchPerformanceData();
+                }, 5000);
+
+                return () => clearInterval(interval);
+            }, []);
+
+            const fetchData = async () => {
+                try {
+                    setLoading(prev => ({ ...prev, dashboard: true, nodes: true, models: true }));
+
+                    const [statusRes, nodesRes, modelsRes, transfersRes, metricsRes] = await Promise.all([
+                        api.get('/cluster/status'),
+                        api.get('/nodes'),
+                        api.get('/models'),
+                        api.get('/transfers'),
+                        api.get('/metrics')
+                    ]);
+
+                    setClusterStatus(statusRes);
+                    setNodes(Object.values(nodesRes.nodes || {}));
+                    setModels(Object.values(modelsRes.models || {}));
+                    setTransfers(Object.values(transfersRes.transfers || {}));
+                    setMetrics(metricsRes);
+
+                    setLoading(prev => ({ ...prev, dashboard: false, nodes: false, models: false }));
+                } catch (error) {
+                    console.error('Failed to fetch data:', error);
+                    setLoading(prev => ({ ...prev, dashboard: false, nodes: false, models: false }));
+                }
+            };
+
+            // Fetch security data
+            const fetchSecurityData = async () => {
+                try {
+                    setLoading(prev => ({ ...prev, security: true }));
+
+                    const [statusRes, threatsRes, alertsRes] = await Promise.all([
+                        api.getSecurityStatus().catch(() => ({ overallScore: 85, compliance: 'CIS' })),
+                        api.getSecurityThreats().catch(() => []),
+                        api.getSecurityAlerts().catch(() => [])
+                    ]);
+
+                    setSecurityStatus(statusRes);
+                    setThreats(threatsRes);
+                    setSecurityAlerts(alertsRes);
+
+                    setLoading(prev => ({ ...prev, security: false }));
+                } catch (error) {
+                    console.error('Failed to fetch security data:', error);
+                    setLoading(prev => ({ ...prev, security: false }));
+                }
+            };
+
+            // Fetch performance data
+            const fetchPerformanceData = async () => {
+                try {
+                    setLoading(prev => ({ ...prev, performance: true }));
+
+                    const [metricsRes, optimizationsRes, bottlenecksRes] = await Promise.all([
+                        api.getPerformanceMetrics().catch(() => ({ overallScore: 92, cacheHitRatio: 85 })),
+                        api.getPerformanceOptimizations().catch(() => ({ totalOptimizations: 15 })),
+                        api.getPerformanceBottlenecks().catch(() => [])
+                    ]);
+
+                    setPerformanceMetrics(metricsRes);
+                    setOptimizations(optimizationsRes);
+                    setBottlenecks(bottlenecksRes);
+
+                    setLoading(prev => ({ ...prev, performance: false }));
+                } catch (error) {
+                    console.error('Failed to fetch performance data:', error);
+                    setLoading(prev => ({ ...prev, performance: false }));
+                }
+            };
+
+            const handleDownloadModel = async (modelName) => {
+                try {
+                    showAlert(`Downloading model: ${modelName}`, 'info');
+                    await api.post(`/models/${modelName}/download`, {});
+                    showAlert(`Successfully started download for ${modelName}`, 'success');
+                    fetchData();
+                } catch (error) {
+                    console.error('Failed to download model:', error);
+                }
+            };
+
+            const handleDeleteModel = async (modelName) => {
+                if (confirm(`Are you sure you want to delete model: ${modelName}?`)) {
+                    try {
+                        showAlert(`Deleting model: ${modelName}`, 'info');
+                        await api.delete(`/models/${modelName}`);
+                        showAlert(`Successfully deleted ${modelName}`, 'success');
+                        fetchData();
+                    } catch (error) {
+                        console.error('Failed to delete model:', error);
+                    }
+                }
+            };
+
+            const handleToggleAutoDistribution = async () => {
+                try {
+                    const newState = !autoDistribution;
+                    await api.post('/distribution/auto-configure', { enabled: newState });
+                    setAutoDistribution(newState);
+                    showAlert(`Auto-distribution ${newState ? 'enabled' : 'disabled'}`, 'success');
+                } catch (error) {
+                    console.error('Failed to toggle auto-distribution:', error);
+                }
+            };
+
+            const copyToClipboard = (text) => {
+                navigator.clipboard.writeText(text);
+                showAlert('Copied to clipboard', 'success');
+            };
+
+            return (
+                <div className="container-fluid">
+                    {/* Theme Toggle Button */}
+                    <button
+                        className="theme-toggle"
+                        onClick={toggleTheme}
+                        title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+                    >
+                        <i className={`fas fa-${theme === 'light' ? 'moon' : 'sun'}`}></i>
+                    </button>
+
+                    <div className="row">
+                        <button
+                            className="mobile-toggle d-md-none"
+                            onClick={() => setSidebarOpen(!sidebarOpen)}
+                        >
+                            <i className="fas fa-bars"></i>
+                        </button>
+                        
+                        <Sidebar 
+                            activeTab={activeTab} 
+                            onTabChange={setActiveTab}
+                            isOpen={sidebarOpen}
+                            onClose={() => setSidebarOpen(false)}
+                        />
+                        
+                        <div className="col-md-10 p-0">
+                            <div className="main-content p-4">
+                                <div className="alert-container" id="alerts"></div>
+                                
+                                <WebSocketStatus
+                                    isConnected={isConnected}
+                                    reconnectAttempts={reconnectAttempts}
+                                    connectionQuality={connectionQuality}
+                                    latency={latency}
+                                    isReconnecting={isReconnecting}
+                                    forceReconnect={forceReconnect}
+                                />
+                                
+                                {activeTab === 'dashboard' && (
+                                    <Dashboard 
+                                        clusterStatus={clusterStatus} 
+                                        nodes={nodes} 
+                                        metrics={metrics}
+                                        realTimeMetrics={realTimeMetrics}
+                                    />
+                                )}
+                                
+                                {activeTab === 'nodes' && (
+                                    <NodesView 
+                                        nodes={nodes} 
+                                        onCopy={copyToClipboard}
+                                    />
+                                )}
+                                
+                                {activeTab === 'models' && (
+                                    <ModelsView 
+                                        models={models} 
+                                        onDownload={handleDownloadModel}
+                                        onDelete={handleDeleteModel}
+                                        autoDistribution={autoDistribution}
+                                        onToggleAutoDistribution={handleToggleAutoDistribution}
+                                    />
+                                )}
+                                
+                                {activeTab === 'transfers' && (
+                                    <TransfersView transfers={transfers} />
+                                )}
+                                
+                                {activeTab === 'cluster' && (
+                                    <ClusterView 
+                                        clusterStatus={clusterStatus}
+                                        onCopy={copyToClipboard}
+                                    />
+                                )}
+                                
+                                {activeTab === 'analytics' && (
+                                    <AnalyticsView
+                                        metrics={metrics}
+                                        realTimeMetrics={realTimeMetrics}
+                                    />
+                                )}
+
+                                {activeTab === 'security' && (
+                                    <SecurityView
+                                        securityStatus={securityStatus}
+                                        threats={threats}
+                                        alerts={securityAlerts}
+                                    />
+                                )}
+
+                                {activeTab === 'performance' && (
+                                    <PerformanceView
+                                        performanceMetrics={performanceMetrics}
+                                        optimizations={optimizations}
+                                        bottlenecks={bottlenecks}
+                                    />
+                                )}
+
+                                {activeTab === 'automation' && (
+                                    <div className="fade-in">
+                                        <div className="row">
+                                            <div className="col-md-12 mb-4">
+                                                <AdvancedNodeManagement
+                                                    nodes={nodes}
+                                                    onNodeAction={async (nodeId, action) => {
+                                                        // Simulate node action
+                                                        await new Promise(resolve => setTimeout(resolve, 1000));
+                                                        console.log(`Executing ${action} on node ${nodeId}`);
+                                                    }}
+                                                />
+                                            </div>
+                                            <div className="col-md-12">
+                                                <SystemHealthMonitor
+                                                    nodes={nodes}
+                                                    metrics={metrics}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {activeTab === 'settings' && (
+                                    <div className="fade-in">
+                                        <div className="d-flex justify-content-between align-items-center mb-4">
+                                            <h2>Dashboard Settings</h2>
+                                            <button className="btn btn-success">
+                                                <i className="fas fa-save me-2"></i>Save Settings
+                                            </button>
+                                        </div>
+
+                                        <div className="row">
+                                            <div className="col-md-6">
+                                                <div className="card">
+                                                    <div className="card-header">
+                                                        <h5 className="mb-0">
+                                                            <i className="fas fa-palette me-2"></i>Appearance
+                                                        </h5>
+                                                    </div>
+                                                    <div className="card-body">
+                                                        <div className="mb-3">
+                                                            <label className="form-label">Theme</label>
+                                                            <select className="form-select">
+                                                                <option value="light">Light</option>
+                                                                <option value="dark">Dark</option>
+                                                                <option value="auto">Auto</option>
+                                                            </select>
+                                                        </div>
+                                                        <div className="mb-3">
+                                                            <label className="form-label">Refresh Interval</label>
+                                                            <select className="form-select">
+                                                                <option value="1000">1 second</option>
+                                                                <option value="5000" selected>5 seconds</option>
+                                                                <option value="10000">10 seconds</option>
+                                                                <option value="30000">30 seconds</option>
+                                                            </select>
+                                                        </div>
+                                                        <div className="form-check form-switch">
+                                                            <input className="form-check-input" type="checkbox" checked />
+                                                            <label className="form-check-label">Enable animations</label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="col-md-6">
+                                                <div className="card">
+                                                    <div className="card-header">
+                                                        <h5 className="mb-0">
+                                                            <i className="fas fa-bell me-2"></i>Notifications
+                                                        </h5>
+                                                    </div>
+                                                    <div className="card-body">
+                                                        <div className="form-check form-switch mb-3">
+                                                            <input className="form-check-input" type="checkbox" checked />
+                                                            <label className="form-check-label">Browser notifications</label>
+                                                        </div>
+                                                        <div className="form-check form-switch mb-3">
+                                                            <input className="form-check-input" type="checkbox" checked />
+                                                            <label className="form-check-label">Security alerts</label>
+                                                        </div>
+                                                        <div className="form-check form-switch mb-3">
+                                                            <input className="form-check-input" type="checkbox" checked />
+                                                            <label className="form-check-label">Performance warnings</label>
+                                                        </div>
+                                                        <div className="form-check form-switch">
+                                                            <input className="form-check-input" type="checkbox" />
+                                                            <label className="form-check-label">Node status changes</label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="row mt-4">
+                                            <div className="col-md-12">
+                                                <div className="card">
+                                                    <div className="card-header">
+                                                        <h5 className="mb-0">
+                                                            <i className="fas fa-download me-2"></i>Data Export
+                                                        </h5>
+                                                    </div>
+                                                    <div className="card-body">
+                                                        <p>Export dashboard data and configurations</p>
+                                                        <div className="btn-group">
+                                                            <button className="btn btn-outline-primary">
+                                                                <i className="fas fa-file-export me-2"></i>Export Settings
+                                                            </button>
+                                                            <button className="btn btn-outline-success">
+                                                                <i className="fas fa-database me-2"></i>Export Data
+                                                            </button>
+                                                            <button className="btn btn-outline-info">
+                                                                <i className="fas fa-file-import me-2"></i>Import Settings
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // Enhanced Sidebar Component
+        const Sidebar = ({ activeTab, onTabChange, isOpen, onClose }) => (
+            <div className={`col-md-2 p-0 ${isOpen ? 'sidebar show' : 'sidebar'}`}>
+                <div className="sidebar p-3">
+                    <div className="d-flex justify-content-between align-items-center mb-4">
+                        <h4 className="mb-0">
+                            <i className="fas fa-network-wired me-2"></i>
+                            Ollama Distributed
+                        </h4>
+                        <button 
+                            className="btn btn-sm btn-outline-light d-md-none"
+                            onClick={onClose}
+                        >
+                            <i className="fas fa-times"></i>
+                        </button>
+                    </div>
+                    
+                    <ul className="nav nav-pills flex-column">
+                        <li className="nav-item">
+                            <a 
+                                className={`nav-link ${activeTab === 'dashboard' ? 'active' : ''}`}
+                                href="#" 
+                                onClick={() => { onTabChange('dashboard'); onClose(); }}
+                            >
+                                <i className="fas fa-tachometer-alt me-2"></i>Dashboard
+                            </a>
+                        </li>
+                        <li className="nav-item">
+                            <a 
+                                className={`nav-link ${activeTab === 'nodes' ? 'active' : ''}`}
+                                href="#" 
+                                onClick={() => { onTabChange('nodes'); onClose(); }}
+                            >
+                                <i className="fas fa-server me-2"></i>Nodes
+                            </a>
+                        </li>
+                        <li className="nav-item">
+                            <a 
+                                className={`nav-link ${activeTab === 'models' ? 'active' : ''}`}
+                                href="#" 
+                                onClick={() => { onTabChange('models'); onClose(); }}
+                            >
+                                <i className="fas fa-brain me-2"></i>Models
+                            </a>
+                        </li>
+                        <li className="nav-item">
+                            <a 
+                                className={`nav-link ${activeTab === 'transfers' ? 'active' : ''}`}
+                                href="#" 
+                                onClick={() => { onTabChange('transfers'); onClose(); }}
+                            >
+                                <i className="fas fa-exchange-alt me-2"></i>Transfers
+                            </a>
+                        </li>
+                        <li className="nav-item">
+                            <a 
+                                className={`nav-link ${activeTab === 'cluster' ? 'active' : ''}`}
+                                href="#" 
+                                onClick={() => { onTabChange('cluster'); onClose(); }}
+                            >
+                                <i className="fas fa-sitemap me-2"></i>Cluster
+                            </a>
+                        </li>
+                        <li className="nav-item">
+                            <a
+                                className={`nav-link ${activeTab === 'analytics' ? 'active' : ''}`}
+                                href="#"
+                                onClick={() => { onTabChange('analytics'); onClose(); }}
+                            >
+                                <i className="fas fa-chart-line me-2"></i>Analytics
+                            </a>
+                        </li>
+                        <li className="nav-item">
+                            <a
+                                className={`nav-link ${activeTab === 'security' ? 'active' : ''}`}
+                                href="#"
+                                onClick={() => { onTabChange('security'); onClose(); }}
+                            >
+                                <i className="fas fa-shield-alt me-2"></i>Security
+                            </a>
+                        </li>
+                        <li className="nav-item">
+                            <a
+                                className={`nav-link ${activeTab === 'performance' ? 'active' : ''}`}
+                                href="#"
+                                onClick={() => { onTabChange('performance'); onClose(); }}
+                            >
+                                <i className="fas fa-tachometer-alt me-2"></i>Performance
+                            </a>
+                        </li>
+                        <li className="nav-item">
+                            <a
+                                className={`nav-link ${activeTab === 'automation' ? 'active' : ''}`}
+                                href="#"
+                                onClick={() => { onTabChange('automation'); onClose(); }}
+                            >
+                                <i className="fas fa-robot me-2"></i>Automation
+                            </a>
+                        </li>
+                        <li className="nav-item">
+                            <a
+                                className={`nav-link ${activeTab === 'settings' ? 'active' : ''}`}
+                                href="#"
+                                onClick={() => { onTabChange('settings'); onClose(); }}
+                            >
+                                <i className="fas fa-cog me-2"></i>Settings
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        );
+
+        // Advanced WebSocket Status Component
+        const WebSocketStatus = ({ isConnected, reconnectAttempts, connectionQuality, latency, isReconnecting, forceReconnect }) => {
+            const getQualityColor = (quality) => {
+                switch (quality) {
+                    case 'excellent': return 'success';
+                    case 'good': return 'primary';
+                    case 'fair': return 'warning';
+                    case 'poor': return 'danger';
+                    case 'error': case 'failed': return 'danger';
+                    default: return 'secondary';
+                }
+            };
+
+            const getQualityIcon = (quality) => {
+                switch (quality) {
+                    case 'excellent': return 'signal';
+                    case 'good': return 'wifi';
+                    case 'fair': return 'wifi';
+                    case 'poor': return 'wifi';
+                    case 'error': case 'failed': return 'wifi-slash';
+                    default: return 'question';
+                }
+            };
+
+            return (
+                <div className="websocket-status d-flex align-items-center gap-2">
+                    <div className="dropdown">
+                        <button
+                            className={`btn btn-sm btn-outline-${getQualityColor(connectionQuality)} dropdown-toggle`}
+                            data-bs-toggle="dropdown"
+                            disabled={isReconnecting}
+                        >
+                            {isReconnecting ? (
+                                <LoadingSpinner size="sm" />
+                            ) : (
+                                <i className={`fas fa-${getQualityIcon(connectionQuality)} me-1`}></i>
+                            )}
+                            {isConnected ? 'Connected' : `Disconnected`}
+                        </button>
+                        <div className="dropdown-menu">
+                            <div className="dropdown-header">Connection Status</div>
+                            <div className="dropdown-item-text">
+                                <small>
+                                    <strong>Status:</strong> {isConnected ? 'Connected' : 'Disconnected'}<br/>
+                                    <strong>Quality:</strong> {connectionQuality}<br/>
+                                    <strong>Latency:</strong> {latency}ms<br/>
+                                    <strong>Attempts:</strong> {reconnectAttempts}/10
+                                </small>
+                            </div>
+                            {!isConnected && (
+                                <>
+                                    <div className="dropdown-divider"></div>
+                                    <button
+                                        className="dropdown-item"
+                                        onClick={forceReconnect}
+                                        disabled={isReconnecting}
+                                    >
+                                        <i className="fas fa-redo me-2"></i>
+                                        Force Reconnect
+                                    </button>
+                                </>
+                            )}
+                        </div>
+                    </div>
+
+                    {isConnected && (
+                        <small className="text-muted">
+                            {latency}ms
+                        </small>
+                    )}
+                </div>
+            );
+        };
+
+        // Enhanced Dashboard Component
+        const Dashboard = ({ clusterStatus, nodes, metrics, realTimeMetrics }) => {
+            const onlineNodes = nodes.filter(node => node.status === 'online').length;
+            const offlineNodes = nodes.filter(node => node.status === 'offline').length;
+            const totalRequests = metrics.totalRequests || 0;
+            const avgLatency = metrics.avgLatency || 0;
+            
+            return (
+                <div>
+                    <div className="d-flex justify-content-between align-items-center mb-4">
+                        <h2>Enhanced Dashboard</h2>
+                        <div className="d-flex gap-2">
+                            <button className="btn btn-outline-primary btn-sm">
+                                <i className="fas fa-sync me-2"></i>Refresh
+                            </button>
+                            <button className="btn btn-outline-success btn-sm">
+                                <i className="fas fa-download me-2"></i>Export
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div className="metrics-grid">
+                        <MetricCard
+                            title="Total Nodes"
+                            value={nodes.length}
+                            icon="fas fa-server"
+                            type="primary"
+                            loading={loading.dashboard}
+                            trend={2.5}
+                        />
+                        <MetricCard
+                            title="Online Nodes"
+                            value={onlineNodes}
+                            icon="fas fa-check-circle"
+                            type="success"
+                            loading={loading.dashboard}
+                            trend={1.2}
+                        />
+                        <MetricCard
+                            title="Total Requests"
+                            value={totalRequests.toLocaleString()}
+                            icon="fas fa-bolt"
+                            type="warning"
+                            loading={loading.dashboard}
+                            trend={15.8}
+                        />
+                        <MetricCard
+                            title="Avg Latency"
+                            value={`${avgLatency}ms`}
+                            icon="fas fa-clock"
+                            type="danger"
+                            loading={loading.dashboard}
+                            trend={-3.2}
+                        />
+                    </div>
+                    
+                    {/* Real-time Charts */}
+                    <div className="row mt-4">
+                        <div className="col-md-4">
+                            <div className="card">
+                                <div className="card-header">
+                                    <h5 className="mb-0">
+                                        <i className="fas fa-microchip me-2"></i>CPU Usage
+                                    </h5>
+                                </div>
+                                <div className="card-body">
+                                    <div className="chart-container">
+                                        <MetricsChart 
+                                            data={realTimeMetrics.cpu}
+                                            title="CPU Usage"
+                                            color="#667eea"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="col-md-4">
+                            <div className="card">
+                                <div className="card-header">
+                                    <h5 className="mb-0">
+                                        <i className="fas fa-memory me-2"></i>Memory Usage
+                                    </h5>
+                                </div>
+                                <div className="card-body">
+                                    <div className="chart-container">
+                                        <MetricsChart 
+                                            data={realTimeMetrics.memory}
+                                            title="Memory Usage"
+                                            color="#764ba2"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="col-md-4">
+                            <div className="card">
+                                <div className="card-header">
+                                    <h5 className="mb-0">
+                                        <i className="fas fa-network-wired me-2"></i>Network I/O
+                                    </h5>
+                                </div>
+                                <div className="card-body">
+                                    <div className="chart-container">
+                                        <MetricsChart 
+                                            data={realTimeMetrics.network}
+                                            title="Network I/O"
+                                            color="#28a745"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div className="row mt-4">
+                        <div className="col-md-6">
+                            <div className="card">
+                                <div className="card-header">
+                                    <h5 className="mb-0">Cluster Status</h5>
+                                </div>
+                                <div className="card-body">
+                                    <div className="mb-3">
+                                        <strong>Node ID:</strong> 
+                                        <span className="ms-2 text-muted">{clusterStatus.node_id}</span>
+                                    </div>
+                                    <div className="mb-3">
+                                        <strong>Leader:</strong> 
+                                        <span className="ms-2">{clusterStatus.leader || 'Unknown'}</span>
+                                    </div>
+                                    <div className="mb-3">
+                                        <strong>Status:</strong> 
+                                        <span className={`badge ms-2 ${clusterStatus.status === 'healthy' ? 'bg-success' : 'bg-warning'}`}>
+                                            {clusterStatus.status}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="col-md-6">
+                            <div className="card">
+                                <div className="card-header">
+                                    <h5 className="mb-0">Node Overview</h5>
+                                </div>
+                                <div className="card-body">
+                                    <div className="row">
+                                        <div className="col-6">
+                                            <div className="text-center">
+                                                <div className="status-indicator status-online"></div>
+                                                Online: {onlineNodes}
+                                            </div>
+                                        </div>
+                                        <div className="col-6">
+                                            <div className="text-center">
+                                                <div className="status-indicator status-offline"></div>
+                                                Offline: {offlineNodes}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // Enhanced Nodes View Component
+        const NodesView = ({ nodes, onCopy }) => (
+            <div>
+                <div className="d-flex justify-content-between align-items-center mb-4">
+                    <h2>Node Management</h2>
+                    <button className="btn btn-primary">
+                        <i className="fas fa-plus me-2"></i>Add Node
+                    </button>
+                </div>
+                
+                <div className="node-grid">
+                    {nodes.map(node => (
+                        <div key={node.id} className="node-card">
+                            <div className="d-flex justify-content-between align-items-center mb-3">
+                                <h5 className="mb-0">
+                                    <span className={`status-indicator status-${node.status}`}></span>
+                                    Node {node.id?.substring(0, 8)}...
+                                </h5>
+                                <button 
+                                    className="copy-button"
+                                    onClick={() => onCopy(node.id)}
+                                    title="Copy Node ID"
+                                >
+                                    <i className="fas fa-copy"></i>
+                                </button>
+                            </div>
+                            
+                            <div className="mb-3">
+                                <small className="text-muted">Address:</small>
+                                <div className="d-flex justify-content-between align-items-center">
+                                    <span className="font-monospace">{node.address}</span>
+                                    <button 
+                                        className="copy-button"
+                                        onClick={() => onCopy(node.address)}
+                                        title="Copy Address"
+                                    >
+                                        <i className="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            {node.usage && (
+                                <div>
+                                    <div className="mb-2">
+                                        <div className="d-flex justify-content-between">
+                                            <small>CPU Usage</small>
+                                            <small>{node.usage.cpu?.toFixed(1)}%</small>
+                                        </div>
+                                        <div className="progress">
+                                            <div 
+                                                className={`progress-bar ${node.usage.cpu > 80 ? 'progress-bar-danger' : node.usage.cpu > 60 ? 'progress-bar-warning' : 'progress-bar-success'}`}
+                                                style={{ width: `${node.usage.cpu}%` }}
+                                            ></div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="mb-2">
+                                        <div className="d-flex justify-content-between">
+                                            <small>Memory Usage</small>
+                                            <small>{node.usage.memory?.toFixed(1)}%</small>
+                                        </div>
+                                        <div className="progress">
+                                            <div 
+                                                className={`progress-bar ${node.usage.memory > 80 ? 'progress-bar-danger' : node.usage.memory > 60 ? 'progress-bar-warning' : 'progress-bar-success'}`}
+                                                style={{ width: `${node.usage.memory}%` }}
+                                            ></div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="mb-3">
+                                        <div className="d-flex justify-content-between">
+                                            <small>Bandwidth</small>
+                                            <small>{node.usage.bandwidth?.toFixed(1)} MB/s</small>
+                                        </div>
+                                        <div className="progress">
+                                            <div 
+                                                className="progress-bar"
+                                                style={{ 
+                                                    width: `${Math.min((node.usage.bandwidth || 0) / 100 * 100, 100)}%`,
+                                                    background: 'linear-gradient(45deg, #667eea, #764ba2)'
+                                                }}
+                                            ></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                            
+                            <div className="mb-3">
+                                <small className="text-muted">Models: {node.models?.length || 0}</small>
+                            </div>
+                            
+                            <div className="mb-3">
+                                <span className={`badge ${node.status === 'ready' ? 'bg-success' : 'bg-warning'}`}>
+                                    <i className={`fas fa-${node.status === 'ready' ? 'check' : 'clock'} me-1`}></i>
+                                    {node.status === 'ready' ? 'Ready for Inference' : 'Loading Models'}
+                                </span>
+                            </div>
+                            
+                            <div className="d-flex gap-2">
+                                <button className="btn btn-sm btn-outline-primary">
+                                    <i className="fas fa-info-circle me-1"></i>Details
+                                </button>
+                                <button className="btn btn-sm btn-outline-warning">
+                                    <i className="fas fa-pause me-1"></i>Drain
+                                </button>
+                                <button className="btn btn-sm btn-outline-danger">
+                                    <i className="fas fa-power-off me-1"></i>Shutdown
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+
+        // Enhanced Models View Component
+        const ModelsView = ({ models, onDownload, onDelete, autoDistribution, onToggleAutoDistribution }) => (
+            <div>
+                <div className="d-flex justify-content-between align-items-center mb-4">
+                    <h2>Model Management</h2>
+                    <button className="btn btn-primary">
+                        <i className="fas fa-plus me-2"></i>Add Model
+                    </button>
+                </div>
+                
+                {/* Auto-distribution toggle */}
+                <div className="auto-distribution-toggle">
+                    <div className="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 className="mb-1">Automatic Model Distribution</h5>
+                            <p className="text-muted mb-0">
+                                Automatically distribute models across nodes for optimal performance
+                            </p>
+                        </div>
+                        <label className="toggle-switch">
+                            <input 
+                                type="checkbox" 
+                                checked={autoDistribution}
+                                onChange={onToggleAutoDistribution}
+                            />
+                            <span className="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div className="model-grid">
+                    {models.map(model => (
+                        <div key={model.name} className="model-card">
+                            <div className="d-flex justify-content-between align-items-start mb-3">
+                                <h5 className="mb-0">{model.name}</h5>
+                                <span className={`badge ${model.status === 'available' ? 'bg-success' : model.status === 'loading' ? 'bg-warning' : 'bg-secondary'}`}>
+                                    <i className={`fas fa-${model.status === 'available' ? 'check' : model.status === 'loading' ? 'spinner fa-spin' : 'clock'} me-1`}></i>
+                                    {model.status}
+                                </span>
+                            </div>
+                            
+                            <div className="mb-3">
+                                <small className="text-muted">Size:</small>
+                                <span className="ms-2">{model.size ? `${(model.size / 1024 / 1024).toFixed(2)} MB` : 'Unknown'}</span>
+                            </div>
+                            
+                            <div className="mb-3">
+                                <small className="text-muted">Replicas:</small>
+                                <span className="ms-2">{model.replicas?.length || 0}</span>
+                            </div>
+                            
+                            <div className="mb-3">
+                                <small className="text-muted">Inference Ready:</small>
+                                <span className="ms-2">
+                                    <span className={`status-indicator status-${model.inference_ready ? 'ready' : 'loading'}`}></span>
+                                    {model.inference_ready ? 'Yes' : 'No'}
+                                </span>
+                            </div>
+                            
+                            {model.distribution_progress && (
+                                <div className="mb-3">
+                                    <small className="text-muted">Distribution Progress:</small>
+                                    <div className="transfer-progress mt-1">
+                                        <div 
+                                            className="transfer-progress-bar"
+                                            style={{ width: `${model.distribution_progress}%` }}
+                                        ></div>
+                                    </div>
+                                    <small className="text-muted">{model.distribution_progress}%</small>
+                                </div>
+                            )}
+                            
+                            <div className="d-flex gap-2">
+                                <button 
+                                    className="btn btn-sm btn-primary"
+                                    onClick={() => onDownload(model.name)}
+                                >
+                                    <i className="fas fa-download me-1"></i>Download
+                                </button>
+                                <button 
+                                    className="btn btn-sm btn-outline-success"
+                                    disabled={!model.inference_ready}
+                                >
+                                    <i className="fas fa-play me-1"></i>Test
+                                </button>
+                                <button 
+                                    className="btn btn-sm btn-outline-danger"
+                                    onClick={() => onDelete(model.name)}
+                                >
+                                    <i className="fas fa-trash me-1"></i>Delete
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+
+        // Enhanced Transfers View Component
+        const TransfersView = ({ transfers }) => {
+            const activeTransfers = transfers.filter(t => t.status === 'active').length;
+            const completedTransfers = transfers.filter(t => t.status === 'completed').length;
+            const failedTransfers = transfers.filter(t => t.status === 'failed').length;
+
+            return (
+                <div>
+                    <div className="d-flex justify-content-between align-items-center mb-4">
+                        <h2>Transfer Management</h2>
+                        <div className="d-flex gap-2">
+                            <span className="badge bg-primary">Active: {activeTransfers}</span>
+                            <span className="badge bg-success">Completed: {completedTransfers}</span>
+                            <span className="badge bg-danger">Failed: {failedTransfers}</span>
+                        </div>
+                    </div>
+                    
+                    <div className="table-container">
+                        <table className="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Transfer ID</th>
+                                    <th>Model</th>
+                                    <th>Type</th>
+                                    <th>Status</th>
+                                    <th>Progress</th>
+                                    <th>Speed</th>
+                                    <th>ETA</th>
+                                    <th>Peer</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {transfers.map(transfer => (
+                                    <tr key={transfer.id}>
+                                        <td>
+                                            <span className="font-monospace">{transfer.id?.substring(0, 8)}...</span>
+                                        </td>
+                                        <td>{transfer.model_name}</td>
+                                        <td>
+                                            <span className={`badge ${transfer.type === 'download' ? 'bg-primary' : 'bg-info'}`}>
+                                                <i className={`fas fa-${transfer.type === 'download' ? 'download' : 'upload'} me-1`}></i>
+                                                {transfer.type}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span className={`badge ${
+                                                transfer.status === 'completed' ? 'bg-success' : 
+                                                transfer.status === 'failed' ? 'bg-danger' : 'bg-primary'
+                                            }`}>
+                                                {transfer.status}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div className="transfer-progress">
+                                                <div 
+                                                    className="transfer-progress-bar"
+                                                    style={{ width: `${transfer.progress || 0}%` }}
+                                                ></div>
+                                            </div>
+                                            <small>{(transfer.progress || 0).toFixed(1)}%</small>
+                                        </td>
+                                        <td>
+                                            {transfer.speed ? `${(transfer.speed / 1024 / 1024).toFixed(2)} MB/s` : 'N/A'}
+                                        </td>
+                                        <td>
+                                            {transfer.eta ? `${transfer.eta}s` : 'N/A'}
+                                        </td>
+                                        <td>
+                                            <span className="font-monospace">{transfer.peer_id?.substring(0, 8)}...</span>
+                                        </td>
+                                        <td>
+                                            <div className="d-flex gap-1">
+                                                <button 
+                                                    className="btn btn-sm btn-outline-warning"
+                                                    disabled={transfer.status === 'completed'}
+                                                >
+                                                    <i className="fas fa-pause"></i>
+                                                </button>
+                                                <button 
+                                                    className="btn btn-sm btn-outline-danger"
+                                                    disabled={transfer.status === 'completed'}
+                                                >
+                                                    <i className="fas fa-times"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            );
+        };
+
+        // Enhanced Cluster View Component
+        const ClusterView = ({ clusterStatus, onCopy }) => (
+            <div>
+                <div className="d-flex justify-content-between align-items-center mb-4">
+                    <h2>Cluster Management</h2>
+                    <div className="d-flex gap-2">
+                        <button className="btn btn-outline-primary">
+                            <i className="fas fa-sync me-2"></i>Refresh
+                        </button>
+                        <button className="btn btn-outline-success">
+                            <i className="fas fa-chart-line me-2"></i>Health Check
+                        </button>
+                    </div>
+                </div>
+                
+                <div className="row">
+                    <div className="col-md-6">
+                        <div className="card">
+                            <div className="card-header">
+                                <h5 className="mb-0">Cluster Information</h5>
+                            </div>
+                            <div className="card-body">
+                                <div className="mb-3">
+                                    <strong>Current Node ID:</strong>
+                                    <div className="d-flex justify-content-between align-items-center">
+                                        <code className="text-break">{clusterStatus.node_id}</code>
+                                        <button 
+                                            className="copy-button"
+                                            onClick={() => onCopy(clusterStatus.node_id)}
+                                            title="Copy Node ID"
+                                        >
+                                            <i className="fas fa-copy"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="mb-3">
+                                    <strong>Leader Node:</strong>
+                                    <div className="d-flex justify-content-between align-items-center">
+                                        <code className="text-break">{clusterStatus.leader || 'Unknown'}</code>
+                                        {clusterStatus.leader && (
+                                            <button 
+                                                className="copy-button"
+                                                onClick={() => onCopy(clusterStatus.leader)}
+                                                title="Copy Leader ID"
+                                            >
+                                                <i className="fas fa-copy"></i>
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="mb-3">
+                                    <strong>Is Leader:</strong> 
+                                    <span className={`badge ms-2 ${clusterStatus.is_leader ? 'bg-success' : 'bg-secondary'}`}>
+                                        <i className={`fas fa-${clusterStatus.is_leader ? 'crown' : 'user'} me-1`}></i>
+                                        {clusterStatus.is_leader ? 'Yes' : 'No'}
+                                    </span>
+                                </div>
+                                <div className="mb-3">
+                                    <strong>Connected Peers:</strong> 
+                                    <span className="badge bg-info ms-2">{clusterStatus.peers || 0}</span>
+                                </div>
+                                <div className="mb-3">
+                                    <strong>Cluster Health:</strong> 
+                                    <span className={`badge ms-2 ${clusterStatus.status === 'healthy' ? 'bg-success' : 'bg-warning'}`}>
+                                        <i className={`fas fa-${clusterStatus.status === 'healthy' ? 'heart' : 'exclamation-triangle'} me-1`}></i>
+                                        {clusterStatus.status || 'Unknown'}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="col-md-6">
+                        <div className="card">
+                            <div className="card-header">
+                                <h5 className="mb-0">Cluster Actions</h5>
+                            </div>
+                            <div className="card-body">
+                                <div className="mb-3">
+                                    <label className="form-label">Join Cluster</label>
+                                    <div className="input-group">
+                                        <input 
+                                            type="text" 
+                                            className="form-control" 
+                                            placeholder="Enter cluster address"
+                                        />
+                                        <button className="btn btn-primary">
+                                            <i className="fas fa-plus-circle me-2"></i>Join
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div className="d-grid gap-2">
+                                    <button className="btn btn-outline-warning">
+                                        <i className="fas fa-sign-out-alt me-2"></i>
+                                        Leave Cluster
+                                    </button>
+                                    <button className="btn btn-outline-info">
+                                        <i className="fas fa-sync me-2"></i>
+                                        Refresh Status
+                                    </button>
+                                    <button className="btn btn-outline-success">
+                                        <i className="fas fa-download me-2"></i>
+                                        Export Configuration
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+
+        // Security Dashboard component
+        const SecurityView = ({ securityStatus, threats, alerts }) => (
+            <div>
+                <div className="d-flex justify-content-between align-items-center mb-4">
+                    <h2>Security Dashboard</h2>
+                    <div className="d-flex gap-2">
+                        <button className="btn btn-outline-primary">
+                            <i className="fas fa-sync me-2"></i>Refresh
+                        </button>
+                        <button className="btn btn-outline-success">
+                            <i className="fas fa-download me-2"></i>Security Report
+                        </button>
+                    </div>
+                </div>
+
+                {/* Security Status Overview */}
+                <div className="row mb-4">
+                    <div className="col-md-3">
+                        <div className="card metric-card">
+                            <div className="card-body text-center">
+                                <i className="fas fa-shield-alt fa-2x mb-2 text-success"></i>
+                                <h3>{securityStatus?.overallScore || 85}</h3>
+                                <p>Security Score</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="col-md-3">
+                        <div className="card metric-card">
+                            <div className="card-body text-center">
+                                <i className="fas fa-exclamation-triangle fa-2x mb-2 text-warning"></i>
+                                <h3>{threats?.length || 0}</h3>
+                                <p>Active Threats</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="col-md-3">
+                        <div className="card metric-card">
+                            <div className="card-body text-center">
+                                <i className="fas fa-bell fa-2x mb-2 text-info"></i>
+                                <h3>{alerts?.length || 0}</h3>
+                                <p>Security Alerts</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="col-md-3">
+                        <div className="card metric-card">
+                            <div className="card-body text-center">
+                                <i className="fas fa-check-circle fa-2x mb-2 text-success"></i>
+                                <h3>{securityStatus?.compliance || 'CIS'}</h3>
+                                <p>Compliance</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Security Audit Results */}
+                <div className="row mb-4">
+                    <div className="col-md-6">
+                        <div className="card">
+                            <div className="card-header">
+                                <h5 className="mb-0">
+                                    <i className="fas fa-search me-2"></i>Security Audit
+                                </h5>
+                            </div>
+                            <div className="card-body">
+                                <div className="audit-results">
+                                    <div className="d-flex justify-content-between mb-2">
+                                        <span>Configuration Security</span>
+                                        <span className="badge bg-success">Passed</span>
+                                    </div>
+                                    <div className="d-flex justify-content-between mb-2">
+                                        <span>TLS/SSL Configuration</span>
+                                        <span className="badge bg-success">Passed</span>
+                                    </div>
+                                    <div className="d-flex justify-content-between mb-2">
+                                        <span>Authentication Security</span>
+                                        <span className="badge bg-warning">Warning</span>
+                                    </div>
+                                    <div className="d-flex justify-content-between mb-2">
+                                        <span>File Permissions</span>
+                                        <span className="badge bg-success">Passed</span>
+                                    </div>
+                                    <div className="d-flex justify-content-between mb-2">
+                                        <span>Network Security</span>
+                                        <span className="badge bg-success">Passed</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="col-md-6">
+                        <div className="card">
+                            <div className="card-header">
+                                <h5 className="mb-0">
+                                    <i className="fas fa-key me-2"></i>Encryption Status
+                                </h5>
+                            </div>
+                            <div className="card-body">
+                                <div className="encryption-status">
+                                    <div className="d-flex justify-content-between mb-2">
+                                        <span>Data at Rest</span>
+                                        <span className="badge bg-success">AES-256-GCM</span>
+                                    </div>
+                                    <div className="d-flex justify-content-between mb-2">
+                                        <span>Data in Transit</span>
+                                        <span className="badge bg-success">TLS 1.3</span>
+                                    </div>
+                                    <div className="d-flex justify-content-between mb-2">
+                                        <span>Key Rotation</span>
+                                        <span className="badge bg-success">Active</span>
+                                    </div>
+                                    <div className="d-flex justify-content-between mb-2">
+                                        <span>E2E Encryption</span>
+                                        <span className="badge bg-success">Enabled</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Threat Detection */}
+                <div className="row">
+                    <div className="col-md-12">
+                        <div className="card">
+                            <div className="card-header">
+                                <h5 className="mb-0">
+                                    <i className="fas fa-eye me-2"></i>Threat Detection
+                                </h5>
+                            </div>
+                            <div className="card-body">
+                                {threats && threats.length > 0 ? (
+                                    <div className="table-responsive">
+                                        <table className="table table-striped">
+                                            <thead>
+                                                <tr>
+                                                    <th>Type</th>
+                                                    <th>Severity</th>
+                                                    <th>Description</th>
+                                                    <th>Detected</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {threats.map((threat, index) => (
+                                                    <tr key={index}>
+                                                        <td>{threat.type}</td>
+                                                        <td>
+                                                            <span className={`badge ${threat.severity === 'critical' ? 'bg-danger' : threat.severity === 'high' ? 'bg-warning' : 'bg-info'}`}>
+                                                                {threat.severity}
+                                                            </span>
+                                                        </td>
+                                                        <td>{threat.description}</td>
+                                                        <td>{threat.detectedAt}</td>
+                                                        <td>
+                                                            <button className="btn btn-sm btn-outline-primary me-1">
+                                                                <i className="fas fa-info-circle"></i>
+                                                            </button>
+                                                            <button className="btn btn-sm btn-outline-success">
+                                                                <i className="fas fa-check"></i>
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                ) : (
+                                    <div className="text-center text-muted py-4">
+                                        <i className="fas fa-shield-alt fa-3x mb-3"></i>
+                                        <p>No active threats detected</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+
+        // Performance Dashboard component
+        const PerformanceView = ({ performanceMetrics, optimizations, bottlenecks }) => (
+            <div>
+                <div className="d-flex justify-content-between align-items-center mb-4">
+                    <h2>Performance Dashboard</h2>
+                    <div className="d-flex gap-2">
+                        <button className="btn btn-outline-primary">
+                            <i className="fas fa-sync me-2"></i>Refresh
+                        </button>
+                        <button className="btn btn-outline-success">
+                            <i className="fas fa-download me-2"></i>Performance Report
+                        </button>
+                    </div>
+                </div>
+
+                {/* Performance Metrics Overview */}
+                <div className="row mb-4">
+                    <div className="col-md-3">
+                        <div className="card metric-card">
+                            <div className="card-body text-center">
+                                <i className="fas fa-tachometer-alt fa-2x mb-2 text-primary"></i>
+                                <h3>{performanceMetrics?.overallScore || 92}</h3>
+                                <p>Performance Score</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="col-md-3">
+                        <div className="card metric-card">
+                            <div className="card-body text-center">
+                                <i className="fas fa-arrow-up fa-2x mb-2 text-success"></i>
+                                <h3>{optimizations?.totalOptimizations || 15}</h3>
+                                <p>Optimizations</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="col-md-3">
+                        <div className="card metric-card">
+                            <div className="card-body text-center">
+                                <i className="fas fa-exclamation-circle fa-2x mb-2 text-warning"></i>
+                                <h3>{bottlenecks?.length || 0}</h3>
+                                <p>Bottlenecks</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="col-md-3">
+                        <div className="card metric-card">
+                            <div className="card-body text-center">
+                                <i className="fas fa-memory fa-2x mb-2 text-info"></i>
+                                <h3>{performanceMetrics?.cacheHitRatio || 85}%</h3>
+                                <p>Cache Hit Ratio</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Resource Optimization */}
+                <div className="row mb-4">
+                    <div className="col-md-4">
+                        <div className="card">
+                            <div className="card-header">
+                                <h5 className="mb-0">
+                                    <i className="fas fa-microchip me-2"></i>CPU Optimization
+                                </h5>
+                            </div>
+                            <div className="card-body">
+                                <div className="optimization-stats">
+                                    <div className="d-flex justify-content-between mb-2">
+                                        <span>Current Usage</span>
+                                        <span className="badge bg-success">32%</span>
+                                    </div>
+                                    <div className="d-flex justify-content-between mb-2">
+                                        <span>Improvement</span>
+                                        <span className="badge bg-info">+15%</span>
+                                    </div>
+                                    <div className="d-flex justify-content-between mb-2">
+                                        <span>Goroutine Pool</span>
+                                        <span className="badge bg-primary">Optimized</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="col-md-4">
+                        <div className="card">
+                            <div className="card-header">
+                                <h5 className="mb-0">
+                                    <i className="fas fa-memory me-2"></i>Memory Optimization
+                                </h5>
+                            </div>
+                            <div className="card-body">
+                                <div className="optimization-stats">
+                                    <div className="d-flex justify-content-between mb-2">
+                                        <span>Current Usage</span>
+                                        <span className="badge bg-success">68%</span>
+                                    </div>
+                                    <div className="d-flex justify-content-between mb-2">
+                                        <span>Improvement</span>
+                                        <span className="badge bg-info">+22%</span>
+                                    </div>
+                                    <div className="d-flex justify-content-between mb-2">
+                                        <span>GC Tuning</span>
+                                        <span className="badge bg-primary">Active</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="col-md-4">
+                        <div className="card">
+                            <div className="card-header">
+                                <h5 className="mb-0">
+                                    <i className="fas fa-database me-2"></i>Cache Optimization
+                                </h5>
+                            </div>
+                            <div className="card-body">
+                                <div className="optimization-stats">
+                                    <div className="d-flex justify-content-between mb-2">
+                                        <span>L1 Hit Ratio</span>
+                                        <span className="badge bg-success">83%</span>
+                                    </div>
+                                    <div className="d-flex justify-content-between mb-2">
+                                        <span>L2 Hit Ratio</span>
+                                        <span className="badge bg-success">62%</span>
+                                    </div>
+                                    <div className="d-flex justify-content-between mb-2">
+                                        <span>Prefetching</span>
+                                        <span className="badge bg-primary">Intelligent</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Auto-Tuning Status */}
+                <div className="row">
+                    <div className="col-md-12">
+                        <div className="card">
+                            <div className="card-header">
+                                <h5 className="mb-0">
+                                    <i className="fas fa-cogs me-2"></i>Auto-Tuning Status
+                                </h5>
+                            </div>
+                            <div className="card-body">
+                                <div className="row">
+                                    <div className="col-md-6">
+                                        <h6>Recent Optimizations</h6>
+                                        <div className="optimization-history">
+                                            <div className="d-flex justify-content-between mb-2">
+                                                <span>GC Target Percent</span>
+                                                <span className="text-success">100 → 80 (+12% improvement)</span>
+                                            </div>
+                                            <div className="d-flex justify-content-between mb-2">
+                                                <span>Goroutine Pool Size</span>
+                                                <span className="text-success">100 → 120 (+8% improvement)</span>
+                                            </div>
+                                            <div className="d-flex justify-content-between mb-2">
+                                                <span>Cache Size</span>
+                                                <span className="text-success">100MB → 150MB (+15% improvement)</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="col-md-6">
+                                        <h6>Tuning Algorithm</h6>
+                                        <div className="tuning-status">
+                                            <div className="d-flex justify-content-between mb-2">
+                                                <span>Algorithm</span>
+                                                <span className="badge bg-primary">Gradient Descent</span>
+                                            </div>
+                                            <div className="d-flex justify-content-between mb-2">
+                                                <span>Iterations</span>
+                                                <span className="badge bg-info">47</span>
+                                            </div>
+                                            <div className="d-flex justify-content-between mb-2">
+                                                <span>Objective Score</span>
+                                                <span className="badge bg-success">92.5</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+
+        // Advanced Node Management Component
+        const AdvancedNodeManagement = ({ nodes, onNodeAction }) => {
+            const [selectedNodes, setSelectedNodes] = useState([]);
+            const [bulkAction, setBulkAction] = useState('');
+            const [automationRules, setAutomationRules] = useState([]);
+            const [isExecuting, setIsExecuting] = useState(false);
+
+            const handleBulkAction = async () => {
+                if (!bulkAction || selectedNodes.length === 0) return;
+
+                setIsExecuting(true);
+                try {
+                    for (const nodeId of selectedNodes) {
+                        await onNodeAction(nodeId, bulkAction);
+                    }
+                    showAlert(`Bulk action "${bulkAction}" completed on ${selectedNodes.length} nodes`, 'success');
+                    setSelectedNodes([]);
+                    setBulkAction('');
+                } catch (error) {
+                    showAlert(`Bulk action failed: ${error.message}`, 'danger');
+                } finally {
+                    setIsExecuting(false);
+                }
+            };
+
+            const addAutomationRule = () => {
+                const newRule = {
+                    id: Date.now(),
+                    name: 'New Rule',
+                    condition: 'cpu_usage > 80',
+                    action: 'scale_down',
+                    enabled: true,
+                    created: new Date().toISOString()
+                };
+                setAutomationRules(prev => [...prev, newRule]);
+            };
+
+            return (
+                <div className="advanced-node-management">
+                    <div className="row mb-4">
+                        <div className="col-md-8">
+                            <h4>Node Management</h4>
+                        </div>
+                        <div className="col-md-4 text-end">
+                            <div className="btn-group">
+                                <button className="btn btn-primary" onClick={addAutomationRule}>
+                                    <i className="fas fa-robot me-2"></i>Add Rule
+                                </button>
+                                <button className="btn btn-success">
+                                    <i className="fas fa-plus me-2"></i>Add Node
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Bulk Actions */}
+                    {selectedNodes.length > 0 && (
+                        <div className="card mb-4">
+                            <div className="card-body">
+                                <div className="row align-items-center">
+                                    <div className="col-md-6">
+                                        <strong>{selectedNodes.length} nodes selected</strong>
+                                    </div>
+                                    <div className="col-md-6">
+                                        <div className="input-group">
+                                            <select
+                                                className="form-select"
+                                                value={bulkAction}
+                                                onChange={(e) => setBulkAction(e.target.value)}
+                                            >
+                                                <option value="">Select action...</option>
+                                                <option value="restart">Restart</option>
+                                                <option value="stop">Stop</option>
+                                                <option value="update">Update</option>
+                                                <option value="drain">Drain</option>
+                                            </select>
+                                            <button
+                                                className="btn btn-warning"
+                                                onClick={handleBulkAction}
+                                                disabled={!bulkAction || isExecuting}
+                                            >
+                                                {isExecuting ? <LoadingSpinner size="sm" /> : 'Execute'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Automation Rules */}
+                    <div className="card mb-4">
+                        <div className="card-header">
+                            <h5 className="mb-0">
+                                <i className="fas fa-robot me-2"></i>Automation Rules
+                            </h5>
+                        </div>
+                        <div className="card-body">
+                            {automationRules.length === 0 ? (
+                                <div className="text-center text-muted py-4">
+                                    <i className="fas fa-robot fa-3x mb-3"></i>
+                                    <p>No automation rules configured</p>
+                                    <button className="btn btn-primary" onClick={addAutomationRule}>
+                                        Create First Rule
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="table-responsive">
+                                    <table className="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Rule Name</th>
+                                                <th>Condition</th>
+                                                <th>Action</th>
+                                                <th>Status</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {automationRules.map(rule => (
+                                                <tr key={rule.id}>
+                                                    <td>{rule.name}</td>
+                                                    <td><code>{rule.condition}</code></td>
+                                                    <td><span className="badge bg-info">{rule.action}</span></td>
+                                                    <td>
+                                                        <span className={`badge ${rule.enabled ? 'bg-success' : 'bg-secondary'}`}>
+                                                            {rule.enabled ? 'Enabled' : 'Disabled'}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <div className="btn-group btn-group-sm">
+                                                            <button className="btn btn-outline-primary">
+                                                                <i className="fas fa-edit"></i>
+                                                            </button>
+                                                            <button className="btn btn-outline-danger">
+                                                                <i className="fas fa-trash"></i>
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // System Health Monitor Component
+        const SystemHealthMonitor = ({ nodes, metrics }) => {
+            const [healthChecks, setHealthChecks] = useState([]);
+            const [autoHealing, setAutoHealing] = useState(true);
+            const [diagnosticsRunning, setDiagnosticsRunning] = useState(false);
+
+            const runDiagnostics = async () => {
+                setDiagnosticsRunning(true);
+
+                // Simulate diagnostics
+                await new Promise(resolve => setTimeout(resolve, 3000));
+
+                const newChecks = [
+                    { name: 'Node Connectivity', status: 'healthy', details: 'All nodes responding' },
+                    { name: 'Memory Usage', status: 'warning', details: 'Node-2 at 85% memory' },
+                    { name: 'Disk Space', status: 'healthy', details: 'All nodes have sufficient space' },
+                    { name: 'Model Sync', status: 'healthy', details: 'All models synchronized' },
+                    { name: 'Load Balancing', status: 'healthy', details: 'Traffic distributed evenly' }
+                ];
+
+                setHealthChecks(newChecks);
+                setDiagnosticsRunning(false);
+                showAlert('System diagnostics completed', 'success');
+            };
+
+            const getStatusIcon = (status) => {
+                switch (status) {
+                    case 'healthy': return 'check-circle text-success';
+                    case 'warning': return 'exclamation-triangle text-warning';
+                    case 'error': return 'times-circle text-danger';
+                    default: return 'question-circle text-muted';
+                }
+            };
+
+            return (
+                <div className="system-health-monitor">
+                    <div className="d-flex justify-content-between align-items-center mb-4">
+                        <h4>System Health Monitor</h4>
+                        <div className="d-flex gap-2">
+                            <div className="form-check form-switch">
+                                <input
+                                    className="form-check-input"
+                                    type="checkbox"
+                                    checked={autoHealing}
+                                    onChange={(e) => setAutoHealing(e.target.checked)}
+                                />
+                                <label className="form-check-label">Auto-healing</label>
+                            </div>
+                            <button
+                                className="btn btn-primary"
+                                onClick={runDiagnostics}
+                                disabled={diagnosticsRunning}
+                            >
+                                {diagnosticsRunning ? <LoadingSpinner size="sm" /> : <i className="fas fa-stethoscope"></i>}
+                                Run Diagnostics
+                            </button>
+                        </div>
+                    </div>
+
+                    {healthChecks.length > 0 && (
+                        <div className="card">
+                            <div className="card-header">
+                                <h6 className="mb-0">Health Check Results</h6>
+                            </div>
+                            <div className="card-body">
+                                {healthChecks.map((check, index) => (
+                                    <div key={index} className="d-flex align-items-center mb-3">
+                                        <i className={`fas fa-${getStatusIcon(check.status)} me-3`}></i>
+                                        <div className="flex-grow-1">
+                                            <strong>{check.name}</strong>
+                                            <br />
+                                            <small className="text-muted">{check.details}</small>
+                                        </div>
+                                        {check.status === 'warning' && (
+                                            <button className="btn btn-sm btn-outline-warning">
+                                                <i className="fas fa-wrench me-1"></i>Fix
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // Enhanced Analytics View Component
+        const AnalyticsView = ({ metrics, realTimeMetrics }) => {
+            const [exportFormat, setExportFormat] = useState('pdf');
+            const [isExporting, setIsExporting] = useState(false);
+
+            const handleExport = async () => {
+                setIsExporting(true);
+                // Simulate export process
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                setIsExporting(false);
+                showAlert(`Report exported as ${exportFormat.toUpperCase()}`, 'success');
+            };
+
+            return (
+                <div className="fade-in">
+                    <div className="d-flex justify-content-between align-items-center mb-4">
+                        <h2>Advanced Performance Analytics</h2>
+                        <div className="d-flex gap-2">
+                            <div className="dropdown">
+                                <button className="btn btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown">
+                                    <i className="fas fa-filter me-2"></i>Filter
+                                </button>
+                                <ul className="dropdown-menu">
+                                    <li><a className="dropdown-item" href="#">Last 15 minutes</a></li>
+                                    <li><a className="dropdown-item" href="#">Last hour</a></li>
+                                    <li><a className="dropdown-item" href="#">Last 6 hours</a></li>
+                                    <li><a className="dropdown-item" href="#">Last 24 hours</a></li>
+                                    <li><hr className="dropdown-divider" /></li>
+                                    <li><a className="dropdown-item" href="#">Custom range</a></li>
+                                </ul>
+                            </div>
+                            <div className="dropdown">
+                                <button className="btn btn-outline-success dropdown-toggle" data-bs-toggle="dropdown">
+                                    <i className="fas fa-download me-2"></i>
+                                    {isExporting ? <LoadingSpinner size="sm" /> : 'Export'}
+                                </button>
+                                <ul className="dropdown-menu">
+                                    <li><a className="dropdown-item" href="#" onClick={() => {setExportFormat('pdf'); handleExport();}}>
+                                        <i className="fas fa-file-pdf me-2"></i>PDF Report
+                                    </a></li>
+                                    <li><a className="dropdown-item" href="#" onClick={() => {setExportFormat('csv'); handleExport();}}>
+                                        <i className="fas fa-file-csv me-2"></i>CSV Data
+                                    </a></li>
+                                    <li><a className="dropdown-item" href="#" onClick={() => {setExportFormat('json'); handleExport();}}>
+                                        <i className="fas fa-file-code me-2"></i>JSON Data
+                                    </a></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <AnalyticsDashboard
+                        data={realTimeMetrics}
+                        title="Real-time System Analytics"
+                    />
+                </div>
+            );
+        };
+                
+                <div className="row">
+                    <div className="col-md-12">
+                        <div className="card">
+                            <div className="card-header">
+                                <h5 className="mb-0">System Performance Overview</h5>
+                            </div>
+                            <div className="card-body">
+                                <div className="row">
+                                    <div className="col-md-4">
+                                        <div className="chart-container">
+                                            <MetricsChart 
+                                                data={realTimeMetrics.cpu}
+                                                title="CPU Usage"
+                                                color="#dc3545"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="col-md-4">
+                                        <div className="chart-container">
+                                            <MetricsChart 
+                                                data={realTimeMetrics.memory}
+                                                title="Memory Usage"
+                                                color="#28a745"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="col-md-4">
+                                        <div className="chart-container">
+                                            <MetricsChart 
+                                                data={realTimeMetrics.network}
+                                                title="Network Usage"
+                                                color="#17a2b8"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div className="row mt-4">
+                    <div className="col-md-6">
+                        <div className="card">
+                            <div className="card-header">
+                                <h5 className="mb-0">Resource Utilization</h5>
+                            </div>
+                            <div className="card-body">
+                                <div className="mb-3">
+                                    <div className="d-flex justify-content-between">
+                                        <span>CPU</span>
+                                        <span>{metrics.cpu_usage || 0}%</span>
+                                    </div>
+                                    <div className="progress">
+                                        <div 
+                                            className="progress-bar bg-danger"
+                                            style={{ width: `${metrics.cpu_usage || 0}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+                                <div className="mb-3">
+                                    <div className="d-flex justify-content-between">
+                                        <span>Memory</span>
+                                        <span>{metrics.memory_usage || 0}%</span>
+                                    </div>
+                                    <div className="progress">
+                                        <div 
+                                            className="progress-bar bg-success"
+                                            style={{ width: `${metrics.memory_usage || 0}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+                                <div className="mb-3">
+                                    <div className="d-flex justify-content-between">
+                                        <span>Network</span>
+                                        <span>{metrics.network_usage || 0}%</span>
+                                    </div>
+                                    <div className="progress">
+                                        <div 
+                                            className="progress-bar bg-info"
+                                            style={{ width: `${metrics.network_usage || 0}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="col-md-6">
+                        <div className="card">
+                            <div className="card-header">
+                                <h5 className="mb-0">Performance Metrics</h5>
+                            </div>
+                            <div className="card-body">
+                                <div className="row">
+                                    <div className="col-6">
+                                        <div className="text-center">
+                                            <h4 className="text-primary">{metrics.requests_per_second || 0}</h4>
+                                            <small className="text-muted">Requests/sec</small>
+                                        </div>
+                                    </div>
+                                    <div className="col-6">
+                                        <div className="text-center">
+                                            <h4 className="text-success">{metrics.average_latency || 0}ms</h4>
+                                            <small className="text-muted">Avg Latency</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <hr />
+                                <div className="row">
+                                    <div className="col-6">
+                                        <div className="text-center">
+                                            <h4 className="text-info">{metrics.active_connections || 0}</h4>
+                                            <small className="text-muted">Active Connections</small>
+                                        </div>
+                                    </div>
+                                    <div className="col-6">
+                                        <div className="text-center">
+                                            <h4 className="text-warning">{metrics.error_rate || 0}%</h4>
+                                            <small className="text-muted">Error Rate</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+
+        // Render the app
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>

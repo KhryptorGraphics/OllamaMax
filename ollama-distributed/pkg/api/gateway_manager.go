@@ -207,6 +207,13 @@ type WebSocketServer struct {
 	wg     sync.WaitGroup
 }
 
+// FailedAttempts tracks failed authentication attempts for rate limiting
+type FailedAttempts struct {
+	Count        int
+	LastAttempt  time.Time
+	BlockedUntil time.Time
+}
+
 // AuthManager handles authentication and authorization
 type AuthManager struct {
 	config *AuthConfig
@@ -215,9 +222,17 @@ type AuthManager struct {
 	jwtSecret   []byte
 	tokenExpiry time.Duration
 
+	// User management
+	users   map[string]*User
+	usersMu sync.RWMutex
+
 	// Session management
 	sessions   map[string]*Session
 	sessionsMu sync.RWMutex
+
+	// Rate limiting
+	failedAttempts   map[string]*FailedAttempts
+	failedAttemptsMu sync.RWMutex
 
 	// Metrics
 	metrics *AuthMetrics

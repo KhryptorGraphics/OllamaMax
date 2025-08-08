@@ -1,0 +1,383 @@
+name: Performance Regression Testing
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      baseline_ref:
+        description: 'Baseline reference (commit/tag) to compare against'
+        required: false
+        default: 'main'
+      performance_threshold:
+        description: 'Performance degradation threshold (%)'
+        required: false
+        default: '10'
+        type: number
+
+env:
+  GO_VERSION: '1.21'
+  PERFORMANCE_THRESHOLD: ${{ github.event.inputs.performance_threshold || '10' }}
+  BASELINE_REF: ${{ github.event.inputs.baseline_ref || 'main' }}
+
+jobs:
+  # Determine if performance testing is needed
+  performance-gate:
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+      baseline_ref: ${{ steps.check.outputs.baseline_ref }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Check if performance testing is needed
+      id: check
+      run: |
+        # Always run on main branch pushes and manual triggers
+        if [[ "${{ github.ref }}" == "refs/heads/main" ]] || [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          echo "should_run=true" >> $GITHUB_OUTPUT
+          echo "baseline_ref=${{ env.BASELINE_REF }}" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+
+        # For PRs, check if performance-critical files changed
+        CHANGED_FILES=$(git diff --name-only origin/main...HEAD)
+        PERFORMANCE_CRITICAL_PATTERNS=(
+          "pkg/performance/"
+          "pkg/scheduler/"
+          "pkg/consensus/"
+          "pkg/p2p/"
+          "pkg/api/"
+          "cmd/"
+        )
+
+        for pattern in "${PERFORMANCE_CRITICAL_PATTERNS[@]}"; do
+          if echo "$CHANGED_FILES" | grep -q "$pattern"; then
+            echo "Performance-critical files changed: $pattern"
+            echo "should_run=true" >> $GITHUB_OUTPUT
+            echo "baseline_ref=origin/main" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+        done
+
+        echo "should_run=false" >> $GITHUB_OUTPUT
+
+  # Run current performance benchmarks
+  current-performance:
+    needs: performance-gate
+    if: needs.performance-gate.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ env.GO_VERSION }}-${{ hashFiles('**/go.sum') }}
+
+    - name: Install dependencies
+      run: |
+        go mod download
+        sudo apt-get update
+        sudo apt-get install -y htop iotop sysstat
+
+    - name: Set up performance test environment
+      run: |
+        # Optimize system for performance testing
+        echo "net.core.somaxconn = 65535" | sudo tee -a /etc/sysctl.conf
+        echo "net.core.netdev_max_backlog = 5000" | sudo tee -a /etc/sysctl.conf
+        sudo sysctl -p
+        
+        # Create test directories
+        mkdir -p ./performance-results/current
+        mkdir -p ./performance-baselines
+
+    - name: Run performance benchmarks
+      run: |
+        echo "🚀 Running current performance benchmarks..."
+        
+        # Run comprehensive performance tests
+        go test -bench=. -benchmem -count=3 -timeout=30m \
+          -benchtime=10s \
+          -cpu=1,2,4 \
+          ./tests/performance/... \
+          | tee ./performance-results/current/benchmark-results.txt
+
+        # Run specific performance tests with detailed metrics
+        go test -v -timeout=20m \
+          -run="TestPerformance" \
+          ./tests/performance/... \
+          | tee ./performance-results/current/performance-tests.txt
+
+        # Generate performance report
+        ./scripts/generate-performance-report.sh \
+          --input ./performance-results/current/ \
+          --output ./performance-results/current/performance-report.json
+
+    - name: Upload current performance results
+      uses: actions/upload-artifact@v3
+      with:
+        name: current-performance-results
+        path: ./performance-results/current/
+        retention-days: 30
+
+  # Get baseline performance data
+  baseline-performance:
+    needs: [performance-gate, current-performance]
+    if: needs.performance-gate.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout baseline code
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ needs.performance-gate.outputs.baseline_ref }}
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-baseline-${{ env.GO_VERSION }}-${{ hashFiles('**/go.sum') }}
+
+    - name: Install dependencies
+      run: |
+        go mod download
+        sudo apt-get update
+        sudo apt-get install -y htop iotop sysstat
+
+    - name: Set up performance test environment
+      run: |
+        # Optimize system for performance testing
+        echo "net.core.somaxconn = 65535" | sudo tee -a /etc/sysctl.conf
+        echo "net.core.netdev_max_backlog = 5000" | sudo tee -a /etc/sysctl.conf
+        sudo sysctl -p
+        
+        # Create test directories
+        mkdir -p ./performance-results/baseline
+
+    - name: Run baseline performance benchmarks
+      run: |
+        echo "📊 Running baseline performance benchmarks..."
+        
+        # Run the same performance tests as current
+        go test -bench=. -benchmem -count=3 -timeout=30m \
+          -benchtime=10s \
+          -cpu=1,2,4 \
+          ./tests/performance/... \
+          | tee ./performance-results/baseline/benchmark-results.txt
+
+        go test -v -timeout=20m \
+          -run="TestPerformance" \
+          ./tests/performance/... \
+          | tee ./performance-results/baseline/performance-tests.txt
+
+        # Generate baseline performance report
+        ./scripts/generate-performance-report.sh \
+          --input ./performance-results/baseline/ \
+          --output ./performance-results/baseline/performance-report.json
+
+    - name: Upload baseline performance results
+      uses: actions/upload-artifact@v3
+      with:
+        name: baseline-performance-results
+        path: ./performance-results/baseline/
+        retention-days: 30
+
+  # Compare performance and detect regressions
+  performance-comparison:
+    needs: [performance-gate, current-performance, baseline-performance]
+    if: needs.performance-gate.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Download current performance results
+      uses: actions/download-artifact@v3
+      with:
+        name: current-performance-results
+        path: ./performance-results/current/
+
+    - name: Download baseline performance results
+      uses: actions/download-artifact@v3
+      with:
+        name: baseline-performance-results
+        path: ./performance-results/baseline/
+
+    - name: Install performance analysis tools
+      run: |
+        go install golang.org/x/perf/cmd/benchstat@latest
+        pip install pandas matplotlib seaborn
+
+    - name: Analyze performance regression
+      id: analysis
+      run: |
+        echo "🔍 Analyzing performance regression..."
+        
+        # Create performance comparison script
+        ./scripts/compare-performance.sh \
+          --current ./performance-results/current/performance-report.json \
+          --baseline ./performance-results/baseline/performance-report.json \
+          --threshold ${{ env.PERFORMANCE_THRESHOLD }} \
+          --output ./performance-results/comparison-report.json
+
+        # Check if performance regression detected
+        if [ -f "./performance-results/regression-detected" ]; then
+          echo "regression_detected=true" >> $GITHUB_OUTPUT
+          echo "❌ Performance regression detected!"
+        else
+          echo "regression_detected=false" >> $GITHUB_OUTPUT
+          echo "✅ No performance regression detected"
+        fi
+
+    - name: Generate performance comparison report
+      run: |
+        # Generate detailed comparison report
+        ./scripts/generate-performance-comparison-report.sh \
+          --current ./performance-results/current/ \
+          --baseline ./performance-results/baseline/ \
+          --output ./performance-results/performance-comparison-report.html
+
+        # Generate performance charts
+        python3 ./scripts/generate-performance-charts.py \
+          --current ./performance-results/current/performance-report.json \
+          --baseline ./performance-results/baseline/performance-report.json \
+          --output ./performance-results/charts/
+
+    - name: Upload performance comparison results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: performance-comparison-results
+        path: ./performance-results/
+        retention-days: 90
+
+    - name: Comment performance results on PR
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          
+          // Read comparison report
+          let reportContent = "## 📊 Performance Regression Test Results\n\n";
+          
+          try {
+            const comparisonData = JSON.parse(fs.readFileSync('./performance-results/comparison-report.json', 'utf8'));
+            
+            if (comparisonData.regression_detected) {
+              reportContent += "❌ **Performance regression detected!**\n\n";
+              reportContent += `**Threshold**: ${comparisonData.threshold}%\n`;
+              reportContent += `**Worst regression**: ${comparisonData.worst_regression}%\n\n`;
+              
+              reportContent += "### 🔴 Regressions Found:\n";
+              comparisonData.regressions.forEach(reg => {
+                reportContent += `- **${reg.benchmark}**: ${reg.change}% slower\n`;
+              });
+            } else {
+              reportContent += "✅ **No performance regressions detected**\n\n";
+              reportContent += `**Threshold**: ${comparisonData.threshold}%\n`;
+              reportContent += `**Best improvement**: ${comparisonData.best_improvement}%\n\n`;
+              
+              if (comparisonData.improvements.length > 0) {
+                reportContent += "### 🟢 Performance Improvements:\n";
+                comparisonData.improvements.forEach(imp => {
+                  reportContent += `- **${imp.benchmark}**: ${imp.change}% faster\n`;
+                });
+              }
+            }
+            
+            reportContent += "\n### 📈 Detailed Results\n";
+            reportContent += "View the full performance comparison report in the workflow artifacts.\n";
+            
+          } catch (error) {
+            reportContent += "❌ Failed to parse performance comparison results.\n";
+          }
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: reportContent
+          });
+
+    - name: Fail on performance regression
+      if: steps.analysis.outputs.regression_detected == 'true'
+      run: |
+        echo "❌ Performance regression detected above threshold (${{ env.PERFORMANCE_THRESHOLD }}%)"
+        echo "Review the performance comparison report for details."
+        echo "Consider optimizing the code or updating the performance baseline."
+        exit 1
+
+  # Store performance baseline for future comparisons
+  store-baseline:
+    needs: [performance-gate, current-performance, performance-comparison]
+    if: needs.performance-gate.outputs.should_run == 'true' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download current performance results
+      uses: actions/download-artifact@v3
+      with:
+        name: current-performance-results
+        path: ./performance-results/current/
+
+    - name: Store performance baseline
+      run: |
+        echo "💾 Storing performance baseline for future comparisons..."
+        
+        # Create baseline storage directory
+        mkdir -p ./performance-baselines/$(date +%Y-%m-%d)
+        
+        # Copy current results as new baseline
+        cp -r ./performance-results/current/* ./performance-baselines/$(date +%Y-%m-%d)/
+        
+        # Create baseline metadata
+        cat > ./performance-baselines/$(date +%Y-%m-%d)/metadata.json << EOF
+        {
+          "commit": "${{ github.sha }}",
+          "ref": "${{ github.ref }}",
+          "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+          "workflow_run": "${{ github.run_id }}",
+          "actor": "${{ github.actor }}"
+        }
+        EOF
+
+    - name: Upload performance baseline
+      uses: actions/upload-artifact@v3
+      with:
+        name: performance-baseline-${{ github.sha }}
+        path: ./performance-baselines/
+        retention-days: 365  # Keep baselines for a year

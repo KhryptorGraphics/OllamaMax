@@ -1,0 +1,136 @@
+# Production Dockerfile for OllamaMax
+# Multi-stage build optimized for production deployment
+
+# Build stage
+FROM golang:1.21-alpine AS builder
+
+# Set build arguments
+ARG VERSION=dev
+ARG BUILD_TIME
+ARG GIT_COMMIT
+
+# Install build dependencies
+RUN apk add --no-cache \
+    git \
+    make \
+    gcc \
+    musl-dev \
+    ca-certificates \
+    tzdata
+
+# Set working directory
+WORKDIR /app
+
+# Copy go mod files first for better caching
+COPY go.mod go.sum ./
+
+# Download dependencies
+RUN go mod download && go mod verify
+
+# Copy source code
+COPY . .
+
+# Build the application with optimizations
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -ldflags="-w -s \
+    -X 'main.version=${VERSION}' \
+    -X 'main.buildTime=${BUILD_TIME}' \
+    -X 'main.gitCommit=${GIT_COMMIT}'" \
+    -a -installsuffix cgo \
+    -o ollama-distributed \
+    ./cmd/node
+
+# Verify the binary
+RUN ./ollama-distributed version
+
+# Runtime stage
+FROM alpine:3.19 AS runtime
+
+# Install runtime dependencies
+RUN apk add --no-cache \
+    ca-certificates \
+    curl \
+    jq \
+    tzdata \
+    bash \
+    && update-ca-certificates \
+    && rm -rf /var/cache/apk/*
+
+# Create non-root user for security
+RUN addgroup -g 1000 ollama && \
+    adduser -D -s /bin/bash -u 1000 -G ollama ollama
+
+# Create application directories
+RUN mkdir -p /app/data /app/models /app/cache /app/logs /app/config && \
+    chown -R ollama:ollama /app
+
+# Set working directory
+WORKDIR /app
+
+# Copy binary from builder stage
+COPY --from=builder /app/ollama-distributed /usr/local/bin/ollama-distributed
+
+# Copy web assets
+COPY --from=builder /app/web /app/web
+COPY --from=builder /app/pkg/web/static /app/pkg/web/static
+
+# Copy default configuration
+COPY --from=builder /app/config/production.yaml /app/config/config.yaml
+
+# Set proper permissions
+RUN chmod +x /usr/local/bin/ollama-distributed && \
+    chown -R ollama:ollama /app
+
+# Switch to non-root user
+USER ollama
+
+# Set environment variables
+ENV OLLAMA_DATA_DIR=/app/data
+ENV OLLAMA_MODELS_DIR=/app/models
+ENV OLLAMA_CACHE_DIR=/app/cache
+ENV OLLAMA_LOG_DIR=/app/logs
+ENV OLLAMA_CONFIG_FILE=/app/config/config.yaml
+ENV OLLAMA_LOG_LEVEL=info
+ENV OLLAMA_LOG_FORMAT=json
+ENV GIN_MODE=release
+
+# Expose ports
+EXPOSE 8080 8081 9000 9090
+
+# Add health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+# Create startup script
+RUN echo '#!/bin/bash\n\
+set -e\n\
+\n\
+# Print startup information\n\
+echo "🚀 Starting OllamaMax Distributed System"\n\
+echo "Version: $(ollama-distributed version)"\n\
+echo "Config: $OLLAMA_CONFIG_FILE"\n\
+echo "Data Dir: $OLLAMA_DATA_DIR"\n\
+echo "Log Level: $OLLAMA_LOG_LEVEL"\n\
+echo ""\n\
+\n\
+# Ensure directories exist\n\
+mkdir -p "$OLLAMA_DATA_DIR" "$OLLAMA_MODELS_DIR" "$OLLAMA_CACHE_DIR" "$OLLAMA_LOG_DIR"\n\
+\n\
+# Start the application\n\
+exec ollama-distributed start --config "$OLLAMA_CONFIG_FILE" "$@"\n\
+' > /app/start.sh && chmod +x /app/start.sh
+
+# Default command
+CMD ["/app/start.sh"]
+
+# Labels for metadata
+LABEL maintainer="OllamaMax Team <team@ollamamax.com>"
+LABEL version="${VERSION}"
+LABEL description="OllamaMax - Enterprise Distributed AI Platform"
+LABEL org.opencontainers.image.title="OllamaMax"
+LABEL org.opencontainers.image.description="Enterprise-grade distributed AI platform based on Ollama"
+LABEL org.opencontainers.image.version="${VERSION}"
+LABEL org.opencontainers.image.vendor="OllamaMax"
+LABEL org.opencontainers.image.licenses="MIT"
+LABEL org.opencontainers.image.source="https://github.com/KhryptorGraphics/OllamaMax"
+LABEL org.opencontainers.image.documentation="https://github.com/KhryptorGraphics/OllamaMax/blob/main/README.md"

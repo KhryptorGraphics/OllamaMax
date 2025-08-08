@@ -1,0 +1,324 @@
+name: Automated Deployment Pipeline
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
+      force_deploy:
+        description: 'Force deployment (skip some checks)'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  GO_VERSION: '1.21'
+  DOCKER_REGISTRY: 'ghcr.io'
+  IMAGE_NAME: 'khryptorgraphics/ollamamax'
+
+jobs:
+  # Determine deployment strategy
+  deployment-strategy:
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.strategy.outputs.environment }}
+      deploy_type: ${{ steps.strategy.outputs.deploy_type }}
+      version: ${{ steps.strategy.outputs.version }}
+      should_deploy: ${{ steps.strategy.outputs.should_deploy }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Determine deployment strategy
+      id: strategy
+      run: |
+        # Determine environment and deployment type
+        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          ENVIRONMENT="${{ github.event.inputs.environment }}"
+          DEPLOY_TYPE="manual"
+        elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+          ENVIRONMENT="production"
+          DEPLOY_TYPE="release"
+        elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+          ENVIRONMENT="staging"
+          DEPLOY_TYPE="continuous"
+        else
+          ENVIRONMENT="none"
+          DEPLOY_TYPE="none"
+        fi
+
+        # Generate version
+        if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+          VERSION="${{ github.ref_name }}"
+        else
+          VERSION="main-$(git rev-parse --short HEAD)"
+        fi
+
+        # Determine if we should deploy
+        SHOULD_DEPLOY="true"
+        if [[ "$ENVIRONMENT" == "none" ]]; then
+          SHOULD_DEPLOY="false"
+        fi
+
+        echo "environment=$ENVIRONMENT" >> $GITHUB_OUTPUT
+        echo "deploy_type=$DEPLOY_TYPE" >> $GITHUB_OUTPUT
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "should_deploy=$SHOULD_DEPLOY" >> $GITHUB_OUTPUT
+
+        echo "🎯 Deployment Strategy:"
+        echo "  Environment: $ENVIRONMENT"
+        echo "  Deploy Type: $DEPLOY_TYPE"
+        echo "  Version: $VERSION"
+        echo "  Should Deploy: $SHOULD_DEPLOY"
+
+  # Build and test (reuse existing comprehensive tests)
+  quality-gates:
+    needs: deployment-strategy
+    if: needs.deployment-strategy.outputs.should_deploy == 'true'
+    uses: ./.github/workflows/test.yml
+    secrets: inherit
+
+  # Performance regression testing
+  performance-regression:
+    needs: deployment-strategy
+    if: needs.deployment-strategy.outputs.should_deploy == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Run performance benchmarks
+      run: |
+        echo "🚀 Running performance benchmarks for deployment validation..."
+
+        # Run key performance benchmarks
+        go test -bench=BenchmarkProxy -benchmem -count=3 -timeout=10m \
+          ./tests/performance/... \
+          | tee performance-results.txt
+
+        # Check for critical performance regressions
+        if grep -q "FAIL" performance-results.txt; then
+          echo "❌ Performance benchmarks failed"
+          exit 1
+        fi
+
+        echo "✅ Performance benchmarks passed"
+
+    - name: Upload performance results
+      uses: actions/upload-artifact@v3
+      with:
+        name: deployment-performance-results
+        path: performance-results.txt
+        retention-days: 30
+
+  # Security validation
+  security-validation:
+    needs: deployment-strategy
+    if: needs.deployment-strategy.outputs.should_deploy == 'true'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Run security hardening validation
+      run: |
+        chmod +x scripts/security-hardening.sh
+        # Run in validation mode (don't modify system)
+        VALIDATION_MODE=true ./scripts/security-hardening.sh
+
+    - name: Run security tests
+      run: |
+        go test -v ./tests/security/...
+
+  # Build deployment artifacts
+  build-artifacts:
+    needs: [deployment-strategy, quality-gates, security-validation, performance-regression]
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Login to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.DOCKER_REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Build binary
+      run: |
+        # Build for multiple architectures
+        GOOS=linux GOARCH=amd64 go build -o bin/ollama-distributed-linux-amd64 ./cmd/node
+        GOOS=linux GOARCH=arm64 go build -o bin/ollama-distributed-linux-arm64 ./cmd/node
+        GOOS=darwin GOARCH=amd64 go build -o bin/ollama-distributed-darwin-amd64 ./cmd/node
+        GOOS=darwin GOARCH=arm64 go build -o bin/ollama-distributed-darwin-arm64 ./cmd/node
+        GOOS=windows GOARCH=amd64 go build -o bin/ollama-distributed-windows-amd64.exe ./cmd/node
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: |
+          ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.deployment-strategy.outputs.version }}
+          ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Upload binary artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: ollama-distributed-binaries
+        path: bin/
+        retention-days: 30
+
+  # Deploy to staging
+  deploy-staging:
+    needs: [deployment-strategy, build-artifacts]
+    if: needs.deployment-strategy.outputs.environment == 'staging'
+    runs-on: ubuntu-latest
+    environment: staging
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Deploy to staging
+      run: |
+        chmod +x deploy/scripts/deploy.sh
+        ./deploy/scripts/deploy.sh \
+          --type docker \
+          --environment staging \
+          --image ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.deployment-strategy.outputs.version }} \
+          --replicas 2
+
+    - name: Run staging health checks
+      run: |
+        chmod +x scripts/health-check.sh
+        ./scripts/health-check.sh --environment staging --timeout 300
+
+    - name: Run staging smoke tests
+      run: |
+        # Run basic smoke tests against staging
+        go test -v ./tests/smoke/... -staging-url=${{ secrets.STAGING_URL }}
+
+  # Deploy to production
+  deploy-production:
+    needs: [deployment-strategy, build-artifacts, deploy-staging]
+    if: needs.deployment-strategy.outputs.environment == 'production'
+    runs-on: ubuntu-latest
+    environment: production
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Deploy to production
+      run: |
+        chmod +x deploy/scripts/deploy.sh
+        ./deploy/scripts/deploy.sh \
+          --type kubernetes \
+          --environment production \
+          --image ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.deployment-strategy.outputs.version }} \
+          --replicas 3 \
+          --blue-green
+
+    - name: Run production health checks
+      run: |
+        chmod +x scripts/health-check.sh
+        ./scripts/health-check.sh --environment production --timeout 600
+
+    - name: Run production smoke tests
+      run: |
+        # Run basic smoke tests against production
+        go test -v ./tests/smoke/... -production-url=${{ secrets.PRODUCTION_URL }}
+
+  # Post-deployment monitoring
+  post-deployment:
+    needs: [deployment-strategy, deploy-staging, deploy-production]
+    if: always() && (needs.deploy-staging.result == 'success' || needs.deploy-production.result == 'success')
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup monitoring
+      run: |
+        chmod +x scripts/setup-monitoring.sh
+        ./scripts/setup-monitoring.sh --environment ${{ needs.deployment-strategy.outputs.environment }}
+
+    - name: Send deployment notification
+      uses: 8398a7/action-slack@v3
+      if: always()
+      with:
+        status: ${{ job.status }}
+        channel: '#deployments'
+        text: |
+          🚀 Deployment completed for OllamaMax
+          Environment: ${{ needs.deployment-strategy.outputs.environment }}
+          Version: ${{ needs.deployment-strategy.outputs.version }}
+          Status: ${{ job.status }}
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Rollback on failure
+  rollback:
+    needs: [deployment-strategy, deploy-staging, deploy-production]
+    if: failure() && (needs.deploy-staging.result == 'failure' || needs.deploy-production.result == 'failure')
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Rollback deployment
+      run: |
+        chmod +x scripts/rollback.sh
+        ./scripts/rollback.sh --environment ${{ needs.deployment-strategy.outputs.environment }}
+
+    - name: Send rollback notification
+      uses: 8398a7/action-slack@v3
+      with:
+        status: 'warning'
+        channel: '#deployments'
+        text: |
+          🔄 Rollback initiated for OllamaMax
+          Environment: ${{ needs.deployment-strategy.outputs.environment }}
+          Reason: Deployment failure
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

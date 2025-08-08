@@ -19,10 +19,13 @@ import (
 	pkgConfig "github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/config"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/consensus"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/integration"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/observability"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p/messaging"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p/monitoring"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/performance"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/scheduler"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/web"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/spf13/cobra"
@@ -32,22 +35,63 @@ import (
 var (
 	cfgFile string
 	version = "dev"
+	rootCmd *cobra.Command
 )
 
 func main() {
-	rootCmd := &cobra.Command{
+	rootCmd = &cobra.Command{
 		Use:   "ollama-distributed",
-		Short: "Distributed Ollama Platform",
-		Long: `A distributed, enterprise-grade version of Ollama that transforms 
-the single-node architecture into a horizontally scalable, fault-tolerant platform.`,
+		Short: "🚀 OllamaMax - Enterprise Distributed AI Platform",
+		Long: `🚀 OllamaMax - Enterprise Distributed AI Platform
+
+A distributed, enterprise-grade version of Ollama that transforms the single-node
+architecture into a horizontally scalable, fault-tolerant platform.
+
+Features:
+  🌐 Distributed AI model serving across multiple nodes
+  🔒 Enterprise-grade security with JWT authentication
+  📊 Real-time performance monitoring and optimization
+  🎨 Beautiful web interface for easy management
+  ⚡ Automatic load balancing and failover
+  🔄 Seamless model distribution and synchronization
+
+Quick Start:
+  ollama-distributed quickstart     # Start with defaults
+  ollama-distributed setup         # Interactive configuration
+  ollama-distributed start         # Start your node
+
+Web Interface: http://localhost:8081
+API Endpoint:  http://localhost:8080
+
+Documentation: https://github.com/KhryptorGraphics/OllamaMax`,
 		Version: version,
+		Example: `  # Quick start with defaults
+  ollama-distributed quickstart
+
+  # Interactive setup
+  ollama-distributed setup
+
+  # Start with custom config
+  ollama-distributed start --config config.yaml
+
+  # Check cluster status
+  ollama-distributed proxy status
+
+  # Pull and use models
+  ollama-distributed proxy pull llama2`,
 	}
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.ollama-distributed.yaml)")
+
+	// Add commands with better organization
 	rootCmd.AddCommand(startCmd())
 	rootCmd.AddCommand(statusCmd())
 	rootCmd.AddCommand(joinCmd())
 	rootCmd.AddCommand(proxyCmd())
+
+	// Initialize user experience commands
+	initHelpCommands()
+	initSetupCommands()
 
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatal(err)
@@ -201,11 +245,36 @@ func runStart(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to create scheduler: %w", err)
 	}
 
+	// Initialize performance monitoring
+	log.Printf("📊 Initializing performance monitoring...")
+
+	// Create performance optimization engine
+	perfOptConfig := performance.DefaultOptimizationConfig()
+	perfOptConfig.Enabled = true
+	perfOptConfig.OptimizationLevel = "balanced"
+	perfOptConfig.OptimizationInterval = 5 * time.Minute
+	perfOptEngine := performance.NewPerformanceOptimizationEngine(perfOptConfig)
+
+	// Create Prometheus exporter for metrics
+	prometheusConfig := observability.DefaultPrometheusConfig()
+	prometheusConfig.ListenAddress = ":9090"
+	prometheusExporter := observability.NewPrometheusExporter(prometheusConfig)
+
+	log.Printf("✅ Performance monitoring initialized")
+
 	// Initialize API server
 	apiServer, err := api.NewServer(&cfg.API, p2pNode, consensusEngine, schedulerEngine)
 	if err != nil {
 		return fmt.Errorf("failed to create API server: %w", err)
 	}
+
+	// Initialize web server
+	log.Printf("🌐 Initializing web server...")
+	webConfig := web.DefaultConfig()
+	webConfig.ListenAddress = ":8081" // Use different port from API
+	webConfig.EnableAuth = true       // Enable authentication by default
+	webServer := web.NewWebServer(webConfig, apiServer)
+	log.Printf("✅ Web server initialized on %s", webConfig.ListenAddress)
 
 	// Start all services
 	if err := p2pNode.Start(); err != nil {
@@ -220,9 +289,34 @@ func runStart(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to start scheduler: %w", err)
 	}
 
+	// Start performance monitoring
+	log.Printf("📊 Starting performance monitoring...")
+	if err := perfOptEngine.Start(); err != nil {
+		log.Printf("⚠️  Failed to start performance optimization engine: %v", err)
+	} else {
+		log.Printf("✅ Performance optimization engine started")
+	}
+
+	// Start Prometheus metrics exporter
+	monitoringCtx := context.Background()
+	if err := prometheusExporter.Start(monitoringCtx); err != nil {
+		log.Printf("⚠️  Failed to start Prometheus exporter: %v", err)
+	} else {
+		log.Printf("✅ Prometheus metrics exporter started on :9090")
+	}
+
 	if err := apiServer.Start(); err != nil {
 		return fmt.Errorf("failed to start API server: %w", err)
 	}
+
+	// Start web server
+	log.Printf("🌐 Starting web server...")
+	go func() {
+		if err := webServer.Start(); err != nil && err != http.ErrServerClosed {
+			log.Printf("⚠️  Web server error: %v", err)
+		}
+	}()
+	log.Printf("✅ Web server started on %s", webConfig.ListenAddress)
 
 	// Initialize and start Ollama integration
 	log.Printf("🤖 Initializing Ollama integration...")
