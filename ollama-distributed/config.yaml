@@ -1,0 +1,116 @@
+# Distributed Ollama Configuration
+
+# API Configuration
+api:
+  port: 11434
+  host: "0.0.0.0"
+  cors_enabled: true
+  rate_limiting:
+    enabled: true
+    requests_per_minute: 100
+
+# P2P Network Configuration
+p2p:
+  port: 4001
+  host: "0.0.0.0"
+  bootstrap_peers: []
+  discovery:
+    enabled: true
+    interval: "30s"
+  connection_manager:
+    low_water: 50
+    high_water: 100
+    grace_period: "30s"
+
+# Model Management Configuration
+models:
+  storage_path: "./models"
+  cache_size: "10GB"
+  replication:
+    min_replicas: 2
+    max_replicas: 5
+    strategy: "geographic"
+  sync:
+    enabled: true
+    interval: "5m"
+
+# Distributed Inference Configuration
+inference:
+  max_concurrent: 10
+  timeout: "5m"
+  partitioning:
+    strategy: "layerwise"
+    min_partition_size: "1MB"
+    max_partitions: 10
+  aggregation:
+    strategy: "concat"
+    timeout: "30s"
+  load_balancing:
+    enabled: true
+    algorithm: "round_robin"
+  fault_tolerance:
+    enabled: true
+    retry_attempts: 3
+    retry_delay: "1s"
+
+# Scheduler Configuration
+scheduler:
+  algorithm: "priority"
+  queue_size: 1000
+  worker_pool_size: 10
+  task_timeout: "10m"
+  resource_allocation:
+    cpu_weight: 0.3
+    memory_weight: 0.4
+    network_weight: 0.3
+
+# Monitoring Configuration
+monitoring:
+  enabled: true
+  metrics_port: 9090
+  health_check_interval: "30s"
+  log_level: "info"
+  tracing:
+    enabled: false
+    endpoint: ""
+    sample_rate: 0.1
+
+# Security Configuration
+security:
+  tls:
+    enabled: false
+    cert_file: ""
+    key_file: ""
+  authentication:
+    enabled: false
+    method: "jwt"
+  authorization:
+    enabled: false
+    rbac_file: ""
+
+# Performance Configuration
+performance:
+  caching:
+    enabled: true
+    size: "1GB"
+    ttl: "1h"
+  compression:
+    enabled: true
+    algorithm: "gzip"
+    level: 6
+  connection_pooling:
+    enabled: true
+    max_connections: 100
+    idle_timeout: "5m"
+
+# Logging Configuration
+logging:
+  level: "info"
+  format: "json"
+  output: "stdout"
+  file:
+    enabled: false
+    path: "./logs/distributed-ollama.log"
+    max_size: "100MB"
+    max_backups: 5
+    max_age: 30

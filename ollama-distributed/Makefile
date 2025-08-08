@@ -3,7 +3,7 @@
 .PHONY: test test-unit test-integration test-e2e test-performance test-chaos test-all
 .PHONY: test-ci test-coverage test-race test-bench test-security
 .PHONY: setup-test-env clean-test-env
-.PHONY: build build-docker run-docker
+.PHONY: build build-docker run-docker build-distributed run-distributed run-cluster stop-cluster
 .PHONY: lint fmt vet check
 .PHONY: deps deps-dev deps-test
 .PHONY: help
@@ -75,6 +75,52 @@ build-all:
 	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 $(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 $(CMD_DIR)/node/main.go
 	# Windows
 	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-windows-amd64.exe $(CMD_DIR)/node/main.go
+
+# Build the distributed Ollama server
+build-distributed:
+	@echo "Building distributed Ollama server..."
+	@mkdir -p $(BUILD_DIR)
+	$(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/distributed-ollama ./$(CMD_DIR)/distributed-ollama
+
+# Run the distributed Ollama server
+run-distributed: build-distributed
+	@echo "Starting distributed Ollama server..."
+	$(BUILD_DIR)/distributed-ollama -config config.yaml
+
+# Run a 3-node distributed cluster for testing
+run-cluster: build-distributed
+	@echo "Starting distributed Ollama cluster..."
+	@echo "Starting node 1 on port 11434..."
+	$(BUILD_DIR)/distributed-ollama -config config.yaml -port 11434 -p2p-port 4001 &
+	@sleep 2
+	@echo "Starting node 2 on port 11435..."
+	$(BUILD_DIR)/distributed-ollama -config config.yaml -port 11435 -p2p-port 4002 -bootstrap "/ip4/127.0.0.1/tcp/4001" &
+	@sleep 2
+	@echo "Starting node 3 on port 11436..."
+	$(BUILD_DIR)/distributed-ollama -config config.yaml -port 11436 -p2p-port 4003 -bootstrap "/ip4/127.0.0.1/tcp/4001" &
+	@echo "Cluster started. Nodes available at:"
+	@echo "  Node 1: http://localhost:11434"
+	@echo "  Node 2: http://localhost:11435"
+	@echo "  Node 3: http://localhost:11436"
+	@echo "Use 'make stop-cluster' to stop all nodes."
+
+# Stop the distributed cluster
+stop-cluster:
+	@echo "Stopping distributed Ollama cluster..."
+	@pkill -f "distributed-ollama" || true
+	@echo "Cluster stopped."
+
+# Test the distributed API
+test-distributed-api:
+	@echo "Testing distributed API endpoints..."
+	@echo "Testing health endpoint..."
+	@curl -s http://localhost:11434/health | jq . || echo "Node 1 not responding"
+	@echo "Testing distributed status..."
+	@curl -s http://localhost:11434/api/distributed/status | jq . || echo "Node 1 not responding"
+	@echo "Testing generate endpoint..."
+	@curl -s -X POST http://localhost:11434/api/generate \
+		-H "Content-Type: application/json" \
+		-d '{"model":"llama2","prompt":"Hello, distributed world!"}' | jq . || echo "Generate test failed"
 
 # Clean build artifacts
 clean:
