@@ -16,14 +16,14 @@ import (
 type OllamaIntegration struct {
 	distributedManager *DistributedModelManager
 	logger             *slog.Logger
-	
+
 	// Ollama server integration
-	modelHooks    map[string][]ModelHook
-	hooksMutex    sync.RWMutex
-	
+	modelHooks map[string][]ModelHook
+	hooksMutex sync.RWMutex
+
 	// Model interception
-	interceptor   *ModelInterceptor
-	
+	interceptor *ModelInterceptor
+
 	// Compatibility layer
 	compatibility *CompatibilityLayer
 }
@@ -34,9 +34,9 @@ type ModelHook func(operation string, modelName string, data map[string]interfac
 // ModelInterceptor intercepts Ollama model operations
 type ModelInterceptor struct {
 	integration *OllamaIntegration
-	
+
 	// Operation tracking
-	operations    map[string]*ModelOperation
+	operations      map[string]*ModelOperation
 	operationsMutex sync.RWMutex
 }
 
@@ -55,10 +55,10 @@ type ModelOperation struct {
 // CompatibilityLayer provides compatibility with existing Ollama APIs
 type CompatibilityLayer struct {
 	integration *OllamaIntegration
-	
+
 	// API translation
 	apiTranslator *APITranslator
-	
+
 	// Legacy support
 	legacySupport *LegacySupport
 }
@@ -72,17 +72,17 @@ type APITranslator struct {
 
 // RequestMapping maps Ollama requests to distributed requests
 type RequestMapping struct {
-	SourceType   string                 `json:"source_type"`
-	TargetType   string                 `json:"target_type"`
-	FieldMapping map[string]string      `json:"field_mapping"`
+	SourceType   string                        `json:"source_type"`
+	TargetType   string                        `json:"target_type"`
+	FieldMapping map[string]string             `json:"field_mapping"`
 	Transform    func(interface{}) interface{} `json:"-"`
 }
 
 // ResponseMapping maps distributed responses to Ollama responses
 type ResponseMapping struct {
-	SourceType   string                 `json:"source_type"`
-	TargetType   string                 `json:"target_type"`
-	FieldMapping map[string]string      `json:"field_mapping"`
+	SourceType   string                        `json:"source_type"`
+	TargetType   string                        `json:"target_type"`
+	FieldMapping map[string]string             `json:"field_mapping"`
 	Transform    func(interface{}) interface{} `json:"-"`
 }
 
@@ -91,7 +91,7 @@ type LegacySupport struct {
 	// Legacy model paths
 	legacyPaths map[string]string
 	pathsMutex  sync.RWMutex
-	
+
 	// Legacy metadata
 	legacyMetadata map[string]map[string]interface{}
 	metadataMutex  sync.RWMutex
@@ -104,13 +104,13 @@ func NewOllamaIntegration(distributedManager *DistributedModelManager, logger *s
 		logger:             logger,
 		modelHooks:         make(map[string][]ModelHook),
 	}
-	
+
 	// Initialize interceptor
 	integration.interceptor = &ModelInterceptor{
 		integration: integration,
 		operations:  make(map[string]*ModelOperation),
 	}
-	
+
 	// Initialize compatibility layer
 	integration.compatibility = &CompatibilityLayer{
 		integration: integration,
@@ -123,10 +123,10 @@ func NewOllamaIntegration(distributedManager *DistributedModelManager, logger *s
 			legacyMetadata: make(map[string]map[string]interface{}),
 		},
 	}
-	
+
 	// Setup API mappings
 	integration.setupAPIMappings()
-	
+
 	return integration
 }
 
@@ -137,9 +137,9 @@ func (oi *OllamaIntegration) setupAPIMappings() {
 		SourceType: "types.Name",
 		TargetType: "DistributedModel",
 		FieldMapping: map[string]string{
-			"name":    "Name",
-			"tag":     "Version",
-			"digest":  "Hash",
+			"name":   "Name",
+			"tag":    "Version",
+			"digest": "Hash",
 		},
 		Transform: func(src interface{}) interface{} {
 			if name, ok := src.(types.Name); ok {
@@ -152,7 +152,7 @@ func (oi *OllamaIntegration) setupAPIMappings() {
 			return src
 		},
 	}
-	
+
 	// Map distributed model responses to Ollama responses
 	oi.compatibility.apiTranslator.responseMappings["DistributedModel"] = ResponseMapping{
 		SourceType: "DistributedModel",
@@ -183,7 +183,7 @@ func (oi *OllamaIntegration) setupAPIMappings() {
 // InterceptModelPull intercepts Ollama model pull operations
 func (oi *OllamaIntegration) InterceptModelPull(ctx context.Context, name types.Name, fn func(types.ProgressResponse)) error {
 	oi.logger.Info("intercepting model pull", "model", name.String())
-	
+
 	// Create operation record
 	op := &ModelOperation{
 		ID:        fmt.Sprintf("pull_%s_%d", name.String(), time.Now().UnixNano()),
@@ -193,11 +193,11 @@ func (oi *OllamaIntegration) InterceptModelPull(ctx context.Context, name types.
 		StartTime: time.Now(),
 		Metadata:  make(map[string]interface{}),
 	}
-	
+
 	oi.interceptor.operationsMutex.Lock()
 	oi.interceptor.operations[op.ID] = op
 	oi.interceptor.operationsMutex.Unlock()
-	
+
 	// Execute pre-pull hooks
 	if err := oi.executeHooks("pre-pull", name.String(), map[string]interface{}{
 		"operation_id": op.ID,
@@ -208,11 +208,11 @@ func (oi *OllamaIntegration) InterceptModelPull(ctx context.Context, name types.
 		op.EndTime = time.Now()
 		return fmt.Errorf("pre-pull hook failed: %w", err)
 	}
-	
+
 	// Check if model exists in distributed system
 	if distributedModel, err := oi.distributedManager.GetModel(name.String()); err == nil {
 		oi.logger.Info("model found in distributed system", "model", name.String())
-		
+
 		// Report progress
 		if fn != nil {
 			fn(types.ProgressResponse{
@@ -222,7 +222,7 @@ func (oi *OllamaIntegration) InterceptModelPull(ctx context.Context, name types.
 				Completed: 0,
 			})
 		}
-		
+
 		// Simulate download progress
 		chunkSize := distributedModel.Size / 10
 		for i := int64(0); i < 10; i++ {
@@ -236,7 +236,7 @@ func (oi *OllamaIntegration) InterceptModelPull(ctx context.Context, name types.
 			}
 			time.Sleep(100 * time.Millisecond)
 		}
-		
+
 		if fn != nil {
 			fn(types.ProgressResponse{
 				Status:    "verifying sha256 digest",
@@ -245,23 +245,23 @@ func (oi *OllamaIntegration) InterceptModelPull(ctx context.Context, name types.
 				Completed: distributedModel.Size,
 			})
 		}
-		
+
 		op.Status = "completed"
 		op.EndTime = time.Now()
-		
+
 		// Execute post-pull hooks
 		oi.executeHooks("post-pull", name.String(), map[string]interface{}{
 			"operation_id": op.ID,
 			"model_name":   name.String(),
 			"success":      true,
 		})
-		
+
 		return nil
 	}
-	
+
 	// Model not found in distributed system, fall back to original pull
 	oi.logger.Info("model not found in distributed system, falling back to original pull", "model", name.String())
-	
+
 	// Use original Ollama pull mechanism
 	// Note: server.PullModel and server.RegistryOptions are not available in current API
 	// Creating compatibility stub
@@ -269,7 +269,7 @@ func (oi *OllamaIntegration) InterceptModelPull(ctx context.Context, name types.
 		op.Status = "failed"
 		op.Error = err.Error()
 		op.EndTime = time.Now()
-		
+
 		// Execute post-pull hooks
 		oi.executeHooks("post-pull", name.String(), map[string]interface{}{
 			"operation_id": op.ID,
@@ -277,35 +277,35 @@ func (oi *OllamaIntegration) InterceptModelPull(ctx context.Context, name types.
 			"success":      false,
 			"error":        err.Error(),
 		})
-		
+
 		return err
 	}
-	
+
 	// Add pulled model to distributed system
 	if err := oi.addPulledModelToDistributedSystem(name.String()); err != nil {
 		oi.logger.Error("failed to add pulled model to distributed system", "model", name.String(), "error", err)
 	}
-	
+
 	op.Status = "completed"
 	op.EndTime = time.Now()
-	
+
 	// Execute post-pull hooks
 	oi.executeHooks("post-pull", name.String(), map[string]interface{}{
 		"operation_id": op.ID,
 		"model_name":   name.String(),
 		"success":      true,
 	})
-	
+
 	return nil
 }
 
 // InterceptModelList intercepts Ollama model list operations
 func (oi *OllamaIntegration) InterceptModelList() ([]types.ListModelResponse, error) {
 	oi.logger.Info("intercepting model list")
-	
+
 	// Get distributed models
 	distributedModels := oi.distributedManager.GetDistributedModels()
-	
+
 	// Convert to Ollama API responses
 	var responses []types.ListModelResponse
 	for _, dm := range distributedModels {
@@ -318,7 +318,7 @@ func (oi *OllamaIntegration) InterceptModelList() ([]types.ListModelResponse, er
 		}
 		responses = append(responses, response)
 	}
-	
+
 	// Also get local models that might not be in distributed system
 	localModels, err := oi.getLocalModels()
 	if err != nil {
@@ -338,14 +338,14 @@ func (oi *OllamaIntegration) InterceptModelList() ([]types.ListModelResponse, er
 			}
 		}
 	}
-	
+
 	return responses, nil
 }
 
 // InterceptModelShow intercepts Ollama model show operations
 func (oi *OllamaIntegration) InterceptModelShow(name types.Name) (*types.ShowResponse, error) {
 	oi.logger.Info("intercepting model show", "model", name.String())
-	
+
 	// Try to get from distributed system first
 	if distributedModel, err := oi.distributedManager.GetModel(name.String()); err == nil {
 		// Create ModelInfo from map[string]interface{}
@@ -356,7 +356,7 @@ func (oi *OllamaIntegration) InterceptModelShow(name types.Name) (*types.ShowRes
 			"created_at":  distributedModel.CreatedAt,
 			"modified_at": distributedModel.UpdatedAt,
 		}
-		
+
 		return &types.ShowResponse{
 			// ModelInfo removed - not in types.ShowResponse
 			Details: types.ModelDetails{
@@ -366,7 +366,7 @@ func (oi *OllamaIntegration) InterceptModelShow(name types.Name) (*types.ShowRes
 			},
 		}, nil
 	}
-	
+
 	// Fall back to original show
 	return oi.getOriginalModelShow(name)
 }
@@ -374,19 +374,19 @@ func (oi *OllamaIntegration) InterceptModelShow(name types.Name) (*types.ShowRes
 // InterceptModelDelete intercepts Ollama model delete operations
 func (oi *OllamaIntegration) InterceptModelDelete(name types.Name) error {
 	oi.logger.Info("intercepting model delete", "model", name.String())
-	
+
 	// Execute pre-delete hooks
 	if err := oi.executeHooks("pre-delete", name.String(), map[string]interface{}{
 		"model_name": name.String(),
 	}); err != nil {
 		return fmt.Errorf("pre-delete hook failed: %w", err)
 	}
-	
+
 	// Remove from distributed system
 	if err := oi.removeFromDistributedSystem(name.String()); err != nil {
 		oi.logger.Error("failed to remove from distributed system", "model", name.String(), "error", err)
 	}
-	
+
 	// Execute original delete
 	if err := oi.executeOriginalDelete(name); err != nil {
 		// Execute post-delete hooks
@@ -397,13 +397,13 @@ func (oi *OllamaIntegration) InterceptModelDelete(name types.Name) error {
 		})
 		return err
 	}
-	
+
 	// Execute post-delete hooks
 	oi.executeHooks("post-delete", name.String(), map[string]interface{}{
 		"model_name": name.String(),
 		"success":    true,
 	})
-	
+
 	return nil
 }
 
@@ -411,7 +411,7 @@ func (oi *OllamaIntegration) InterceptModelDelete(name types.Name) error {
 func (oi *OllamaIntegration) AddModelHook(operation string, hook ModelHook) {
 	oi.hooksMutex.Lock()
 	defer oi.hooksMutex.Unlock()
-	
+
 	oi.modelHooks[operation] = append(oi.modelHooks[operation], hook)
 }
 
@@ -420,13 +420,13 @@ func (oi *OllamaIntegration) executeHooks(operation string, modelName string, da
 	oi.hooksMutex.RLock()
 	hooks := oi.modelHooks[operation]
 	oi.hooksMutex.RUnlock()
-	
+
 	for _, hook := range hooks {
 		if err := hook(operation, modelName, data); err != nil {
 			return err
 		}
 	}
-	
+
 	return nil
 }
 
@@ -437,13 +437,13 @@ func (oi *OllamaIntegration) addPulledModelToDistributedSystem(modelName string)
 	if err != nil {
 		return fmt.Errorf("failed to get model path: %w", err)
 	}
-	
+
 	// Add to distributed system
 	_, err = oi.distributedManager.AddModel(modelName, modelPath)
 	if err != nil {
 		return fmt.Errorf("failed to add model to distributed system: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -494,31 +494,31 @@ func (oi *OllamaIntegration) removeFromDistributedSystem(modelName string) error
 // since server.PullModel is not available in the current Ollama API
 func (oi *OllamaIntegration) fallbackPullModel(ctx context.Context, modelName string, fn func(types.ProgressResponse)) error {
 	oi.logger.Info("fallback pull model implementation", "model", modelName)
-	
+
 	// Simulate progress reporting
 	if fn != nil {
 		fn(types.ProgressResponse{
-			Status: "pulling model",
-			Total:  100,
+			Status:    "pulling model",
+			Total:     100,
 			Completed: 0,
 		})
-		
+
 		// Simulate download progress
 		for i := 0; i <= 100; i += 10 {
 			fn(types.ProgressResponse{
-				Status: "downloading",
-				Total:  100,
+				Status:    "downloading",
+				Total:     100,
 				Completed: int64(i),
 			})
 		}
-		
+
 		fn(types.ProgressResponse{
-			Status: "verifying sha256 digest",
-			Total:  100,
+			Status:    "verifying sha256 digest",
+			Total:     100,
 			Completed: 100,
 		})
 	}
-	
+
 	// TODO: Implement actual model pulling logic
 	// This is a stub implementation
 	return nil
@@ -528,7 +528,7 @@ func (oi *OllamaIntegration) fallbackPullModel(ctx context.Context, modelName st
 func (oi *OllamaIntegration) GetOperationStatus(operationID string) (*ModelOperation, bool) {
 	oi.interceptor.operationsMutex.RLock()
 	defer oi.interceptor.operationsMutex.RUnlock()
-	
+
 	op, exists := oi.interceptor.operations[operationID]
 	return op, exists
 }
@@ -537,19 +537,19 @@ func (oi *OllamaIntegration) GetOperationStatus(operationID string) (*ModelOpera
 func (oi *OllamaIntegration) GetAllOperations() []*ModelOperation {
 	oi.interceptor.operationsMutex.RLock()
 	defer oi.interceptor.operationsMutex.RUnlock()
-	
+
 	operations := make([]*ModelOperation, 0, len(oi.interceptor.operations))
 	for _, op := range oi.interceptor.operations {
 		operations = append(operations, op)
 	}
-	
+
 	return operations
 }
 
 // CreateFromModelfile creates a model from a Modelfile with distributed support
 func (oi *OllamaIntegration) CreateFromModelfile(ctx context.Context, name types.Name, modelfile io.Reader, fn func(types.ProgressResponse)) error {
 	oi.logger.Info("creating model from Modelfile with distributed support", "model", name.String())
-	
+
 	// Create operation record
 	op := &ModelOperation{
 		ID:        fmt.Sprintf("create_%s_%d", name.String(), time.Now().UnixNano()),
@@ -559,11 +559,11 @@ func (oi *OllamaIntegration) CreateFromModelfile(ctx context.Context, name types
 		StartTime: time.Now(),
 		Metadata:  make(map[string]interface{}),
 	}
-	
+
 	oi.interceptor.operationsMutex.Lock()
 	oi.interceptor.operations[op.ID] = op
 	oi.interceptor.operationsMutex.Unlock()
-	
+
 	// Execute pre-create hooks
 	if err := oi.executeHooks("pre-create", name.String(), map[string]interface{}{
 		"operation_id": op.ID,
@@ -574,27 +574,27 @@ func (oi *OllamaIntegration) CreateFromModelfile(ctx context.Context, name types
 		op.EndTime = time.Now()
 		return fmt.Errorf("pre-create hook failed: %w", err)
 	}
-	
+
 	// TODO: Implement actual model creation with distributed support
 	// This would involve:
 	// 1. Processing the Modelfile
 	// 2. Creating the model locally
 	// 3. Adding to distributed system
 	// 4. Setting up replication
-	
+
 	// For now, simulate creation
 	time.Sleep(1 * time.Second)
-	
+
 	op.Status = "completed"
 	op.EndTime = time.Now()
-	
+
 	// Execute post-create hooks
 	oi.executeHooks("post-create", name.String(), map[string]interface{}{
 		"operation_id": op.ID,
 		"model_name":   name.String(),
 		"success":      true,
 	})
-	
+
 	return nil
 }
 
@@ -605,23 +605,25 @@ func (oi *OllamaIntegration) SetupDefaultHooks() {
 		oi.logger.Info("pre-pull hook: checking distributed availability", "model", modelName)
 		return nil
 	})
-	
-	// Post-pull hook to add to distributed system
+
+	// Post-pull hook: register locally and trigger replication policy
 	oi.AddModelHook("post-pull", func(operation string, modelName string, data map[string]interface{}) error {
 		if success, ok := data["success"].(bool); ok && success {
-			oi.logger.Info("post-pull hook: adding to distributed system", "model", modelName)
+			oi.logger.Info("post-pull hook: registering and replicating", "model", modelName)
 			// Add to distributed system
 			if err := oi.addPulledModelToDistributedSystem(modelName); err != nil {
 				oi.logger.Error("failed to add pulled model to distributed system", "model", modelName, "error", err)
+				return nil
 			}
+			// Replication policy enforcement is automatic on SetReplicationPolicy/AddModel
 		}
 		return nil
 	})
-	
+
 	// Pre-delete hook to check replication requirements
 	oi.AddModelHook("pre-delete", func(operation string, modelName string, data map[string]interface{}) error {
 		oi.logger.Info("pre-delete hook: checking replication requirements", "model", modelName)
-		
+
 		// Check if this is the last replica
 		if dm, err := oi.distributedManager.GetModel(modelName); err == nil {
 			if len(dm.Replicas) <= 1 {
@@ -629,10 +631,10 @@ func (oi *OllamaIntegration) SetupDefaultHooks() {
 				// Could add confirmation logic here
 			}
 		}
-		
+
 		return nil
 	})
-	
+
 	// Post-delete hook to update distributed system
 	oi.AddModelHook("post-delete", func(operation string, modelName string, data map[string]interface{}) error {
 		if success, ok := data["success"].(bool); ok && success {
