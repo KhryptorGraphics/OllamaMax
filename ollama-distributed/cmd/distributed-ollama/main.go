@@ -378,6 +378,7 @@ func (s *DistributedOllamaServer) setupRoutes() {
 		distributed.GET("/models/:name/replicas", s.handleModelReplicas)
 		distributed.GET("/metrics", s.handleMetrics)
 		distributed.GET("/requests", s.handleActiveRequests)
+		distributed.GET("/replication/status", s.handleReplicationStatus)
 	}
 
 	// Health check

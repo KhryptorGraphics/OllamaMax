@@ -729,6 +729,14 @@ func (dmm *DistributedModelManager) syncRegistry() {
 	dmm.cleanupStalePeers()
 }
 
+// GetReplicationSummary exposes replication manager summary
+func (dmm *DistributedModelManager) GetReplicationSummary() *ReplicationSummary {
+	if dmm.replicationManager == nil {
+		return &ReplicationSummary{QueueLength: 0, WorkerCount: 0, Models: map[string]int{}}
+	}
+	return dmm.replicationManager.GetSummary()
+}
+
 // GetDistributedModels returns all distributed models
 func (dmm *DistributedModelManager) GetDistributedModels() []*DistributedModel {
 	dmm.registryMutex.RLock()

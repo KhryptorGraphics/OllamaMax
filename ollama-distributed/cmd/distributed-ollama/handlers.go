@@ -422,6 +422,12 @@ func (s *DistributedOllamaServer) handleActiveRequests(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+// handleReplicationStatus handles the /api/distributed/replication/status endpoint
+func (s *DistributedOllamaServer) handleReplicationStatus(c *gin.Context) {
+	summary := s.modelManager.GetReplicationSummary()
+	c.JSON(http.StatusOK, summary)
+}
+
 // handleHealth handles the /health endpoint
 func (s *DistributedOllamaServer) handleHealth(c *gin.Context) {
 	health := gin.H{
