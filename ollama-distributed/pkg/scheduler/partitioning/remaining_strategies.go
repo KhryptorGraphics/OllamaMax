@@ -35,7 +35,7 @@ func (tps *TaskParallelismStrategy) CanHandle(task *PartitionTask) bool {
 func (tps *TaskParallelismStrategy) Partition(ctx context.Context, task *PartitionTask) (*PartitionPlan, error) {
 	tps.metrics.TotalPartitions++
 	tps.metrics.LastUsed = time.Now()
-	
+
 	// Create simple task parallel partitions
 	partitions := make([]*Partition, len(task.Nodes))
 	for i, node := range task.Nodes {
@@ -50,7 +50,7 @@ func (tps *TaskParallelismStrategy) Partition(ctx context.Context, task *Partiti
 			Metadata:         map[string]interface{}{"strategy": "task_parallel"},
 		}
 	}
-	
+
 	tps.metrics.SuccessfulPartitions++
 	return &PartitionPlan{
 		ID:                  fmt.Sprintf("task_parallel_%d", time.Now().UnixNano()),
@@ -92,12 +92,12 @@ func (sps *SequenceParallelismStrategy) CanHandle(task *PartitionTask) bool {
 func (sps *SequenceParallelismStrategy) Partition(ctx context.Context, task *PartitionTask) (*PartitionPlan, error) {
 	sps.metrics.TotalPartitions++
 	sps.metrics.LastUsed = time.Now()
-	
+
 	// Create sequence parallel partitions
 	sequenceLength := task.Options.NumCtx
 	partitionsCount := len(task.Nodes)
 	sequencePerPartition := sequenceLength / partitionsCount
-	
+
 	partitions := make([]*Partition, partitionsCount)
 	for i, node := range task.Nodes {
 		startSeq := i * sequencePerPartition
@@ -105,7 +105,7 @@ func (sps *SequenceParallelismStrategy) Partition(ctx context.Context, task *Par
 		if i == partitionsCount-1 {
 			endSeq = sequenceLength // Last partition gets remaining sequence
 		}
-		
+
 		partitions[i] = &Partition{
 			ID:               fmt.Sprintf("seq_%d", i),
 			NodeID:           node.ID,
@@ -117,7 +117,7 @@ func (sps *SequenceParallelismStrategy) Partition(ctx context.Context, task *Par
 			Metadata:         map[string]interface{}{"sequence_length": endSeq - startSeq},
 		}
 	}
-	
+
 	sps.metrics.SuccessfulPartitions++
 	return &PartitionPlan{
 		ID:                  fmt.Sprintf("sequence_parallel_%d", time.Now().UnixNano()),
@@ -166,14 +166,14 @@ func (aps *AttentionParallelismStrategy) CanHandle(task *PartitionTask) bool {
 func (aps *AttentionParallelismStrategy) Partition(ctx context.Context, task *PartitionTask) (*PartitionPlan, error) {
 	aps.metrics.TotalPartitions++
 	aps.metrics.LastUsed = time.Now()
-	
+
 	// Create attention parallel partitions
 	headCount := len(task.Nodes)
 	headsPerPartition := 8 / headCount // Assume 8 attention heads
 	if headsPerPartition < 1 {
 		headsPerPartition = 1
 	}
-	
+
 	partitions := make([]*Partition, headCount)
 	for i, node := range task.Nodes {
 		startHead := i * headsPerPartition
@@ -181,7 +181,7 @@ func (aps *AttentionParallelismStrategy) Partition(ctx context.Context, task *Pa
 		if i == headCount-1 {
 			endHead = 8 // Last partition gets remaining heads
 		}
-		
+
 		partitions[i] = &Partition{
 			ID:               fmt.Sprintf("attn_%d", i),
 			NodeID:           node.ID,
@@ -193,7 +193,7 @@ func (aps *AttentionParallelismStrategy) Partition(ctx context.Context, task *Pa
 			Metadata:         map[string]interface{}{"attention_heads": endHead - startHead},
 		}
 	}
-	
+
 	aps.metrics.SuccessfulPartitions++
 	return &PartitionPlan{
 		ID:                  fmt.Sprintf("attention_parallel_%d", time.Now().UnixNano()),

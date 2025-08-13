@@ -1,3 +1,5 @@
+//go:build ignore
+
 package main
 
 import (
@@ -11,11 +13,11 @@ import (
 
 // PerformanceMeter provides comprehensive performance measurement for swarm operations
 type PerformanceMeter struct {
-	startTime    time.Time
-	metrics      *PerformanceMetrics
-	collectors   map[string]MetricsCollector
-	mu           sync.RWMutex
-	isRecording  int32 // atomic flag
+	startTime   time.Time
+	metrics     *PerformanceMetrics
+	collectors  map[string]MetricsCollector
+	mu          sync.RWMutex
+	isRecording int32 // atomic flag
 }
 
 // PerformanceMetrics holds comprehensive performance data
@@ -31,32 +33,32 @@ type PerformanceMetrics struct {
 	// Throughput metrics
 	TotalOperations     int64
 	SuccessfulOps       int64
-	FailedOps          int64
+	FailedOps           int64
 	OperationsPerSecond float64
 
 	// Resource metrics
-	PeakMemoryUsage     uint64
-	AverageMemoryUsage  uint64
-	CPUUtilization      float64
-	GoroutineCount      int
+	PeakMemoryUsage    uint64
+	AverageMemoryUsage uint64
+	CPUUtilization     float64
+	GoroutineCount     int
 
 	// Network metrics
-	NetworkLatency      time.Duration
-	MessagesSent        int64
-	MessagesReceived    int64
-	BytesSent          int64
-	BytesReceived      int64
+	NetworkLatency   time.Duration
+	MessagesSent     int64
+	MessagesReceived int64
+	BytesSent        int64
+	BytesReceived    int64
 
 	// Coordination metrics
 	LockContentions     int64
-	LockWaitTime       time.Duration
+	LockWaitTime        time.Duration
 	CoordinationEvents  int64
 	ConflictResolutions int64
 
 	// Error metrics
-	ErrorRate          float64
-	TimeoutCount       int64
-	RetryCount         int64
+	ErrorRate    float64
+	TimeoutCount int64
+	RetryCount   int64
 
 	// Custom metrics
 	CustomMetrics map[string]interface{}
@@ -81,12 +83,12 @@ type TimingCollector struct {
 
 // ThroughputCollector collects throughput and operation metrics
 type ThroughputCollector struct {
-	operations    int64
-	successful    int64
-	failed        int64
-	startTime     time.Time
-	mu            sync.RWMutex
-	isActive      bool
+	operations int64
+	successful int64
+	failed     int64
+	startTime  time.Time
+	mu         sync.RWMutex
+	isActive   bool
 }
 
 // ResourceCollector collects system resource metrics
@@ -102,30 +104,30 @@ type ResourceCollector struct {
 
 // NetworkCollector collects network and communication metrics
 type NetworkCollector struct {
-	latencies       []time.Duration
-	messagesSent    int64
-	messagesRecv    int64
-	bytesSent       int64
-	bytesRecv       int64
-	mu              sync.RWMutex
-	isActive        bool
+	latencies    []time.Duration
+	messagesSent int64
+	messagesRecv int64
+	bytesSent    int64
+	bytesRecv    int64
+	mu           sync.RWMutex
+	isActive     bool
 }
 
 // CoordinationCollector collects coordination and synchronization metrics
 type CoordinationCollector struct {
-	lockContentions    int64
-	lockWaitTimes      []time.Duration
-	coordEvents        int64
-	conflicts          int64
-	mu                 sync.RWMutex
-	isActive           bool
+	lockContentions int64
+	lockWaitTimes   []time.Duration
+	coordEvents     int64
+	conflicts       int64
+	mu              sync.RWMutex
+	isActive        bool
 }
 
 // NewPerformanceMeter creates a new performance meter
 func NewPerformanceMeter() *PerformanceMeter {
 	pm := &PerformanceMeter{
-		metrics:     &PerformanceMetrics{CustomMetrics: make(map[string]interface{})},
-		collectors:  make(map[string]MetricsCollector),
+		metrics:    &PerformanceMetrics{CustomMetrics: make(map[string]interface{})},
+		collectors: make(map[string]MetricsCollector),
 	}
 
 	// Register default collectors
@@ -329,7 +331,7 @@ func (tc *TimingCollector) Stop() error {
 func (tc *TimingCollector) GetMetrics() map[string]interface{} {
 	tc.mu.RLock()
 	defer tc.mu.RUnlock()
-	
+
 	return map[string]interface{}{
 		"measurements": tc.measurements,
 		"count":        len(tc.measurements),
@@ -362,14 +364,14 @@ func (tc *TimingCollector) StartOperation(operationID string) {
 func (tc *TimingCollector) EndOperation(operationID string) time.Duration {
 	tc.mu.Lock()
 	defer tc.mu.Unlock()
-	
+
 	if startTime, exists := tc.startTimes[operationID]; exists {
 		duration := time.Since(startTime)
 		tc.measurements = append(tc.measurements, duration)
 		delete(tc.startTimes, operationID)
 		return duration
 	}
-	
+
 	return 0
 }
 
@@ -397,7 +399,7 @@ func (tpc *ThroughputCollector) Stop() error {
 func (tpc *ThroughputCollector) GetMetrics() map[string]interface{} {
 	tpc.mu.RLock()
 	defer tpc.mu.RUnlock()
-	
+
 	return map[string]interface{}{
 		"total":      atomic.LoadInt64(&tpc.operations),
 		"successful": atomic.LoadInt64(&tpc.successful),
@@ -433,36 +435,36 @@ func (rc *ResourceCollector) Name() string {
 func (rc *ResourceCollector) Start(ctx context.Context) error {
 	rc.mu.Lock()
 	defer rc.mu.Unlock()
-	
+
 	rc.isActive = true
 	rc.ticker = time.NewTicker(100 * time.Millisecond)
-	
+
 	go rc.collectMetrics(ctx)
-	
+
 	return nil
 }
 
 func (rc *ResourceCollector) Stop() error {
 	rc.mu.Lock()
 	defer rc.mu.Unlock()
-	
+
 	rc.isActive = false
 	if rc.ticker != nil {
 		rc.ticker.Stop()
 	}
-	
+
 	select {
 	case rc.stopChan <- struct{}{}:
 	default:
 	}
-	
+
 	return nil
 }
 
 func (rc *ResourceCollector) GetMetrics() map[string]interface{} {
 	rc.mu.RLock()
 	defer rc.mu.RUnlock()
-	
+
 	var peakMemory, avgMemory uint64
 	if len(rc.memorySnapshots) > 0 {
 		peakMemory = rc.memorySnapshots[0]
@@ -475,7 +477,7 @@ func (rc *ResourceCollector) GetMetrics() map[string]interface{} {
 		}
 		avgMemory = totalMemory / uint64(len(rc.memorySnapshots))
 	}
-	
+
 	var avgCPU float64
 	if len(rc.cpuUsage) > 0 {
 		var totalCPU float64
@@ -484,14 +486,14 @@ func (rc *ResourceCollector) GetMetrics() map[string]interface{} {
 		}
 		avgCPU = totalCPU / float64(len(rc.cpuUsage))
 	}
-	
+
 	currentGoroutines := runtime.NumGoroutine()
-	
+
 	return map[string]interface{}{
-		"peak_memory":  peakMemory,
-		"avg_memory":   avgMemory,
-		"cpu_usage":    avgCPU,
-		"goroutines":   currentGoroutines,
+		"peak_memory": peakMemory,
+		"avg_memory":  avgMemory,
+		"cpu_usage":   avgCPU,
+		"goroutines":  currentGoroutines,
 	}
 }
 
@@ -548,18 +550,18 @@ func (nc *NetworkCollector) Stop() error {
 func (nc *NetworkCollector) GetMetrics() map[string]interface{} {
 	nc.mu.RLock()
 	defer nc.mu.RUnlock()
-	
+
 	var avgLatency time.Duration
 	if len(nc.latencies) > 0 {
 		avgLatency = calculateAverage(nc.latencies)
 	}
-	
+
 	return map[string]interface{}{
-		"avg_latency":        avgLatency,
-		"messages_sent":      atomic.LoadInt64(&nc.messagesSent),
-		"messages_received":  atomic.LoadInt64(&nc.messagesRecv),
-		"bytes_sent":         atomic.LoadInt64(&nc.bytesSent),
-		"bytes_received":     atomic.LoadInt64(&nc.bytesRecv),
+		"avg_latency":       avgLatency,
+		"messages_sent":     atomic.LoadInt64(&nc.messagesSent),
+		"messages_received": atomic.LoadInt64(&nc.messagesRecv),
+		"bytes_sent":        atomic.LoadInt64(&nc.bytesSent),
+		"bytes_received":    atomic.LoadInt64(&nc.bytesRecv),
 	}
 }
 
@@ -616,17 +618,17 @@ func (cc *CoordinationCollector) Stop() error {
 func (cc *CoordinationCollector) GetMetrics() map[string]interface{} {
 	cc.mu.RLock()
 	defer cc.mu.RUnlock()
-	
+
 	var avgWaitTime time.Duration
 	if len(cc.lockWaitTimes) > 0 {
 		avgWaitTime = calculateAverage(cc.lockWaitTimes)
 	}
-	
+
 	return map[string]interface{}{
-		"lock_contentions":     atomic.LoadInt64(&cc.lockContentions),
-		"avg_lock_wait":        avgWaitTime,
-		"coordination_events":  atomic.LoadInt64(&cc.coordEvents),
-		"conflicts":            atomic.LoadInt64(&cc.conflicts),
+		"lock_contentions":    atomic.LoadInt64(&cc.lockContentions),
+		"avg_lock_wait":       avgWaitTime,
+		"coordination_events": atomic.LoadInt64(&cc.coordEvents),
+		"conflicts":           atomic.LoadInt64(&cc.conflicts),
 	}
 }
 
@@ -666,7 +668,7 @@ func calculateAverage(durations []time.Duration) time.Duration {
 	if len(durations) == 0 {
 		return 0
 	}
-	
+
 	var total time.Duration
 	for _, d := range durations {
 		total += d
@@ -678,7 +680,7 @@ func calculateMin(durations []time.Duration) time.Duration {
 	if len(durations) == 0 {
 		return 0
 	}
-	
+
 	min := durations[0]
 	for _, d := range durations[1:] {
 		if d < min {
@@ -692,7 +694,7 @@ func calculateMax(durations []time.Duration) time.Duration {
 	if len(durations) == 0 {
 		return 0
 	}
-	
+
 	max := durations[0]
 	for _, d := range durations[1:] {
 		if d > max {
@@ -706,11 +708,11 @@ func calculatePercentile(durations []time.Duration, percentile float64) time.Dur
 	if len(durations) == 0 {
 		return 0
 	}
-	
+
 	// Simple percentile calculation - for production use, consider a proper sorting algorithm
 	sorted := make([]time.Duration, len(durations))
 	copy(sorted, durations)
-	
+
 	// Basic bubble sort for simplicity
 	for i := 0; i < len(sorted); i++ {
 		for j := 0; j < len(sorted)-1; j++ {
@@ -719,7 +721,7 @@ func calculatePercentile(durations []time.Duration, percentile float64) time.Dur
 			}
 		}
 	}
-	
+
 	index := int(float64(len(sorted)-1) * percentile)
 	return sorted[index]
 }

@@ -33,49 +33,49 @@ type ErrorCode string
 
 const (
 	// Node errors
-	ErrorCodeNodeNotFound      ErrorCode = "NODE_NOT_FOUND"
-	ErrorCodeNodeUnavailable   ErrorCode = "NODE_UNAVAILABLE"
-	ErrorCodeNodeOverloaded    ErrorCode = "NODE_OVERLOADED"
-	
+	ErrorCodeNodeNotFound    ErrorCode = "NODE_NOT_FOUND"
+	ErrorCodeNodeUnavailable ErrorCode = "NODE_UNAVAILABLE"
+	ErrorCodeNodeOverloaded  ErrorCode = "NODE_OVERLOADED"
+
 	// Task errors
-	ErrorCodeTaskNotFound      ErrorCode = "TASK_NOT_FOUND"
-	ErrorCodeTaskFailed        ErrorCode = "TASK_FAILED"
-	ErrorCodeTaskTimeout       ErrorCode = "TASK_TIMEOUT"
-	ErrorCodeTaskCancelled     ErrorCode = "TASK_CANCELLED"
-	
+	ErrorCodeTaskNotFound  ErrorCode = "TASK_NOT_FOUND"
+	ErrorCodeTaskFailed    ErrorCode = "TASK_FAILED"
+	ErrorCodeTaskTimeout   ErrorCode = "TASK_TIMEOUT"
+	ErrorCodeTaskCancelled ErrorCode = "TASK_CANCELLED"
+
 	// Model errors
-	ErrorCodeModelNotFound     ErrorCode = "MODEL_NOT_FOUND"
-	ErrorCodeModelLoadFailed   ErrorCode = "MODEL_LOAD_FAILED"
-	ErrorCodeModelCorrupted    ErrorCode = "MODEL_CORRUPTED"
+	ErrorCodeModelNotFound      ErrorCode = "MODEL_NOT_FOUND"
+	ErrorCodeModelLoadFailed    ErrorCode = "MODEL_LOAD_FAILED"
+	ErrorCodeModelCorrupted     ErrorCode = "MODEL_CORRUPTED"
 	ErrorCodeModelNotReplicated ErrorCode = "MODEL_NOT_REPLICATED"
-	
+
 	// Network errors
-	ErrorCodeNetworkPartition  ErrorCode = "NETWORK_PARTITION"
-	ErrorCodeConnectionFailed  ErrorCode = "CONNECTION_FAILED"
-	ErrorCodeTimeout           ErrorCode = "TIMEOUT"
-	
+	ErrorCodeNetworkPartition ErrorCode = "NETWORK_PARTITION"
+	ErrorCodeConnectionFailed ErrorCode = "CONNECTION_FAILED"
+	ErrorCodeTimeout          ErrorCode = "TIMEOUT"
+
 	// Consensus errors
 	ErrorCodeConsensusFailure  ErrorCode = "CONSENSUS_FAILURE"
 	ErrorCodeLeaderElection    ErrorCode = "LEADER_ELECTION_FAILED"
 	ErrorCodeStateInconsistent ErrorCode = "STATE_INCONSISTENT"
-	
+
 	// Resource errors
 	ErrorCodeInsufficientResources ErrorCode = "INSUFFICIENT_RESOURCES"
 	ErrorCodeResourceExhausted     ErrorCode = "RESOURCE_EXHAUSTED"
-	
+
 	// Configuration errors
-	ErrorCodeInvalidConfig     ErrorCode = "INVALID_CONFIG"
-	ErrorCodeConfigNotFound    ErrorCode = "CONFIG_NOT_FOUND"
-	
+	ErrorCodeInvalidConfig  ErrorCode = "INVALID_CONFIG"
+	ErrorCodeConfigNotFound ErrorCode = "CONFIG_NOT_FOUND"
+
 	// Authentication errors
-	ErrorCodeUnauthorized      ErrorCode = "UNAUTHORIZED"
-	ErrorCodeForbidden         ErrorCode = "FORBIDDEN"
-	ErrorCodeTokenExpired      ErrorCode = "TOKEN_EXPIRED"
-	
+	ErrorCodeUnauthorized ErrorCode = "UNAUTHORIZED"
+	ErrorCodeForbidden    ErrorCode = "FORBIDDEN"
+	ErrorCodeTokenExpired ErrorCode = "TOKEN_EXPIRED"
+
 	// Generic errors
-	ErrorCodeInternalError     ErrorCode = "INTERNAL_ERROR"
-	ErrorCodeNotImplemented    ErrorCode = "NOT_IMPLEMENTED"
-	ErrorCodeInvalidRequest    ErrorCode = "INVALID_REQUEST"
+	ErrorCodeInternalError  ErrorCode = "INTERNAL_ERROR"
+	ErrorCodeNotImplemented ErrorCode = "NOT_IMPLEMENTED"
+	ErrorCodeInvalidRequest ErrorCode = "INVALID_REQUEST"
 )
 
 // Error constructors
@@ -161,64 +161,64 @@ func NewNotImplementedError(feature string) *DistributedError {
 
 func IsNodeError(err error) bool {
 	if de, ok := err.(*DistributedError); ok {
-		return de.Code == ErrorCodeNodeNotFound || 
-			   de.Code == ErrorCodeNodeUnavailable || 
-			   de.Code == ErrorCodeNodeOverloaded
+		return de.Code == ErrorCodeNodeNotFound ||
+			de.Code == ErrorCodeNodeUnavailable ||
+			de.Code == ErrorCodeNodeOverloaded
 	}
 	return false
 }
 
 func IsTaskError(err error) bool {
 	if de, ok := err.(*DistributedError); ok {
-		return de.Code == ErrorCodeTaskNotFound || 
-			   de.Code == ErrorCodeTaskFailed || 
-			   de.Code == ErrorCodeTaskTimeout || 
-			   de.Code == ErrorCodeTaskCancelled
+		return de.Code == ErrorCodeTaskNotFound ||
+			de.Code == ErrorCodeTaskFailed ||
+			de.Code == ErrorCodeTaskTimeout ||
+			de.Code == ErrorCodeTaskCancelled
 	}
 	return false
 }
 
 func IsModelError(err error) bool {
 	if de, ok := err.(*DistributedError); ok {
-		return de.Code == ErrorCodeModelNotFound || 
-			   de.Code == ErrorCodeModelLoadFailed || 
-			   de.Code == ErrorCodeModelCorrupted || 
-			   de.Code == ErrorCodeModelNotReplicated
+		return de.Code == ErrorCodeModelNotFound ||
+			de.Code == ErrorCodeModelLoadFailed ||
+			de.Code == ErrorCodeModelCorrupted ||
+			de.Code == ErrorCodeModelNotReplicated
 	}
 	return false
 }
 
 func IsNetworkError(err error) bool {
 	if de, ok := err.(*DistributedError); ok {
-		return de.Code == ErrorCodeNetworkPartition || 
-			   de.Code == ErrorCodeConnectionFailed || 
-			   de.Code == ErrorCodeTimeout
+		return de.Code == ErrorCodeNetworkPartition ||
+			de.Code == ErrorCodeConnectionFailed ||
+			de.Code == ErrorCodeTimeout
 	}
 	return false
 }
 
 func IsConsensusError(err error) bool {
 	if de, ok := err.(*DistributedError); ok {
-		return de.Code == ErrorCodeConsensusFailure || 
-			   de.Code == ErrorCodeLeaderElection || 
-			   de.Code == ErrorCodeStateInconsistent
+		return de.Code == ErrorCodeConsensusFailure ||
+			de.Code == ErrorCodeLeaderElection ||
+			de.Code == ErrorCodeStateInconsistent
 	}
 	return false
 }
 
 func IsResourceError(err error) bool {
 	if de, ok := err.(*DistributedError); ok {
-		return de.Code == ErrorCodeInsufficientResources || 
-			   de.Code == ErrorCodeResourceExhausted
+		return de.Code == ErrorCodeInsufficientResources ||
+			de.Code == ErrorCodeResourceExhausted
 	}
 	return false
 }
 
 func IsAuthError(err error) bool {
 	if de, ok := err.(*DistributedError); ok {
-		return de.Code == ErrorCodeUnauthorized || 
-			   de.Code == ErrorCodeForbidden || 
-			   de.Code == ErrorCodeTokenExpired
+		return de.Code == ErrorCodeUnauthorized ||
+			de.Code == ErrorCodeForbidden ||
+			de.Code == ErrorCodeTokenExpired
 	}
 	return false
 }

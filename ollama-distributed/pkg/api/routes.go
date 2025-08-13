@@ -20,10 +20,10 @@ type DistributedRoutes struct {
 	integrationLayer  *IntegrationLayer
 	distributedRunner *DistributedRunner
 	modelDistribution *models.Manager
-	
+
 	// Original server for fallback
 	originalServer integration.Server
-	
+
 	// Configuration
 	distributedMode bool
 	fallbackMode    bool
@@ -37,10 +37,10 @@ func NewDistributedRoutes(scheduler *scheduler.Engine, modelDist *models.Manager
 	if err != nil {
 		return nil, fmt.Errorf("failed to create integration layer: %w", err)
 	}
-	
+
 	// Create distributed runner
 	distributedRunner := NewDistributedRunner(scheduler, integrationLayer)
-	
+
 	return &DistributedRoutes{
 		scheduler:         scheduler,
 		integrationLayer:  integrationLayer,
@@ -58,7 +58,7 @@ func (dr *DistributedRoutes) Start(ctx context.Context) error {
 	if err := dr.distributedRunner.Start(ctx); err != nil {
 		return fmt.Errorf("failed to start distributed runner: %w", err)
 	}
-	
+
 	slog.Info("Distributed routes started", "localAddr", dr.localAddr)
 	return nil
 }
@@ -67,7 +67,7 @@ func (dr *DistributedRoutes) Start(ctx context.Context) error {
 func (dr *DistributedRoutes) SetupRoutes(router *gin.Engine) {
 	// Add distributed middleware
 	router.Use(dr.distributedMiddleware())
-	
+
 	// API routes with distributed handling
 	api := router.Group("/api")
 	{
@@ -76,7 +76,7 @@ func (dr *DistributedRoutes) SetupRoutes(router *gin.Engine) {
 		api.POST("/chat", dr.handleChat)
 		api.POST("/embed", dr.handleEmbed)
 		api.POST("/embeddings", dr.handleEmbeddings)
-		
+
 		// Model management
 		api.POST("/pull", dr.handlePull)
 		api.POST("/push", dr.handlePush)
@@ -85,11 +85,11 @@ func (dr *DistributedRoutes) SetupRoutes(router *gin.Engine) {
 		api.DELETE("/delete", dr.handleDelete)
 		api.POST("/copy", dr.handleCopy)
 		api.POST("/create", dr.handleCreate)
-		
+
 		// System endpoints
 		api.GET("/ps", dr.handlePs)
 		api.GET("/version", dr.handleVersion)
-		
+
 		// Distributed-specific endpoints
 		api.GET("/distributed/status", dr.handleDistributedStatus)
 		api.GET("/distributed/nodes", dr.handleDistributedNodes)
@@ -97,7 +97,7 @@ func (dr *DistributedRoutes) SetupRoutes(router *gin.Engine) {
 		api.POST("/distributed/rebalance", dr.handleRebalance)
 		api.POST("/distributed/migrate", dr.handleMigrate)
 	}
-	
+
 	// OpenAI compatibility endpoints
 	v1 := router.Group("/v1")
 	{
@@ -107,11 +107,11 @@ func (dr *DistributedRoutes) SetupRoutes(router *gin.Engine) {
 		v1.GET("/models", dr.handleOpenAIModels)
 		v1.GET("/models/:model", dr.handleOpenAIModel)
 	}
-	
+
 	// Health and metrics
 	router.GET("/health", dr.handleHealth)
 	router.GET("/metrics", dr.handleMetrics)
-	
+
 	// Distributed admin endpoints
 	admin := router.Group("/admin")
 	{
@@ -132,12 +132,12 @@ func (dr *DistributedRoutes) distributedMiddleware() gin.HandlerFunc {
 		c.Header("X-Ollama-Version", "distributed")
 		c.Header("X-Ollama-Cluster-Size", fmt.Sprintf("%d", dr.scheduler.GetClusterSize()))
 		c.Header("X-Ollama-Mode", dr.getMode())
-		
+
 		// Add request ID for tracing
 		requestID := fmt.Sprintf("req_%d", time.Now().UnixNano())
 		c.Header("X-Request-ID", requestID)
 		c.Set("requestID", requestID)
-		
+
 		// Continue processing
 		c.Next()
 	}
@@ -308,15 +308,15 @@ func (dr *DistributedRoutes) handleOpenAIModel(c *gin.Context) {
 
 func (dr *DistributedRoutes) handleDistributedStatus(c *gin.Context) {
 	status := map[string]interface{}{
-		"distributed_mode": dr.distributedMode,
-		"fallback_mode":    dr.fallbackMode,
-		"cluster_size":     dr.scheduler.GetClusterSize(),
-		"active_nodes":     dr.scheduler.GetActiveNodes(),
-		"scheduler_stats":  dr.scheduler.GetStats(),
-		"runner_stats":     dr.distributedRunner.GetStats(),
+		"distributed_mode":  dr.distributedMode,
+		"fallback_mode":     dr.fallbackMode,
+		"cluster_size":      dr.scheduler.GetClusterSize(),
+		"active_nodes":      dr.scheduler.GetActiveNodes(),
+		"scheduler_stats":   dr.scheduler.GetStats(),
+		"runner_stats":      dr.distributedRunner.GetStats(),
 		"integration_stats": dr.integrationLayer.GetStats(),
 	}
-	
+
 	c.JSON(http.StatusOK, status)
 }
 
@@ -344,17 +344,17 @@ func (dr *DistributedRoutes) handleMigrate(c *gin.Context) {
 		FromNode  string `json:"from_node"`
 		ToNode    string `json:"to_node"`
 	}
-	
+
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	if err := dr.modelDistribution.MigrateModel(req.ModelName, req.ToNode); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, gin.H{"message": "Migration initiated"})
 }
 
@@ -372,7 +372,7 @@ func (dr *DistributedRoutes) handleHealth(c *gin.Context) {
 			"integration": dr.integrationLayer != nil,
 		},
 	}
-	
+
 	c.JSON(http.StatusOK, health)
 }
 
@@ -383,7 +383,7 @@ func (dr *DistributedRoutes) handleMetrics(c *gin.Context) {
 		"integration": dr.integrationLayer.GetStats(),
 		"models":      dr.modelDistribution.GetStats(),
 	}
-	
+
 	c.JSON(http.StatusOK, metrics)
 }
 
@@ -393,12 +393,12 @@ func (dr *DistributedRoutes) handleSetMode(c *gin.Context) {
 	var req struct {
 		Mode string `json:"mode"`
 	}
-	
+
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	switch req.Mode {
 	case "distributed":
 		dr.distributedMode = true
@@ -410,7 +410,7 @@ func (dr *DistributedRoutes) handleSetMode(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid mode"})
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Mode set to %s", req.Mode)})
 }
 
@@ -418,15 +418,15 @@ func (dr *DistributedRoutes) handleSetFallback(c *gin.Context) {
 	var req struct {
 		Enabled bool `json:"enabled"`
 	}
-	
+
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	dr.fallbackMode = req.Enabled
 	dr.integrationLayer.SetFallbackMode(req.Enabled)
-	
+
 	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Fallback mode set to %v", req.Enabled)})
 }
 
@@ -440,18 +440,18 @@ func (dr *DistributedRoutes) handleForceRebalance(c *gin.Context) {
 
 func (dr *DistributedRoutes) handleStats(c *gin.Context) {
 	stats := map[string]interface{}{
-		"mode":             dr.getMode(),
-		"uptime":           time.Since(time.Now()).String(),
-		"cluster_size":     dr.scheduler.GetClusterSize(),
-		"active_nodes":     dr.scheduler.GetActiveNodes(),
-		"total_models":     dr.modelDistribution.GetTotalModels(),
+		"mode":               dr.getMode(),
+		"uptime":             time.Since(time.Now()).String(),
+		"cluster_size":       dr.scheduler.GetClusterSize(),
+		"active_nodes":       dr.scheduler.GetActiveNodes(),
+		"total_models":       dr.modelDistribution.GetTotalModels(),
 		"distributed_models": dr.modelDistribution.GetDistributedModelCount(),
-		"active_runners":   len(dr.distributedRunner.GetActiveRunners()),
-		"scheduler_stats":  dr.scheduler.GetStats(),
-		"runner_stats":     dr.distributedRunner.GetStats(),
-		"integration_stats": dr.integrationLayer.GetStats(),
+		"active_runners":     len(dr.distributedRunner.GetActiveRunners()),
+		"scheduler_stats":    dr.scheduler.GetStats(),
+		"runner_stats":       dr.distributedRunner.GetStats(),
+		"integration_stats":  dr.integrationLayer.GetStats(),
 	}
-	
+
 	c.JSON(http.StatusOK, stats)
 }
 
@@ -472,7 +472,7 @@ func (dr *DistributedRoutes) fallbackToOriginal(c *gin.Context) {
 		// TODO: Implement fallback to original server
 		c.Header("X-Ollama-Fallback", "original-server")
 	}
-	
+
 	// For now, proxy to local
 	dr.integrationLayer.proxyToLocal(c)
 }
@@ -505,12 +505,12 @@ func (dr *DistributedRoutes) IsFallbackMode() bool {
 // Shutdown gracefully shuts down the distributed routes
 func (dr *DistributedRoutes) Shutdown(ctx context.Context) error {
 	slog.Info("Shutting down distributed routes")
-	
+
 	// Shutdown distributed runner
 	if err := dr.distributedRunner.Shutdown(ctx); err != nil {
 		slog.Error("Failed to shutdown distributed runner", "error", err)
 		return err
 	}
-	
+
 	return nil
 }

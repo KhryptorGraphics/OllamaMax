@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/types"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/scheduler"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/types"
 )
 
 // Stub types for missing llm package
@@ -27,31 +27,31 @@ type CompletionResponse struct {
 
 // DistributedRunner extends the existing runner functionality for distributed execution
 type DistributedRunner struct {
-	scheduler       *scheduler.Engine
+	scheduler        *scheduler.Engine
 	integrationLayer *IntegrationLayer
-	
+
 	// Runner state
-	mu              sync.RWMutex
-	activeRunners   map[string]*RunnerInstance
-	runnerPool      chan *RunnerInstance
-	maxRunners      int
-	
+	mu            sync.RWMutex
+	activeRunners map[string]*RunnerInstance
+	runnerPool    chan *RunnerInstance
+	maxRunners    int
+
 	// Metrics
-	requestCount    int64
-	successCount    int64
-	failureCount    int64
-	averageLatency  time.Duration
+	requestCount   int64
+	successCount   int64
+	failureCount   int64
+	averageLatency time.Duration
 }
 
 // RunnerInstance represents a runner instance on a specific node
 type RunnerInstance struct {
-	ID          string
-	NodeID      string
-	ModelName   string
-	Status      string
-	Created     time.Time
-	LastUsed    time.Time
-	RequestChan chan *RunnerRequest
+	ID           string
+	NodeID       string
+	ModelName    string
+	Status       string
+	Created      time.Time
+	LastUsed     time.Time
+	RequestChan  chan *RunnerRequest
 	ResponseChan chan *RunnerResponse
 }
 
@@ -89,23 +89,23 @@ func NewDistributedRunner(scheduler *scheduler.Engine, integrationLayer *Integra
 func (dr *DistributedRunner) Start(ctx context.Context) error {
 	// Start runner pool manager
 	go dr.manageRunnerPool(ctx)
-	
+
 	// Start metrics collection
 	go dr.collectMetrics(ctx)
-	
+
 	return nil
 }
 
 // ExecuteRequest executes a request using distributed runners
 func (dr *DistributedRunner) ExecuteRequest(req *RunnerRequest) (*RunnerResponse, error) {
 	startTime := time.Now()
-	
+
 	// Get or create runner instance
 	runner, err := dr.getRunner(req.Type)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get runner: %w", err)
 	}
-	
+
 	// Send request to runner
 	select {
 	case runner.RequestChan <- req:
@@ -113,7 +113,7 @@ func (dr *DistributedRunner) ExecuteRequest(req *RunnerRequest) (*RunnerResponse
 	case <-time.After(5 * time.Second):
 		return nil, fmt.Errorf("runner request timeout")
 	}
-	
+
 	// Wait for response
 	select {
 	case resp := <-req.Response:
@@ -132,7 +132,7 @@ func (dr *DistributedRunner) HandleGeneration(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	// Create runner request
 	runnerReq := &RunnerRequest{
 		ID:       fmt.Sprintf("gen_%d", time.Now().UnixNano()),
@@ -141,14 +141,14 @@ func (dr *DistributedRunner) HandleGeneration(c *gin.Context) {
 		Payload:  req,
 		Response: make(chan *RunnerResponse, 1),
 	}
-	
+
 	// Execute request
 	resp, err := dr.ExecuteRequest(runnerReq)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	if resp.Success {
 		c.Header("X-Ollama-Node", resp.NodeID)
 		c.Header("X-Ollama-Latency", resp.Latency.String())
@@ -165,7 +165,7 @@ func (dr *DistributedRunner) HandleChat(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	// Create runner request
 	runnerReq := &RunnerRequest{
 		ID:       fmt.Sprintf("chat_%d", time.Now().UnixNano()),
@@ -174,14 +174,14 @@ func (dr *DistributedRunner) HandleChat(c *gin.Context) {
 		Payload:  req,
 		Response: make(chan *RunnerResponse, 1),
 	}
-	
+
 	// Execute request
 	resp, err := dr.ExecuteRequest(runnerReq)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	if resp.Success {
 		c.Header("X-Ollama-Node", resp.NodeID)
 		c.Header("X-Ollama-Latency", resp.Latency.String())
@@ -198,7 +198,7 @@ func (dr *DistributedRunner) HandleEmbedding(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	// Create runner request
 	runnerReq := &RunnerRequest{
 		ID:       fmt.Sprintf("embed_%d", time.Now().UnixNano()),
@@ -207,14 +207,14 @@ func (dr *DistributedRunner) HandleEmbedding(c *gin.Context) {
 		Payload:  req,
 		Response: make(chan *RunnerResponse, 1),
 	}
-	
+
 	// Execute request
 	resp, err := dr.ExecuteRequest(runnerReq)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	if resp.Success {
 		c.Header("X-Ollama-Node", resp.NodeID)
 		c.Header("X-Ollama-Latency", resp.Latency.String())
@@ -228,7 +228,7 @@ func (dr *DistributedRunner) HandleEmbedding(c *gin.Context) {
 func (dr *DistributedRunner) getRunner(requestType string) (*RunnerInstance, error) {
 	dr.mu.Lock()
 	defer dr.mu.Unlock()
-	
+
 	// Try to get from pool
 	select {
 	case runner := <-dr.runnerPool:
@@ -250,10 +250,10 @@ func (dr *DistributedRunner) createRunner(requestType string) (*RunnerInstance, 
 	if len(nodes) == 0 {
 		return nil, fmt.Errorf("no available nodes")
 	}
-	
+
 	// Select best node (for now, just use first)
 	nodeID := nodes[0].ID
-	
+
 	runner := &RunnerInstance{
 		ID:           fmt.Sprintf("runner_%d", time.Now().UnixNano()),
 		NodeID:       nodeID,
@@ -264,12 +264,12 @@ func (dr *DistributedRunner) createRunner(requestType string) (*RunnerInstance, 
 		RequestChan:  make(chan *RunnerRequest, 10),
 		ResponseChan: make(chan *RunnerResponse, 10),
 	}
-	
+
 	// Start runner goroutine
 	go dr.runRunner(runner)
-	
+
 	dr.activeRunners[runner.ID] = runner
-	
+
 	return runner, nil
 }
 
@@ -280,13 +280,13 @@ func (dr *DistributedRunner) runRunner(runner *RunnerInstance) {
 		delete(dr.activeRunners, runner.ID)
 		dr.mu.Unlock()
 	}()
-	
+
 	for {
 		select {
 		case req := <-runner.RequestChan:
 			// Process request
 			resp := dr.processRequest(runner, req)
-			
+
 			// Send response
 			select {
 			case req.Response <- resp:
@@ -294,7 +294,7 @@ func (dr *DistributedRunner) runRunner(runner *RunnerInstance) {
 			case <-time.After(5 * time.Second):
 				// Response timeout
 			}
-			
+
 		case <-time.After(30 * time.Second):
 			// Runner idle timeout
 			return
@@ -305,7 +305,7 @@ func (dr *DistributedRunner) runRunner(runner *RunnerInstance) {
 // processRequest processes a request on a runner
 func (dr *DistributedRunner) processRequest(runner *RunnerInstance, req *RunnerRequest) *RunnerResponse {
 	startTime := time.Now()
-	
+
 	// Create scheduler request
 	// Convert interface{} payload to map[string]interface{}
 	var payload map[string]interface{}
@@ -319,7 +319,7 @@ func (dr *DistributedRunner) processRequest(runner *RunnerInstance, req *RunnerR
 			}
 		}
 	}
-	
+
 	schedReq := &scheduler.Request{
 		ID:         req.ID,
 		Type:       req.Type,
@@ -328,7 +328,7 @@ func (dr *DistributedRunner) processRequest(runner *RunnerInstance, req *RunnerR
 		ResponseCh: make(chan *scheduler.Response, 1),
 		Payload:    payload,
 	}
-	
+
 	// Schedule request
 	if err := dr.scheduler.Schedule(schedReq); err != nil {
 		return &RunnerResponse{
@@ -339,7 +339,7 @@ func (dr *DistributedRunner) processRequest(runner *RunnerInstance, req *RunnerR
 			Latency: time.Since(startTime),
 		}
 	}
-	
+
 	// Wait for response
 	select {
 	case schedResp := <-schedReq.ResponseCh:
@@ -366,7 +366,7 @@ func (dr *DistributedRunner) processRequest(runner *RunnerInstance, req *RunnerR
 func (dr *DistributedRunner) manageRunnerPool(ctx context.Context) {
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -381,7 +381,7 @@ func (dr *DistributedRunner) manageRunnerPool(ctx context.Context) {
 func (dr *DistributedRunner) cleanupRunners() {
 	dr.mu.Lock()
 	defer dr.mu.Unlock()
-	
+
 	now := time.Now()
 	for id, runner := range dr.activeRunners {
 		if now.Sub(runner.LastUsed) > 5*time.Minute {
@@ -394,7 +394,7 @@ func (dr *DistributedRunner) cleanupRunners() {
 func (dr *DistributedRunner) collectMetrics(ctx context.Context) {
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -415,14 +415,14 @@ func (dr *DistributedRunner) calculateMetrics() {
 func (dr *DistributedRunner) updateMetrics(resp *RunnerResponse) {
 	dr.mu.Lock()
 	defer dr.mu.Unlock()
-	
+
 	dr.requestCount++
 	if resp.Success {
 		dr.successCount++
 	} else {
 		dr.failureCount++
 	}
-	
+
 	// Update average latency (simple moving average)
 	if dr.requestCount == 1 {
 		dr.averageLatency = resp.Latency
@@ -435,21 +435,21 @@ func (dr *DistributedRunner) updateMetrics(resp *RunnerResponse) {
 func (dr *DistributedRunner) GetStats() map[string]interface{} {
 	dr.mu.RLock()
 	defer dr.mu.RUnlock()
-	
+
 	successRate := float64(0)
 	if dr.requestCount > 0 {
 		successRate = float64(dr.successCount) / float64(dr.requestCount) * 100
 	}
-	
+
 	return map[string]interface{}{
-		"active_runners":   len(dr.activeRunners),
-		"max_runners":      dr.maxRunners,
-		"request_count":    dr.requestCount,
-		"success_count":    dr.successCount,
-		"failure_count":    dr.failureCount,
-		"success_rate":     successRate,
-		"average_latency":  dr.averageLatency.String(),
-		"pool_size":        len(dr.runnerPool),
+		"active_runners":  len(dr.activeRunners),
+		"max_runners":     dr.maxRunners,
+		"request_count":   dr.requestCount,
+		"success_count":   dr.successCount,
+		"failure_count":   dr.failureCount,
+		"success_rate":    successRate,
+		"average_latency": dr.averageLatency.String(),
+		"pool_size":       len(dr.runnerPool),
 	}
 }
 
@@ -457,7 +457,7 @@ func (dr *DistributedRunner) GetStats() map[string]interface{} {
 func (dr *DistributedRunner) GetActiveRunners() map[string]*RunnerInstance {
 	dr.mu.RLock()
 	defer dr.mu.RUnlock()
-	
+
 	result := make(map[string]*RunnerInstance)
 	for k, v := range dr.activeRunners {
 		result[k] = v
@@ -469,7 +469,7 @@ func (dr *DistributedRunner) GetActiveRunners() map[string]*RunnerInstance {
 func (dr *DistributedRunner) SetMaxRunners(max int) {
 	dr.mu.Lock()
 	defer dr.mu.Unlock()
-	
+
 	dr.maxRunners = max
 }
 
@@ -477,16 +477,16 @@ func (dr *DistributedRunner) SetMaxRunners(max int) {
 func (dr *DistributedRunner) Shutdown(ctx context.Context) error {
 	dr.mu.Lock()
 	defer dr.mu.Unlock()
-	
+
 	// Close all active runners
 	for _, runner := range dr.activeRunners {
 		close(runner.RequestChan)
 		close(runner.ResponseChan)
 	}
-	
+
 	// Clear runners
 	dr.activeRunners = make(map[string]*RunnerInstance)
-	
+
 	return nil
 }
 
@@ -512,22 +512,22 @@ func (dra *DistributedRunnerAdapter) Completion(ctx context.Context, req Complet
 		Payload:  req,
 		Response: make(chan *RunnerResponse, 1),
 	}
-	
+
 	// Execute request
 	resp, err := dra.runner.ExecuteRequest(runnerReq)
 	if err != nil {
 		return err
 	}
-	
+
 	if !resp.Success {
 		return fmt.Errorf("completion failed: %s", resp.Error)
 	}
-	
+
 	// Convert response back to CompletionResponse
 	if completionResp, ok := resp.Data.(CompletionResponse); ok {
 		fn(completionResp)
 	}
-	
+
 	return nil
 }
 
@@ -541,22 +541,22 @@ func (dra *DistributedRunnerAdapter) Embedding(ctx context.Context, prompt strin
 		Payload:  prompt,
 		Response: make(chan *RunnerResponse, 1),
 	}
-	
+
 	// Execute request
 	resp, err := dra.runner.ExecuteRequest(runnerReq)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if !resp.Success {
 		return nil, fmt.Errorf("embedding failed: %s", resp.Error)
 	}
-	
+
 	// Convert response back to embedding
 	if embedding, ok := resp.Data.([]float32); ok {
 		return embedding, nil
 	}
-	
+
 	return nil, fmt.Errorf("invalid embedding response")
 }
 
@@ -570,22 +570,22 @@ func (dra *DistributedRunnerAdapter) Tokenize(ctx context.Context, content strin
 		Payload:  content,
 		Response: make(chan *RunnerResponse, 1),
 	}
-	
+
 	// Execute request
 	resp, err := dra.runner.ExecuteRequest(runnerReq)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if !resp.Success {
 		return nil, fmt.Errorf("tokenization failed: %s", resp.Error)
 	}
-	
+
 	// Convert response back to tokens
 	if tokens, ok := resp.Data.([]int); ok {
 		return tokens, nil
 	}
-	
+
 	return nil, fmt.Errorf("invalid tokenization response")
 }
 
@@ -599,22 +599,22 @@ func (dra *DistributedRunnerAdapter) Detokenize(ctx context.Context, tokens []in
 		Payload:  tokens,
 		Response: make(chan *RunnerResponse, 1),
 	}
-	
+
 	// Execute request
 	resp, err := dra.runner.ExecuteRequest(runnerReq)
 	if err != nil {
 		return "", err
 	}
-	
+
 	if !resp.Success {
 		return "", fmt.Errorf("detokenization failed: %s", resp.Error)
 	}
-	
+
 	// Convert response back to string
 	if text, ok := resp.Data.(string); ok {
 		return text, nil
 	}
-	
+
 	return "", fmt.Errorf("invalid detokenization response")
 }
 

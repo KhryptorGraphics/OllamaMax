@@ -90,11 +90,13 @@ Documentation: https://github.com/KhryptorGraphics/OllamaMax`,
 	rootCmd.AddCommand(proxyCmd())
 
 	// Initialize user experience commands
-	initHelpCommands()
-	initSetupCommands()
+	// TODO: Implement these functions for enhanced user experience
+	// initHelpCommands()
+	// initSetupCommands()
 
 	if err := rootCmd.Execute(); err != nil {
-		log.Fatal(err)
+		log.Printf("Error executing command: %v", err)
+		os.Exit(1)
 	}
 }
 
@@ -350,7 +352,7 @@ func runStart(cmd *cobra.Command, args []string) error {
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer shutdownCancel()
 
-	if err := apiServer.Shutdown(shutdownCtx); err != nil {
+	if err := apiServer.Stop(); err != nil {
 		log.Printf("API server shutdown error: %v", err)
 	}
 
@@ -885,10 +887,12 @@ func initConfig() {
 	} else {
 		home, err := os.UserHomeDir()
 		if err != nil {
-			log.Fatal(err)
+			log.Printf("Warning: Could not determine home directory: %v", err)
+			// Continue with current directory only
+		} else {
+			viper.AddConfigPath(home)
 		}
 
-		viper.AddConfigPath(home)
 		viper.AddConfigPath(".")
 		viper.SetConfigName(".ollama-distributed")
 	}

@@ -21,24 +21,24 @@ type FallbackManager struct {
 	localURL     *url.URL
 	localClient  *http.Client
 	localHealthy bool
-	
+
 	// Fallback configuration
 	fallbackEnabled     bool
 	fallbackTimeout     time.Duration
 	healthCheckInterval time.Duration
 	maxRetries          int
-	
+
 	// Health monitoring
-	healthMu           sync.RWMutex
-	lastHealthCheck    time.Time
+	healthMu            sync.RWMutex
+	lastHealthCheck     time.Time
 	consecutiveFailures int
-	
+
 	// Fallback statistics
-	statsMu         sync.RWMutex
-	fallbackCount   int64
-	successCount    int64
-	failureCount    int64
-	averageLatency  time.Duration
+	statsMu        sync.RWMutex
+	fallbackCount  int64
+	successCount   int64
+	failureCount   int64
+	averageLatency time.Duration
 }
 
 // NewFallbackManager creates a new fallback manager
@@ -47,11 +47,11 @@ func NewFallbackManager(localAddr string) (*FallbackManager, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid local URL: %w", err)
 	}
-	
+
 	client := &http.Client{
 		Timeout: 30 * time.Second,
 	}
-	
+
 	fm := &FallbackManager{
 		localURL:            localURL,
 		localClient:         client,
@@ -61,10 +61,10 @@ func NewFallbackManager(localAddr string) (*FallbackManager, error) {
 		healthCheckInterval: 30 * time.Second,
 		maxRetries:          3,
 	}
-	
+
 	// Start health monitoring
 	go fm.startHealthMonitoring()
-	
+
 	return fm, nil
 }
 
@@ -72,7 +72,7 @@ func NewFallbackManager(localAddr string) (*FallbackManager, error) {
 func (fm *FallbackManager) startHealthMonitoring() {
 	ticker := time.NewTicker(fm.healthCheckInterval)
 	defer ticker.Stop()
-	
+
 	for range ticker.C {
 		fm.checkLocalHealth()
 	}
@@ -82,28 +82,28 @@ func (fm *FallbackManager) startHealthMonitoring() {
 func (fm *FallbackManager) checkLocalHealth() {
 	fm.healthMu.Lock()
 	defer fm.healthMu.Unlock()
-	
+
 	fm.lastHealthCheck = time.Now()
-	
+
 	// Create health check request
 	healthURL := fmt.Sprintf("%s/api/version", fm.localURL.String())
-	
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	
+
 	req, err := http.NewRequestWithContext(ctx, "GET", healthURL, nil)
 	if err != nil {
 		fm.recordHealthFailure()
 		return
 	}
-	
+
 	resp, err := fm.localClient.Do(req)
 	if err != nil {
 		fm.recordHealthFailure()
 		return
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode == http.StatusOK {
 		fm.recordHealthSuccess()
 	} else {
@@ -141,12 +141,12 @@ func (fm *FallbackManager) ShouldFallback(reason string) bool {
 	if !fm.fallbackEnabled {
 		return false
 	}
-	
+
 	// Always fallback if local is unhealthy and we have no other options
 	if !fm.IsLocalHealthy() && reason != "local-unhealthy" {
 		return false
 	}
-	
+
 	// Check specific fallback reasons
 	switch reason {
 	case "scheduler-error":
@@ -171,29 +171,29 @@ func (fm *FallbackManager) ExecuteFallback(c *gin.Context, reason string) error 
 	if !fm.ShouldFallback(reason) {
 		return fmt.Errorf("fallback not allowed for reason: %s", reason)
 	}
-	
+
 	startTime := time.Now()
-	
+
 	// Increment fallback count
 	fm.statsMu.Lock()
 	fm.fallbackCount++
 	fm.statsMu.Unlock()
-	
+
 	// Log fallback
 	slog.Info("Executing fallback to local", "reason", reason, "path", c.Request.URL.Path)
-	
+
 	// Add fallback headers
 	c.Header("X-Ollama-Fallback", "true")
 	c.Header("X-Ollama-Fallback-Reason", reason)
 	c.Header("X-Ollama-Fallback-Time", startTime.Format(time.RFC3339))
-	
+
 	// Execute fallback request
 	err := fm.executeLocalRequest(c)
-	
+
 	// Update statistics
 	latency := time.Since(startTime)
 	fm.updateStats(err == nil, latency)
-	
+
 	return err
 }
 
@@ -202,7 +202,7 @@ func (fm *FallbackManager) executeLocalRequest(c *gin.Context) error {
 	// Read request body
 	var body []byte
 	var err error
-	
+
 	if c.Request.Body != nil {
 		body, err = io.ReadAll(c.Request.Body)
 		if err != nil {
@@ -211,71 +211,71 @@ func (fm *FallbackManager) executeLocalRequest(c *gin.Context) error {
 		// Reset body for potential retries
 		c.Request.Body = io.NopCloser(bytes.NewBuffer(body))
 	}
-	
+
 	// Construct local URL
 	localURL := fmt.Sprintf("%s%s", fm.localURL.String(), c.Request.URL.Path)
 	if c.Request.URL.RawQuery != "" {
 		localURL += "?" + c.Request.URL.RawQuery
 	}
-	
+
 	// Create request with timeout
 	ctx, cancel := context.WithTimeout(c.Request.Context(), fm.fallbackTimeout)
 	defer cancel()
-	
+
 	req, err := http.NewRequestWithContext(ctx, c.Request.Method, localURL, bytes.NewBuffer(body))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
-	
+
 	// Copy headers
 	for key, values := range c.Request.Header {
 		for _, value := range values {
 			req.Header.Add(key, value)
 		}
 	}
-	
+
 	// Execute request with retries
 	var resp *http.Response
 	var lastErr error
-	
+
 	for attempt := 0; attempt < fm.maxRetries; attempt++ {
 		if attempt > 0 {
 			slog.Debug("Retrying fallback request", "attempt", attempt+1, "maxRetries", fm.maxRetries)
 			time.Sleep(time.Duration(attempt) * time.Second)
 		}
-		
+
 		resp, lastErr = fm.localClient.Do(req)
 		if lastErr == nil {
 			break
 		}
-		
+
 		// Reset request body for retry
 		if body != nil {
 			req.Body = io.NopCloser(bytes.NewBuffer(body))
 		}
 	}
-	
+
 	if lastErr != nil {
 		return fmt.Errorf("fallback request failed after %d attempts: %w", fm.maxRetries, lastErr)
 	}
 	defer resp.Body.Close()
-	
+
 	// Copy response headers
 	for key, values := range resp.Header {
 		for _, value := range values {
 			c.Header(key, value)
 		}
 	}
-	
+
 	// Set status code
 	c.Status(resp.StatusCode)
-	
+
 	// Stream response body
 	_, err = io.Copy(c.Writer, resp.Body)
 	if err != nil {
 		return fmt.Errorf("failed to copy response body: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -284,8 +284,8 @@ func (fm *FallbackManager) FallbackToLocal(c *gin.Context, reason string) {
 	if err := fm.ExecuteFallback(c, reason); err != nil {
 		slog.Error("Fallback execution failed", "error", err, "reason", reason)
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Fallback to local failed",
-			"reason": reason,
+			"error":   "Fallback to local failed",
+			"reason":  reason,
 			"details": err.Error(),
 		})
 	}
@@ -295,7 +295,7 @@ func (fm *FallbackManager) FallbackToLocal(c *gin.Context, reason string) {
 func (fm *FallbackManager) HandleDistributedError(c *gin.Context, err error, operation string) {
 	// Determine fallback reason based on error
 	reason := "distributed-error"
-	
+
 	if err != nil {
 		switch {
 		case bytes.Contains([]byte(err.Error()), []byte("timeout")):
@@ -308,23 +308,23 @@ func (fm *FallbackManager) HandleDistributedError(c *gin.Context, err error, ope
 			reason = "scheduler-error"
 		}
 	}
-	
+
 	// Log error
 	slog.Error("Distributed operation failed", "error", err, "operation", operation, "reason", reason)
-	
+
 	// Add error headers
 	c.Header("X-Ollama-Distributed-Error", err.Error())
 	c.Header("X-Ollama-Error-Operation", operation)
-	
+
 	// Try fallback
 	if fm.ShouldFallback(reason) {
 		fm.FallbackToLocal(c, reason)
 	} else {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Distributed operation failed",
-			"operation": operation,
-			"reason": reason,
-			"details": err.Error(),
+			"error":              "Distributed operation failed",
+			"operation":          operation,
+			"reason":             reason,
+			"details":            err.Error(),
 			"fallback_available": false,
 		})
 	}
@@ -334,13 +334,13 @@ func (fm *FallbackManager) HandleDistributedError(c *gin.Context, err error, ope
 func (fm *FallbackManager) updateStats(success bool, latency time.Duration) {
 	fm.statsMu.Lock()
 	defer fm.statsMu.Unlock()
-	
+
 	if success {
 		fm.successCount++
 	} else {
 		fm.failureCount++
 	}
-	
+
 	// Update average latency
 	totalRequests := fm.successCount + fm.failureCount
 	if totalRequests == 1 {
@@ -354,16 +354,16 @@ func (fm *FallbackManager) updateStats(success bool, latency time.Duration) {
 func (fm *FallbackManager) GetStats() map[string]interface{} {
 	fm.statsMu.RLock()
 	defer fm.statsMu.RUnlock()
-	
+
 	fm.healthMu.RLock()
 	defer fm.healthMu.RUnlock()
-	
+
 	successRate := float64(0)
 	totalRequests := fm.successCount + fm.failureCount
 	if totalRequests > 0 {
 		successRate = float64(fm.successCount) / float64(totalRequests) * 100
 	}
-	
+
 	return map[string]interface{}{
 		"enabled":               fm.fallbackEnabled,
 		"local_healthy":         fm.localHealthy,
@@ -406,21 +406,21 @@ func (fm *FallbackManager) SetHealthCheckInterval(interval time.Duration) {
 func (fm *FallbackManager) Reset() {
 	fm.statsMu.Lock()
 	defer fm.statsMu.Unlock()
-	
+
 	fm.fallbackCount = 0
 	fm.successCount = 0
 	fm.failureCount = 0
 	fm.averageLatency = 0
-	
+
 	slog.Info("Fallback statistics reset")
 }
 
 // StandaloneMode represents standalone mode configuration
 type StandaloneMode struct {
-	enabled      bool
-	reason       string
-	enabledAt    time.Time
-	fallbackMgr  *FallbackManager
+	enabled     bool
+	reason      string
+	enabledAt   time.Time
+	fallbackMgr *FallbackManager
 }
 
 // NewStandaloneMode creates a new standalone mode manager
@@ -436,7 +436,7 @@ func (sm *StandaloneMode) Enable(reason string) {
 	sm.enabled = true
 	sm.reason = reason
 	sm.enabledAt = time.Now()
-	
+
 	slog.Info("Standalone mode enabled", "reason", reason)
 }
 
@@ -444,7 +444,7 @@ func (sm *StandaloneMode) Enable(reason string) {
 func (sm *StandaloneMode) Disable() {
 	sm.enabled = false
 	sm.reason = ""
-	
+
 	slog.Info("Standalone mode disabled")
 }
 
@@ -466,17 +466,17 @@ func (sm *StandaloneMode) HandleRequest(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	// Add standalone headers
 	c.Header("X-Ollama-Standalone", "true")
 	c.Header("X-Ollama-Standalone-Reason", sm.reason)
 	c.Header("X-Ollama-Standalone-Since", sm.enabledAt.Format(time.RFC3339))
-	
+
 	// Execute request using fallback manager
 	if err := sm.fallbackMgr.ExecuteFallback(c, "standalone-mode"); err != nil {
 		slog.Error("Standalone request failed", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Standalone request failed",
+			"error":   "Standalone request failed",
 			"details": err.Error(),
 		})
 	}
@@ -524,7 +524,7 @@ func (fc *FallbackChain) Execute(c *gin.Context, reason string) error {
 			return handler.Handle(c, reason)
 		}
 	}
-	
+
 	return fmt.Errorf("no fallback handler available for reason: %s", reason)
 }
 
@@ -578,20 +578,20 @@ func (crh *CachedResponseHandler) CanHandle(reason string) bool {
 func (crh *CachedResponseHandler) Handle(c *gin.Context, reason string) error {
 	// Try to find cached response
 	key := crh.generateCacheKey(c)
-	
+
 	crh.mu.RLock()
 	cached, exists := crh.cache[key]
 	crh.mu.RUnlock()
-	
+
 	if !exists {
 		return fmt.Errorf("no cached response available")
 	}
-	
+
 	// Return cached response
 	c.Header("X-Ollama-Cached-Response", "true")
 	c.Header("X-Ollama-Cache-Key", key)
 	c.JSON(http.StatusOK, cached)
-	
+
 	return nil
 }
 
@@ -610,7 +610,7 @@ func (crh *CachedResponseHandler) generateCacheKey(c *gin.Context) string {
 func (crh *CachedResponseHandler) CacheResponse(key string, response *ollamaapi.GenerateResponse) {
 	crh.mu.Lock()
 	defer crh.mu.Unlock()
-	
+
 	crh.cache[key] = response
 }
 
@@ -618,6 +618,6 @@ func (crh *CachedResponseHandler) CacheResponse(key string, response *ollamaapi.
 func (crh *CachedResponseHandler) ClearCache() {
 	crh.mu.Lock()
 	defer crh.mu.Unlock()
-	
+
 	crh.cache = make(map[string]*ollamaapi.GenerateResponse)
 }

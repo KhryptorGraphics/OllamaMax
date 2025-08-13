@@ -18,35 +18,35 @@ import (
 
 // PerformanceTestSuite provides comprehensive performance testing
 type PerformanceTestSuite struct {
-	cluster   *integration.TestCluster
-	metrics   *PerformanceMetrics
-	baseline  *BaselineMetrics
-	ctx       context.Context
-	cancel    context.CancelFunc
+	cluster  *integration.TestCluster
+	metrics  *PerformanceMetrics
+	baseline *BaselineMetrics
+	ctx      context.Context
+	cancel   context.CancelFunc
 }
 
 // PerformanceMetrics tracks comprehensive performance data
 type PerformanceMetrics struct {
-	mu                sync.RWMutex
-	TotalRequests     int64
-	SuccessfulReqs    int64
-	FailedReqs        int64
-	TotalLatency      time.Duration
-	MinLatency        time.Duration
-	MaxLatency        time.Duration
-	P50Latency        time.Duration
-	P95Latency        time.Duration
-	P99Latency        time.Duration
-	ThroughputRPS     float64
-	MemoryUsageMB     float64
-	CPUUsagePercent   float64
-	NetworkBytesIn    int64
-	NetworkBytesOut   int64
-	ConcurrentUsers   int
-	ErrorRate         float64
-	StartTime         time.Time
-	EndTime           time.Time
-	LatencyHistory    []time.Duration
+	mu              sync.RWMutex
+	TotalRequests   int64
+	SuccessfulReqs  int64
+	FailedReqs      int64
+	TotalLatency    time.Duration
+	MinLatency      time.Duration
+	MaxLatency      time.Duration
+	P50Latency      time.Duration
+	P95Latency      time.Duration
+	P99Latency      time.Duration
+	ThroughputRPS   float64
+	MemoryUsageMB   float64
+	CPUUsagePercent float64
+	NetworkBytesIn  int64
+	NetworkBytesOut int64
+	ConcurrentUsers int
+	ErrorRate       float64
+	StartTime       time.Time
+	EndTime         time.Time
+	LatencyHistory  []time.Duration
 }
 
 // BaselineMetrics stores baseline performance expectations
@@ -60,14 +60,14 @@ type BaselineMetrics struct {
 
 // LoadTestConfig configures load testing parameters
 type LoadTestConfig struct {
-	ConcurrentUsers   int
-	RequestsPerUser   int
-	RampUpDuration    time.Duration
-	SustainDuration   time.Duration
-	RampDownDuration  time.Duration
-	RequestInterval   time.Duration
-	Model             string
-	PromptTemplate    string
+	ConcurrentUsers  int
+	RequestsPerUser  int
+	RampUpDuration   time.Duration
+	SustainDuration  time.Duration
+	RampDownDuration time.Duration
+	RequestInterval  time.Duration
+	Model            string
+	PromptTemplate   string
 }
 
 // NewPerformanceTestSuite creates a new performance test suite
@@ -210,8 +210,8 @@ func (suite *PerformanceTestSuite) testLoadPerformance(t *testing.T) {
 			SustainDuration:  30 * time.Second,
 			RampDownDuration: 5 * time.Second,
 			RequestInterval:  500 * time.Millisecond,
-			Model:           "test-model-1b",
-			PromptTemplate:  "Load test request %d from user %d",
+			Model:            "test-model-1b",
+			PromptTemplate:   "Load test request %d from user %d",
 		},
 		{
 			ConcurrentUsers:  10,
@@ -220,8 +220,8 @@ func (suite *PerformanceTestSuite) testLoadPerformance(t *testing.T) {
 			SustainDuration:  45 * time.Second,
 			RampDownDuration: 10 * time.Second,
 			RequestInterval:  300 * time.Millisecond,
-			Model:           "test-model-1b",
-			PromptTemplate:  "Medium load test request %d from user %d",
+			Model:            "test-model-1b",
+			PromptTemplate:   "Medium load test request %d from user %d",
 		},
 		{
 			ConcurrentUsers:  20,
@@ -230,8 +230,8 @@ func (suite *PerformanceTestSuite) testLoadPerformance(t *testing.T) {
 			SustainDuration:  60 * time.Second,
 			RampDownDuration: 15 * time.Second,
 			RequestInterval:  200 * time.Millisecond,
-			Model:           "test-model-1b",
-			PromptTemplate:  "High load test request %d from user %d",
+			Model:            "test-model-1b",
+			PromptTemplate:   "High load test request %d from user %d",
 		},
 	}
 
@@ -256,7 +256,7 @@ func (suite *PerformanceTestSuite) runLoadTest(t *testing.T, config LoadTestConf
 
 	var wg sync.WaitGroup
 	results := make(chan LoadTestResult, config.ConcurrentUsers*config.RequestsPerUser)
-	
+
 	startTime := time.Now()
 
 	// Ramp up phase
@@ -265,7 +265,7 @@ func (suite *PerformanceTestSuite) runLoadTest(t *testing.T, config LoadTestConf
 
 	for userID := 0; userID < config.ConcurrentUsers; userID++ {
 		time.Sleep(userStartInterval) // Gradual ramp-up
-		
+
 		wg.Add(1)
 		go suite.loadTestUser(userID, config, results, &wg)
 	}
@@ -286,9 +286,9 @@ func (suite *PerformanceTestSuite) runLoadTest(t *testing.T, config LoadTestConf
 	finalMemory := suite.getMemoryUsage()
 	finalCPU := suite.getCPUUsage()
 
-	t.Logf("Memory usage: %0.2f MB -> %.2f MB (delta: %.2f MB)", 
+	t.Logf("Memory usage: %0.2f MB -> %.2f MB (delta: %.2f MB)",
 		initialMemory, finalMemory, finalMemory-initialMemory)
-	t.Logf("CPU usage: %.2f%% -> %.2f%% (delta: %.2f%%)", 
+	t.Logf("CPU usage: %.2f%% -> %.2f%% (delta: %.2f%%)",
 		initialCPU, finalCPU, finalCPU-initialCPU)
 
 	// Validate against baseline
@@ -345,13 +345,13 @@ func (suite *PerformanceTestSuite) loadTestUser(userID int, config LoadTestConfi
 // analyzeLoadTestResults analyzes the results of a load test
 func (suite *PerformanceTestSuite) analyzeLoadTestResults(t *testing.T, results <-chan LoadTestResult, startTime time.Time, config LoadTestConfig) {
 	var (
-		totalRequests    int
-		successfulReqs   int
-		failedReqs       int
-		latencies        []time.Duration
-		totalLatency     time.Duration
-		minLatency       = time.Duration(math.MaxInt64)
-		maxLatency       time.Duration
+		totalRequests     int
+		successfulReqs    int
+		failedReqs        int
+		latencies         []time.Duration
+		totalLatency      time.Duration
+		minLatency        = time.Duration(math.MaxInt64)
+		maxLatency        time.Duration
 		totalResponseSize int64
 	)
 
@@ -431,12 +431,12 @@ func (suite *PerformanceTestSuite) testStressPerformance(t *testing.T) {
 			SustainDuration:  60 * time.Second,
 			RampDownDuration: 20 * time.Second,
 			RequestInterval:  100 * time.Millisecond,
-			Model:           "test-model-1b",
-			PromptTemplate:  "Stress test request %d from user %d",
+			Model:            "test-model-1b",
+			PromptTemplate:   "Stress test request %d from user %d",
 		}
 
 		suite.runLoadTest(t, config)
-		
+
 		// Stress test should still maintain reasonable performance
 		assert.Greater(t, suite.metrics.ThroughputRPS, 5.0, "Throughput should remain > 5 RPS under stress")
 		assert.Less(t, suite.metrics.ErrorRate, 0.2, "Error rate should be < 20% under stress")
@@ -450,8 +450,8 @@ func (suite *PerformanceTestSuite) testStressPerformance(t *testing.T) {
 			SustainDuration:  5 * time.Minute,
 			RampDownDuration: 15 * time.Second,
 			RequestInterval:  200 * time.Millisecond,
-			Model:           "test-model-1b",
-			PromptTemplate:  "Sustained stress test request %d from user %d",
+			Model:            "test-model-1b",
+			PromptTemplate:   "Sustained stress test request %d from user %d",
 		}
 
 		initialMemory := suite.getMemoryUsage()
@@ -478,8 +478,8 @@ func (suite *PerformanceTestSuite) testScalabilityPerformance(t *testing.T) {
 				SustainDuration:  30 * time.Second,
 				RampDownDuration: 5 * time.Second,
 				RequestInterval:  250 * time.Millisecond,
-				Model:           "test-model-1b",
-				PromptTemplate:  "Scalability test request %d from user %d",
+				Model:            "test-model-1b",
+				PromptTemplate:   "Scalability test request %d from user %d",
 			}
 
 			suite.runLoadTest(t, config)
@@ -647,7 +647,7 @@ func (suite *PerformanceTestSuite) testNetworkThroughput(t *testing.T) {
 			assert.NotNil(t, resp, "Response should not be nil")
 
 			throughputMBps := float64(size+len(resp.Response)) / (1024 * 1024) / latency.Seconds()
-			t.Logf("Payload size: %d bytes, Latency: %v, Throughput: %.2f MB/s", 
+			t.Logf("Payload size: %d bytes, Latency: %v, Throughput: %.2f MB/s",
 				size, latency, throughputMBps)
 
 			// Validate reasonable throughput
@@ -766,22 +766,22 @@ func (suite *PerformanceTestSuite) validateAgainstBaseline(t *testing.T, config 
 
 	// Validate against baseline metrics
 	if suite.metrics.P95Latency > suite.baseline.MaxLatencyP95 {
-		t.Errorf("P95 latency %v exceeds baseline %v", 
+		t.Errorf("P95 latency %v exceeds baseline %v",
 			suite.metrics.P95Latency, suite.baseline.MaxLatencyP95)
 	}
 
 	if suite.metrics.ThroughputRPS < suite.baseline.MinThroughputRPS {
-		t.Errorf("Throughput %.2f RPS below baseline %.2f RPS", 
+		t.Errorf("Throughput %.2f RPS below baseline %.2f RPS",
 			suite.metrics.ThroughputRPS, suite.baseline.MinThroughputRPS)
 	}
 
 	if suite.metrics.ErrorRate > suite.baseline.MaxErrorRate {
-		t.Errorf("Error rate %.2f%% exceeds baseline %.2f%%", 
+		t.Errorf("Error rate %.2f%% exceeds baseline %.2f%%",
 			suite.metrics.ErrorRate*100, suite.baseline.MaxErrorRate*100)
 	}
 
 	if suite.metrics.MemoryUsageMB > suite.baseline.MaxMemoryUsageMB {
-		t.Errorf("Memory usage %.2f MB exceeds baseline %.2f MB", 
+		t.Errorf("Memory usage %.2f MB exceeds baseline %.2f MB",
 			suite.metrics.MemoryUsageMB, suite.baseline.MaxMemoryUsageMB)
 	}
 }
@@ -862,14 +862,14 @@ func (suite *PerformanceTestSuite) generatePerformanceReport(t *testing.T) {
 	t.Log("=== PERFORMANCE TEST REPORT ===")
 	t.Logf("Test Duration: %v", suite.metrics.EndTime.Sub(suite.metrics.StartTime))
 	t.Logf("Total Requests: %d", suite.metrics.TotalRequests)
-	t.Logf("Successful Requests: %d (%.1f%%)", 
-		suite.metrics.SuccessfulReqs, 
+	t.Logf("Successful Requests: %d (%.1f%%)",
+		suite.metrics.SuccessfulReqs,
 		float64(suite.metrics.SuccessfulReqs)/float64(suite.metrics.TotalRequests)*100)
-	t.Logf("Failed Requests: %d (%.1f%%)", 
-		suite.metrics.FailedReqs, 
+	t.Logf("Failed Requests: %d (%.1f%%)",
+		suite.metrics.FailedReqs,
 		float64(suite.metrics.FailedReqs)/float64(suite.metrics.TotalRequests)*100)
 	t.Logf("Peak Throughput: %.2f RPS", suite.metrics.ThroughputRPS)
-	t.Logf("Latency - P50: %v, P95: %v, P99: %v", 
+	t.Logf("Latency - P50: %v, P95: %v, P99: %v",
 		suite.metrics.P50Latency, suite.metrics.P95Latency, suite.metrics.P99Latency)
 	t.Logf("Peak Memory Usage: %.2f MB", suite.metrics.MemoryUsageMB)
 	t.Logf("Peak CPU Usage: %.2f%%", suite.metrics.CPUUsagePercent)
@@ -891,7 +891,7 @@ func calculatePercentiles(latencies []time.Duration) (p50, p95, p99 time.Duratio
 	// Sort latencies
 	sortedLatencies := make([]time.Duration, len(latencies))
 	copy(sortedLatencies, latencies)
-	
+
 	for i := 0; i < len(sortedLatencies); i++ {
 		for j := i + 1; j < len(sortedLatencies); j++ {
 			if sortedLatencies[i] > sortedLatencies[j] {

@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
+	"os"
 	"testing"
 	"time"
 
@@ -21,23 +21,23 @@ import (
 
 // DistributedNode represents a complete node in the distributed system
 type DistributedNode struct {
-	ID               string
-	P2PNode          *p2p.Node
-	ConsensusEngine  *consensus.Engine
-	SchedulerEngine  *scheduler.Engine
-	ModelManager     *models.Manager
-	APIServer        *api.Server
-	Config           *TestNodeConfig
-	Started          bool
+	ID              string
+	P2PNode         *p2p.Node
+	ConsensusEngine *consensus.Engine
+	SchedulerEngine *scheduler.Engine
+	ModelManager    *models.Manager
+	APIServer       *api.Server
+	Config          *TestNodeConfig
+	Started         bool
 }
 
 // TestNodeConfig holds configuration for test nodes
 type TestNodeConfig struct {
-	DataDir    string
-	P2PPort    int
-	APIPort    int
-	RaftPort   int
-	Bootstrap  bool
+	DataDir   string
+	P2PPort   int
+	APIPort   int
+	RaftPort  int
+	Bootstrap bool
 }
 
 // TestDistributedSystem tests the complete distributed system
@@ -203,7 +203,7 @@ func TestModelReplication(t *testing.T) {
 	// Register a model on first node
 	firstNode := cluster[0]
 	testModelPath := createTestModel(t, firstNode.Config.DataDir)
-	
+
 	err := firstNode.ModelManager.RegisterModel("test-model", testModelPath)
 	assert.NoError(t, err)
 
@@ -263,7 +263,7 @@ func TestAPIEndToEnd(t *testing.T) {
 		resp, err := client.Get(baseURL + "/api/v1/cluster/status")
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
-		
+
 		var status map[string]interface{}
 		err = json.NewDecoder(resp.Body).Decode(&status)
 		assert.NoError(t, err)
@@ -277,7 +277,7 @@ func TestAPIEndToEnd(t *testing.T) {
 		resp, err := client.Get(baseURL + "/api/v1/metrics")
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
-		
+
 		var metrics map[string]interface{}
 		err = json.NewDecoder(resp.Body).Decode(&metrics)
 		assert.NoError(t, err)
@@ -291,7 +291,7 @@ func TestAPIEndToEnd(t *testing.T) {
 
 func createTestCluster(t *testing.T, ctx context.Context, size int) []*DistributedNode {
 	cluster := make([]*DistributedNode, size)
-	
+
 	for i := 0; i < size; i++ {
 		nodeConfig := &TestNodeConfig{
 			DataDir:   t.TempDir(),
@@ -300,33 +300,33 @@ func createTestCluster(t *testing.T, ctx context.Context, size int) []*Distribut
 			RaftPort:  7000 + i,
 			Bootstrap: i == 0, // First node is bootstrap
 		}
-		
+
 		node, err := createTestNode(t, ctx, nodeConfig)
 		require.NoError(t, err)
 		cluster[i] = node
 	}
-	
+
 	return cluster
 }
 
 func createTestNode(t *testing.T, ctx context.Context, nodeConfig *TestNodeConfig) (*DistributedNode, error) {
 	nodeID := fmt.Sprintf("node-%d", nodeConfig.APIPort)
-	
+
 	// P2P configuration
 	p2pConfig := &config.P2PConfig{
-		Listen:      fmt.Sprintf("127.0.0.1:%d", nodeConfig.P2PPort),
-		EnableDHT:   true,
-		ConnMgrLow:  10,
-		ConnMgrHigh: 100,
+		Listen:       fmt.Sprintf("127.0.0.1:%d", nodeConfig.P2PPort),
+		EnableDHT:    true,
+		ConnMgrLow:   10,
+		ConnMgrHigh:  100,
 		ConnMgrGrace: "1m",
 	}
-	
+
 	// Create P2P node
 	p2pNode, err := p2p.NewNode(ctx, p2pConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create P2P node: %w", err)
 	}
-	
+
 	// Consensus configuration
 	consensusConfig := &config.ConsensusConfig{
 		DataDir:           nodeConfig.DataDir + "/consensus",
@@ -340,31 +340,31 @@ func createTestNode(t *testing.T, ctx context.Context, nodeConfig *TestNodeConfi
 		SnapshotThreshold: 8192,
 		LogLevel:          "ERROR", // Reduce logging in tests
 	}
-	
+
 	// Create consensus engine
 	consensusEngine, err := consensus.NewEngine(consensusConfig, p2pNode)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create consensus engine: %w", err)
 	}
-	
+
 	// Storage configuration
 	storageConfig := &config.StorageConfig{
 		ModelDir:   nodeConfig.DataDir + "/models",
 		CleanupAge: time.Hour,
 	}
-	
+
 	// Create model manager
 	modelManager, err := models.NewManager(storageConfig, p2pNode)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create model manager: %w", err)
 	}
-	
+
 	// Create scheduler engine
 	schedulerEngine, err := scheduler.NewEngine(p2pNode, consensusEngine)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create scheduler engine: %w", err)
 	}
-	
+
 	// API configuration
 	apiConfig := &config.APIConfig{
 		Listen:      fmt.Sprintf("127.0.0.1:%d", nodeConfig.APIPort),
@@ -380,13 +380,13 @@ func createTestNode(t *testing.T, ctx context.Context, nodeConfig *TestNodeConfi
 			MaxAge:           3600,
 		},
 	}
-	
+
 	// Create API server
 	apiServer, err := api.NewServer(apiConfig, p2pNode, consensusEngine, schedulerEngine)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create API server: %w", err)
 	}
-	
+
 	return &DistributedNode{
 		ID:              nodeID,
 		P2PNode:         p2pNode,
@@ -403,37 +403,37 @@ func startNode(t *testing.T, node *DistributedNode) error {
 	if node.Started {
 		return fmt.Errorf("node already started")
 	}
-	
+
 	// Start P2P node
 	err := node.P2PNode.Start()
 	if err != nil {
 		return fmt.Errorf("failed to start P2P node: %w", err)
 	}
-	
+
 	// Start consensus engine
 	err = node.ConsensusEngine.Start()
 	if err != nil {
 		return fmt.Errorf("failed to start consensus engine: %w", err)
 	}
-	
+
 	// Start model manager
 	err = node.ModelManager.Start()
 	if err != nil {
 		return fmt.Errorf("failed to start model manager: %w", err)
 	}
-	
+
 	// Start scheduler engine
 	err = node.SchedulerEngine.Start()
 	if err != nil {
 		return fmt.Errorf("failed to start scheduler engine: %w", err)
 	}
-	
+
 	// Start API server
 	err = node.APIServer.Start()
 	if err != nil {
 		return fmt.Errorf("failed to start API server: %w", err)
 	}
-	
+
 	node.Started = true
 	return nil
 }
@@ -442,31 +442,31 @@ func stopNode(t *testing.T, node *DistributedNode) {
 	if !node.Started {
 		return
 	}
-	
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	
+
 	// Stop components in reverse order
 	if node.APIServer != nil {
 		node.APIServer.Shutdown(ctx)
 	}
-	
+
 	if node.SchedulerEngine != nil {
 		node.SchedulerEngine.Shutdown(ctx)
 	}
-	
+
 	if node.ModelManager != nil {
 		node.ModelManager.Shutdown(ctx)
 	}
-	
+
 	if node.ConsensusEngine != nil {
 		node.ConsensusEngine.Shutdown(ctx)
 	}
-	
+
 	if node.P2PNode != nil {
 		node.P2PNode.Stop()
 	}
-	
+
 	node.Started = false
 }
 
@@ -489,23 +489,23 @@ func testClusterFormation(t *testing.T, cluster []*DistributedNode) {
 	// Verify we have exactly one leader
 	leaderCount := 0
 	var leader *DistributedNode
-	
+
 	for _, node := range cluster {
 		if node.ConsensusEngine.IsLeader() {
 			leaderCount++
 			leader = node
 		}
 	}
-	
+
 	assert.Equal(t, 1, leaderCount, "Should have exactly one leader")
 	assert.NotNil(t, leader, "Should have a leader")
-	
+
 	// Verify all nodes see the same leader
 	leaderAddr := leader.ConsensusEngine.Leader()
 	for _, node := range cluster {
 		assert.Equal(t, leaderAddr, node.ConsensusEngine.Leader(), "All nodes should see same leader")
 	}
-	
+
 	// Verify cluster configuration
 	config, err := leader.ConsensusEngine.GetConfiguration()
 	assert.NoError(t, err)
@@ -522,34 +522,34 @@ func testConsensusOperations(t *testing.T, cluster []*DistributedNode) {
 		}
 	}
 	require.NotNil(t, leader)
-	
+
 	// Test state operations from leader
 	testKey := "e2e-test-key"
 	testValue := "e2e-test-value"
-	
+
 	err := leader.ConsensusEngine.Apply(testKey, testValue, map[string]interface{}{
-		"test": true,
+		"test":      true,
 		"timestamp": time.Now().Unix(),
 	})
 	assert.NoError(t, err)
-	
+
 	// Wait for replication
 	time.Sleep(500 * time.Millisecond)
-	
+
 	// Verify state is replicated to all nodes
 	for i, node := range cluster {
 		value, exists := node.ConsensusEngine.Get(testKey)
 		assert.True(t, exists, "Key should exist on node %d", i)
 		assert.Equal(t, testValue, value, "Value should be replicated to node %d", i)
 	}
-	
+
 	// Test delete operation
 	err = leader.ConsensusEngine.Delete(testKey)
 	assert.NoError(t, err)
-	
+
 	// Wait for replication
 	time.Sleep(500 * time.Millisecond)
-	
+
 	// Verify deletion is replicated
 	for i, node := range cluster {
 		_, exists := node.ConsensusEngine.Get(testKey)
@@ -560,20 +560,20 @@ func testConsensusOperations(t *testing.T, cluster []*DistributedNode) {
 func testModelDistribution(t *testing.T, cluster []*DistributedNode) {
 	// This is a simplified test since full model distribution
 	// requires more complex setup
-	
+
 	// Test model registration
 	firstNode := cluster[0]
 	testModelPath := createTestModel(t, firstNode.Config.DataDir)
-	
+
 	err := firstNode.ModelManager.RegisterModel("e2e-model", testModelPath)
 	assert.NoError(t, err)
-	
+
 	// Verify model exists
 	model, exists := firstNode.ModelManager.GetModel("e2e-model")
 	assert.True(t, exists)
 	assert.NotNil(t, model)
 	assert.Equal(t, "e2e-model", model.Name)
-	
+
 	// Test model metadata
 	info := firstNode.ModelManager.GetModelInfo("e2e-model")
 	assert.NotNil(t, info)
@@ -584,23 +584,23 @@ func testAPIOperations(t *testing.T, cluster []*DistributedNode) {
 	if len(cluster) == 0 {
 		t.Skip("No nodes in cluster")
 	}
-	
+
 	node := cluster[0]
 	baseURL := fmt.Sprintf("http://127.0.0.1:%d", node.Config.APIPort)
 	client := &http.Client{Timeout: 5 * time.Second}
-	
+
 	// Test health endpoint
 	resp, err := client.Get(baseURL + "/api/v1/health")
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	resp.Body.Close()
-	
+
 	// Test cluster status
 	resp, err = client.Get(baseURL + "/api/v1/cluster/status")
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	resp.Body.Close()
-	
+
 	// Test metrics
 	resp, err = client.Get(baseURL + "/api/v1/metrics")
 	assert.NoError(t, err)
@@ -612,11 +612,11 @@ func testFaultTolerance(t *testing.T, cluster []*DistributedNode) {
 	if len(cluster) < 3 {
 		t.Skip("Need at least 3 nodes for fault tolerance test")
 	}
-	
+
 	// Find leader
 	var leader *DistributedNode
 	var followers []*DistributedNode
-	
+
 	for _, node := range cluster {
 		if node.ConsensusEngine.IsLeader() {
 			leader = node
@@ -624,33 +624,33 @@ func testFaultTolerance(t *testing.T, cluster []*DistributedNode) {
 			followers = append(followers, node)
 		}
 	}
-	
+
 	require.NotNil(t, leader)
 	require.NotEmpty(t, followers)
-	
+
 	// Store some data
 	testKey := "fault-test-key"
 	testValue := "fault-test-value"
-	
+
 	err := leader.ConsensusEngine.Apply(testKey, testValue, nil)
 	assert.NoError(t, err)
-	
+
 	// Wait for replication
 	time.Sleep(500 * time.Millisecond)
-	
+
 	// Verify data exists on followers
 	for _, follower := range followers {
 		value, exists := follower.ConsensusEngine.Get(testKey)
 		assert.True(t, exists)
 		assert.Equal(t, testValue, value)
 	}
-	
+
 	// Simulate leader failure by stopping it
 	stopNode(t, leader)
-	
+
 	// Wait for leader election
 	time.Sleep(3 * time.Second)
-	
+
 	// Verify new leader is elected
 	newLeaderCount := 0
 	for _, follower := range followers {
@@ -658,9 +658,9 @@ func testFaultTolerance(t *testing.T, cluster []*DistributedNode) {
 			newLeaderCount++
 		}
 	}
-	
+
 	assert.Equal(t, 1, newLeaderCount, "Should have new leader after failure")
-	
+
 	// Data should still be accessible
 	for _, follower := range followers {
 		value, exists := follower.ConsensusEngine.Get(testKey)
@@ -671,21 +671,21 @@ func testFaultTolerance(t *testing.T, cluster []*DistributedNode) {
 
 func testLoadBalancing(t *testing.T, cluster []*DistributedNode) {
 	// Test that scheduler distributes load across available nodes
-	
+
 	if len(cluster) == 0 {
 		t.Skip("No nodes in cluster")
 	}
-	
+
 	firstNode := cluster[0]
-	
+
 	// Get node statistics
 	stats := firstNode.SchedulerEngine.GetStats()
 	assert.NotNil(t, stats)
-	
+
 	// Test node availability
 	nodes := firstNode.SchedulerEngine.GetNodes()
 	assert.NotNil(t, nodes)
-	
+
 	// Verify scheduler can handle requests
 	onlineCount := firstNode.SchedulerEngine.GetOnlineNodeCount()
 	assert.True(t, onlineCount >= 0)
@@ -697,14 +697,14 @@ func BenchmarkE2E_ConsensusOperations(b *testing.B) {
 	if testing.Short() {
 		b.Skip("Skipping E2E benchmark in short mode")
 	}
-	
+
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	
+
 	// Create 3-node cluster
 	cluster := createTestCluster(&testing.T{}, ctx, 3)
 	defer cleanupTestCluster(&testing.T{}, cluster)
-	
+
 	// Start all nodes
 	for _, node := range cluster {
 		err := startNode(&testing.T{}, node)
@@ -712,10 +712,10 @@ func BenchmarkE2E_ConsensusOperations(b *testing.B) {
 			b.Fatal(err)
 		}
 	}
-	
+
 	// Wait for cluster
 	time.Sleep(3 * time.Second)
-	
+
 	// Find leader
 	var leader *DistributedNode
 	for _, node := range cluster {
@@ -724,18 +724,18 @@ func BenchmarkE2E_ConsensusOperations(b *testing.B) {
 			break
 		}
 	}
-	
+
 	if leader == nil {
 		b.Fatal("No leader found")
 	}
-	
+
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		i := 0
 		for pb.Next() {
 			key := fmt.Sprintf("bench-key-%d", i)
 			value := fmt.Sprintf("bench-value-%d", i)
-			
+
 			err := leader.ConsensusEngine.Apply(key, value, nil)
 			if err != nil {
 				b.Fatal(err)
@@ -749,25 +749,25 @@ func BenchmarkE2E_APIRequests(b *testing.B) {
 	if testing.Short() {
 		b.Skip("Skipping E2E benchmark in short mode")
 	}
-	
+
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
-	
+
 	// Create single node
 	cluster := createTestCluster(&testing.T{}, ctx, 1)
 	defer cleanupTestCluster(&testing.T{}, cluster)
-	
+
 	node := cluster[0]
 	err := startNode(&testing.T{}, node)
 	if err != nil {
 		b.Fatal(err)
 	}
-	
+
 	time.Sleep(2 * time.Second)
-	
+
 	baseURL := fmt.Sprintf("http://127.0.0.1:%d", node.Config.APIPort)
 	client := &http.Client{Timeout: 5 * time.Second}
-	
+
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
@@ -776,7 +776,7 @@ func BenchmarkE2E_APIRequests(b *testing.B) {
 				b.Fatal(err)
 			}
 			resp.Body.Close()
-			
+
 			if resp.StatusCode != http.StatusOK {
 				b.Fatal("Expected 200, got", resp.StatusCode)
 			}

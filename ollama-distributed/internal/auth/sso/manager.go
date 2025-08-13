@@ -303,7 +303,7 @@ func (m *Manager) GetStats() map[string]interface{} {
 	ldapProviders := m.ldapManager.GetProviders()
 
 	return map[string]interface{}{
-		"total_providers": len(oauth2Providers) + len(samlProviders) + len(ldapProviders),
+		"total_providers":  len(oauth2Providers) + len(samlProviders) + len(ldapProviders),
 		"oauth2_providers": len(oauth2Providers),
 		"saml_providers":   len(samlProviders),
 		"ldap_providers":   len(ldapProviders),

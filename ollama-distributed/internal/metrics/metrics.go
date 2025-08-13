@@ -19,7 +19,7 @@ type Server struct {
 // NewServer creates a new metrics server
 func NewServer(config config.MetricsConfig) (*Server, error) {
 	mux := http.NewServeMux()
-	
+
 	// Add basic metrics endpoint
 	mux.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
@@ -30,21 +30,21 @@ func NewServer(config config.MetricsConfig) (*Server, error) {
 		fmt.Fprintf(w, "# TYPE ollamacron_uptime_seconds counter\n")
 		fmt.Fprintf(w, "ollamacron_uptime_seconds %d\n", time.Now().Unix())
 	})
-	
+
 	// Add health endpoint
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintf(w, `{"status":"healthy","timestamp":"%s"}`, time.Now().Format(time.RFC3339))
 	})
-	
+
 	server := &http.Server{
 		Addr:         config.Listen,
 		Handler:      mux,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
-	
+
 	return &Server{
 		config: &config,
 		server: server,
@@ -54,13 +54,13 @@ func NewServer(config config.MetricsConfig) (*Server, error) {
 // Start starts the metrics server
 func (s *Server) Start() error {
 	log.Info().Str("address", s.config.Listen).Msg("Starting metrics server")
-	
+
 	go func() {
 		if err := s.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Error().Err(err).Msg("Metrics server error")
 		}
 	}()
-	
+
 	return nil
 }
 

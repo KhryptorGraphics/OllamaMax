@@ -167,7 +167,7 @@ func (c *Client) Embed(ctx context.Context, request EmbedRequest) (*EmbedRespons
 	for i := range embedding {
 		embedding[i] = 0.1 * float64(i%10)
 	}
-	
+
 	return &EmbedResponse{
 		Embedding: embedding,
 	}, nil

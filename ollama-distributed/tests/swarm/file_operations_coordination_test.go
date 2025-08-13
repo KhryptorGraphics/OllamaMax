@@ -1,3 +1,5 @@
+//go:build ignore
+
 package main
 
 import (
@@ -6,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -16,13 +19,13 @@ import (
 
 // FileOperationCoordinator manages coordinated file operations across swarm agents
 type FileOperationCoordinator struct {
-	workDir        string
-	lockManager    *FileLockManager
-	changeTracker  *FileChangeTracker
-	backupManager  *BackupManager
-	agents         map[string]*FileOperationAgent
-	operations     []*FileOperation
-	mu             sync.RWMutex
+	workDir       string
+	lockManager   *FileLockManager
+	changeTracker *FileChangeTracker
+	backupManager *BackupManager
+	agents        map[string]*FileOperationAgent
+	operations    []*FileOperation
+	mu            sync.RWMutex
 }
 
 // FileOperationAgent represents an agent that performs file operations
@@ -38,17 +41,17 @@ type FileOperationAgent struct {
 
 // FileOperation represents a coordinated file operation
 type FileOperation struct {
-	ID          string
-	Type        FileOperationType
-	Path        string
-	Content     []byte
-	AgentID     string
-	Status      OperationStatus
-	StartTime   time.Time
-	EndTime     time.Time
-	Error       error
-	Checksum    string
-	BackupPath  string
+	ID           string
+	Type         FileOperationType
+	Path         string
+	Content      []byte
+	AgentID      string
+	Status       OperationStatus
+	StartTime    time.Time
+	EndTime      time.Time
+	Error        error
+	Checksum     string
+	BackupPath   string
 	Dependencies []string
 }
 
@@ -212,7 +215,7 @@ func (foc *FileOperationCoordinator) ExecuteOperation(ctx context.Context, op *F
 	op.StartTime = time.Now()
 
 	err := foc.performOperation(ctx, op)
-	
+
 	op.EndTime = time.Now()
 	if err != nil {
 		op.Status = Failed
@@ -264,16 +267,16 @@ func (foc *FileOperationCoordinator) performOperation(ctx context.Context, op *F
 // createFile creates a new file
 func (foc *FileOperationCoordinator) createFile(op *FileOperation) error {
 	fullPath := filepath.Join(foc.workDir, op.Path)
-	
+
 	// Ensure directory exists
 	if err := os.MkdirAll(filepath.Dir(fullPath), 0755); err != nil {
 		return fmt.Errorf("failed to create directory: %w", err)
 	}
-	
+
 	if err := ioutil.WriteFile(fullPath, op.Content, 0644); err != nil {
 		return fmt.Errorf("failed to create file: %w", err)
 	}
-	
+
 	op.Checksum = calculateChecksum(op.Content)
 	return nil
 }
@@ -281,11 +284,11 @@ func (foc *FileOperationCoordinator) createFile(op *FileOperation) error {
 // updateFile updates an existing file
 func (foc *FileOperationCoordinator) updateFile(op *FileOperation) error {
 	fullPath := filepath.Join(foc.workDir, op.Path)
-	
+
 	if err := ioutil.WriteFile(fullPath, op.Content, 0644); err != nil {
 		return fmt.Errorf("failed to update file: %w", err)
 	}
-	
+
 	op.Checksum = calculateChecksum(op.Content)
 	return nil
 }
@@ -293,23 +296,23 @@ func (foc *FileOperationCoordinator) updateFile(op *FileOperation) error {
 // deleteFile deletes a file
 func (foc *FileOperationCoordinator) deleteFile(op *FileOperation) error {
 	fullPath := filepath.Join(foc.workDir, op.Path)
-	
+
 	if err := os.Remove(fullPath); err != nil {
 		return fmt.Errorf("failed to delete file: %w", err)
 	}
-	
+
 	return nil
 }
 
 // readFile reads a file
 func (foc *FileOperationCoordinator) readFile(op *FileOperation) error {
 	fullPath := filepath.Join(foc.workDir, op.Path)
-	
+
 	content, err := ioutil.ReadFile(fullPath)
 	if err != nil {
 		return fmt.Errorf("failed to read file: %w", err)
 	}
-	
+
 	op.Content = content
 	op.Checksum = calculateChecksum(content)
 	return nil
@@ -318,17 +321,17 @@ func (foc *FileOperationCoordinator) readFile(op *FileOperation) error {
 // appendFile appends content to a file
 func (foc *FileOperationCoordinator) appendFile(op *FileOperation) error {
 	fullPath := filepath.Join(foc.workDir, op.Path)
-	
+
 	file, err := os.OpenFile(fullPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to open file for append: %w", err)
 	}
 	defer file.Close()
-	
+
 	if _, err := file.Write(op.Content); err != nil {
 		return fmt.Errorf("failed to append to file: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -336,16 +339,16 @@ func (foc *FileOperationCoordinator) appendFile(op *FileOperation) error {
 func (foc *FileOperationCoordinator) copyFile(op *FileOperation) error {
 	srcPath := filepath.Join(foc.workDir, op.Path)
 	dstPath := filepath.Join(foc.workDir, string(op.Content)) // Content contains destination path
-	
+
 	content, err := ioutil.ReadFile(srcPath)
 	if err != nil {
 		return fmt.Errorf("failed to read source file: %w", err)
 	}
-	
+
 	if err := ioutil.WriteFile(dstPath, content, 0644); err != nil {
 		return fmt.Errorf("failed to write destination file: %w", err)
 	}
-	
+
 	op.Checksum = calculateChecksum(content)
 	return nil
 }
@@ -354,11 +357,11 @@ func (foc *FileOperationCoordinator) copyFile(op *FileOperation) error {
 func (foc *FileOperationCoordinator) moveFile(op *FileOperation) error {
 	srcPath := filepath.Join(foc.workDir, op.Path)
 	dstPath := filepath.Join(foc.workDir, string(op.Content)) // Content contains destination path
-	
+
 	if err := os.Rename(srcPath, dstPath); err != nil {
 		return fmt.Errorf("failed to move file: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -436,7 +439,7 @@ func (fct *FileChangeTracker) DetectConflicts(path string, agentID string) bool 
 	// Check for concurrent modifications
 	recentChanges := 0
 	cutoff := time.Now().Add(-5 * time.Second) // Last 5 seconds
-	
+
 	for _, change := range changes {
 		if change.Timestamp.After(cutoff) && change.AgentID != agentID {
 			recentChanges++

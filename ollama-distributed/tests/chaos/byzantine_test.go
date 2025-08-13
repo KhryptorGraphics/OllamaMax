@@ -276,7 +276,7 @@ func (bts *ByzantineTestSuite) testByzantineRecovery(t *testing.T) {
 
 	// Stop Byzantine behavior by restarting the node
 	t.Logf("Stopping Byzantine behavior on node: %s", bts.byzantineNode.GetID())
-	
+
 	err := bts.byzantineNode.Shutdown()
 	require.NoError(t, err)
 
@@ -377,14 +377,14 @@ func (bts *ByzantineTestSuite) testMultipleByzantineNodes(t *testing.T) {
 	}
 
 	t.Logf("Multi-Byzantine consensus: %d/%d successful", successCount, consensusOps)
-	
+
 	// With f Byzantine nodes, we should still be able to make progress
 	// as long as we have at least 2f+1 honest nodes
 	expectedSuccessRate := 0.5 // At least 50% should succeed
 	actualSuccessRate := float64(successCount) / float64(consensusOps)
-	
-	assert.Greater(t, actualSuccessRate, expectedSuccessRate, 
-		"Should have > %.0f%% successful operations with %d Byzantine nodes", 
+
+	assert.Greater(t, actualSuccessRate, expectedSuccessRate,
+		"Should have > %.0f%% successful operations with %d Byzantine nodes",
 		expectedSuccessRate*100, len(byzantineNodes))
 
 	// Verify consistency among honest nodes
@@ -515,16 +515,16 @@ func (bts *ByzantineTestSuite) verifyConsistency(t *testing.T, nodes []*integrat
 		if exists && value == testValue {
 			consistentNodes++
 		} else {
-			t.Logf("Node %s is inconsistent: exists=%v, value=%s (expected=%s)", 
+			t.Logf("Node %s is inconsistent: exists=%v, value=%s (expected=%s)",
 				node.GetID(), exists, value, testValue)
 		}
 	}
 
 	t.Logf("Consistent nodes: %d/%d", consistentNodes, len(nodes))
-	
+
 	// Require that majority of nodes are consistent
 	majorityThreshold := len(nodes)/2 + 1
-	assert.GreaterOrEqual(t, consistentNodes, majorityThreshold, 
+	assert.GreaterOrEqual(t, consistentNodes, majorityThreshold,
 		"Should have at least %d consistent nodes", majorityThreshold)
 }
 

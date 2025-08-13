@@ -17,40 +17,40 @@ type DataSplitStrategy struct {
 
 // DataSplitConfig holds configuration for data-split partitioning
 type DataSplitConfig struct {
-	MinBatchSize     int     `json:"min_batch_size"`
-	MaxBatchSize     int     `json:"max_batch_size"`
-	MergeStrategy    string  `json:"merge_strategy"`
+	MinBatchSize      int     `json:"min_batch_size"`
+	MaxBatchSize      int     `json:"max_batch_size"`
+	MergeStrategy     string  `json:"merge_strategy"`
 	LoadBalanceWeight float64 `json:"load_balance_weight"`
-	EfficiencyTarget float64 `json:"efficiency_target"`
+	EfficiencyTarget  float64 `json:"efficiency_target"`
 }
 
 // DataSplitPartition represents a data-split partition
 type DataSplitPartition struct {
-	BatchSize      int                    `json:"batch_size"`
-	PartitionSize  int                    `json:"partition_size"`
-	Nodes          []string               `json:"nodes"`
-	MergeStrategy  string                 `json:"merge_strategy"`
+	BatchSize        int                    `json:"batch_size"`
+	PartitionSize    int                    `json:"partition_size"`
+	Nodes            []string               `json:"nodes"`
+	MergeStrategy    string                 `json:"merge_strategy"`
 	DataDistribution map[string]interface{} `json:"data_distribution"`
-	LoadBalancing  *LoadBalancingInfo     `json:"load_balancing"`
-	Metadata       map[string]interface{} `json:"metadata"`
+	LoadBalancing    *LoadBalancingInfo     `json:"load_balancing"`
+	Metadata         map[string]interface{} `json:"metadata"`
 }
 
 // LoadBalancingInfo represents load balancing information
 type LoadBalancingInfo struct {
-	Strategy         string             `json:"strategy"`
-	Weights          map[string]float64 `json:"weights"`
-	CapacityFactors  map[string]float64 `json:"capacity_factors"`
+	Strategy           string             `json:"strategy"`
+	Weights            map[string]float64 `json:"weights"`
+	CapacityFactors    map[string]float64 `json:"capacity_factors"`
 	UtilizationFactors map[string]float64 `json:"utilization_factors"`
 }
 
 // DataPartition represents a single data partition
 type DataPartition struct {
-	ID            string      `json:"id"`
-	NodeID        string      `json:"node_id"`
-	DataSlice     interface{} `json:"data_slice"`
-	BatchSize     int         `json:"batch_size"`
-	Weight        float64     `json:"weight"`
-	Priority      int         `json:"priority"`
+	ID            string        `json:"id"`
+	NodeID        string        `json:"node_id"`
+	DataSlice     interface{}   `json:"data_slice"`
+	BatchSize     int           `json:"batch_size"`
+	Weight        float64       `json:"weight"`
+	Priority      int           `json:"priority"`
 	EstimatedTime time.Duration `json:"estimated_time"`
 }
 
@@ -62,11 +62,11 @@ func NewDataSplitStrategy() *DataSplitStrategy {
 			LastUsed: time.Now(),
 		},
 		config: &DataSplitConfig{
-			MinBatchSize:     1,
-			MaxBatchSize:     32,
-			MergeStrategy:    "concat",
+			MinBatchSize:      1,
+			MaxBatchSize:      32,
+			MergeStrategy:     "concat",
 			LoadBalanceWeight: 0.7,
-			EfficiencyTarget: 0.85,
+			EfficiencyTarget:  0.85,
 		},
 	}
 }
@@ -87,12 +87,12 @@ func (ds *DataSplitStrategy) CanHandle(task *PartitionTask) bool {
 	if len(task.Nodes) < 2 {
 		return false
 	}
-	
+
 	// Check if task supports batch processing
 	if !ds.supportsBatchProcessing(task) {
 		return false
 	}
-	
+
 	// Check if nodes have sufficient capacity
 	sufficientNodes := 0
 	for _, node := range task.Nodes {
@@ -100,7 +100,7 @@ func (ds *DataSplitStrategy) CanHandle(task *PartitionTask) bool {
 			sufficientNodes++
 		}
 	}
-	
+
 	return sufficientNodes >= 2
 }
 
@@ -110,7 +110,7 @@ func (ds *DataSplitStrategy) supportsBatchProcessing(task *PartitionTask) bool {
 	if task.Type == "embedding" || task.Type == "classification" {
 		return true
 	}
-	
+
 	// Check if inference can be batched
 	if task.Type == "inference" {
 		// Check if model supports batching
@@ -122,7 +122,7 @@ func (ds *DataSplitStrategy) supportsBatchProcessing(task *PartitionTask) bool {
 		// Default: assume inference can be batched
 		return true
 	}
-	
+
 	return false
 }
 
@@ -132,51 +132,51 @@ func (ds *DataSplitStrategy) hasCapacityForBatch(node *NodeInfo) bool {
 	if node.Usage.MemoryUtilization > 0.8 {
 		return false
 	}
-	
+
 	// Check GPU utilization
 	if node.Usage.GPUUtilization > 0.9 {
 		return false
 	}
-	
+
 	// Check active requests
 	if node.Usage.ActiveRequests > 5 {
 		return false
 	}
-	
+
 	return true
 }
 
 // Partition performs data-split partitioning
 func (ds *DataSplitStrategy) Partition(ctx context.Context, task *PartitionTask) (*PartitionPlan, error) {
 	start := time.Now()
-	
+
 	// Update metrics
 	ds.metrics.TotalPartitions++
 	ds.metrics.LastUsed = time.Now()
-	
+
 	// Analyze task requirements
 	batchRequirements := ds.analyzeBatchRequirements(task)
-	
+
 	// Analyze node capacities
 	nodeCapacities := ds.analyzeNodeCapacities(task.Nodes)
-	
+
 	// Calculate optimal batch distribution
 	batchDistribution, err := ds.calculateBatchDistribution(batchRequirements, nodeCapacities)
 	if err != nil {
 		ds.metrics.FailedPartitions++
 		return nil, fmt.Errorf("failed to calculate batch distribution: %v", err)
 	}
-	
+
 	// Create data partitions
 	dataPartitions := ds.createDataPartitions(batchDistribution, task.Nodes)
-	
+
 	// Create partitions
 	partitions := ds.createPartitions(dataPartitions)
-	
+
 	// Estimate performance
 	estimatedLatency := ds.estimateLatency(dataPartitions, nodeCapacities)
 	estimatedThroughput := ds.estimateThroughput(dataPartitions, nodeCapacities)
-	
+
 	// Create partition plan
 	plan := &PartitionPlan{
 		ID:                  fmt.Sprintf("data_split_%d", time.Now().UnixNano()),
@@ -193,27 +193,27 @@ func (ds *DataSplitStrategy) Partition(ctx context.Context, task *PartitionTask)
 			"partitioning_time":  time.Since(start),
 		},
 	}
-	
+
 	ds.metrics.SuccessfulPartitions++
-	
+
 	slog.Info("data-split partitioning completed",
 		"task_id", task.ID,
 		"data_partitions", len(dataPartitions),
 		"estimated_latency", estimatedLatency,
 		"estimated_throughput", estimatedThroughput,
 		"merge_strategy", ds.config.MergeStrategy)
-	
+
 	return plan, nil
 }
 
 // BatchRequirements represents batch processing requirements
 type BatchRequirements struct {
-	TotalBatchSize    int     `json:"total_batch_size"`
-	MinPartitionSize  int     `json:"min_partition_size"`
-	MaxPartitionSize  int     `json:"max_partition_size"`
-	MemoryPerItem     int64   `json:"memory_per_item"`
-	ComputePerItem    float64 `json:"compute_per_item"`
-	Parallelizable    bool    `json:"parallelizable"`
+	TotalBatchSize   int     `json:"total_batch_size"`
+	MinPartitionSize int     `json:"min_partition_size"`
+	MaxPartitionSize int     `json:"max_partition_size"`
+	MemoryPerItem    int64   `json:"memory_per_item"`
+	ComputePerItem   float64 `json:"compute_per_item"`
+	Parallelizable   bool    `json:"parallelizable"`
 }
 
 // analyzeBatchRequirements analyzes the batch processing requirements
@@ -225,23 +225,23 @@ func (ds *DataSplitStrategy) analyzeBatchRequirements(task *PartitionTask) *Batc
 			totalBatchSize = bs
 		}
 	}
-	
+
 	// Estimate memory per item
 	memoryPerItem := ds.estimateMemoryPerItem(task)
-	
+
 	// Estimate compute per item
 	computePerItem := ds.estimateComputePerItem(task)
-	
+
 	// Determine parallelizability
 	parallelizable := ds.isParallelizable(task)
-	
+
 	return &BatchRequirements{
-		TotalBatchSize:    totalBatchSize,
-		MinPartitionSize:  ds.config.MinBatchSize,
-		MaxPartitionSize:  ds.config.MaxBatchSize,
-		MemoryPerItem:     memoryPerItem,
-		ComputePerItem:    computePerItem,
-		Parallelizable:    parallelizable,
+		TotalBatchSize:   totalBatchSize,
+		MinPartitionSize: ds.config.MinBatchSize,
+		MaxPartitionSize: ds.config.MaxBatchSize,
+		MemoryPerItem:    memoryPerItem,
+		ComputePerItem:   computePerItem,
+		Parallelizable:   parallelizable,
 	}
 }
 
@@ -249,10 +249,10 @@ func (ds *DataSplitStrategy) analyzeBatchRequirements(task *PartitionTask) *Batc
 func (ds *DataSplitStrategy) estimateMemoryPerItem(task *PartitionTask) int64 {
 	// Base memory estimation
 	baseMemory := int64(1024 * 1024) // 1MB base
-	
+
 	// Adjust based on context length
 	contextMemory := int64(task.Options.NumCtx * 4 * 1024) // 4KB per context token
-	
+
 	// Adjust based on task type
 	var typeMultiplier float64
 	switch task.Type {
@@ -265,7 +265,7 @@ func (ds *DataSplitStrategy) estimateMemoryPerItem(task *PartitionTask) int64 {
 	default:
 		typeMultiplier = 1.0
 	}
-	
+
 	return int64(float64(baseMemory+contextMemory) * typeMultiplier)
 }
 
@@ -273,17 +273,17 @@ func (ds *DataSplitStrategy) estimateMemoryPerItem(task *PartitionTask) int64 {
 func (ds *DataSplitStrategy) estimateComputePerItem(task *PartitionTask) float64 {
 	// Base compute estimation (in GFLOPS)
 	baseCompute := 1.0
-	
+
 	// Adjust based on model complexity
 	if task.GGML != nil {
 		// Use GGML length as approximation for model complexity
 		modelSize := float64(task.GGML.Length)
 		baseCompute = modelSize / (1024 * 1024 * 1024) // GFLOPS based on model size
 	}
-	
+
 	// Adjust based on context length
 	contextMultiplier := math.Log(float64(task.Options.NumCtx)) / math.Log(2048)
-	
+
 	return baseCompute * contextMultiplier
 }
 
@@ -308,41 +308,41 @@ func (ds *DataSplitStrategy) isParallelizable(task *PartitionTask) bool {
 
 // NodeCapacity represents the capacity of a node for batch processing
 type NodeCapacity struct {
-	Node            *NodeInfo `json:"node"`
-	AvailableMemory int64     `json:"available_memory"`
-	AvailableCompute float64  `json:"available_compute"`
-	Throughput      float64   `json:"throughput"`
-	Latency         time.Duration `json:"latency"`
-	CapacityScore   float64   `json:"capacity_score"`
+	Node             *NodeInfo     `json:"node"`
+	AvailableMemory  int64         `json:"available_memory"`
+	AvailableCompute float64       `json:"available_compute"`
+	Throughput       float64       `json:"throughput"`
+	Latency          time.Duration `json:"latency"`
+	CapacityScore    float64       `json:"capacity_score"`
 }
 
 // analyzeNodeCapacities analyzes the capacity of nodes for batch processing
 func (ds *DataSplitStrategy) analyzeNodeCapacities(nodes []*NodeInfo) []*NodeCapacity {
 	capacities := make([]*NodeCapacity, len(nodes))
-	
+
 	for i, node := range nodes {
 		// Calculate available memory
 		availableMemory := int64(float64(node.Capacity.MemoryBytes) * (1.0 - node.Usage.MemoryUtilization))
-		
+
 		// Calculate available compute
 		availableCompute := float64(node.Capacity.CPUCores) * (1.0 - node.Usage.CPUUtilization)
-		
+
 		// Estimate throughput
 		throughput := ds.estimateNodeThroughput(node)
-		
+
 		// Calculate capacity score
 		capacityScore := ds.calculateCapacityScore(node, availableMemory, availableCompute)
-		
+
 		capacities[i] = &NodeCapacity{
-			Node:            node,
-			AvailableMemory: availableMemory,
+			Node:             node,
+			AvailableMemory:  availableMemory,
 			AvailableCompute: availableCompute,
-			Throughput:      throughput,
-			Latency:         node.Latency,
-			CapacityScore:   capacityScore,
+			Throughput:       throughput,
+			Latency:          node.Latency,
+			CapacityScore:    capacityScore,
 		}
 	}
-	
+
 	return capacities
 }
 
@@ -350,21 +350,21 @@ func (ds *DataSplitStrategy) analyzeNodeCapacities(nodes []*NodeInfo) []*NodeCap
 func (ds *DataSplitStrategy) estimateNodeThroughput(node *NodeInfo) float64 {
 	// Base throughput on compute capacity
 	baseThroughput := float64(node.Capacity.CPUCores) * 10.0 // 10 ops per core per second
-	
+
 	// Adjust for GPU if available
 	if node.Capacity.GPUCount > 0 {
 		gpuThroughput := float64(node.Capacity.GPUCount) * 100.0 // 100 ops per GPU per second
 		baseThroughput += gpuThroughput
 	}
-	
+
 	// Adjust for current utilization
 	utilizationFactor := 1.0 - (node.Usage.CPUUtilization+node.Usage.GPUUtilization)/2.0
-	
+
 	// Apply capacity-specific multiplier
 	if node.Capacity.ComputeScore > 0 {
 		baseThroughput *= node.Capacity.ComputeScore
 	}
-	
+
 	return baseThroughput * utilizationFactor
 }
 
@@ -372,30 +372,30 @@ func (ds *DataSplitStrategy) estimateNodeThroughput(node *NodeInfo) float64 {
 func (ds *DataSplitStrategy) calculateCapacityScore(node *NodeInfo, availableMemory int64, availableCompute float64) float64 {
 	// Memory score (0-1)
 	memoryScore := math.Min(float64(availableMemory)/(4*1024*1024*1024), 1.0) // 4GB reference
-	
+
 	// Compute score (0-1)
 	computeScore := math.Min(availableCompute/8.0, 1.0) // 8 cores reference
-	
+
 	// Throughput score (0-1)
 	throughput := ds.estimateNodeThroughput(node)
 	throughputScore := math.Min(throughput/1000.0, 1.0) // 1000 ops/sec reference
-	
+
 	// Latency score (0-1)
 	latencyScore := math.Max(0.0, 1.0-float64(node.Latency)/float64(100*time.Millisecond))
-	
+
 	// Weighted combination
 	capacityScore := 0.3*memoryScore + 0.3*computeScore + 0.3*throughputScore + 0.1*latencyScore
-	
+
 	return math.Min(capacityScore, 1.0)
 }
 
 // BatchDistribution represents the distribution of batch items across nodes
 type BatchDistribution struct {
-	TotalItems     int                   `json:"total_items"`
-	NodeAllocation map[string]int        `json:"node_allocation"`
-	Weights        map[string]float64    `json:"weights"`
-	LoadBalancing  *LoadBalancingInfo    `json:"load_balancing"`
-	Efficiency     float64               `json:"efficiency"`
+	TotalItems     int                `json:"total_items"`
+	NodeAllocation map[string]int     `json:"node_allocation"`
+	Weights        map[string]float64 `json:"weights"`
+	LoadBalancing  *LoadBalancingInfo `json:"load_balancing"`
+	Efficiency     float64            `json:"efficiency"`
 }
 
 // calculateBatchDistribution calculates the optimal batch distribution
@@ -403,31 +403,31 @@ func (ds *DataSplitStrategy) calculateBatchDistribution(requirements *BatchRequi
 	if len(capacities) == 0 {
 		return nil, fmt.Errorf("no nodes available for batch distribution")
 	}
-	
+
 	// Calculate total capacity
 	totalCapacity := 0.0
 	for _, capacity := range capacities {
 		totalCapacity += capacity.CapacityScore
 	}
-	
+
 	if totalCapacity == 0 {
 		return nil, fmt.Errorf("no available capacity for batch distribution")
 	}
-	
+
 	// Calculate weights based on capacity
 	weights := make(map[string]float64)
 	for _, capacity := range capacities {
 		weights[capacity.Node.ID] = capacity.CapacityScore / totalCapacity
 	}
-	
+
 	// Calculate node allocation
 	nodeAllocation := make(map[string]int)
 	remainingItems := requirements.TotalBatchSize
-	
+
 	for i, capacity := range capacities {
 		weight := weights[capacity.Node.ID]
 		allocation := int(float64(requirements.TotalBatchSize) * weight)
-		
+
 		// Ensure minimum and maximum constraints
 		if allocation < requirements.MinPartitionSize {
 			allocation = requirements.MinPartitionSize
@@ -435,7 +435,7 @@ func (ds *DataSplitStrategy) calculateBatchDistribution(requirements *BatchRequi
 		if allocation > requirements.MaxPartitionSize {
 			allocation = requirements.MaxPartitionSize
 		}
-		
+
 		// Adjust for remaining items
 		if i == len(capacities)-1 && remainingItems > 0 {
 			// Give remaining items to the last node
@@ -443,18 +443,18 @@ func (ds *DataSplitStrategy) calculateBatchDistribution(requirements *BatchRequi
 		} else if allocation > remainingItems {
 			allocation = remainingItems
 		}
-		
+
 		nodeAllocation[capacity.Node.ID] = allocation
 		remainingItems -= allocation
-		
+
 		if remainingItems <= 0 {
 			break
 		}
 	}
-	
+
 	// Calculate efficiency
 	efficiency := ds.calculateDistributionEfficiency(nodeAllocation, weights)
-	
+
 	// Create load balancing info
 	loadBalancing := &LoadBalancingInfo{
 		Strategy:           "capacity_weighted",
@@ -462,12 +462,12 @@ func (ds *DataSplitStrategy) calculateBatchDistribution(requirements *BatchRequi
 		CapacityFactors:    make(map[string]float64),
 		UtilizationFactors: make(map[string]float64),
 	}
-	
+
 	for _, capacity := range capacities {
 		loadBalancing.CapacityFactors[capacity.Node.ID] = capacity.CapacityScore
 		loadBalancing.UtilizationFactors[capacity.Node.ID] = (capacity.Node.Usage.CPUUtilization + capacity.Node.Usage.GPUUtilization) / 2.0
 	}
-	
+
 	return &BatchDistribution{
 		TotalItems:     requirements.TotalBatchSize,
 		NodeAllocation: nodeAllocation,
@@ -484,29 +484,29 @@ func (ds *DataSplitStrategy) calculateDistributionEfficiency(nodeAllocation map[
 	for _, allocation := range nodeAllocation {
 		totalAllocation += allocation
 	}
-	
+
 	if totalAllocation == 0 {
 		return 0.0
 	}
-	
+
 	// Calculate efficiency as the correlation between allocation and weights
 	efficiency := 0.0
 	for nodeID, allocation := range nodeAllocation {
 		actualWeight := float64(allocation) / float64(totalAllocation)
 		expectedWeight := weights[nodeID]
-		
+
 		// Penalty for deviation from expected weight
 		deviation := math.Abs(actualWeight - expectedWeight)
 		efficiency += (1.0 - deviation) * expectedWeight
 	}
-	
+
 	return efficiency
 }
 
 // createDataPartitions creates data partitions from batch distribution
 func (ds *DataSplitStrategy) createDataPartitions(distribution *BatchDistribution, nodes []*NodeInfo) []*DataPartition {
 	partitions := make([]*DataPartition, 0)
-	
+
 	for _, node := range nodes {
 		allocation := distribution.NodeAllocation[node.ID]
 		if allocation > 0 {
@@ -519,11 +519,11 @@ func (ds *DataSplitStrategy) createDataPartitions(distribution *BatchDistributio
 				Priority:      ds.calculatePriority(node, allocation),
 				EstimatedTime: ds.estimatePartitionTime(node, allocation),
 			}
-			
+
 			partitions = append(partitions, partition)
 		}
 	}
-	
+
 	return partitions
 }
 
@@ -542,12 +542,12 @@ func (ds *DataSplitStrategy) calculatePriority(node *NodeInfo, allocation int) i
 	// Higher priority for nodes with lower utilization
 	utilization := (node.Usage.CPUUtilization + node.Usage.GPUUtilization) / 2.0
 	priority := int((1.0 - utilization) * 10.0)
-	
+
 	// Adjust based on allocation size
 	if allocation > 16 {
 		priority += 2 // Higher priority for larger allocations
 	}
-	
+
 	return priority
 }
 
@@ -555,26 +555,26 @@ func (ds *DataSplitStrategy) calculatePriority(node *NodeInfo, allocation int) i
 func (ds *DataSplitStrategy) estimatePartitionTime(node *NodeInfo, allocation int) time.Duration {
 	// Base processing time per item
 	baseTimePerItem := 100 * time.Millisecond
-	
+
 	// Adjust based on node capacity
 	if node.Capacity.ComputeScore > 0 {
 		baseTimePerItem = time.Duration(float64(baseTimePerItem) / node.Capacity.ComputeScore)
 	}
-	
+
 	// Adjust based on current utilization
 	utilization := (node.Usage.CPUUtilization + node.Usage.GPUUtilization) / 2.0
 	adjustmentFactor := 1.0 + utilization
-	
+
 	// Total time = base time * items * adjustment factor
 	totalTime := time.Duration(float64(baseTimePerItem) * float64(allocation) * adjustmentFactor)
-	
+
 	return totalTime
 }
 
 // createPartitions creates partitions from data partitions
 func (ds *DataSplitStrategy) createPartitions(dataPartitions []*DataPartition) []*Partition {
 	partitions := make([]*Partition, len(dataPartitions))
-	
+
 	for i, dataPartition := range dataPartitions {
 		partitions[i] = &Partition{
 			ID:               dataPartition.ID,
@@ -593,7 +593,7 @@ func (ds *DataSplitStrategy) createPartitions(dataPartitions []*DataPartition) [
 			},
 		}
 	}
-	
+
 	return partitions
 }
 
@@ -601,11 +601,11 @@ func (ds *DataSplitStrategy) createPartitions(dataPartitions []*DataPartition) [
 func (ds *DataSplitStrategy) estimatePartitionMemory(dataPartition *DataPartition) int64 {
 	// Base memory per item
 	baseMemoryPerItem := int64(1024 * 1024) // 1MB per item
-	
+
 	// Total memory = base memory * batch size * overhead factor
 	overheadFactor := 1.2 // 20% overhead
 	totalMemory := int64(float64(baseMemoryPerItem) * float64(dataPartition.BatchSize) * overheadFactor)
-	
+
 	return totalMemory
 }
 
@@ -618,10 +618,10 @@ func (ds *DataSplitStrategy) estimateLatency(dataPartitions []*DataPartition, ca
 			maxTime = partition.EstimatedTime
 		}
 	}
-	
+
 	// Add merge overhead
 	mergeOverhead := time.Duration(float64(len(dataPartitions)) * 10.0 * float64(time.Millisecond))
-	
+
 	return maxTime + mergeOverhead
 }
 
@@ -634,9 +634,9 @@ func (ds *DataSplitStrategy) estimateThroughput(dataPartitions []*DataPartition,
 		partitionThroughput := float64(partition.BatchSize) / partition.EstimatedTime.Seconds()
 		totalThroughput += partitionThroughput
 	}
-	
+
 	// Apply efficiency factor
 	efficiencyFactor := 0.9 // 90% efficiency for data-split
-	
+
 	return totalThroughput * efficiencyFactor
 }

@@ -13,17 +13,17 @@ import (
 )
 
 var (
-	projectRoot = flag.String("root", ".", "Project root directory")
-	packagePath = flag.String("package", "", "Specific package to test (e.g., pkg/consensus)")
-	timeout     = flag.Duration("timeout", 30*time.Second, "Test timeout duration")
-	verbose     = flag.Bool("verbose", false, "Enable verbose output")
-	threshold   = flag.Float64("threshold", 70.0, "Minimum mutation score threshold")
-	excludeDirs = flag.String("exclude-dirs", "vendor,.git,node_modules,testdata", "Comma-separated list of directories to exclude")
+	projectRoot  = flag.String("root", ".", "Project root directory")
+	packagePath  = flag.String("package", "", "Specific package to test (e.g., pkg/consensus)")
+	timeout      = flag.Duration("timeout", 30*time.Second, "Test timeout duration")
+	verbose      = flag.Bool("verbose", false, "Enable verbose output")
+	threshold    = flag.Float64("threshold", 70.0, "Minimum mutation score threshold")
+	excludeDirs  = flag.String("exclude-dirs", "vendor,.git,node_modules,testdata", "Comma-separated list of directories to exclude")
 	excludeFiles = flag.String("exclude-files", "*_test.go,*.pb.go,mock_*.go", "Comma-separated list of file patterns to exclude")
-	testCmd     = flag.String("test-cmd", "go test -race -timeout=30s", "Test command to execute")
-	outputDir   = flag.String("output", "test-artifacts", "Output directory for reports")
-	workers     = flag.Int("workers", 4, "Number of parallel workers for mutation testing")
-	quick       = flag.Bool("quick", false, "Run quick mutation testing (fewer mutations)")
+	testCmd      = flag.String("test-cmd", "go test -race -timeout=30s", "Test command to execute")
+	outputDir    = flag.String("output", "test-artifacts", "Output directory for reports")
+	workers      = flag.Int("workers", 4, "Number of parallel workers for mutation testing")
+	quick        = flag.Bool("quick", false, "Run quick mutation testing (fewer mutations)")
 	reportFormat = flag.String("format", "text", "Report format: text, json, html")
 )
 
@@ -97,22 +97,22 @@ func main() {
 
 	// Check threshold
 	if runner.GetMutationScore() < *threshold {
-		fmt.Printf("\n❌ Mutation score %.2f%% is below threshold %.1f%%\n", 
+		fmt.Printf("\n❌ Mutation score %.2f%% is below threshold %.1f%%\n",
 			runner.GetMutationScore(), *threshold)
 		os.Exit(1)
 	}
 
 	fmt.Printf("\n✅ Mutation testing completed successfully!\n")
-	fmt.Printf("🎯 Mutation Score: %.2f%% (Grade: %s)\n", 
+	fmt.Printf("🎯 Mutation Score: %.2f%% (Grade: %s)\n",
 		runner.GetMutationScore(), runner.GetQualityGrade())
 }
 
 func runQuickMutationTesting(runner *mutation.MutationTestRunner) error {
 	fmt.Printf("⚡ Quick Mode: Testing critical packages only\n")
-	
+
 	criticalPackages := []string{
 		"pkg/consensus",
-		"pkg/p2p", 
+		"pkg/p2p",
 		"internal/auth",
 		"pkg/api",
 	}
@@ -123,7 +123,7 @@ func runQuickMutationTesting(runner *mutation.MutationTestRunner) error {
 
 	for _, pkg := range criticalPackages {
 		fmt.Printf("🧬 Testing %s...\n", pkg)
-		
+
 		pkgRunner := mutation.NewMutationTestRunner(runner.ProjectRoot)
 		pkgRunner.TestTimeout = runner.TestTimeout
 		pkgRunner.Verbose = runner.Verbose
@@ -140,8 +140,8 @@ func runQuickMutationTesting(runner *mutation.MutationTestRunner) error {
 		totalMutants += pkgRunner.Results.TotalMutants
 		totalKilled += pkgRunner.Results.KilledMutants
 
-		fmt.Printf("  📊 %s: %.1f%% (%d/%d mutants killed)\n", 
-			pkg, pkgRunner.GetMutationScore(), 
+		fmt.Printf("  📊 %s: %.1f%% (%d/%d mutants killed)\n",
+			pkg, pkgRunner.GetMutationScore(),
 			pkgRunner.Results.KilledMutants, pkgRunner.Results.TotalMutants)
 	}
 
@@ -165,7 +165,7 @@ func runQuickMutationTesting(runner *mutation.MutationTestRunner) error {
 
 func displayResults(runner *mutation.MutationTestRunner) {
 	results := runner.Results
-	
+
 	fmt.Printf("\n📊 MUTATION TESTING RESULTS\n")
 	fmt.Printf("============================\n")
 	fmt.Printf("Total Mutants: %d\n", results.TotalMutants)
@@ -231,22 +231,22 @@ func generateJSONReport(runner *mutation.MutationTestRunner, outputDir string) e
 
 func generateHTMLReport(runner *mutation.MutationTestRunner, outputDir string) error {
 	htmlContent := generateHTMLReportContent(runner)
-	
-	reportPath := filepath.Join(outputDir, 
+
+	reportPath := filepath.Join(outputDir,
 		fmt.Sprintf("mutation_report_%s.html", time.Now().Format("20060102_150405")))
-	
+
 	err := os.WriteFile(reportPath, []byte(htmlContent), 0644)
 	if err != nil {
 		return fmt.Errorf("failed to write HTML report: %w", err)
 	}
-	
+
 	fmt.Printf("📄 HTML report generated: %s\n", reportPath)
 	return nil
 }
 
 func generateHTMLReportContent(runner *mutation.MutationTestRunner) string {
 	results := runner.Results
-	
+
 	html := `<!DOCTYPE html>
 <html>
 <head>
@@ -303,7 +303,7 @@ func generateHTMLReportContent(runner *mutation.MutationTestRunner) string {
 		html += `
     <div class="mutations">
         <h2>🚨 Survived Mutants (Quality Issues)</h2>`
-		
+
 		for _, mutation := range results.Mutations {
 			if mutation.Status == "survived" {
 				html += fmt.Sprintf(`
@@ -315,7 +315,7 @@ func generateHTMLReportContent(runner *mutation.MutationTestRunner) string {
 					mutation.Original, mutation.Mutant, mutation.Type)
 			}
 		}
-		
+
 		html += `
     </div>`
 	}

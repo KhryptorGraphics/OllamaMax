@@ -20,7 +20,7 @@ type RouteIntegration struct {
 	compatibility      *DistributedServerCompatibility
 	fallbackManager    *FallbackManager
 	standalone         *StandaloneMode
-	
+
 	// Integration state
 	enabled     bool
 	initialized bool
@@ -33,10 +33,10 @@ func NewRouteIntegration(scheduler *scheduler.Engine, modelDist *models.Manager,
 	if err != nil {
 		return nil, fmt.Errorf("failed to create fallback manager: %w", err)
 	}
-	
+
 	// Create standalone mode
 	standalone := NewStandaloneMode(fallbackMgr)
-	
+
 	return &RouteIntegration{
 		fallbackManager: fallbackMgr,
 		standalone:      standalone,
@@ -50,20 +50,20 @@ func (ri *RouteIntegration) Initialize(originalServer interface{}, scheduler *sc
 	if ri.initialized {
 		return nil
 	}
-	
+
 	// Create distributed wrapper
 	wrapper, err := NewDistributedServerWrapper(originalServer, scheduler, modelDist, localAddr)
 	if err != nil {
 		return fmt.Errorf("failed to create distributed wrapper: %w", err)
 	}
-	
+
 	// Create compatibility layer
 	compatibility := NewDistributedServerCompatibility(wrapper)
-	
+
 	ri.distributedWrapper = wrapper
 	ri.compatibility = compatibility
 	ri.initialized = true
-	
+
 	slog.Info("Route integration initialized", "enabled", ri.enabled)
 	return nil
 }
@@ -76,28 +76,32 @@ func (ri *RouteIntegration) WrapGenerateRoutes(originalServer interface{}, sched
 			if err := ri.Initialize(originalServer, scheduler, modelDist, localAddr); err != nil {
 				slog.Error("Failed to initialize route integration", "error", err)
 				// Fall back to original
-				if generator, ok := originalServer.(interface{ GenerateRoutes(*integration.Registry) (http.Handler, error) }); ok {
+				if generator, ok := originalServer.(interface {
+					GenerateRoutes(*integration.Registry) (http.Handler, error)
+				}); ok {
 					return generator.GenerateRoutes(rc)
 				}
 				return http.DefaultServeMux, fmt.Errorf("original server doesn't support GenerateRoutes")
 			}
 		}
-		
+
 		// Check if distributed mode is enabled
 		if !ri.enabled {
 			slog.Info("Distributed mode disabled, using original routes")
-			if generator, ok := originalServer.(interface{ GenerateRoutes(*integration.Registry) (http.Handler, error) }); ok {
+			if generator, ok := originalServer.(interface {
+				GenerateRoutes(*integration.Registry) (http.Handler, error)
+			}); ok {
 				return generator.GenerateRoutes(rc)
 			}
 			return http.DefaultServeMux, fmt.Errorf("original server doesn't support GenerateRoutes")
 		}
-		
+
 		// Check if we should use standalone mode
 		if ri.shouldUseStandaloneMode() {
 			slog.Info("Using standalone mode")
 			return ri.generateStandaloneRoutes(rc)
 		}
-		
+
 		// Use distributed routes
 		slog.Info("Using distributed routes")
 		return ri.distributedWrapper.GenerateRoutesWithDistributed(rc)
@@ -111,19 +115,19 @@ func (ri *RouteIntegration) shouldUseStandaloneMode() bool {
 		ri.standalone.Enable("environment-variable")
 		return true
 	}
-	
+
 	// Check if no distributed components are available
 	if ri.distributedWrapper == nil {
 		ri.standalone.Enable("no-distributed-components")
 		return true
 	}
-	
+
 	// Check if local instance is unhealthy
 	if !ri.fallbackManager.IsLocalHealthy() {
 		ri.standalone.Enable("local-unhealthy")
 		return true
 	}
-	
+
 	return ri.standalone.IsEnabled()
 }
 
@@ -132,13 +136,13 @@ func (ri *RouteIntegration) generateStandaloneRoutes(rc *integration.Registry) (
 	router := gin.New()
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
-	
+
 	// Add standalone middleware
 	router.Use(ri.standaloneMiddleware())
-	
+
 	// All routes go through standalone handler
 	router.Any("/*path", ri.standalone.HandleRequest)
-	
+
 	return router, nil
 }
 
@@ -157,14 +161,16 @@ func (ri *RouteIntegration) CreateIntegratedRouter(originalServer interface{}, r
 	router := gin.New()
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
-	
+
 	// Add integration middleware
 	router.Use(ri.integrationMiddleware())
-	
+
 	// Get original routes
 	var originalHandler http.Handler
 	var err error
-	if generator, ok := originalServer.(interface{ GenerateRoutes(*integration.Registry) (http.Handler, error) }); ok {
+	if generator, ok := originalServer.(interface {
+		GenerateRoutes(*integration.Registry) (http.Handler, error)
+	}); ok {
 		originalHandler, err = generator.GenerateRoutes(rc)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get original routes: %w", err)
@@ -172,16 +178,16 @@ func (ri *RouteIntegration) CreateIntegratedRouter(originalServer interface{}, r
 	} else {
 		originalHandler = http.DefaultServeMux
 	}
-	
+
 	// Add distributed routes if enabled
 	if ri.enabled && ri.compatibility != nil {
 		// Inject distributed handlers
 		ri.compatibility.InjectDistributedHandlers(router)
-		
+
 		// Register distributed endpoints
 		ri.compatibility.RegisterDistributedEndpoints(router)
 	}
-	
+
 	// Add fallback handler
 	router.NoRoute(func(c *gin.Context) {
 		// Check if we should use distributed
@@ -195,11 +201,11 @@ func (ri *RouteIntegration) CreateIntegratedRouter(originalServer interface{}, r
 				}
 			}
 		}
-		
+
 		// Fall back to original
 		originalHandler.ServeHTTP(c.Writer, c.Request)
 	})
-	
+
 	return router, nil
 }
 
@@ -209,12 +215,12 @@ func (ri *RouteIntegration) integrationMiddleware() gin.HandlerFunc {
 		c.Header("X-Ollama-Integration", "true")
 		c.Header("X-Ollama-Integration-Enabled", fmt.Sprintf("%v", ri.enabled))
 		c.Header("X-Ollama-Integration-Initialized", fmt.Sprintf("%v", ri.initialized))
-		
+
 		// Add health status
 		if ri.fallbackManager != nil {
 			c.Header("X-Ollama-Local-Healthy", fmt.Sprintf("%v", ri.fallbackManager.IsLocalHealthy()))
 		}
-		
+
 		c.Next()
 	}
 }
@@ -224,10 +230,10 @@ func (ri *RouteIntegration) shouldUseDistributed(c *gin.Context) bool {
 	if !ri.enabled || ri.compatibility == nil {
 		return false
 	}
-	
+
 	// Check path
 	path := c.Request.URL.Path
-	
+
 	// Use distributed for inference endpoints
 	if strings.Contains(path, "/generate") ||
 		strings.Contains(path, "/chat") ||
@@ -235,14 +241,14 @@ func (ri *RouteIntegration) shouldUseDistributed(c *gin.Context) bool {
 		strings.Contains(path, "/completions") {
 		return true
 	}
-	
+
 	// Use distributed for model management
 	if strings.Contains(path, "/show") ||
 		strings.Contains(path, "/tags") ||
 		strings.Contains(path, "/pull") {
 		return true
 	}
-	
+
 	return false
 }
 
@@ -258,25 +264,25 @@ func (ri *RouteIntegration) getHandlerName(path string) string {
 // EnableDistributedMode enables distributed mode
 func (ri *RouteIntegration) EnableDistributedMode() error {
 	ri.enabled = true
-	
+
 	if ri.compatibility != nil {
 		config := map[string]interface{}{
 			"fallback": true,
 		}
 		return ri.compatibility.EnableDistributedMode(config)
 	}
-	
+
 	return nil
 }
 
 // DisableDistributedMode disables distributed mode
 func (ri *RouteIntegration) DisableDistributedMode() error {
 	ri.enabled = false
-	
+
 	if ri.compatibility != nil {
 		return ri.compatibility.DisableDistributedMode()
 	}
-	
+
 	return nil
 }
 
@@ -307,19 +313,19 @@ func (ri *RouteIntegration) GetStatus() map[string]interface{} {
 		"initialized": ri.initialized,
 		"mode":        ri.getMode(),
 	}
-	
+
 	if ri.fallbackManager != nil {
 		status["fallback"] = ri.fallbackManager.GetStats()
 	}
-	
+
 	if ri.standalone != nil {
 		status["standalone"] = ri.standalone.GetStats()
 	}
-	
+
 	if ri.compatibility != nil {
 		status["distributed"] = ri.compatibility.GetDistributedStatus()
 	}
-	
+
 	return status
 }
 
@@ -328,11 +334,11 @@ func (ri *RouteIntegration) getMode() string {
 	if ri.standalone.IsEnabled() {
 		return "standalone"
 	}
-	
+
 	if ri.enabled {
 		return "distributed"
 	}
-	
+
 	return "local"
 }
 
@@ -376,7 +382,7 @@ func InitializeGlobalIntegration(scheduler *scheduler.Engine, modelDist *models.
 	if err != nil {
 		return fmt.Errorf("failed to create global integration: %w", err)
 	}
-	
+
 	globalIntegration = integration
 	return nil
 }
@@ -393,7 +399,9 @@ func WrapServerGenerateRoutes(originalServer interface{}, scheduler *scheduler.E
 		if err := InitializeGlobalIntegration(scheduler, modelDist, localAddr); err != nil {
 			slog.Error("Failed to initialize global integration", "error", err)
 			// Return original function if it supports GenerateRoutes
-			if generator, ok := originalServer.(interface{ GenerateRoutes(*integration.Registry) (http.Handler, error) }); ok {
+			if generator, ok := originalServer.(interface {
+				GenerateRoutes(*integration.Registry) (http.Handler, error)
+			}); ok {
 				return generator.GenerateRoutes
 			}
 			// Return fallback function
@@ -402,7 +410,7 @@ func WrapServerGenerateRoutes(originalServer interface{}, scheduler *scheduler.E
 			}
 		}
 	}
-	
+
 	// Return wrapped function
 	return globalIntegration.WrapGenerateRoutes(originalServer, scheduler, modelDist, localAddr)
 }

@@ -119,7 +119,7 @@ func NodeToNodeInfo(node *Node) *NodeInfo {
 	if node == nil {
 		return nil
 	}
-	
+
 	return &NodeInfo{
 		ID:       string(node.ID),
 		Address:  node.Address,
@@ -143,7 +143,7 @@ func convertNodeCapacity(capabilities *NodeCapabilities) NodeCapacity {
 	if capabilities == nil {
 		return NodeCapacity{}
 	}
-	
+
 	return NodeCapacity{
 		CPU:    int64(capabilities.Hardware.CPU),
 		Memory: capabilities.Hardware.Memory,
@@ -157,7 +157,7 @@ func convertNodeUsage(metrics *NodeMetrics) NodeUsage {
 	if metrics == nil {
 		return NodeUsage{}
 	}
-	
+
 	return NodeUsage{
 		CPU:    metrics.CPUUsage,
 		Memory: metrics.MemoryUsage,
@@ -190,19 +190,19 @@ func HasSufficientResources(node *Node, requirements *ResourceRequirements) bool
 	if node == nil || node.Capabilities == nil || node.Metrics == nil || requirements == nil {
 		return false
 	}
-	
+
 	// Check CPU
 	availableCPU := float64(node.Capabilities.Hardware.CPU) * (1.0 - node.Metrics.CPUUsage/100.0)
 	if availableCPU < requirements.MinCPU {
 		return false
 	}
-	
+
 	// Check Memory
 	availableMemory := float64(node.Capabilities.Hardware.Memory) * (1.0 - node.Metrics.MemoryUsage/100.0)
 	if availableMemory < float64(requirements.MinMemory) {
 		return false
 	}
-	
+
 	// Check GPU if required
 	if requirements.RequiresGPU {
 		if node.Capabilities.Hardware.GPU == 0 {
@@ -213,7 +213,7 @@ func HasSufficientResources(node *Node, requirements *ResourceRequirements) bool
 			return false
 		}
 	}
-	
+
 	return true
 }
 
@@ -224,14 +224,14 @@ func SanitizeModelName(name string) string {
 	// Replace invalid characters with underscores
 	reg := regexp.MustCompile(`[^a-zA-Z0-9\-_\.]`)
 	sanitized := reg.ReplaceAllString(name, "_")
-	
+
 	// Remove multiple consecutive underscores
 	reg = regexp.MustCompile(`_{2,}`)
 	sanitized = reg.ReplaceAllString(sanitized, "_")
-	
+
 	// Trim underscores from start and end
 	sanitized = strings.Trim(sanitized, "_")
-	
+
 	return sanitized
 }
 

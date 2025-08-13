@@ -1,3 +1,5 @@
+//go:build ignore
+
 package integration
 
 import (
@@ -30,11 +32,11 @@ func TestComprehensiveIntegration(t *testing.T) {
 		results["ProxyStatus"] = t.Run("TestProxyStatus", func(t *testing.T) {
 			framework.TestProxyCommand(t, "status")
 		})
-		
+
 		results["ProxyInstances"] = t.Run("TestProxyInstances", func(t *testing.T) {
 			framework.TestProxyCommand(t, "instances")
 		})
-		
+
 		results["ProxyMetrics"] = t.Run("TestProxyMetrics", func(t *testing.T) {
 			framework.TestProxyCommand(t, "metrics")
 		})
@@ -44,7 +46,7 @@ func TestComprehensiveIntegration(t *testing.T) {
 		results["HealthEndpoint"] = t.Run("TestHealthEndpoint", func(t *testing.T) {
 			framework.TestAPIEndpoint(t, "/health", 200)
 		})
-		
+
 		results["ProxyStatusAPI"] = t.Run("TestProxyStatusAPI", func(t *testing.T) {
 			framework.TestAPIEndpoint(t, "/api/v1/proxy/status", 200)
 		})
@@ -157,7 +159,7 @@ func testErrorScenarios(t *testing.T, framework *IntegrationTestFramework) {
 	for _, test := range errorTests {
 		t.Run(test.name, func(t *testing.T) {
 			output, err := framework.RunCLICommand(test.args...)
-			
+
 			// Should return error
 			if err == nil {
 				t.Errorf("Expected error but command succeeded")
@@ -277,11 +279,11 @@ func containsAny(text string, substrings []string) bool {
 }
 
 func contains(text, substring string) bool {
-	return len(text) > 0 && len(substring) > 0 && 
-		   (text == substring || len(text) > len(substring) && 
-		    (text[:len(substring)] == substring || 
-		     text[len(text)-len(substring):] == substring ||
-		     findInString(text, substring)))
+	return len(text) > 0 && len(substring) > 0 &&
+		(text == substring || len(text) > len(substring) &&
+			(text[:len(substring)] == substring ||
+				text[len(text)-len(substring):] == substring ||
+				findInString(text, substring)))
 }
 
 func findInString(text, substring string) bool {

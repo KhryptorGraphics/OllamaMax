@@ -123,7 +123,7 @@ func (t *ProxyCLITester) runAllTests() {
 		fmt.Printf("\n🔍 Running test: %s\n", test.name)
 		result := t.runCLITest(test.command, test.expectError, test.contains, test.description)
 		t.results = append(t.results, result)
-		
+
 		status := "✅"
 		if !result.Success {
 			status = "❌"
@@ -134,22 +134,22 @@ func (t *ProxyCLITester) runAllTests() {
 
 func (t *ProxyCLITester) runCLITest(command []string, expectError bool, contains []string, description string) CLITestResult {
 	start := time.Now()
-	
+
 	// Build full command
 	fullCommand := append([]string{t.binaryPath}, command...)
-	
+
 	// Execute command
 	cmd := exec.Command(fullCommand[0], fullCommand[1:]...)
 	output, err := cmd.CombinedOutput()
-	
+
 	duration := time.Since(start)
 	outputStr := string(output)
 	commandStr := strings.Join(fullCommand, " ")
-	
+
 	// Check if error expectation matches
 	hasError := err != nil
 	errorMatch := hasError == expectError
-	
+
 	// Check if output contains expected strings
 	containsMatch := true
 	for _, expected := range contains {
@@ -158,9 +158,9 @@ func (t *ProxyCLITester) runCLITest(command []string, expectError bool, contains
 			break
 		}
 	}
-	
+
 	success := errorMatch && containsMatch
-	
+
 	return CLITestResult{
 		Command:     commandStr,
 		Expected:    fmt.Sprintf("Error: %v, Contains: %v", expectError, contains),

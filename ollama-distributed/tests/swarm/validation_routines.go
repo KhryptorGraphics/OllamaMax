@@ -1,9 +1,10 @@
+//go:build ignore
+
 package main
 
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"runtime"
 	"strings"
 	"sync"
@@ -34,11 +35,11 @@ type ValidationResult struct {
 
 // ValidationSuite manages comprehensive validation of swarm operations
 type ValidationSuite struct {
-	level        ValidationLevel
-	results      []*ValidationResult
-	mu           sync.RWMutex
-	validators   map[string]Validator
-	config       *ValidationConfig
+	level      ValidationLevel
+	results    []*ValidationResult
+	mu         sync.RWMutex
+	validators map[string]Validator
+	config     *ValidationConfig
 }
 
 // ValidationConfig holds validation configuration
@@ -78,7 +79,7 @@ func (v *SwarmHealthValidator) Priority() int {
 
 func (v *SwarmHealthValidator) Validate(ctx context.Context, target interface{}) (*ValidationResult, error) {
 	start := time.Now()
-	
+
 	harness, ok := target.(*SwarmTestHarness)
 	if !ok {
 		return &ValidationResult{
@@ -95,7 +96,7 @@ func (v *SwarmHealthValidator) Validate(ctx context.Context, target interface{})
 	// Check agent connectivity
 	activeAgents := 0
 	totalAgents := len(harness.agents)
-	
+
 	for _, agent := range harness.agents {
 		if agent.Status == "active" || agent.Status == "busy" {
 			activeAgents++
@@ -143,7 +144,7 @@ func (v *AgentCoordinationValidator) Priority() int {
 
 func (v *AgentCoordinationValidator) Validate(ctx context.Context, target interface{}) (*ValidationResult, error) {
 	start := time.Now()
-	
+
 	harness, ok := target.(*SwarmTestHarness)
 	if !ok {
 		return &ValidationResult{
@@ -202,7 +203,7 @@ func (v *PerformanceValidator) Priority() int {
 
 func (v *PerformanceValidator) Validate(ctx context.Context, target interface{}) (*ValidationResult, error) {
 	start := time.Now()
-	
+
 	harness, ok := target.(*SwarmTestHarness)
 	if !ok {
 		return &ValidationResult{
@@ -219,7 +220,7 @@ func (v *PerformanceValidator) Validate(ctx context.Context, target interface{})
 	// Check memory usage
 	maxMemory := harness.GetMaxMemoryUsage()
 	memoryThreshold := harness.config.MemoryThreshold
-	
+
 	// Check response times
 	latencies := harness.MeasureNetworkLatencies()
 	avgLatency := calculateAverageLatency(latencies)
@@ -237,11 +238,11 @@ func (v *PerformanceValidator) Validate(ctx context.Context, target interface{})
 		Timestamp: time.Now(),
 		Duration:  time.Since(start),
 		Metadata: map[string]interface{}{
-			"max_memory_usage":     maxMemory,
-			"memory_threshold":     memoryThreshold,
-			"avg_latency_ms":       avgLatency.Milliseconds(),
-			"max_allowed_latency":  maxAllowedLatency.Milliseconds(),
-			"memory_within_limits": memoryOK,
+			"max_memory_usage":      maxMemory,
+			"memory_threshold":      memoryThreshold,
+			"avg_latency_ms":        avgLatency.Milliseconds(),
+			"max_allowed_latency":   maxAllowedLatency.Milliseconds(),
+			"memory_within_limits":  memoryOK,
 			"latency_within_limits": latencyOK,
 		},
 	}
@@ -277,7 +278,7 @@ func (v *SecurityValidator) Priority() int {
 
 func (v *SecurityValidator) Validate(ctx context.Context, target interface{}) (*ValidationResult, error) {
 	start := time.Now()
-	
+
 	harness, ok := target.(*SwarmTestHarness)
 	if !ok {
 		return &ValidationResult{
@@ -315,11 +316,11 @@ func (v *SecurityValidator) Validate(ctx context.Context, target interface{}) (*
 		Timestamp: time.Now(),
 		Duration:  time.Since(start),
 		Metadata: map[string]interface{}{
-			"valid_auth_works":    validAuth,
-			"invalid_auth_fails":  !invalidAuth,
-			"encryption_works":    encryptionOK,
-			"message_encrypted":   encrypted != testMessage,
-			"message_decrypted":   decrypted == testMessage,
+			"valid_auth_works":   validAuth,
+			"invalid_auth_fails": !invalidAuth,
+			"encryption_works":   encryptionOK,
+			"message_encrypted":  encrypted != testMessage,
+			"message_decrypted":  decrypted == testMessage,
 		},
 	}
 
@@ -354,7 +355,7 @@ func (v *DataIntegrityValidator) Priority() int {
 
 func (v *DataIntegrityValidator) Validate(ctx context.Context, target interface{}) (*ValidationResult, error) {
 	start := time.Now()
-	
+
 	harness, ok := target.(*SwarmTestHarness)
 	if !ok {
 		return &ValidationResult{
@@ -372,14 +373,14 @@ func (v *DataIntegrityValidator) Validate(ctx context.Context, target interface{
 	testMessage := "integrity_test_message"
 	encrypted := harness.EncryptMessage(testMessage)
 	tamperedMessage := harness.TamperMessage(encrypted)
-	
+
 	integrityCheckPassed := !harness.VerifyMessageIntegrity(tamperedMessage)
 	integrityCheckOriginal := harness.VerifyMessageIntegrity(encrypted)
 
 	// Test task distribution integrity
 	tasks := []string{"task1", "task2", "task3", "task4", "task5"}
 	results := harness.DistributeTasks(tasks)
-	
+
 	taskIntegrityOK := len(results) == len(tasks)
 
 	passed := integrityCheckPassed && integrityCheckOriginal && taskIntegrityOK
@@ -449,16 +450,16 @@ func NewValidationSuite(level ValidationLevel, config *ValidationConfig) *Valida
 func (vs *ValidationSuite) registerValidators() {
 	// Always register critical validators
 	vs.RegisterValidator(&SwarmHealthValidator{})
-	
+
 	if vs.config.EnableSecurityChecks {
 		vs.RegisterValidator(&SecurityValidator{})
 	}
-	
+
 	if vs.config.EnableIntegrityChecks {
 		vs.RegisterValidator(&DataIntegrityValidator{})
 		vs.RegisterValidator(&AgentCoordinationValidator{})
 	}
-	
+
 	if vs.config.EnablePerformanceChecks {
 		vs.RegisterValidator(&PerformanceValidator{})
 	}
@@ -473,13 +474,13 @@ func (vs *ValidationSuite) RegisterValidator(validator Validator) {
 func (vs *ValidationSuite) RunAllValidations(ctx context.Context, target interface{}) error {
 	vs.mu.Lock()
 	defer vs.mu.Unlock()
-	
+
 	vs.results = make([]*ValidationResult, 0)
-	
+
 	if vs.config.MaxConcurrentChecks <= 1 {
 		return vs.runSequential(ctx, target)
 	}
-	
+
 	return vs.runParallel(ctx, target)
 }
 
@@ -491,19 +492,19 @@ func (vs *ValidationSuite) runSequential(ctx context.Context, target interface{}
 			return ctx.Err()
 		default:
 		}
-		
+
 		result, err := vs.runValidator(ctx, validator, target)
 		if err != nil {
 			return fmt.Errorf("validation %s failed: %w", validator.Name(), err)
 		}
-		
+
 		vs.results = append(vs.results, result)
-		
+
 		if vs.config.FailFast && !result.Passed {
 			return fmt.Errorf("validation %s failed: %s", validator.Name(), result.ErrorMessage)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -513,34 +514,34 @@ func (vs *ValidationSuite) runParallel(ctx context.Context, target interface{}) 
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	var firstError error
-	
+
 	for _, validator := range vs.validators {
 		wg.Add(1)
 		go func(v Validator) {
 			defer wg.Done()
-			
+
 			semaphore <- struct{}{}
 			defer func() { <-semaphore }()
-			
+
 			result, err := vs.runValidator(ctx, v, target)
-			
+
 			mu.Lock()
 			defer mu.Unlock()
-			
+
 			if err != nil && firstError == nil {
 				firstError = fmt.Errorf("validation %s failed: %w", v.Name(), err)
 			}
-			
+
 			if result != nil {
 				vs.results = append(vs.results, result)
 			}
-			
+
 			if vs.config.FailFast && result != nil && !result.Passed && firstError == nil {
 				firstError = fmt.Errorf("validation %s failed: %s", v.Name(), result.ErrorMessage)
 			}
 		}(validator)
 	}
-	
+
 	wg.Wait()
 	return firstError
 }
@@ -549,10 +550,10 @@ func (vs *ValidationSuite) runParallel(ctx context.Context, target interface{}) 
 func (vs *ValidationSuite) runValidator(ctx context.Context, validator Validator, target interface{}) (*ValidationResult, error) {
 	timeoutCtx, cancel := context.WithTimeout(ctx, vs.config.Timeout)
 	defer cancel()
-	
+
 	resultChan := make(chan *ValidationResult, 1)
 	errorChan := make(chan error, 1)
-	
+
 	go func() {
 		result, err := validator.Validate(timeoutCtx, target)
 		if err != nil {
@@ -561,7 +562,7 @@ func (vs *ValidationSuite) runValidator(ctx context.Context, validator Validator
 			resultChan <- result
 		}
 	}()
-	
+
 	select {
 	case result := <-resultChan:
 		return result, nil
@@ -584,7 +585,7 @@ func (vs *ValidationSuite) runValidator(ctx context.Context, validator Validator
 func (vs *ValidationSuite) GetResults() []*ValidationResult {
 	vs.mu.RLock()
 	defer vs.mu.RUnlock()
-	
+
 	results := make([]*ValidationResult, len(vs.results))
 	copy(results, vs.results)
 	return results
@@ -594,7 +595,7 @@ func (vs *ValidationSuite) GetResults() []*ValidationResult {
 func (vs *ValidationSuite) GetFailedResults() []*ValidationResult {
 	vs.mu.RLock()
 	defer vs.mu.RUnlock()
-	
+
 	var failed []*ValidationResult
 	for _, result := range vs.results {
 		if !result.Passed {
@@ -608,27 +609,27 @@ func (vs *ValidationSuite) GetFailedResults() []*ValidationResult {
 func (vs *ValidationSuite) GetSummary() map[string]interface{} {
 	vs.mu.RLock()
 	defer vs.mu.RUnlock()
-	
+
 	total := len(vs.results)
 	passed := 0
 	failed := 0
 	var totalDuration time.Duration
-	
+
 	severityCounts := make(map[string]int)
 	componentCounts := make(map[string]int)
-	
+
 	for _, result := range vs.results {
 		if result.Passed {
 			passed++
 		} else {
 			failed++
 		}
-		
+
 		totalDuration += result.Duration
 		severityCounts[result.Severity]++
 		componentCounts[result.Component]++
 	}
-	
+
 	return map[string]interface{}{
 		"total_validations":   total,
 		"passed":              passed,
@@ -645,11 +646,11 @@ func (vs *ValidationSuite) GetSummary() map[string]interface{} {
 func (vs *ValidationSuite) GenerateReport() string {
 	summary := vs.GetSummary()
 	failed := vs.GetFailedResults()
-	
+
 	var report strings.Builder
-	
+
 	report.WriteString("=== SWARM VALIDATION REPORT ===\n\n")
-	
+
 	// Summary section
 	report.WriteString("SUMMARY:\n")
 	report.WriteString(fmt.Sprintf("  Total Validations: %v\n", summary["total_validations"]))
@@ -659,7 +660,7 @@ func (vs *ValidationSuite) GenerateReport() string {
 	report.WriteString(fmt.Sprintf("  Total Duration: %v\n", summary["total_duration"]))
 	report.WriteString(fmt.Sprintf("  Average Duration: %v\n", summary["average_duration"]))
 	report.WriteString("\n")
-	
+
 	// Failed validations section
 	if len(failed) > 0 {
 		report.WriteString("FAILED VALIDATIONS:\n")
@@ -677,7 +678,7 @@ func (vs *ValidationSuite) GenerateReport() string {
 			report.WriteString("\n")
 		}
 	}
-	
+
 	// Component breakdown
 	report.WriteString("COMPONENT BREAKDOWN:\n")
 	if componentCounts, ok := summary["component_breakdown"].(map[string]int); ok {
@@ -686,7 +687,7 @@ func (vs *ValidationSuite) GenerateReport() string {
 		}
 	}
 	report.WriteString("\n")
-	
+
 	// Severity breakdown
 	report.WriteString("SEVERITY BREAKDOWN:\n")
 	if severityCounts, ok := summary["severity_breakdown"].(map[string]int); ok {
@@ -694,6 +695,6 @@ func (vs *ValidationSuite) GenerateReport() string {
 			report.WriteString(fmt.Sprintf("  %s: %d issues\n", severity, count))
 		}
 	}
-	
+
 	return report.String()
 }

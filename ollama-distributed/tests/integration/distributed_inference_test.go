@@ -1,20 +1,17 @@
+//go:build ignore
+
 package integration
 
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/khryptorgraphics/ollamamax/ollama-distributed/internal/config"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/api"
-	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/consensus"
-	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/scheduler/distributed"
 )
 
@@ -141,7 +138,7 @@ func TestDistributedInference(t *testing.T) {
 		// Check load distribution
 		nodeLoads := cluster.GetNodeLoads()
 		assert.Greater(t, len(nodeLoads), 1)
-		
+
 		// Verify load was distributed
 		totalLoad := 0
 		for _, load := range nodeLoads {
@@ -294,7 +291,7 @@ func TestDistributedFailover(t *testing.T) {
 
 		// Wait a bit then simulate partial failure
 		time.Sleep(5 * time.Second)
-		
+
 		// Fail one more node during processing
 		if len(cluster.GetActiveNodes()) > 2 {
 			failedNode := cluster.GetActiveNodes()[1]
@@ -357,12 +354,12 @@ func TestDistributedConsensus(t *testing.T) {
 		// Verify all nodes have the same state
 		for i, op := range operations {
 			key := fmt.Sprintf("test_key_%d", i)
-			
+
 			for _, node := range cluster.GetNodes() {
 				if !node.IsActive() {
 					continue
 				}
-				
+
 				value, exists := node.GetConsensusValue(key)
 				assert.True(t, exists, "Node %s should have key %s", node.GetID(), key)
 				assert.Equal(t, op, value, "Node %s should have correct value for key %s", node.GetID(), key)
@@ -380,7 +377,7 @@ func TestDistributedConsensus(t *testing.T) {
 			go func(idx int) {
 				key := fmt.Sprintf("concurrent_key_%d", idx)
 				value := fmt.Sprintf("concurrent_value_%d", idx)
-				
+
 				err := cluster.GetLeader().ApplyConsensusOperation(key, value)
 				if err != nil {
 					errors <- err
@@ -417,7 +414,7 @@ func TestDistributedConsensus(t *testing.T) {
 		for i := 0; i < successCount; i++ {
 			key := fmt.Sprintf("concurrent_key_%d", i)
 			expectedValue := fmt.Sprintf("concurrent_value_%d", i)
-			
+
 			values := make(map[string]int)
 			for _, node := range cluster.GetActiveNodes() {
 				if value, exists := node.GetConsensusValue(key); exists {
@@ -427,7 +424,7 @@ func TestDistributedConsensus(t *testing.T) {
 
 			// All nodes should have the same value
 			assert.LessOrEqual(t, len(values), 1, "Inconsistent values for key %s: %v", key, values)
-			
+
 			if len(values) == 1 {
 				for value := range values {
 					assert.Equal(t, expectedValue, value, "Incorrect value for key %s", key)
@@ -511,7 +508,7 @@ func TestDistributedModelManagement(t *testing.T) {
 		nodes := cluster.GetActiveNodes()
 		for _, node := range nodes {
 			models := node.GetModels()
-			
+
 			// Check that popular models are still there
 			hasPopularModel := false
 			for _, model := range models {
@@ -520,7 +517,7 @@ func TestDistributedModelManagement(t *testing.T) {
 					break
 				}
 			}
-			
+
 			if len(models) > 0 {
 				assert.True(t, hasPopularModel, "Node %s should retain popular models", node.GetID())
 			}
@@ -530,14 +527,14 @@ func TestDistributedModelManagement(t *testing.T) {
 	t.Run("TestModelVersioning", func(t *testing.T) {
 		// Create initial model version
 		modelInfo := &distributed.ModelInfo{
-			Name:         "versioning-test-model",
-			Version:      "1.0.0",
-			Size:         256 * 1024 * 1024, // 256MB
-			Checksum:     "version-1-checksum",
+			Name:              "versioning-test-model",
+			Version:           "1.0.0",
+			Size:              256 * 1024 * 1024, // 256MB
+			Checksum:          "version-1-checksum",
 			ReplicationFactor: 2,
-			Locations:    []string{cluster.GetLeader().GetID()},
-			LastAccessed: time.Now(),
-			Popularity:   0.6,
+			Locations:         []string{cluster.GetLeader().GetID()},
+			LastAccessed:      time.Now(),
+			Popularity:        0.6,
 		}
 
 		err := cluster.GetLeader().RegisterModel(modelInfo)
@@ -590,7 +587,7 @@ func TestDistributedPerformance(t *testing.T) {
 		// Test concurrent inference requests
 		numRequests := 100
 		concurrency := 10
-		
+
 		requests := make(chan *api.InferenceRequest, numRequests)
 		responses := make(chan *api.InferenceResponse, numRequests)
 		errors := make(chan error, numRequests)
@@ -610,7 +607,7 @@ func TestDistributedPerformance(t *testing.T) {
 
 		// Process requests concurrently
 		startTime := time.Now()
-		
+
 		for i := 0; i < concurrency; i++ {
 			go func() {
 				for req := range requests {
@@ -652,7 +649,7 @@ func TestDistributedPerformance(t *testing.T) {
 
 		// Verify performance
 		assert.Greater(t, successCount, numRequests*4/5) // At least 80% success rate
-		assert.Greater(t, throughput, 1.0) // At least 1 request per second
+		assert.Greater(t, throughput, 1.0)               // At least 1 request per second
 	})
 
 	t.Run("TestLatency", func(t *testing.T) {

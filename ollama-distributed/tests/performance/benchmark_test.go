@@ -150,7 +150,7 @@ func BenchmarkModelSync(b *testing.B) {
 	for _, size := range modelSizes {
 		b.Run(fmt.Sprintf("Model%dMB", size/(1024*1024)), func(b *testing.B) {
 			b.ResetTimer()
-			
+
 			for i := 0; i < b.N; i++ {
 				modelInfo := &integration.ModelInfo{
 					Name:              fmt.Sprintf("benchmark-model-%d-%d", size, i),
@@ -166,10 +166,10 @@ func BenchmarkModelSync(b *testing.B) {
 				if err != nil {
 					b.Errorf("Model registration failed: %v", err)
 				}
-				
+
 				// Wait for replication
 				time.Sleep(time.Duration(size/1024/1024/10) * time.Millisecond) // Rough estimate
-				
+
 				syncTime := time.Since(start)
 				b.ReportMetric(float64(syncTime.Nanoseconds()), "ns/op")
 			}
@@ -251,13 +251,13 @@ func BenchmarkLoadBalancing(b *testing.B) {
 	for _, tc := range testCases {
 		b.Run(tc.name, func(b *testing.B) {
 			b.ResetTimer()
-			
+
 			for i := 0; i < b.N; i++ {
 				start := time.Now()
-				
+
 				// Run load balancing test
 				runLoadBalancingTest(b, leader, tc.requests, tc.concurrency)
-				
+
 				duration := time.Since(start)
 				b.ReportMetric(float64(duration.Nanoseconds()), "ns/op")
 			}
@@ -274,10 +274,10 @@ func BenchmarkFaultTolerance(b *testing.B) {
 	require.NotNil(b, leader)
 
 	b.ResetTimer()
-	
+
 	for i := 0; i < b.N; i++ {
 		start := time.Now()
-		
+
 		// Simulate node failure and recovery
 		nodes := cluster.GetActiveNodes()
 		if len(nodes) > 2 {
@@ -289,13 +289,13 @@ func BenchmarkFaultTolerance(b *testing.B) {
 					break
 				}
 			}
-			
+
 			if nodeToFail != nil {
 				nodeToFail.Shutdown()
-				
+
 				// Wait for failure detection
 				time.Sleep(5 * time.Second)
-				
+
 				// Test that system is still operational
 				req := &api.InferenceRequest{
 					Model:  "llama3.2:1b",
@@ -305,14 +305,14 @@ func BenchmarkFaultTolerance(b *testing.B) {
 						"max_tokens":  20,
 					},
 				}
-				
+
 				_, err := leader.ProcessInference(context.Background(), req)
 				if err != nil {
 					b.Errorf("Inference failed after node failure: %v", err)
 				}
 			}
 		}
-		
+
 		duration := time.Since(start)
 		b.ReportMetric(float64(duration.Nanoseconds()), "ns/op")
 	}
@@ -328,9 +328,9 @@ func BenchmarkMemoryUsage(b *testing.B) {
 
 	// Test different memory usage patterns
 	testCases := []struct {
-		name      string
-		models    int
-		requests  int
+		name     string
+		models   int
+		requests int
 	}{
 		{"SmallFootprint", 1, 10},
 		{"MediumFootprint", 5, 50},
@@ -340,7 +340,7 @@ func BenchmarkMemoryUsage(b *testing.B) {
 	for _, tc := range testCases {
 		b.Run(tc.name, func(b *testing.B) {
 			b.ResetTimer()
-			
+
 			for i := 0; i < b.N; i++ {
 				// Register models
 				for j := 0; j < tc.models; j++ {
@@ -352,13 +352,13 @@ func BenchmarkMemoryUsage(b *testing.B) {
 						LastAccessed:      time.Now(),
 						Popularity:        rand.Float64(),
 					}
-					
+
 					err := leader.RegisterModel(modelInfo)
 					if err != nil {
 						b.Errorf("Model registration failed: %v", err)
 					}
 				}
-				
+
 				// Generate inference requests
 				for j := 0; j < tc.requests; j++ {
 					req := &api.InferenceRequest{
@@ -369,7 +369,7 @@ func BenchmarkMemoryUsage(b *testing.B) {
 							"max_tokens":  20,
 						},
 					}
-					
+
 					_, err := leader.ProcessInference(context.Background(), req)
 					if err != nil {
 						b.Errorf("Inference failed: %v", err)
@@ -392,17 +392,17 @@ func BenchmarkNetworkLatency(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
 			start := time.Now()
-			
+
 			// Perform a distributed operation that requires network communication
 			err := leader.ApplyConsensusOperation(
 				fmt.Sprintf("network-test-%d", time.Now().UnixNano()),
 				"network latency test value",
 			)
-			
+
 			if err != nil {
 				b.Errorf("Network operation failed: %v", err)
 			}
-			
+
 			latency := time.Since(start)
 			b.ReportMetric(float64(latency.Nanoseconds()), "ns/op")
 		}
@@ -514,9 +514,9 @@ func testHighThroughputScenario(t *testing.T, cluster *integration.TestCluster) 
 
 	requests := 1000
 	concurrency := 50
-	
+
 	startTime := time.Now()
-	
+
 	requestChan := make(chan int, requests)
 	responseChan := make(chan bool, requests)
 	errorChan := make(chan error, requests)
@@ -572,14 +572,14 @@ func testHighThroughputScenario(t *testing.T, cluster *integration.TestCluster) 
 	}
 
 	throughput := float64(successCount) / duration.Seconds()
-	
+
 	t.Logf("High throughput test results:")
 	t.Logf("  Total requests: %d", requests)
 	t.Logf("  Successful: %d", successCount)
 	t.Logf("  Failed: %d", errorCount)
 	t.Logf("  Duration: %v", duration)
 	t.Logf("  Throughput: %.2f req/s", throughput)
-	
+
 	// Verify performance requirements
 	require.Greater(t, successCount, requests*8/10, "Should have at least 80% success rate")
 	require.Greater(t, throughput, 10.0, "Should achieve at least 10 req/s throughput")
@@ -606,7 +606,7 @@ func testLowLatencyScenario(t *testing.T, cluster *integration.TestCluster) {
 		start := time.Now()
 		_, err := leader.ProcessInference(context.Background(), req)
 		latency := time.Since(start)
-		
+
 		require.NoError(t, err)
 		latencies[i] = latency
 	}

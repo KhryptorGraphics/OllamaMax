@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/leanovate/gopter"
-	"github.com/leanovate/gopter/gen"
-	"github.com/leanovate/gopter/prop"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/internal/config"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/consensus"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p"
+	"github.com/leanovate/gopter"
+	"github.com/leanovate/gopter/gen"
+	"github.com/leanovate/gopter/prop"
 	"github.com/stretchr/testify/require"
 )
 
@@ -205,11 +205,11 @@ type Task struct {
 }
 
 type Node struct {
-	ID          string
-	CPU         float64
-	Memory      int64
-	Available   bool
-	LoadFactor  float64
+	ID           string
+	CPU          float64
+	Memory       int64
+	Available    bool
+	LoadFactor   float64
 	Capabilities []string
 }
 
@@ -427,7 +427,7 @@ func testLeaderCompleteness(t *testing.T, entries []LogEntry) bool {
 		}
 
 		for _, entry := range termEntries[term] {
-			err := leader.Apply(fmt.Sprintf("key-%d-%d", entry.Term, entry.Index), 
+			err := leader.Apply(fmt.Sprintf("key-%d-%d", entry.Term, entry.Index),
 				string(entry.Data), nil)
 			if err != nil {
 				continue
@@ -483,7 +483,7 @@ func testMonotonicTerms(t *testing.T, termSequence []uint64) bool {
 	// Test that terms increase monotonically
 	for i := 1; i < len(termSequence); i++ {
 		if termSequence[i] < termSequence[i-1] {
-			t.Logf("Term monotonicity violation: term %d follows term %d", 
+			t.Logf("Term monotonicity violation: term %d follows term %d",
 				termSequence[i], termSequence[i-1])
 			return false
 		}
@@ -534,7 +534,7 @@ func testAppendOnlyLog(t *testing.T, operations []LogOperation) bool {
 	for _, op := range operations {
 		if op.Type == "append" {
 			// Apply the entry
-			err := node.Apply(fmt.Sprintf("key-%d", op.Entry.Index), 
+			err := node.Apply(fmt.Sprintf("key-%d", op.Entry.Index),
 				string(op.Entry.Data), nil)
 			if err != nil {
 				continue
@@ -602,7 +602,7 @@ func testLoadBalanceFairness(t *testing.T, tasks []Task, nodes []Node) bool {
 
 	for nodeID, load := range nodeLoads {
 		if load > maxAllowedLoad {
-			t.Logf("Load balance fairness violation: node %s has load %f, max allowed %f", 
+			t.Logf("Load balance fairness violation: node %s has load %f, max allowed %f",
 				nodeID, load, maxAllowedLoad)
 			return false
 		}
@@ -618,14 +618,14 @@ func testResourceConstraints(t *testing.T, tasks []Task, nodes []Node) bool {
 	}
 
 	// Simple assignment simulation
-	nodeUsage := make(map[string]struct{
+	nodeUsage := make(map[string]struct {
 		CPU    float64
 		Memory int64
 	})
 
 	for _, node := range nodes {
 		if node.Available {
-			nodeUsage[node.ID] = struct{
+			nodeUsage[node.ID] = struct {
 				CPU    float64
 				Memory int64
 			}{0.0, 0}
@@ -647,13 +647,13 @@ func testResourceConstraints(t *testing.T, tasks []Task, nodes []Node) bool {
 
 			// Check resource constraints
 			if usage.CPU > node.CPU {
-				t.Logf("CPU constraint violation: node %s assigned %f CPU, capacity %f", 
+				t.Logf("CPU constraint violation: node %s assigned %f CPU, capacity %f",
 					node.ID, usage.CPU, node.CPU)
 				return false
 			}
 
 			if usage.Memory > node.Memory {
-				t.Logf("Memory constraint violation: node %s assigned %d bytes, capacity %d", 
+				t.Logf("Memory constraint violation: node %s assigned %d bytes, capacity %d",
 					node.ID, usage.Memory, node.Memory)
 				return false
 			}
@@ -724,7 +724,7 @@ func testDeadlineMonotonicity(t *testing.T, tasks []Task) bool {
 func testMessageDelivery(t *testing.T, messages []Message) bool {
 	// Test that all messages are eventually delivered
 	// This is a simplified test that checks message properties
-	
+
 	if len(messages) == 0 {
 		return true
 	}
@@ -752,7 +752,7 @@ func testMessageDelivery(t *testing.T, messages []Message) bool {
 func testPeerDiscoveryConvergence(t *testing.T, nodeCount int) bool {
 	// Test that all nodes eventually discover each other
 	// This is a simplified test due to the complexity of setting up real P2P
-	
+
 	if nodeCount < 2 {
 		return true
 	}
@@ -762,7 +762,7 @@ func testPeerDiscoveryConvergence(t *testing.T, nodeCount int) bool {
 	// 2. Start peer discovery
 	// 3. Wait for convergence
 	// 4. Verify all nodes know about all other nodes
-	
+
 	// For property testing, we verify the mathematical property
 	maxConnections := nodeCount * (nodeCount - 1)
 	if maxConnections < 0 {
@@ -780,7 +780,7 @@ func testPeerDiscoveryConvergence(t *testing.T, nodeCount int) bool {
 
 func testContentRoutingCorrectness(t *testing.T, content []ContentItem) bool {
 	// Test that content routing correctly routes to nodes that have the content
-	
+
 	if len(content) == 0 {
 		return true
 	}
@@ -816,7 +816,7 @@ func testContentRoutingCorrectness(t *testing.T, content []ContentItem) bool {
 
 func createTestConsensusCluster(t *testing.T, size int) []*consensus.Engine {
 	cluster := make([]*consensus.Engine, size)
-	
+
 	for i := 0; i < size; i++ {
 		ctx := context.Background()
 		p2pNode, err := p2p.NewP2PNode(ctx, nil)

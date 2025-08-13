@@ -354,7 +354,7 @@ func TestReplicationEngine(t *testing.T) {
 
 	// Create replication config
 	replConfig := &ReplicationConfig{
-		DefaultStrategy:      "eager",
+		DefaultStrategy:     "eager",
 		MinReplicas:         2,
 		MaxReplicas:         4,
 		ReplicationFactor:   3,
@@ -717,7 +717,7 @@ func TestStorageIntegration(t *testing.T) {
 	t.Logf("Metadata stats: %d objects, cache hit rate: %.2f%%", metadataStats.TotalObjects, metadataStats.CacheHitRate*100)
 }
 
-// Helper function to check if an error is a not found error  
+// Helper function to check if an error is a not found error
 func isNotFoundErrorTest(err error) bool {
 	if storageErr, ok := err.(*StorageError); ok {
 		return storageErr.Code == ErrCodeNotFound

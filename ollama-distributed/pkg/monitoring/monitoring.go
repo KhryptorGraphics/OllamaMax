@@ -10,33 +10,33 @@ import (
 
 // MonitoringSystem provides comprehensive system monitoring
 type MonitoringSystem struct {
-	networkMonitor    *NetworkMonitor
+	networkMonitor     *NetworkMonitor
 	performanceMonitor *PerformanceMonitor
-	healthMonitor     *HealthMonitor
-	config           *MonitoringConfig
-	mu               sync.RWMutex
-	running          bool
-	ctx              context.Context
-	cancel           context.CancelFunc
+	healthMonitor      *HealthMonitor
+	config             *MonitoringConfig
+	mu                 sync.RWMutex
+	running            bool
+	ctx                context.Context
+	cancel             context.CancelFunc
 }
 
 // MonitoringConfig configures the monitoring system
 type MonitoringConfig struct {
-	EnableNetworkMonitoring    bool          `json:"enable_network_monitoring"`
-	EnablePerformanceMonitoring bool         `json:"enable_performance_monitoring"`
-	EnableHealthMonitoring     bool          `json:"enable_health_monitoring"`
-	MetricsInterval           time.Duration `json:"metrics_interval"`
-	RetentionPeriod           time.Duration `json:"retention_period"`
-	AlertThresholds           *AlertThresholds `json:"alert_thresholds"`
+	EnableNetworkMonitoring     bool             `json:"enable_network_monitoring"`
+	EnablePerformanceMonitoring bool             `json:"enable_performance_monitoring"`
+	EnableHealthMonitoring      bool             `json:"enable_health_monitoring"`
+	MetricsInterval             time.Duration    `json:"metrics_interval"`
+	RetentionPeriod             time.Duration    `json:"retention_period"`
+	AlertThresholds             *AlertThresholds `json:"alert_thresholds"`
 }
 
 // AlertThresholds defines thresholds for alerts
 type AlertThresholds struct {
-	CPUUsage        float64 `json:"cpu_usage"`
-	MemoryUsage     float64 `json:"memory_usage"`
-	DiskUsage       float64 `json:"disk_usage"`
-	NetworkLatency  time.Duration `json:"network_latency"`
-	ErrorRate       float64 `json:"error_rate"`
+	CPUUsage       float64       `json:"cpu_usage"`
+	MemoryUsage    float64       `json:"memory_usage"`
+	DiskUsage      float64       `json:"disk_usage"`
+	NetworkLatency time.Duration `json:"network_latency"`
+	ErrorRate      float64       `json:"error_rate"`
 }
 
 // PerformanceMonitor monitors system performance
@@ -54,12 +54,12 @@ type PerformanceConfig struct {
 
 // PerformanceMetrics holds performance metrics
 type PerformanceMetrics struct {
-	CPUUsage      float64   `json:"cpu_usage"`
-	MemoryUsage   float64   `json:"memory_usage"`
-	DiskUsage     float64   `json:"disk_usage"`
-	NetworkIO     int64     `json:"network_io"`
-	DiskIO        int64     `json:"disk_io"`
-	Timestamp     time.Time `json:"timestamp"`
+	CPUUsage    float64   `json:"cpu_usage"`
+	MemoryUsage float64   `json:"memory_usage"`
+	DiskUsage   float64   `json:"disk_usage"`
+	NetworkIO   int64     `json:"network_io"`
+	DiskIO      int64     `json:"disk_io"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // HealthMonitor monitors system health
@@ -77,10 +77,10 @@ type HealthConfig struct {
 
 // HealthCheck represents a health check result
 type HealthCheck struct {
-	Status      HealthStatus          `json:"status"`
-	Components  map[string]HealthStatus `json:"components"`
-	LastCheck   time.Time             `json:"last_check"`
-	Errors      []string              `json:"errors"`
+	Status     HealthStatus            `json:"status"`
+	Components map[string]HealthStatus `json:"components"`
+	LastCheck  time.Time               `json:"last_check"`
+	Errors     []string                `json:"errors"`
 }
 
 // HealthStatus represents health status
@@ -100,8 +100,8 @@ func NewMonitoringSystem(config *MonitoringConfig) *MonitoringSystem {
 			EnableNetworkMonitoring:     true,
 			EnablePerformanceMonitoring: true,
 			EnableHealthMonitoring:      true,
-			MetricsInterval:            30 * time.Second,
-			RetentionPeriod:            24 * time.Hour,
+			MetricsInterval:             30 * time.Second,
+			RetentionPeriod:             24 * time.Hour,
 			AlertThresholds: &AlertThresholds{
 				CPUUsage:       80.0,
 				MemoryUsage:    85.0,

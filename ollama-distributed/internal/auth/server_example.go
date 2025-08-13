@@ -16,7 +16,7 @@ func ExampleServerWithAuth() {
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
-	
+
 	// Ensure auth is enabled
 	if !cfg.Security.Auth.Enabled {
 		log.Println("WARNING: Authentication is disabled. Enable it for production!")
@@ -27,17 +27,17 @@ func ExampleServerWithAuth() {
 		cfg.Security.Auth.Issuer = "ollama-distributed"
 		cfg.Security.Auth.Audience = "ollama-api"
 	}
-	
+
 	// Create authentication integration
 	authIntegration, err := NewIntegration(&cfg.Security.Auth)
 	if err != nil {
 		log.Fatalf("Failed to create auth integration: %v", err)
 	}
 	defer authIntegration.Close()
-	
+
 	// Create Gin router
 	router := gin.New()
-	
+
 	// Apply global middleware
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
@@ -45,16 +45,16 @@ func ExampleServerWithAuth() {
 	router.Use(authIntegration.MiddlewareManager.CORS())
 	router.Use(authIntegration.MiddlewareManager.RateLimit())
 	router.Use(authIntegration.MiddlewareManager.AuditLog())
-	
+
 	// Register authentication routes
 	authIntegration.Routes.RegisterRoutes(router)
-	
+
 	// Setup protected API routes
 	setupProtectedAPIRoutes(router, authIntegration)
-	
+
 	// Setup public routes
 	setupPublicRoutes(router)
-	
+
 	// Start server
 	log.Printf("Starting Ollama Distributed Server with Authentication on %s", cfg.API.Listen)
 	if err := router.Run(cfg.API.Listen); err != nil {
@@ -67,25 +67,25 @@ func setupProtectedAPIRoutes(router *gin.Engine, authIntegration *Integration) {
 	// Protected API routes
 	api := router.Group("/api/v1")
 	api.Use(authIntegration.MiddlewareManager.AuthRequired())
-	
+
 	// Create middleware helpers
 	helpers := NewMiddlewareHelpers(authIntegration)
-	
+
 	// Node management endpoints
 	setupNodeRoutes(api, helpers)
-	
+
 	// Model management endpoints
 	setupModelRoutes(api, helpers)
-	
+
 	// Cluster management endpoints
 	setupClusterRoutes(api, helpers)
-	
+
 	// Inference endpoints
 	setupInferenceRoutes(api, helpers)
-	
+
 	// Monitoring endpoints
 	setupMonitoringRoutes(api, helpers)
-	
+
 	// Distribution management endpoints
 	setupDistributionRoutes(api, helpers)
 }
@@ -93,12 +93,12 @@ func setupProtectedAPIRoutes(router *gin.Engine, authIntegration *Integration) {
 // setupNodeRoutes configures node management routes
 func setupNodeRoutes(api *gin.RouterGroup, helpers *MiddlewareHelpers) {
 	nodes := api.Group("/nodes")
-	
+
 	// List nodes - requires read permission
 	nodes.GET("", helpers.RequireNodePermission("read"), func(c *gin.Context) {
 		user := GetCurrentUser(c)
 		log.Printf("User %s requested node list", user.Username)
-		
+
 		// Mock response - in real implementation, this would call the scheduler
 		c.JSON(200, gin.H{
 			"nodes": []map[string]interface{}{
@@ -118,13 +118,13 @@ func setupNodeRoutes(api *gin.RouterGroup, helpers *MiddlewareHelpers) {
 			"total": 2,
 		})
 	})
-	
+
 	// Get specific node - requires read permission
 	nodes.GET("/:id", helpers.RequireNodePermission("read"), func(c *gin.Context) {
 		nodeID := c.Param("id")
 		user := GetCurrentUser(c)
 		log.Printf("User %s requested details for node %s", user.Username, nodeID)
-		
+
 		c.JSON(200, gin.H{
 			"node": map[string]interface{}{
 				"id":       nodeID,
@@ -136,26 +136,26 @@ func setupNodeRoutes(api *gin.RouterGroup, helpers *MiddlewareHelpers) {
 			},
 		})
 	})
-	
+
 	// Drain node - requires write permission
 	nodes.POST("/:id/drain", helpers.RequireNodePermission("write"), func(c *gin.Context) {
 		nodeID := c.Param("id")
 		user := GetCurrentUser(c)
 		log.Printf("User %s initiated drain for node %s", user.Username, nodeID)
-		
+
 		c.JSON(200, gin.H{
 			"message": "Node drain initiated",
 			"node_id": nodeID,
 			"status":  "draining",
 		})
 	})
-	
+
 	// Delete node - requires admin permission
 	nodes.DELETE("/:id", helpers.RequireNodePermission("admin"), func(c *gin.Context) {
 		nodeID := c.Param("id")
 		user := GetCurrentUser(c)
 		log.Printf("User %s deleted node %s", user.Username, nodeID)
-		
+
 		c.JSON(200, gin.H{
 			"message": "Node deleted successfully",
 			"node_id": nodeID,
@@ -166,12 +166,12 @@ func setupNodeRoutes(api *gin.RouterGroup, helpers *MiddlewareHelpers) {
 // setupModelRoutes configures model management routes
 func setupModelRoutes(api *gin.RouterGroup, helpers *MiddlewareHelpers) {
 	models := api.Group("/models")
-	
+
 	// List models - requires read permission
 	models.GET("", helpers.RequireModelPermission("read"), func(c *gin.Context) {
 		user := GetCurrentUser(c)
 		log.Printf("User %s requested model list", user.Username)
-		
+
 		c.JSON(200, gin.H{
 			"models": []map[string]interface{}{
 				{
@@ -189,13 +189,13 @@ func setupModelRoutes(api *gin.RouterGroup, helpers *MiddlewareHelpers) {
 			},
 		})
 	})
-	
+
 	// Download model - requires write permission
 	models.POST("/:name/download", helpers.RequireModelPermission("write"), func(c *gin.Context) {
 		modelName := c.Param("name")
 		user := GetCurrentUser(c)
 		log.Printf("User %s initiated download for model %s", user.Username, modelName)
-		
+
 		c.JSON(200, gin.H{
 			"message":    "Model download initiated",
 			"model_name": modelName,
@@ -203,13 +203,13 @@ func setupModelRoutes(api *gin.RouterGroup, helpers *MiddlewareHelpers) {
 			"progress":   0,
 		})
 	})
-	
+
 	// Delete model - requires admin permission
 	models.DELETE("/:name", helpers.RequireModelPermission("admin"), func(c *gin.Context) {
 		modelName := c.Param("name")
 		user := GetCurrentUser(c)
 		log.Printf("User %s deleted model %s", user.Username, modelName)
-		
+
 		c.JSON(200, gin.H{
 			"message":    "Model deleted successfully",
 			"model_name": modelName,
@@ -220,12 +220,12 @@ func setupModelRoutes(api *gin.RouterGroup, helpers *MiddlewareHelpers) {
 // setupClusterRoutes configures cluster management routes
 func setupClusterRoutes(api *gin.RouterGroup, helpers *MiddlewareHelpers) {
 	cluster := api.Group("/cluster")
-	
+
 	// Get cluster status - requires read permission
 	cluster.GET("/status", helpers.RequireClusterPermission("read"), func(c *gin.Context) {
 		user := GetCurrentUser(c)
 		log.Printf("User %s requested cluster status", user.Username)
-		
+
 		c.JSON(200, gin.H{
 			"status": "healthy",
 			"nodes":  2,
@@ -233,25 +233,25 @@ func setupClusterRoutes(api *gin.RouterGroup, helpers *MiddlewareHelpers) {
 			"peers":  1,
 		})
 	})
-	
+
 	// Join cluster - requires write permission
 	cluster.POST("/join", helpers.RequireClusterPermission("write"), func(c *gin.Context) {
 		var req map[string]interface{}
 		c.ShouldBindJSON(&req)
-		
+
 		user := GetCurrentUser(c)
 		log.Printf("User %s initiated cluster join", user.Username)
-		
+
 		c.JSON(200, gin.H{
 			"message": "Node join initiated",
 		})
 	})
-	
+
 	// Leave cluster - requires admin permission
 	cluster.POST("/leave", helpers.RequireClusterPermission("admin"), func(c *gin.Context) {
 		user := GetCurrentUser(c)
 		log.Printf("User %s initiated cluster leave", user.Username)
-		
+
 		c.JSON(200, gin.H{
 			"message": "Node leave initiated",
 		})
@@ -264,11 +264,11 @@ func setupInferenceRoutes(api *gin.RouterGroup, helpers *MiddlewareHelpers) {
 	api.POST("/generate", helpers.RequireInferencePermission("write"), func(c *gin.Context) {
 		var req map[string]interface{}
 		c.ShouldBindJSON(&req)
-		
+
 		user := GetCurrentUser(c)
 		modelName := req["model"]
 		log.Printf("User %s requested generation with model %v", user.Username, modelName)
-		
+
 		c.JSON(200, gin.H{
 			"response": "This is a generated response from the distributed Ollama system",
 			"model":    modelName,
@@ -276,15 +276,15 @@ func setupInferenceRoutes(api *gin.RouterGroup, helpers *MiddlewareHelpers) {
 			"user":     user.Username,
 		})
 	})
-	
+
 	// Chat endpoint - requires write permission
 	api.POST("/chat", helpers.RequireInferencePermission("write"), func(c *gin.Context) {
 		var req map[string]interface{}
 		c.ShouldBindJSON(&req)
-		
+
 		user := GetCurrentUser(c)
 		log.Printf("User %s initiated chat session", user.Username)
-		
+
 		c.JSON(200, gin.H{
 			"message": map[string]interface{}{
 				"role":    "assistant",
@@ -293,15 +293,15 @@ func setupInferenceRoutes(api *gin.RouterGroup, helpers *MiddlewareHelpers) {
 			"user": user.Username,
 		})
 	})
-	
+
 	// Embeddings endpoint - requires write permission
 	api.POST("/embeddings", helpers.RequireInferencePermission("write"), func(c *gin.Context) {
 		var req map[string]interface{}
 		c.ShouldBindJSON(&req)
-		
+
 		user := GetCurrentUser(c)
 		log.Printf("User %s requested embeddings", user.Username)
-		
+
 		c.JSON(200, gin.H{
 			"embeddings": []float64{0.1, 0.2, 0.3, 0.4, 0.5},
 			"model":      req["model"],
@@ -316,7 +316,7 @@ func setupMonitoringRoutes(api *gin.RouterGroup, helpers *MiddlewareHelpers) {
 	api.GET("/metrics", helpers.RequireInferencePermission("read"), func(c *gin.Context) {
 		user := GetCurrentUser(c)
 		log.Printf("User %s requested metrics", user.Username)
-		
+
 		c.JSON(200, gin.H{
 			"metrics": map[string]interface{}{
 				"nodes_online":       2,
@@ -329,7 +329,7 @@ func setupMonitoringRoutes(api *gin.RouterGroup, helpers *MiddlewareHelpers) {
 			"timestamp": time.Now().Unix(),
 		})
 	})
-	
+
 	// Health check - no authentication required for monitoring
 	api.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{
@@ -338,12 +338,12 @@ func setupMonitoringRoutes(api *gin.RouterGroup, helpers *MiddlewareHelpers) {
 			"version":   "1.0.0",
 		})
 	})
-	
+
 	// Transfers endpoint
 	api.GET("/transfers", helpers.RequireInferencePermission("read"), func(c *gin.Context) {
 		user := GetCurrentUser(c)
 		log.Printf("User %s requested transfer status", user.Username)
-		
+
 		c.JSON(200, gin.H{
 			"transfers": []map[string]interface{}{
 				{
@@ -360,15 +360,15 @@ func setupMonitoringRoutes(api *gin.RouterGroup, helpers *MiddlewareHelpers) {
 // setupDistributionRoutes configures distribution management routes
 func setupDistributionRoutes(api *gin.RouterGroup, helpers *MiddlewareHelpers) {
 	distribution := api.Group("/distribution")
-	
+
 	// Auto-configure distribution - requires admin permission
 	distribution.POST("/auto-configure", helpers.RequireClusterPermission("admin"), func(c *gin.Context) {
 		var req map[string]interface{}
 		c.ShouldBindJSON(&req)
-		
+
 		user := GetCurrentUser(c)
 		log.Printf("User %s configured auto-distribution", user.Username)
-		
+
 		c.JSON(200, gin.H{
 			"message": "Auto-distribution configured",
 			"enabled": req["enabled"],
@@ -382,7 +382,7 @@ func setupPublicRoutes(router *gin.Engine) {
 	router.Static("/static", "./web/static")
 	router.StaticFile("/", "./web/index.html")
 	router.StaticFile("/favicon.ico", "./web/favicon.ico")
-	
+
 	// Catch-all for SPA routing
 	router.NoRoute(func(c *gin.Context) {
 		c.File("./web/index.html")
@@ -400,14 +400,14 @@ func DemoUsage() {
 		Issuer:      "ollama-distributed",
 		Audience:    "ollama-api",
 	}
-	
+
 	// Create auth manager
 	authManager, err := NewManager(cfg)
 	if err != nil {
 		log.Fatalf("Failed to create auth manager: %v", err)
 	}
 	defer authManager.Close()
-	
+
 	// Create a new user
 	userReq := &CreateUserRequest{
 		Username: "demo-user",
@@ -415,14 +415,14 @@ func DemoUsage() {
 		Password: "secure-password",
 		Role:     RoleUser,
 	}
-	
+
 	user, err := authManager.CreateUser(userReq)
 	if err != nil {
 		log.Fatalf("Failed to create user: %v", err)
 	}
-	
+
 	log.Printf("Created user: %s (ID: %s)", user.Username, user.ID)
-	
+
 	// Authenticate user
 	authCtx, err := authManager.Authenticate("demo-user", "secure-password", map[string]string{
 		"ip_address": "127.0.0.1",
@@ -431,34 +431,34 @@ func DemoUsage() {
 	if err != nil {
 		log.Fatalf("Failed to authenticate: %v", err)
 	}
-	
+
 	log.Printf("Authentication successful! Token: %s", authCtx.TokenString[:50]+"...")
-	
+
 	// Create API key
 	apiKeyReq := &CreateAPIKeyRequest{
 		Name:        "Demo API Key",
 		Permissions: []string{PermissionModelRead, PermissionInferenceWrite},
 	}
-	
+
 	apiKey, rawKey, err := authManager.CreateAPIKey(user.ID, apiKeyReq)
 	if err != nil {
 		log.Fatalf("Failed to create API key: %v", err)
 	}
-	
+
 	log.Printf("Created API key: %s (Key: %s)", apiKey.Name, rawKey[:20]+"...")
-	
+
 	// Validate API key
 	apiAuthCtx, err := authManager.ValidateAPIKey(rawKey)
 	if err != nil {
 		log.Fatalf("Failed to validate API key: %v", err)
 	}
-	
+
 	log.Printf("API key validation successful for user: %s", apiAuthCtx.User.Username)
-	
+
 	// Check permissions
 	hasModelRead := authManager.HasPermission(apiAuthCtx, PermissionModelRead)
 	hasSystemAdmin := authManager.HasPermission(apiAuthCtx, PermissionSystemAdmin)
-	
+
 	log.Printf("User has model read permission: %v", hasModelRead)
 	log.Printf("User has system admin permission: %v", hasSystemAdmin)
 }

@@ -13,17 +13,17 @@ import (
 type ErrorType string
 
 const (
-	ErrorTypeValidation    ErrorType = "validation"
+	ErrorTypeValidation     ErrorType = "validation"
 	ErrorTypeAuthentication ErrorType = "authentication"
-	ErrorTypeAuthorization ErrorType = "authorization"
-	ErrorTypeNotFound      ErrorType = "not_found"
-	ErrorTypeConflict      ErrorType = "conflict"
-	ErrorTypeInternal      ErrorType = "internal"
-	ErrorTypeExternal      ErrorType = "external"
-	ErrorTypeNetwork       ErrorType = "network"
-	ErrorTypeTimeout       ErrorType = "timeout"
-	ErrorTypeRateLimit     ErrorType = "rate_limit"
-	ErrorTypeUnavailable   ErrorType = "unavailable"
+	ErrorTypeAuthorization  ErrorType = "authorization"
+	ErrorTypeNotFound       ErrorType = "not_found"
+	ErrorTypeConflict       ErrorType = "conflict"
+	ErrorTypeInternal       ErrorType = "internal"
+	ErrorTypeExternal       ErrorType = "external"
+	ErrorTypeNetwork        ErrorType = "network"
+	ErrorTypeTimeout        ErrorType = "timeout"
+	ErrorTypeRateLimit      ErrorType = "rate_limit"
+	ErrorTypeUnavailable    ErrorType = "unavailable"
 )
 
 // ErrorSeverity represents the severity level of an error
@@ -39,34 +39,34 @@ const (
 // DistributedError represents a comprehensive error with context and metadata
 type DistributedError struct {
 	// Core error information
-	Code        string                 `json:"code"`
-	Message     string                 `json:"message"`
-	Type        ErrorType              `json:"type"`
-	Severity    ErrorSeverity          `json:"severity"`
-	
+	Code     string        `json:"code"`
+	Message  string        `json:"message"`
+	Type     ErrorType     `json:"type"`
+	Severity ErrorSeverity `json:"severity"`
+
 	// Context information
-	Service     string                 `json:"service"`
-	Operation   string                 `json:"operation"`
-	RequestID   string                 `json:"request_id,omitempty"`
-	UserID      string                 `json:"user_id,omitempty"`
-	
+	Service   string `json:"service"`
+	Operation string `json:"operation"`
+	RequestID string `json:"request_id,omitempty"`
+	UserID    string `json:"user_id,omitempty"`
+
 	// Technical details
-	Cause       error                  `json:"cause,omitempty"`
-	StackTrace  string                 `json:"stack_trace,omitempty"`
-	
+	Cause      error  `json:"cause,omitempty"`
+	StackTrace string `json:"stack_trace,omitempty"`
+
 	// Timing information
-	Timestamp   time.Time              `json:"timestamp"`
-	Duration    time.Duration          `json:"duration,omitempty"`
-	
+	Timestamp time.Time     `json:"timestamp"`
+	Duration  time.Duration `json:"duration,omitempty"`
+
 	// Additional metadata
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
-	
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
+
 	// Retry information
-	Retryable   bool                   `json:"retryable"`
-	RetryAfter  time.Duration          `json:"retry_after,omitempty"`
-	
+	Retryable  bool          `json:"retryable"`
+	RetryAfter time.Duration `json:"retry_after,omitempty"`
+
 	// HTTP status code (if applicable)
-	HTTPStatus  int                    `json:"http_status,omitempty"`
+	HTTPStatus int `json:"http_status,omitempty"`
 }
 
 // Error implements the error interface
@@ -144,13 +144,13 @@ func (eb *ErrorBuilder) WithContext(ctx context.Context) *ErrorBuilder {
 			eb.err.RequestID = id
 		}
 	}
-	
+
 	if userID := ctx.Value("user_id"); userID != nil {
 		if id, ok := userID.(string); ok {
 			eb.err.UserID = id
 		}
 	}
-	
+
 	return eb
 }
 
@@ -185,18 +185,18 @@ func (eb *ErrorBuilder) Build() *DistributedError {
 	if eb.err.Type == "" {
 		eb.err.Type = ErrorTypeInternal
 	}
-	
+
 	if eb.err.Severity == "" {
 		eb.err.Severity = SeverityMedium
 	}
-	
+
 	// Auto-capture stack trace for high severity errors
 	if eb.err.Severity == SeverityHigh || eb.err.Severity == SeverityCritical {
 		if eb.err.StackTrace == "" {
 			eb.err.StackTrace = captureStackTrace()
 		}
 	}
-	
+
 	return eb.err
 }
 
@@ -209,11 +209,11 @@ type ErrorHandler struct {
 
 // ErrorHandlerConfig configures the error handler
 type ErrorHandlerConfig struct {
-	EnableStackTrace    bool
-	EnableReporting     bool
-	ReportingThreshold  ErrorSeverity
-	MaxStackDepth       int
-	SampleRate          float64
+	EnableStackTrace   bool
+	EnableReporting    bool
+	ReportingThreshold ErrorSeverity
+	MaxStackDepth      int
+	SampleRate         float64
 }
 
 // ErrorReporter interface for error reporting
@@ -232,7 +232,7 @@ func NewErrorHandler(config *ErrorHandlerConfig) *ErrorHandler {
 			SampleRate:         1.0,
 		}
 	}
-	
+
 	return &ErrorHandler{
 		config:    config,
 		reporters: make([]ErrorReporter, 0),
@@ -259,17 +259,17 @@ func (eh *ErrorHandler) Handle(ctx context.Context, err error) *DistributedError
 			WithCause(err).
 			Build()
 	}
-	
+
 	// Add stack trace if enabled and not already present
 	if eh.config.EnableStackTrace && distErr.StackTrace == "" {
 		distErr.StackTrace = captureStackTrace()
 	}
-	
+
 	// Report error if enabled and meets threshold
 	if eh.config.EnableReporting && eh.shouldReport(distErr) {
 		eh.reportError(ctx, distErr)
 	}
-	
+
 	return distErr
 }
 
@@ -282,10 +282,10 @@ func (eh *ErrorHandler) shouldReport(err *DistributedError) bool {
 		SeverityHigh:     3,
 		SeverityCritical: 4,
 	}
-	
+
 	errLevel := severityLevels[err.Severity]
 	thresholdLevel := severityLevels[eh.config.ReportingThreshold]
-	
+
 	return errLevel >= thresholdLevel
 }
 
@@ -295,7 +295,7 @@ func (eh *ErrorHandler) reportError(ctx context.Context, err *DistributedError) 
 	reporters := make([]ErrorReporter, len(eh.reporters))
 	copy(reporters, eh.reporters)
 	eh.mu.RUnlock()
-	
+
 	for _, reporter := range reporters {
 		go func(r ErrorReporter) {
 			if reportErr := r.Report(ctx, err); reportErr != nil {
@@ -311,19 +311,19 @@ func captureStackTrace() string {
 	const depth = 32
 	var pcs [depth]uintptr
 	n := runtime.Callers(3, pcs[:])
-	
+
 	var sb strings.Builder
 	frames := runtime.CallersFrames(pcs[:n])
-	
+
 	for {
 		frame, more := frames.Next()
 		sb.WriteString(fmt.Sprintf("%s\n\t%s:%d\n", frame.Function, frame.File, frame.Line))
-		
+
 		if !more {
 			break
 		}
 	}
-	
+
 	return sb.String()
 }
 

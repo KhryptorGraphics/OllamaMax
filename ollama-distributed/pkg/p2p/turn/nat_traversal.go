@@ -12,59 +12,59 @@ import (
 
 // NATTraversal manages NAT traversal using TURN and other techniques
 type NATTraversal struct {
-	config          *NATTraversalConfig
-	
+	config *NATTraversalConfig
+
 	// TURN components
-	turnServer      *TURNServer
-	turnClient      *TURNClient
-	
+	turnServer *TURNServer
+	turnClient *TURNClient
+
 	// STUN client for NAT detection
-	stunClient      *STUNClient
-	
+	stunClient *STUNClient
+
 	// ICE candidate gathering
-	iceGatherer     *ICEGatherer
-	
+	iceGatherer *ICEGatherer
+
 	// Connection management
-	connections     map[peer.ID]*NATConnection
-	connectionsMu   sync.RWMutex
-	
+	connections   map[peer.ID]*NATConnection
+	connectionsMu sync.RWMutex
+
 	// NAT type detection
-	natType         NATType
-	publicIP        net.IP
-	mappedPorts     map[int]int
-	
+	natType     NATType
+	publicIP    net.IP
+	mappedPorts map[int]int
+
 	// Metrics
-	metrics         *NATTraversalMetrics
-	
+	metrics *NATTraversalMetrics
+
 	// Lifecycle
-	ctx             context.Context
-	cancel          context.CancelFunc
-	wg              sync.WaitGroup
+	ctx    context.Context
+	cancel context.CancelFunc
+	wg     sync.WaitGroup
 }
 
 // NATTraversalConfig configures NAT traversal
 type NATTraversalConfig struct {
 	// TURN server settings
-	TURNServerConfig    *TURNConfig
-	EnableTURNServer    bool
-	
+	TURNServerConfig *TURNConfig
+	EnableTURNServer bool
+
 	// TURN client settings
-	TURNClientConfig    *TURNClientConfig
-	TURNServers         []string
-	
+	TURNClientConfig *TURNClientConfig
+	TURNServers      []string
+
 	// STUN settings
-	STUNServers         []string
-	STUNTimeout         time.Duration
-	
+	STUNServers []string
+	STUNTimeout time.Duration
+
 	// ICE settings
 	EnableICE           bool
 	ICETimeout          time.Duration
 	ICEGatheringTimeout time.Duration
-	
+
 	// Connection settings
-	ConnectionTimeout   time.Duration
-	MaxConnections      int
-	
+	ConnectionTimeout time.Duration
+	MaxConnections    int
+
 	// NAT detection
 	EnableNATDetection  bool
 	NATDetectionTimeout time.Duration
@@ -72,129 +72,132 @@ type NATTraversalConfig struct {
 
 // NATConnection represents a NAT-traversed connection
 type NATConnection struct {
-	PeerID          peer.ID
-	LocalAddr       *net.UDPAddr
-	RemoteAddr      *net.UDPAddr
-	RelayAddr       *net.UDPAddr
-	
+	PeerID     peer.ID
+	LocalAddr  *net.UDPAddr
+	RemoteAddr *net.UDPAddr
+	RelayAddr  *net.UDPAddr
+
 	// Connection type
-	ConnectionType  ConnectionType
-	
+	ConnectionType ConnectionType
+
 	// ICE candidates
 	LocalCandidates  []*ICECandidate
 	RemoteCandidates []*ICECandidate
 	SelectedPair     *CandidatePair
-	
+
 	// State
-	State           ConnectionState
-	CreatedAt       time.Time
-	ConnectedAt     time.Time
-	LastActivity    time.Time
-	
+	State        ConnectionState
+	CreatedAt    time.Time
+	ConnectedAt  time.Time
+	LastActivity time.Time
+
 	// Statistics
 	BytesSent       int64
 	BytesReceived   int64
 	PacketsSent     int64
 	PacketsReceived int64
 	RTT             time.Duration
-	
-	mu              sync.RWMutex
+
+	mu sync.RWMutex
 }
 
 // STUNClient implements a STUN client for NAT detection
 type STUNClient struct {
-	servers         []string
-	timeout         time.Duration
-	publicIP        net.IP
-	natType         NATType
-	mu              sync.RWMutex
+	servers  []string
+	timeout  time.Duration
+	publicIP net.IP
+	natType  NATType
+	mu       sync.RWMutex
 }
 
 // ICEGatherer gathers ICE candidates for connectivity
 type ICEGatherer struct {
-	config          *ICEConfig
-	candidates      []*ICECandidate
-	candidatesMu    sync.RWMutex
-	gatheringDone   chan struct{}
+	config        *ICEConfig
+	candidates    []*ICECandidate
+	candidatesMu  sync.RWMutex
+	gatheringDone chan struct{}
 }
 
 // ICECandidate represents an ICE candidate
 type ICECandidate struct {
-	Type            CandidateType
-	Protocol        string
-	Address         *net.UDPAddr
-	Priority        uint32
-	Foundation      string
-	ComponentID     uint16
-	RelatedAddr     *net.UDPAddr
+	Type        CandidateType
+	Protocol    string
+	Address     *net.UDPAddr
+	Priority    uint32
+	Foundation  string
+	ComponentID uint16
+	RelatedAddr *net.UDPAddr
 }
 
 // CandidatePair represents a pair of ICE candidates
 type CandidatePair struct {
-	Local           *ICECandidate
-	Remote          *ICECandidate
-	Priority        uint64
-	State           PairState
-	Nominated       bool
+	Local     *ICECandidate
+	Remote    *ICECandidate
+	Priority  uint64
+	State     PairState
+	Nominated bool
 }
 
 // ICEConfig configures ICE gathering
 type ICEConfig struct {
-	STUNServers     []string
-	TURNServers     []string
-	GatherTimeout   time.Duration
-	CheckTimeout    time.Duration
+	STUNServers   []string
+	TURNServers   []string
+	GatherTimeout time.Duration
+	CheckTimeout  time.Duration
 }
 
 // NATTraversalMetrics tracks NAT traversal performance
 type NATTraversalMetrics struct {
 	// Connection metrics
-	TotalConnections    int64
+	TotalConnections      int64
 	SuccessfulConnections int64
-	FailedConnections   int64
-	ActiveConnections   int64
-	
+	FailedConnections     int64
+	ActiveConnections     int64
+
 	// NAT traversal success rates
-	DirectConnections   int64
-	STUNConnections     int64
-	TURNConnections     int64
-	ICEConnections      int64
-	
+	DirectConnections int64
+	STUNConnections   int64
+	TURNConnections   int64
+	ICEConnections    int64
+
 	// Performance metrics
 	AverageConnectionTime time.Duration
-	AverageRTT          time.Duration
-	
+	AverageRTT            time.Duration
+
 	// Error metrics
-	NATDetectionErrors  int64
-	STUNErrors          int64
-	TURNErrors          int64
-	ICEErrors           int64
-	
+	NATDetectionErrors int64
+	STUNErrors         int64
+	TURNErrors         int64
+	ICEErrors          int64
+
 	// Last updated
-	LastUpdated         time.Time
-	mu                  sync.RWMutex
+	LastUpdated time.Time
+	mu          sync.RWMutex
 }
 
 // Enums and constants
 type NATType string
+
 const (
-	NATTypeNone             NATType = "none"
-	NATTypeFullCone         NATType = "full_cone"
-	NATTypeRestrictedCone   NATType = "restricted_cone"
-	NATTypePortRestricted   NATType = "port_restricted"
-	NATTypeSymmetric        NATType = "symmetric"
-	NATTypeUnknown          NATType = "unknown"
+	NATTypeNone           NATType = "none"
+	NATTypeFullCone       NATType = "full_cone"
+	NATTypeRestrictedCone NATType = "restricted_cone"
+	NATTypePortRestricted NATType = "port_restricted"
+	NATTypeSymmetric      NATType = "symmetric"
+	NATTypeUnknown        NATType = "unknown"
 )
 
 type ConnectionType string
+
 const (
-	ConnectionTypeDirect    ConnectionType = "direct"
-	ConnectionTypeSTUN      ConnectionType = "stun"
-	ConnectionTypeTURN      ConnectionType = "turn"
-	ConnectionTypeICE       ConnectionType = "ice"
+	ConnectionTypeDirect ConnectionType = "direct"
+	ConnectionTypeSTUN   ConnectionType = "stun"
+	ConnectionTypeTURN   ConnectionType = "turn"
+	ConnectionTypeICE    ConnectionType = "ice"
 )
 
 type ConnectionState string
+
 const (
 	ConnectionStateConnecting   ConnectionState = "connecting"
 	ConnectionStateConnected    ConnectionState = "connected"
@@ -203,14 +206,16 @@ const (
 )
 
 type CandidateType string
+
 const (
-	CandidateTypeHost       CandidateType = "host"
+	CandidateTypeHost            CandidateType = "host"
 	CandidateTypeServerReflexive CandidateType = "srflx"
 	CandidateTypePeerReflexive   CandidateType = "prflx"
-	CandidateTypeRelay      CandidateType = "relay"
+	CandidateTypeRelay           CandidateType = "relay"
 )
 
 type PairState string
+
 const (
 	PairStateWaiting    PairState = "waiting"
 	PairStateInProgress PairState = "in_progress"
@@ -235,9 +240,9 @@ func NewNATTraversal(config *NATTraversalConfig) (*NATTraversal, error) {
 			NATDetectionTimeout: 10 * time.Second,
 		}
 	}
-	
+
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	nt := &NATTraversal{
 		config:      config,
 		connections: make(map[peer.ID]*NATConnection),
@@ -248,13 +253,13 @@ func NewNATTraversal(config *NATTraversalConfig) (*NATTraversal, error) {
 		ctx:    ctx,
 		cancel: cancel,
 	}
-	
+
 	// Initialize STUN client
 	nt.stunClient = &STUNClient{
 		servers: config.STUNServers,
 		timeout: config.STUNTimeout,
 	}
-	
+
 	// Initialize ICE gatherer if enabled
 	if config.EnableICE {
 		nt.iceGatherer = &ICEGatherer{
@@ -268,7 +273,7 @@ func NewNATTraversal(config *NATTraversalConfig) (*NATTraversal, error) {
 			gatheringDone: make(chan struct{}),
 		}
 	}
-	
+
 	// Initialize TURN server if enabled
 	if config.EnableTURNServer && config.TURNServerConfig != nil {
 		turnServer, err := NewTURNServer(config.TURNServerConfig)
@@ -277,7 +282,7 @@ func NewNATTraversal(config *NATTraversalConfig) (*NATTraversal, error) {
 		}
 		nt.turnServer = turnServer
 	}
-	
+
 	// Initialize TURN client if TURN servers are configured
 	if len(config.TURNServers) > 0 && config.TURNClientConfig != nil {
 		turnClient, err := NewTURNClient(config.TURNClientConfig)
@@ -286,7 +291,7 @@ func NewNATTraversal(config *NATTraversalConfig) (*NATTraversal, error) {
 		}
 		nt.turnClient = turnClient
 	}
-	
+
 	return nt, nil
 }
 
@@ -298,50 +303,50 @@ func (nt *NATTraversal) Start() error {
 			return fmt.Errorf("failed to start TURN server: %w", err)
 		}
 	}
-	
+
 	// Connect TURN client if configured
 	if nt.turnClient != nil {
 		if err := nt.turnClient.Connect(); err != nil {
 			return fmt.Errorf("failed to connect TURN client: %w", err)
 		}
 	}
-	
+
 	// Detect NAT type if enabled
 	if nt.config.EnableNATDetection {
 		nt.wg.Add(1)
 		go nt.detectNATType()
 	}
-	
+
 	// Start ICE gathering if enabled
 	if nt.iceGatherer != nil {
 		nt.wg.Add(1)
 		go nt.gatherICECandidates()
 	}
-	
+
 	// Start metrics loop
 	nt.wg.Add(1)
 	go nt.metricsLoop()
-	
+
 	return nil
 }
 
 // Stop stops the NAT traversal manager
 func (nt *NATTraversal) Stop() error {
 	nt.cancel()
-	
+
 	// Stop TURN server
 	if nt.turnServer != nil {
 		nt.turnServer.Stop()
 	}
-	
+
 	// Disconnect TURN client
 	if nt.turnClient != nil {
 		nt.turnClient.Disconnect()
 	}
-	
+
 	// Wait for goroutines
 	nt.wg.Wait()
-	
+
 	return nil
 }
 
@@ -349,32 +354,32 @@ func (nt *NATTraversal) Stop() error {
 func (nt *NATTraversal) EstablishConnection(peerID peer.ID, remoteAddr *net.UDPAddr) (*NATConnection, error) {
 	nt.connectionsMu.Lock()
 	defer nt.connectionsMu.Unlock()
-	
+
 	// Check if connection already exists
 	if conn, exists := nt.connections[peerID]; exists {
 		return conn, nil
 	}
-	
+
 	// Create new connection
 	conn := &NATConnection{
-		PeerID:          peerID,
-		RemoteAddr:      remoteAddr,
-		State:           ConnectionStateConnecting,
-		CreatedAt:       time.Now(),
-		LocalCandidates: make([]*ICECandidate, 0),
+		PeerID:           peerID,
+		RemoteAddr:       remoteAddr,
+		State:            ConnectionStateConnecting,
+		CreatedAt:        time.Now(),
+		LocalCandidates:  make([]*ICECandidate, 0),
 		RemoteCandidates: make([]*ICECandidate, 0),
 	}
-	
+
 	nt.connections[peerID] = conn
-	
+
 	// Try different connection methods
 	go nt.attemptConnection(conn)
-	
+
 	nt.metrics.mu.Lock()
 	nt.metrics.TotalConnections++
 	nt.metrics.ActiveConnections++
 	nt.metrics.mu.Unlock()
-	
+
 	return conn, nil
 }
 
@@ -384,27 +389,27 @@ func (nt *NATTraversal) attemptConnection(conn *NATConnection) {
 	if nt.tryDirectConnection(conn) {
 		return
 	}
-	
+
 	// Try STUN-assisted connection
 	if nt.trySTUNConnection(conn) {
 		return
 	}
-	
+
 	// Try ICE connection
 	if nt.iceGatherer != nil && nt.tryICEConnection(conn) {
 		return
 	}
-	
+
 	// Fall back to TURN relay
 	if nt.turnClient != nil && nt.tryTURNConnection(conn) {
 		return
 	}
-	
+
 	// All methods failed
 	conn.mu.Lock()
 	conn.State = ConnectionStateFailed
 	conn.mu.Unlock()
-	
+
 	nt.metrics.mu.Lock()
 	nt.metrics.FailedConnections++
 	nt.metrics.ActiveConnections--
@@ -437,32 +442,32 @@ func (nt *NATTraversal) tryTURNConnection(conn *NATConnection) bool {
 	if nt.turnClient == nil {
 		return false
 	}
-	
+
 	// Get relay address
 	relayAddr := nt.turnClient.GetRelayAddress()
 	if relayAddr == nil {
 		return false
 	}
-	
+
 	conn.mu.Lock()
 	conn.RelayAddr = relayAddr
 	conn.ConnectionType = ConnectionTypeTURN
 	conn.State = ConnectionStateConnected
 	conn.ConnectedAt = time.Now()
 	conn.mu.Unlock()
-	
+
 	nt.metrics.mu.Lock()
 	nt.metrics.SuccessfulConnections++
 	nt.metrics.TURNConnections++
 	nt.metrics.mu.Unlock()
-	
+
 	return true
 }
 
 // detectNATType detects the NAT type using STUN
 func (nt *NATTraversal) detectNATType() {
 	defer nt.wg.Done()
-	
+
 	// Implementation would detect NAT type using STUN
 	// For now, set to unknown
 	nt.natType = NATTypeUnknown
@@ -471,11 +476,11 @@ func (nt *NATTraversal) detectNATType() {
 // gatherICECandidates gathers ICE candidates
 func (nt *NATTraversal) gatherICECandidates() {
 	defer nt.wg.Done()
-	
+
 	if nt.iceGatherer == nil {
 		return
 	}
-	
+
 	// Implementation would gather ICE candidates
 	// For now, this is a placeholder
 	close(nt.iceGatherer.gatheringDone)
@@ -484,10 +489,10 @@ func (nt *NATTraversal) gatherICECandidates() {
 // metricsLoop updates metrics periodically
 func (nt *NATTraversal) metricsLoop() {
 	defer nt.wg.Done()
-	
+
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-nt.ctx.Done():
@@ -502,11 +507,11 @@ func (nt *NATTraversal) metricsLoop() {
 func (nt *NATTraversal) updateMetrics() {
 	nt.metrics.mu.Lock()
 	defer nt.metrics.mu.Unlock()
-	
+
 	nt.connectionsMu.RLock()
 	nt.metrics.ActiveConnections = int64(len(nt.connections))
 	nt.connectionsMu.RUnlock()
-	
+
 	nt.metrics.LastUpdated = time.Now()
 }
 
@@ -514,7 +519,7 @@ func (nt *NATTraversal) updateMetrics() {
 func (nt *NATTraversal) GetMetrics() *NATTraversalMetrics {
 	nt.metrics.mu.RLock()
 	defer nt.metrics.mu.RUnlock()
-	
+
 	// Create a copy without the mutex
 	return &NATTraversalMetrics{
 		TotalConnections:      nt.metrics.TotalConnections,

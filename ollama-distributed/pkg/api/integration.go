@@ -13,24 +13,24 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/types"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/models"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/scheduler"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/types"
 )
 
 // IntegrationLayer provides transparent API layer for distributed Ollama
 type IntegrationLayer struct {
-	scheduler    *scheduler.Engine
-	localProxy   *httputil.ReverseProxy
-	localURL     *url.URL
-	
+	scheduler  *scheduler.Engine
+	localProxy *httputil.ReverseProxy
+	localURL   *url.URL
+
 	// Distributed mode settings
 	distributedMode bool
 	fallbackMode    bool
-	
+
 	// Request tracking
 	requestTracker *RequestTracker
-	
+
 	// Model distribution
 	modelDistribution *models.Manager
 }
@@ -56,16 +56,16 @@ func NewIntegrationLayer(scheduler *scheduler.Engine, localAddr string, modelDis
 	if err != nil {
 		return nil, fmt.Errorf("invalid local Ollama URL: %w", err)
 	}
-	
+
 	proxy := httputil.NewSingleHostReverseProxy(localURL)
-	
+
 	// Customize proxy to handle errors and add distributed headers
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
 		w.Header().Set("X-Ollama-Distributed-Error", "local-proxy-failed")
 		w.WriteHeader(http.StatusBadGateway)
 		json.NewEncoder(w).Encode(gin.H{"error": "Local Ollama instance unavailable"})
 	}
-	
+
 	return &IntegrationLayer{
 		scheduler:         scheduler,
 		localProxy:        proxy,
@@ -80,11 +80,11 @@ func NewIntegrationLayer(scheduler *scheduler.Engine, localAddr string, modelDis
 // HandleRequest processes API requests with transparent distributed routing
 func (il *IntegrationLayer) HandleRequest(c *gin.Context) {
 	path := c.Request.URL.Path
-	
+
 	// Add distributed headers
 	c.Header("X-Ollama-Distributed", "true")
 	c.Header("X-Ollama-Mode", il.getMode())
-	
+
 	// Route based on endpoint
 	switch {
 	case strings.HasPrefix(path, "/api/generate"):
@@ -129,13 +129,13 @@ func (il *IntegrationLayer) handleGenerate(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	// Check if model should be distributed
 	if !il.shouldDistribute(req.Model) {
 		il.proxyToLocal(c)
 		return
 	}
-	
+
 	// Create distributed request
 	distribReq := &scheduler.Request{
 		ID:         fmt.Sprintf("gen_%d", time.Now().UnixNano()),
@@ -150,11 +150,11 @@ func (il *IntegrationLayer) handleGenerate(c *gin.Context) {
 			"options": req.Options,
 		},
 	}
-	
+
 	// Track request
 	il.requestTracker.TrackRequest(distribReq)
 	defer il.requestTracker.UntrackRequest(distribReq.ID)
-	
+
 	// Schedule on distributed cluster
 	if err := il.scheduler.Schedule(distribReq); err != nil {
 		if il.fallbackMode {
@@ -165,7 +165,7 @@ func (il *IntegrationLayer) handleGenerate(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	// Wait for response
 	select {
 	case response := <-distribReq.ResponseCh:
@@ -197,13 +197,13 @@ func (il *IntegrationLayer) handleChat(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	// Check if model should be distributed
 	if !il.shouldDistribute(req.Model) {
 		il.proxyToLocal(c)
 		return
 	}
-	
+
 	// Create distributed request
 	distribReq := &scheduler.Request{
 		ID:         fmt.Sprintf("chat_%d", time.Now().UnixNano()),
@@ -218,11 +218,11 @@ func (il *IntegrationLayer) handleChat(c *gin.Context) {
 			"options":  req.Options,
 		},
 	}
-	
+
 	// Track and schedule
 	il.requestTracker.TrackRequest(distribReq)
 	defer il.requestTracker.UntrackRequest(distribReq.ID)
-	
+
 	if err := il.scheduler.Schedule(distribReq); err != nil {
 		if il.fallbackMode {
 			c.Header("X-Ollama-Fallback", "scheduler-error")
@@ -232,7 +232,7 @@ func (il *IntegrationLayer) handleChat(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	// Wait for response
 	select {
 	case response := <-distribReq.ResponseCh:
@@ -263,12 +263,12 @@ func (il *IntegrationLayer) handleEmbed(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	if !il.shouldDistribute(req.Model) {
 		il.proxyToLocal(c)
 		return
 	}
-	
+
 	// Create distributed request
 	distribReq := &scheduler.Request{
 		ID:         fmt.Sprintf("embed_%d", time.Now().UnixNano()),
@@ -283,10 +283,10 @@ func (il *IntegrationLayer) handleEmbed(c *gin.Context) {
 			"options":  req.Options,
 		},
 	}
-	
+
 	il.requestTracker.TrackRequest(distribReq)
 	defer il.requestTracker.UntrackRequest(distribReq.ID)
-	
+
 	if err := il.scheduler.Schedule(distribReq); err != nil {
 		if il.fallbackMode {
 			c.Header("X-Ollama-Fallback", "scheduler-error")
@@ -296,7 +296,7 @@ func (il *IntegrationLayer) handleEmbed(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	select {
 	case response := <-distribReq.ResponseCh:
 		if response.Success {
@@ -327,7 +327,7 @@ func (il *IntegrationLayer) handleEmbeddings(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	// Convert to EmbedRequest
 	embedReq := types.EmbedRequest{
 		Model:     req.Model,
@@ -335,11 +335,11 @@ func (il *IntegrationLayer) handleEmbeddings(c *gin.Context) {
 		Options:   req.Options,
 		KeepAlive: req.KeepAlive,
 	}
-	
+
 	// Replace request body
 	body, _ := json.Marshal(embedReq)
 	c.Request.Body = io.NopCloser(bytes.NewBuffer(body))
-	
+
 	il.handleEmbed(c)
 }
 
@@ -350,7 +350,7 @@ func (il *IntegrationLayer) handlePull(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	// Check if model should be distributed
 	if il.modelDistribution.ShouldDistribute(req.Model) {
 		// Handle distributed pull
@@ -374,7 +374,7 @@ func (il *IntegrationLayer) handleShow(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	// Check if model is distributed
 	if il.modelDistribution.IsDistributed(req.Model) {
 		// Get info from distributed cluster
@@ -388,7 +388,7 @@ func (il *IntegrationLayer) handleShow(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Model info not found"})
 			return
 		}
-		
+
 		c.Header("X-Ollama-Distributed-Model", "true")
 		c.JSON(http.StatusOK, info)
 	} else {
@@ -404,14 +404,14 @@ func (il *IntegrationLayer) handleTags(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	// Get distributed models
 	distributedModels := il.modelDistribution.GetDistributedModels()
 	if distributedModels == nil && !il.fallbackMode {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get distributed models"})
 		return
 	}
-	
+
 	// Convert distributed models to ListModelResponse and merge
 	var convertedDistributed []types.ListModelResponse
 	for _, model := range distributedModels {
@@ -424,14 +424,14 @@ func (il *IntegrationLayer) handleTags(c *gin.Context) {
 			convertedDistributed = append(convertedDistributed, response)
 		}
 	}
-	
+
 	// Merge models
 	allModels := append(localModels, convertedDistributed...)
-	
+
 	c.Header("X-Ollama-Total-Models", fmt.Sprintf("%d", len(allModels)))
 	c.Header("X-Ollama-Local-Models", fmt.Sprintf("%d", len(localModels)))
 	c.Header("X-Ollama-Distributed-Models", fmt.Sprintf("%d", len(distributedModels)))
-	
+
 	c.JSON(http.StatusOK, types.ListResponse{Models: allModels})
 }
 
@@ -442,7 +442,7 @@ func (il *IntegrationLayer) handleDelete(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	// Check if model is distributed
 	if il.modelDistribution.IsDistributed(req.Model) {
 		// Delete from distributed cluster
@@ -470,21 +470,21 @@ func (il *IntegrationLayer) handlePs(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	// Get distributed processes
 	distributedProcs, err := il.getDistributedProcesses()
 	if err != nil && !il.fallbackMode {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	// Merge processes
 	allProcs := append(localProcs, distributedProcs...)
-	
+
 	c.Header("X-Ollama-Total-Processes", fmt.Sprintf("%d", len(allProcs)))
 	c.Header("X-Ollama-Local-Processes", fmt.Sprintf("%d", len(localProcs)))
 	c.Header("X-Ollama-Distributed-Processes", fmt.Sprintf("%d", len(distributedProcs)))
-	
+
 	c.JSON(http.StatusOK, types.ProcessResponse{Models: allProcs})
 }
 
@@ -500,7 +500,7 @@ func (il *IntegrationLayer) handleVersion(c *gin.Context) {
 	if err != nil {
 		localVersion = map[string]interface{}{"version": "unknown"}
 	}
-	
+
 	// Add distributed info
 	version := map[string]interface{}{
 		"version":            localVersion["version"],
@@ -511,7 +511,7 @@ func (il *IntegrationLayer) handleVersion(c *gin.Context) {
 		"active_nodes":       il.scheduler.GetActiveNodes(),
 		"distributed_models": il.modelDistribution.GetDistributedModelCount(),
 	}
-	
+
 	c.JSON(http.StatusOK, version)
 }
 
@@ -522,7 +522,7 @@ func (il *IntegrationLayer) handleOpenAI(c *gin.Context) {
 	// - /v1/completions -> generate
 	// - /v1/embeddings -> embed
 	// - /v1/models -> tags
-	
+
 	path := c.Request.URL.Path
 	switch {
 	case strings.HasSuffix(path, "/chat/completions"):
@@ -564,7 +564,7 @@ func (il *IntegrationLayer) proxyToLocal(c *gin.Context) {
 func (rt *RequestTracker) TrackRequest(req *scheduler.Request) {
 	rt.mu.Lock()
 	defer rt.mu.Unlock()
-	
+
 	rt.requests[req.ID] = &TrackedRequest{
 		ID:       req.ID,
 		Started:  time.Now(),
@@ -577,14 +577,14 @@ func (rt *RequestTracker) TrackRequest(req *scheduler.Request) {
 func (rt *RequestTracker) UntrackRequest(id string) {
 	rt.mu.Lock()
 	defer rt.mu.Unlock()
-	
+
 	delete(rt.requests, id)
 }
 
 func (rt *RequestTracker) GetActiveRequests() map[string]*TrackedRequest {
 	rt.mu.RLock()
 	defer rt.mu.RUnlock()
-	
+
 	result := make(map[string]*TrackedRequest)
 	for k, v := range rt.requests {
 		result[k] = v
@@ -733,11 +733,11 @@ func (il *IntegrationLayer) getDistributedProcesses() ([]types.ProcessModelRespo
 	var processes []types.ProcessModelResponse
 	for _, req := range activeRequests {
 		process := types.ProcessModelResponse{
-			Model: req.Model,
-			Name:  req.Model,
+			Model:     req.Model,
+			Name:      req.Model,
 			ExpiresAt: &[]time.Time{req.Started.Add(30 * time.Minute)}[0], // Default expiry
-			SizeVRAM: 0, // TODO: Get actual VRAM usage
-			Size: 0,     // TODO: Get actual size
+			SizeVRAM:  0,                                                  // TODO: Get actual VRAM usage
+			Size:      0,                                                  // TODO: Get actual size
 		}
 		processes = append(processes, process)
 	}
@@ -805,7 +805,7 @@ func (il *IntegrationLayer) handleOpenAIChat(c *gin.Context) {
 
 	// Convert to Ollama chat request
 	ollamaReq := types.ChatRequest{
-		Model: openAIReq.Model,
+		Model:  openAIReq.Model,
 		Stream: &openAIReq.Stream,
 	}
 
@@ -902,9 +902,9 @@ func (il *IntegrationLayer) handleOpenAIModels(c *gin.Context) {
 	// Add local models
 	for _, model := range localModels {
 		openAIModels = append(openAIModels, map[string]interface{}{
-			"id":      model.Name,
-			"object":  "model",
-			"created": model.ModifiedAt.Unix(),
+			"id":       model.Name,
+			"object":   "model",
+			"created":  model.ModifiedAt.Unix(),
 			"owned_by": "ollama",
 		})
 	}
@@ -913,9 +913,9 @@ func (il *IntegrationLayer) handleOpenAIModels(c *gin.Context) {
 	for _, model := range distributedModels {
 		if modelMap, ok := model.(map[string]interface{}); ok {
 			openAIModels = append(openAIModels, map[string]interface{}{
-				"id":      getString(modelMap, "name"),
-				"object":  "model",
-				"created": time.Now().Unix(), // Use current time since we don't have ModifiedAt
+				"id":       getString(modelMap, "name"),
+				"object":   "model",
+				"created":  time.Now().Unix(), // Use current time since we don't have ModifiedAt
 				"owned_by": "ollama-distributed",
 			})
 		}

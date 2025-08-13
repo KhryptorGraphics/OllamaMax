@@ -16,6 +16,7 @@ import (
 
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // SecurityManager manages security configurations and operations
@@ -35,6 +36,15 @@ type SecurityManager struct {
 
 	// Security policies
 	policies map[string]*SecurityPolicy
+
+	// Session management
+	sessions map[string]*SecuritySession
+
+	// Permission management
+	permissions map[string]bool
+
+	// Connection tracking
+	connections map[string]bool
 
 	// Metrics and monitoring
 	metrics *SecurityMetrics
@@ -115,11 +125,14 @@ type EncryptionManager struct {
 
 // SecuritySession represents an authenticated session
 type SecuritySession struct {
+	ID            string // Session ID
 	PeerID        peer.ID
 	SessionID     string
+	UserID        string // User ID for the session
 	CreatedAt     time.Time
 	ExpiresAt     time.Time
 	Authenticated bool
+	Active        bool // Whether session is active
 	EncryptionKey []byte
 	Permissions   []string
 	Metadata      map[string]interface{}
@@ -845,6 +858,183 @@ func (cce *ChaCha20Encryptor) GenerateKey() ([]byte, error) {
 	key := make([]byte, 32) // 256-bit key
 	_, err := rand.Read(key)
 	return key, err
+}
+
+// GenerateKey generates a cryptographic key of the specified size
+func (sm *SecurityManager) GenerateKey(size int) ([]byte, error) {
+	key := make([]byte, size)
+	_, err := rand.Read(key)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate key: %w", err)
+	}
+	return key, nil
+}
+
+// HashPassword hashes a password using bcrypt
+func (sm *SecurityManager) HashPassword(password string) (string, error) {
+	hashedBytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", fmt.Errorf("failed to hash password: %w", err)
+	}
+	return string(hashedBytes), nil
+}
+
+// VerifyPassword verifies a password against its hash
+func (sm *SecurityManager) VerifyPassword(password, hashedPassword string) (bool, error) {
+	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
+	if err != nil {
+		if err == bcrypt.ErrMismatchedHashAndPassword {
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to verify password: %w", err)
+	}
+	return true, nil
+}
+
+// CreateSession creates a new session for a user
+func (sm *SecurityManager) CreateSession(userID string) (string, error) {
+	sessionID := generateSessionID()
+
+	sm.mu.Lock()
+	if sm.sessions == nil {
+		sm.sessions = make(map[string]*SecuritySession)
+	}
+
+	session := &SecuritySession{
+		ID:        sessionID,
+		UserID:    userID,
+		CreatedAt: time.Now(),
+		ExpiresAt: time.Now().Add(sm.config.SessionTimeout),
+		Active:    true,
+	}
+
+	sm.sessions[sessionID] = session
+	sm.mu.Unlock()
+
+	return sessionID, nil
+}
+
+// ValidateSession validates a session and returns the user ID
+func (sm *SecurityManager) ValidateSession(sessionID string) (bool, string, error) {
+	sm.mu.RLock()
+	session, exists := sm.sessions[sessionID]
+	sm.mu.RUnlock()
+
+	if !exists {
+		return false, "", nil
+	}
+
+	if !session.Active || time.Now().After(session.ExpiresAt) {
+		return false, "", nil
+	}
+
+	return true, session.UserID, nil
+}
+
+// CleanupExpiredSessions removes expired sessions
+func (sm *SecurityManager) CleanupExpiredSessions() error {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+
+	if sm.sessions == nil {
+		return nil
+	}
+
+	now := time.Now()
+	for sessionID, session := range sm.sessions {
+		if !session.Active || now.After(session.ExpiresAt) {
+			delete(sm.sessions, sessionID)
+		}
+	}
+
+	return nil
+}
+
+// CheckPermission checks if a user has permission for a resource/action
+func (sm *SecurityManager) CheckPermission(userID, resource, action string) (bool, error) {
+	sm.mu.RLock()
+	defer sm.mu.RUnlock()
+
+	if sm.permissions == nil {
+		return false, nil
+	}
+
+	key := fmt.Sprintf("%s:%s:%s", userID, resource, action)
+	permission, exists := sm.permissions[key]
+
+	return exists && permission, nil
+}
+
+// GrantPermission grants a permission to a user
+func (sm *SecurityManager) GrantPermission(userID, resource, action string) error {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+
+	if sm.permissions == nil {
+		sm.permissions = make(map[string]bool)
+	}
+
+	key := fmt.Sprintf("%s:%s:%s", userID, resource, action)
+	sm.permissions[key] = true
+
+	return nil
+}
+
+// RevokePermission revokes a permission from a user
+func (sm *SecurityManager) RevokePermission(userID, resource, action string) error {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+
+	if sm.permissions == nil {
+		return nil
+	}
+
+	key := fmt.Sprintf("%s:%s:%s", userID, resource, action)
+	delete(sm.permissions, key)
+
+	return nil
+}
+
+// AddConnection adds a connection to the tracking
+func (sm *SecurityManager) AddConnection(connectionID string) error {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+
+	if sm.connections == nil {
+		sm.connections = make(map[string]bool)
+	}
+
+	if len(sm.connections) >= sm.config.MaxConnections {
+		return fmt.Errorf("connection limit exceeded: %d", sm.config.MaxConnections)
+	}
+
+	sm.connections[connectionID] = true
+	return nil
+}
+
+// RemoveConnection removes a connection from tracking
+func (sm *SecurityManager) RemoveConnection(connectionID string) error {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+
+	if sm.connections == nil {
+		return nil
+	}
+
+	delete(sm.connections, connectionID)
+	return nil
+}
+
+// GetConnectionCount returns the current number of connections
+func (sm *SecurityManager) GetConnectionCount() int {
+	sm.mu.RLock()
+	defer sm.mu.RUnlock()
+
+	if sm.connections == nil {
+		return 0
+	}
+
+	return len(sm.connections)
 }
 
 // Utility functions

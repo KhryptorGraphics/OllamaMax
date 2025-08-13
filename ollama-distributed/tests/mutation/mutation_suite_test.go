@@ -58,11 +58,11 @@ func TestMutationTestFramework(t *testing.T) {
 	t.Run("FindTargetFiles", func(t *testing.T) {
 		runner := NewMutationTestRunner(projectRoot)
 		runner.TargetDirs = []string{"internal/auth"} // Test with auth package
-		
+
 		files, err := runner.findTargetFiles()
 		assert.NoError(t, err)
 		assert.NotEmpty(t, files)
-		
+
 		// Verify files are Go files and not test files
 		for _, file := range files {
 			assert.True(t, filepath.Ext(file) == ".go")
@@ -72,7 +72,7 @@ func TestMutationTestFramework(t *testing.T) {
 
 	t.Run("MutationGeneration", func(t *testing.T) {
 		runner := NewMutationTestRunner(projectRoot)
-		
+
 		// Create a simple test file
 		testFile := createTestFile(t, `
 package test
@@ -100,23 +100,23 @@ func isEqual(x, y int) bool {
 			foundTypes[mutation.Type] = true
 		}
 
-		assert.True(t, foundTypes["ArithmeticReplacement"] || 
-					  foundTypes["ComparisonReplacement"] ||
-					  foundTypes["LogicalReplacement"])
+		assert.True(t, foundTypes["ArithmeticReplacement"] ||
+			foundTypes["ComparisonReplacement"] ||
+			foundTypes["LogicalReplacement"])
 	})
 
 	t.Run("MutationTypeGeneration", func(t *testing.T) {
 		runner := NewMutationTestRunner(projectRoot)
 		types := runner.getMutationTypes()
-		
+
 		assert.NotEmpty(t, types)
-		
+
 		// Verify key mutation types are present
 		typeNames := make(map[string]bool)
 		for _, mt := range types {
 			typeNames[mt.Name] = true
 		}
-		
+
 		assert.True(t, typeNames["ArithmeticReplacement"])
 		assert.True(t, typeNames["ComparisonReplacement"])
 		assert.True(t, typeNames["LogicalReplacement"])
@@ -157,16 +157,16 @@ func TestMutationQualityMetrics(t *testing.T) {
 
 	t.Run("MutationScoreCalculation", func(t *testing.T) {
 		runner := NewMutationTestRunner(projectRoot)
-		
+
 		// Simulate results
 		runner.Results.TotalMutants = 100
 		runner.Results.KilledMutants = 80
 		runner.Results.SurvivedMutants = 15
 		runner.Results.TimedOutMutants = 3
 		runner.Results.ErrorMutants = 2
-		
+
 		runner.calculateResults()
-		
+
 		assert.Equal(t, 80.0, runner.Results.MutationScore)
 		assert.Equal(t, "A (Excellent)", runner.Results.QualityGrade)
 	})
@@ -188,14 +188,14 @@ func TestMutationQualityMetrics(t *testing.T) {
 			runner.Results.TotalMutants = 100
 			runner.Results.KilledMutants = mustParseInt(tc.score)
 			runner.calculateResults()
-			
+
 			assert.Equal(t, tc.grade, runner.Results.QualityGrade)
 		}
 	})
 
 	t.Run("MutationTypeAnalysis", func(t *testing.T) {
 		runner := NewMutationTestRunner(projectRoot)
-		
+
 		// Add sample mutations
 		runner.Results.Mutations = []MutationResult{
 			{Type: "ArithmeticReplacement", Status: "killed"},
@@ -206,11 +206,11 @@ func TestMutationQualityMetrics(t *testing.T) {
 		}
 
 		typeStats := runner.analyzeMutationTypes()
-		
+
 		assert.Equal(t, 2, typeStats["ArithmeticReplacement"].Total)
 		assert.Equal(t, 1, typeStats["ArithmeticReplacement"].Killed)
 		assert.Equal(t, 1, typeStats["ArithmeticReplacement"].Survived)
-		
+
 		assert.Equal(t, 2, typeStats["ComparisonReplacement"].Total)
 		assert.Equal(t, 2, typeStats["ComparisonReplacement"].Killed)
 		assert.Equal(t, 0, typeStats["ComparisonReplacement"].Survived)
@@ -267,7 +267,7 @@ func testPackageMutations(t *testing.T, projectRoot, packagePath string) {
 	assert.GreaterOrEqual(t, runner.Results.MutationScore, 0.0)
 	assert.LessOrEqual(t, runner.Results.MutationScore, 100.0)
 
-	t.Logf("Package %s: Mutation Score %.2f%%, Grade %s", 
+	t.Logf("Package %s: Mutation Score %.2f%%, Grade %s",
 		packagePath, runner.Results.MutationScore, runner.Results.QualityGrade)
 }
 
@@ -402,10 +402,10 @@ func compute(x int) int {
 	// Should find return value mutations
 	foundReturnMutations := false
 	for _, mutation := range mutations {
-		if (mutation.Type == "BooleanReplacement" && 
+		if (mutation.Type == "BooleanReplacement" &&
 			(mutation.Original == "true" || mutation.Original == "false")) ||
-		   (mutation.Type == "NumericReplacement" && 
-			(mutation.Original == "0" || mutation.Original == "1" || mutation.Original == "-1")) {
+			(mutation.Type == "NumericReplacement" &&
+				(mutation.Original == "0" || mutation.Original == "1" || mutation.Original == "-1")) {
 			foundReturnMutations = true
 			break
 		}
@@ -417,11 +417,11 @@ func compute(x int) int {
 func testCICDIntegration(t *testing.T, projectRoot string) {
 	// Test that mutation testing can be integrated into CI/CD pipelines
 	runner := NewMutationTestRunner(projectRoot)
-	
+
 	// Test threshold checking
 	runner.Results.MutationScore = 75.0
 	assert.True(t, runner.Results.MutationScore >= 70.0, "Mutation score should meet CI/CD threshold")
-	
+
 	// Test report generation for CI/CD
 	err := runner.generateReport()
 	// Don't fail if we can't generate report due to missing artifacts dir
@@ -433,27 +433,27 @@ func testCICDIntegration(t *testing.T, projectRoot string) {
 func testCoverageIntegration(t *testing.T, projectRoot string) {
 	// Test integration with code coverage tools
 	runner := NewMutationTestRunner(projectRoot)
-	
+
 	// Mutation testing should complement coverage testing
 	// High coverage doesn't guarantee high mutation score
 	runner.Results.CoverageScore = 95.0
 	runner.Results.MutationScore = 60.0
-	
+
 	assert.True(t, runner.Results.CoverageScore > runner.Results.MutationScore,
 		"High coverage can still have low mutation score, indicating test quality issues")
 }
 
 func testPropertyTestIntegration(t *testing.T, projectRoot string) {
 	// Test that mutation testing works well with property-based testing
-	
+
 	// Property-based tests should have higher mutation scores
 	// because they test more edge cases automatically
-	
+
 	// This is a conceptual test - in practice, you would:
 	// 1. Run mutation testing on code with only example-based tests
 	// 2. Run mutation testing on code with property-based tests
 	// 3. Compare mutation scores
-	
+
 	t.Log("Property-based tests should improve mutation test scores")
 	t.Log("This integration should be measured empirically")
 }
@@ -461,10 +461,10 @@ func testPropertyTestIntegration(t *testing.T, projectRoot string) {
 func createTestFile(t *testing.T, content string) string {
 	tmpDir := t.TempDir()
 	testFile := filepath.Join(tmpDir, "test.go")
-	
+
 	err := os.WriteFile(testFile, []byte(content), 0644)
 	require.NoError(t, err)
-	
+
 	return testFile
 }
 
@@ -506,7 +506,7 @@ func mustParseInt(s string) int {
 func BenchmarkMutationGeneration(b *testing.B) {
 	projectRoot, _ := findProjectRoot()
 	runner := NewMutationTestRunner(projectRoot)
-	
+
 	testCode := `
 package test
 
@@ -581,7 +581,7 @@ func TestAdd(t *testing.T) {
 func createTestFileForBenchmark(content string) string {
 	tmpDir := "/tmp"
 	testFile := filepath.Join(tmpDir, fmt.Sprintf("benchmark_test_%d.go", time.Now().UnixNano()))
-	
+
 	os.WriteFile(testFile, []byte(content), 0644)
 	return testFile
 }

@@ -12,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/khryptorgraphics/ollamamax/ollama-distributed/internal/auth"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/internal/config"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/api"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/consensus"
@@ -153,12 +152,12 @@ func TestOWASPTop10(t *testing.T) {
 
 func setupSecurityTestSuite(t *testing.T) *SecurityTestSuite {
 	ctx := context.Background()
-	
+
 	// Create mock components
 	p2pNode := createMockP2PNode(t)
 	consensusEngine := createMockConsensusEngine(t)
 	schedulerEngine := createMockSchedulerEngine(t)
-	
+
 	// Create API server with security configuration
 	apiConfig := &config.APIConfig{
 		Listen:      ":0", // Random available port
@@ -176,16 +175,16 @@ func setupSecurityTestSuite(t *testing.T) *SecurityTestSuite {
 			MaxAge:           3600,
 		},
 	}
-	
+
 	server, err := api.NewServer(apiConfig, p2pNode, consensusEngine, schedulerEngine)
 	require.NoError(t, err)
-	
+
 	err = server.Start()
 	require.NoError(t, err)
-	
+
 	// Give server time to start
 	time.Sleep(100 * time.Millisecond)
-	
+
 	// Create test client
 	client := &http.Client{
 		Timeout: 10 * time.Second,
@@ -195,7 +194,7 @@ func setupSecurityTestSuite(t *testing.T) *SecurityTestSuite {
 			},
 		},
 	}
-	
+
 	return &SecurityTestSuite{
 		server:  server,
 		baseURL: "http://localhost" + apiConfig.Listen,
@@ -271,10 +270,10 @@ func (s *SecurityTestSuite) testAuthentication(t *testing.T) {
 func (s *SecurityTestSuite) testAuthorization(t *testing.T) {
 	// Test role-based access control
 	endpoints := []struct {
-		method   string
-		path     string
-		minRole  string
-		payload  interface{}
+		method  string
+		path    string
+		minRole string
+		payload interface{}
 	}{
 		{"GET", "/api/v1/health", "user", nil},
 		{"GET", "/api/v1/nodes", "admin", nil},
@@ -291,7 +290,7 @@ func (s *SecurityTestSuite) testAuthorization(t *testing.T) {
 
 			req, _ := http.NewRequest(endpoint.method, s.baseURL+endpoint.path, bytes.NewBuffer(body))
 			req.Header.Set("Content-Type", "application/json")
-			
+
 			// Test with insufficient privileges
 			req.Header.Set("Authorization", "Bearer user-token")
 			resp, err := s.client.Do(req)
@@ -321,9 +320,9 @@ func (s *SecurityTestSuite) testInputValidation(t *testing.T) {
 			path:    "/api/v1/cluster/join",
 		},
 		{
-			name: "deeply nested JSON",
+			name:    "deeply nested JSON",
 			payload: createDeeplyNestedJSON(1000),
-			path: "/api/v1/cluster/join",
+			path:    "/api/v1/cluster/join",
 		},
 		{
 			name: "special characters in node ID",
@@ -392,7 +391,7 @@ func (s *SecurityTestSuite) testInjectionAttacks(t *testing.T) {
 		for _, payload := range injectionPayloads {
 			t.Run(fmt.Sprintf("injection_%s", payload), func(t *testing.T) {
 				url := strings.Replace(endpoint, "{{PAYLOAD}}", payload, -1)
-				
+
 				req, _ := http.NewRequest("GET", s.baseURL+url, nil)
 				req.Header.Set("Authorization", "Bearer "+s.createValidToken())
 
@@ -441,9 +440,9 @@ func (s *SecurityTestSuite) testRateLimiting(t *testing.T) {
 
 func (s *SecurityTestSuite) testCORSSecurity(t *testing.T) {
 	tests := []struct {
-		name           string
-		origin         string
-		shouldAllow    bool
+		name        string
+		origin      string
+		shouldAllow bool
 	}{
 		{
 			name:        "trusted origin",
@@ -478,7 +477,7 @@ func (s *SecurityTestSuite) testCORSSecurity(t *testing.T) {
 			defer resp.Body.Close()
 
 			corsOrigin := resp.Header.Get("Access-Control-Allow-Origin")
-			
+
 			if tt.shouldAllow {
 				assert.Equal(t, tt.origin, corsOrigin)
 			} else {
@@ -493,7 +492,7 @@ func (s *SecurityTestSuite) testCORSSecurity(t *testing.T) {
 func (s *SecurityTestSuite) testTLSSecurity(t *testing.T) {
 	// Test that sensitive endpoints require HTTPS in production
 	// This is a simplified test since we're using HTTP for testing
-	
+
 	securityHeaders := []string{
 		"X-Content-Type-Options",
 		"X-Frame-Options",
@@ -558,7 +557,7 @@ func (s *SecurityTestSuite) testInformationDisclosure(t *testing.T) {
 func (s *SecurityTestSuite) testDoSProtection(t *testing.T) {
 	// Test request size limits
 	largePayload := strings.Repeat("A", 10*1024*1024) // 10MB
-	
+
 	req, _ := http.NewRequest("POST", s.baseURL+"/api/v1/cluster/join", strings.NewReader(largePayload))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+s.createValidToken())
@@ -607,7 +606,7 @@ func (s *SecurityTestSuite) testCryptographicFailures(t *testing.T) {
 func (s *SecurityTestSuite) testInjectionVulnerabilities(t *testing.T) {
 	// Comprehensive injection testing
 	s.testInjectionAttacks(t)
-	
+
 	// Additional NoSQL injection tests
 	noSQLPayloads := []string{
 		`{"$ne": null}`,
@@ -644,7 +643,7 @@ func (s *SecurityTestSuite) testInsecureDesign(t *testing.T) {
 func (s *SecurityTestSuite) testSecurityMisconfiguration(t *testing.T) {
 	// Test security headers and configurations
 	s.testTLSSecurity(t)
-	
+
 	// Test that debug endpoints are disabled
 	debugEndpoints := []string{
 		"/debug/pprof/",
@@ -735,7 +734,7 @@ func (s *SecurityTestSuite) testSSRF(t *testing.T) {
 		requestData := map[string]string{
 			"url": payload,
 		}
-		
+
 		body, _ := json.Marshal(requestData)
 		req, _ := http.NewRequest("POST", s.baseURL+"/api/v1/cluster/join", bytes.NewBuffer(body))
 		req.Header.Set("Content-Type", "application/json")

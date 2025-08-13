@@ -1,10 +1,8 @@
 package security
 
 import (
-	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -12,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -539,10 +536,10 @@ func testKeyRotation(t *testing.T) {
 	t.Run("KeyRotation", func(t *testing.T) {
 		// Test automatic key rotation
 		initialVersion := keyManager.GetCurrentVersion()
-		
+
 		err := keyManager.RotateKeys()
 		assert.NoError(t, err)
-		
+
 		newVersion := keyManager.GetCurrentVersion()
 		assert.Greater(t, newVersion, initialVersion)
 	})
@@ -569,7 +566,7 @@ func testDataEncryptionAtRest(t *testing.T) {
 			encryptedData, metadata, err := storageManager.EncryptForStorage(data)
 			assert.NoError(t, err)
 			assert.NotNil(t, metadata)
-			
+
 			if len(data) > 0 {
 				assert.NotEqual(t, data, encryptedData)
 			}
@@ -596,13 +593,13 @@ func testDataEncryptionInTransit(t *testing.T) {
 	tlsManager := security.NewTLSManager(&security.TLSConfig{
 		MinVersion: tls.VersionTLS12,
 	})
-	
+
 	cert, key, err := tlsManager.GenerateSelfSignedCert("localhost", []string{"127.0.0.1"}, time.Hour)
 	require.NoError(t, err)
-	
+
 	tlsCert, err := tls.X509KeyPair(cert, key)
 	require.NoError(t, err)
-	
+
 	server.TLS = &tls.Config{
 		Certificates: []tls.Certificate{tlsCert},
 	}
@@ -620,7 +617,7 @@ func testDataEncryptionInTransit(t *testing.T) {
 		}
 
 		testData := []byte("Sensitive data to transmit")
-		
+
 		// Send data to server
 		resp, err := client.Post(server.URL, "application/octet-stream", strings.NewReader(string(testData)))
 		assert.NoError(t, err)
@@ -629,7 +626,7 @@ func testDataEncryptionInTransit(t *testing.T) {
 		// Read response
 		responseData := make([]byte, len(testData))
 		resp.Body.Read(responseData)
-		
+
 		assert.Equal(t, testData, responseData)
 		assert.Equal(t, "https", resp.Request.URL.Scheme)
 	})
@@ -649,34 +646,34 @@ func testResourcePermissions(t *testing.T) {
 		DefaultDeny: true,
 		Resources: map[string]*security.ResourceConfig{
 			"models": {
-				Name: "models",
+				Name:    "models",
 				Actions: []string{"read", "write", "delete"},
 				Policies: []*security.Policy{
 					{
-						Effect:    "allow",
-						Actions:   []string{"read"},
-						Roles:     []string{"user", "admin"},
+						Effect:  "allow",
+						Actions: []string{"read"},
+						Roles:   []string{"user", "admin"},
 					},
 					{
-						Effect:    "allow",
-						Actions:   []string{"write", "delete"},
-						Roles:     []string{"admin"},
+						Effect:  "allow",
+						Actions: []string{"write", "delete"},
+						Roles:   []string{"admin"},
 					},
 				},
 			},
 			"nodes": {
-				Name: "nodes",
+				Name:    "nodes",
 				Actions: []string{"read", "manage"},
 				Policies: []*security.Policy{
 					{
-						Effect:    "allow",
-						Actions:   []string{"read"},
-						Roles:     []string{"user", "admin"},
+						Effect:  "allow",
+						Actions: []string{"read"},
+						Roles:   []string{"user", "admin"},
 					},
 					{
-						Effect:    "allow",
-						Actions:   []string{"manage"},
-						Roles:     []string{"admin"},
+						Effect:  "allow",
+						Actions: []string{"manage"},
+						Roles:   []string{"admin"},
 					},
 				},
 			},
@@ -719,15 +716,15 @@ func testActionPermissions(t *testing.T) {
 
 	// Add granular action permissions
 	actions := map[string][]string{
-		"model:create":    {"admin"},
-		"model:read":      {"admin", "user"},
-		"model:update":    {"admin"},
-		"model:delete":    {"admin"},
-		"model:download":  {"admin", "user"},
-		"node:join":       {"admin"},
-		"node:leave":      {"admin", "self"},
-		"cluster:status":  {"admin", "user"},
-		"cluster:config":  {"admin"},
+		"model:create":   {"admin"},
+		"model:read":     {"admin", "user"},
+		"model:update":   {"admin"},
+		"model:delete":   {"admin"},
+		"model:download": {"admin", "user"},
+		"node:join":      {"admin"},
+		"node:leave":     {"admin", "self"},
+		"cluster:status": {"admin", "user"},
+		"cluster:config": {"admin"},
 	}
 
 	for action, allowedRoles := range actions {
@@ -779,7 +776,7 @@ func testConditionalAccess(t *testing.T) {
 				},
 				"days": []string{"monday", "tuesday", "wednesday", "thursday", "friday"},
 			},
-			Effect: "allow",
+			Effect:  "allow",
 			Actions: []string{"model:read", "model:download"},
 		},
 		{
@@ -787,7 +784,7 @@ func testConditionalAccess(t *testing.T) {
 			Conditions: map[string]interface{}{
 				"ip_ranges": []string{"10.0.0.0/8", "192.168.0.0/16"},
 			},
-			Effect: "allow",
+			Effect:  "allow",
 			Actions: []string{"*"},
 		},
 		{
@@ -795,7 +792,7 @@ func testConditionalAccess(t *testing.T) {
 			Conditions: map[string]interface{}{
 				"device_trust_level": "high",
 			},
-			Effect: "allow",
+			Effect:  "allow",
 			Actions: []string{"model:create", "model:delete"},
 		},
 	}
@@ -805,17 +802,17 @@ func testConditionalAccess(t *testing.T) {
 	}
 
 	testCases := []struct {
-		name       string
-		action     string
-		context    map[string]interface{}
-		allowed    bool
+		name    string
+		action  string
+		context map[string]interface{}
+		allowed bool
 	}{
 		{
 			name:   "business_hours_access",
 			action: "model:read",
 			context: map[string]interface{}{
-				"time":    "14:30",
-				"day":     "wednesday",
+				"time": "14:30",
+				"day":  "wednesday",
 			},
 			allowed: true,
 		},
@@ -823,8 +820,8 @@ func testConditionalAccess(t *testing.T) {
 			name:   "after_hours_access",
 			action: "model:read",
 			context: map[string]interface{}{
-				"time":    "20:30",
-				"day":     "wednesday",
+				"time": "20:30",
+				"day":  "wednesday",
 			},
 			allowed: false,
 		},
@@ -883,9 +880,9 @@ func testPermissionInheritance(t *testing.T) {
 
 	// Define base permissions
 	basePermissions := map[string][]string{
-		"guest": {"model:read"},
-		"user":  {"model:download", "cluster:status"},
-		"admin": {"model:create", "model:update", "model:delete", "node:manage"},
+		"guest":       {"model:read"},
+		"user":        {"model:download", "cluster:status"},
+		"admin":       {"model:create", "model:update", "model:delete", "node:manage"},
 		"super_admin": {"cluster:config", "system:admin"},
 	}
 
@@ -905,15 +902,15 @@ func testPermissionInheritance(t *testing.T) {
 
 	t.Run("InheritedPermissions", func(t *testing.T) {
 		// Test inherited permissions
-		
+
 		// User should inherit guest permissions
 		assert.True(t, authz.HasPermission("user", "model:read"))
-		
+
 		// Admin should inherit user and guest permissions
 		assert.True(t, authz.HasPermission("admin", "model:read"))
 		assert.True(t, authz.HasPermission("admin", "model:download"))
 		assert.True(t, authz.HasPermission("admin", "cluster:status"))
-		
+
 		// Super admin should inherit all permissions
 		assert.True(t, authz.HasPermission("super_admin", "model:read"))
 		assert.True(t, authz.HasPermission("super_admin", "model:download"))
@@ -953,7 +950,7 @@ func testEndToEndAuth(t *testing.T) {
 			Algorithm: "AES-256-GCM",
 		},
 		Audit: &security.AuditConfig{
-			Enabled: true,
+			Enabled:  true,
 			LogLevel: "info",
 		},
 	})
@@ -1024,7 +1021,7 @@ func testSecurityMiddleware(t *testing.T) {
 		// Create request with token
 		req := httptest.NewRequest("GET", "/test", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
-		
+
 		w := httptest.NewRecorder()
 		secureHandler.ServeHTTP(w, req)
 
@@ -1036,7 +1033,7 @@ func testSecurityMiddleware(t *testing.T) {
 		// Create request with invalid token
 		req := httptest.NewRequest("GET", "/test", nil)
 		req.Header.Set("Authorization", "Bearer invalid-token")
-		
+
 		w := httptest.NewRecorder()
 		secureHandler.ServeHTTP(w, req)
 
@@ -1046,7 +1043,7 @@ func testSecurityMiddleware(t *testing.T) {
 	t.Run("MissingToken", func(t *testing.T) {
 		// Create request without token
 		req := httptest.NewRequest("GET", "/test", nil)
-		
+
 		w := httptest.NewRecorder()
 		secureHandler.ServeHTTP(w, req)
 
@@ -1104,19 +1101,19 @@ func testAuditLogging(t *testing.T) {
 	t.Run("AuthorizationEvents", func(t *testing.T) {
 		events := []security.AuditEvent{
 			{
-				Type:     "authorization",
-				Action:   "model:read",
-				UserID:   "testuser",
-				Resource: "model-123",
-				Result:   "success",
+				Type:      "authorization",
+				Action:    "model:read",
+				UserID:    "testuser",
+				Resource:  "model-123",
+				Result:    "success",
 				Timestamp: time.Now(),
 			},
 			{
-				Type:     "authorization",
-				Action:   "model:delete",
-				UserID:   "testuser",
-				Resource: "model-123",
-				Result:   "denied",
+				Type:      "authorization",
+				Action:    "model:delete",
+				UserID:    "testuser",
+				Resource:  "model-123",
+				Result:    "denied",
 				Timestamp: time.Now(),
 				Metadata: map[string]interface{}{
 					"reason": "insufficient permissions",
@@ -1197,7 +1194,7 @@ func BenchmarkSecurity(b *testing.B) {
 	encManager := security.NewEncryptionManager(&security.EncryptionConfig{
 		Algorithm: "AES-256-GCM",
 	})
-	
+
 	key, _ := encManager.GenerateKey()
 	testData := make([]byte, 1024) // 1KB
 

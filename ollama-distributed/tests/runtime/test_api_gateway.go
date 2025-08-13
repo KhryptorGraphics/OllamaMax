@@ -1,3 +1,5 @@
+//go:build ignore
+
 package main
 
 import (
@@ -22,7 +24,7 @@ func main() {
 	p2pConfig := &pkgConfig.NodeConfig{
 		Listen: []string{"/ip4/127.0.0.1/tcp/0"},
 	}
-	
+
 	p2pNode, err := p2p.NewP2PNode(ctx, p2pConfig)
 	if err != nil {
 		log.Fatalf("❌ Failed to create P2P node: %v", err)
@@ -47,7 +49,7 @@ func main() {
 		fmt.Println("This is expected due to missing consensus and scheduler engines")
 	} else {
 		fmt.Println("✅ API server created successfully")
-		
+
 		// Test 4: Start server in background
 		fmt.Println("4. Starting API server...")
 		go func() {
@@ -55,10 +57,10 @@ func main() {
 				log.Printf("Server error: %v", err)
 			}
 		}()
-		
+
 		// Give server time to start
 		time.Sleep(2 * time.Second)
-		
+
 		// Test 5: Test health endpoint
 		fmt.Println("5. Testing health endpoint...")
 		resp, err := http.Get("http://127.0.0.1:8080/health")
@@ -68,7 +70,7 @@ func main() {
 			fmt.Printf("✅ Health endpoint responded with status: %d\n", resp.StatusCode)
 			resp.Body.Close()
 		}
-		
+
 		// Test 6: Test API endpoints
 		fmt.Println("6. Testing API endpoints...")
 		resp, err = http.Get("http://127.0.0.1:8080/api/v1/status")

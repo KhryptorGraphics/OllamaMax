@@ -268,8 +268,9 @@ func TestEngine_LeadershipMonitoring(t *testing.T) {
 	wg.Wait()
 
 	// Should have received at least one leadership event
-	assert.NotEmpty(t, leadershipEvents)
-	assert.True(t, leadershipEvents[len(leadershipEvents)-1], "should be leader")
+	if assert.NotEmpty(t, leadershipEvents) {
+		assert.True(t, leadershipEvents[len(leadershipEvents)-1], "should be leader")
+	}
 }
 
 // TestEngine_Stats tests statistics

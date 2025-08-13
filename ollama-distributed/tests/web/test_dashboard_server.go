@@ -1,4 +1,6 @@
-package main
+//go:build ignore
+
+package web_tests
 
 import (
 	"encoding/json"
@@ -55,7 +57,7 @@ type Optimizations struct {
 	TotalOptimizations int `json:"totalOptimizations"`
 }
 
-func main() {
+func TestDashboardServer() {
 	fmt.Println("Starting Web Dashboard Test Server...")
 
 	// Get the project root directory

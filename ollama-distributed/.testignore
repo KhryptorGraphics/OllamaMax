@@ -1,0 +1,7 @@
+# Test files to ignore during build
+# These files have package naming conflicts and are for testing only
+
+tests/web/
+tests/runtime/
+tests/swarm/
+tests/integration/

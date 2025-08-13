@@ -3,7 +3,6 @@ package p2p
 import (
 	"context"
 	"fmt"
-	"net"
 	"sync"
 	"testing"
 	"time"
@@ -14,7 +13,6 @@ import (
 
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p/discovery"
-	"github.com/khryptorgraphics/ollamamax/ollama-distributed/tests/integration"
 )
 
 // P2PTestSuite provides comprehensive P2P networking tests
@@ -28,7 +26,7 @@ type P2PTestSuite struct {
 // NewP2PTestSuite creates a new P2P test suite
 func NewP2PTestSuite(nodeCount int) (*P2PTestSuite, error) {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	suite := &P2PTestSuite{
 		nodes:  make([]*p2p.Node, 0, nodeCount),
 		ctx:    ctx,
@@ -105,11 +103,11 @@ func (suite *P2PTestSuite) testNodeStartup(t *testing.T) {
 
 		// Verify node is running
 		assert.True(t, node.IsRunning(), "Node %d should be running", i)
-		
+
 		// Check listening addresses
 		addrs := node.GetListenAddresses()
 		assert.NotEmpty(t, addrs, "Node %d should have listening addresses", i)
-		
+
 		// Verify peer ID
 		peerID := node.GetPeerID()
 		assert.NotEmpty(t, peerID, "Node %d should have a peer ID", i)
@@ -141,11 +139,11 @@ func (suite *P2PTestSuite) testPeerDiscovery(t *testing.T) {
 			peers := node.GetConnectedPeers()
 			if i == 0 {
 				// Bootstrap node should have connections to all others
-				assert.GreaterOrEqual(t, len(peers), len(suite.nodes)-1, 
+				assert.GreaterOrEqual(t, len(peers), len(suite.nodes)-1,
 					"Bootstrap node should be connected to other nodes")
 			} else {
 				// Other nodes should at least be connected to bootstrap
-				assert.GreaterOrEqual(t, len(peers), 1, 
+				assert.GreaterOrEqual(t, len(peers), 1,
 					"Node %d should be connected to at least bootstrap", i)
 			}
 		}
@@ -181,11 +179,11 @@ func (suite *P2PTestSuite) testDHTBasedDiscovery(t *testing.T) {
 	// Test peer discovery through DHT
 	for i, node := range suite.nodes {
 		dht := node.GetDHT()
-		
+
 		// Find peers providing a specific service
 		peers, err := dht.FindProviders(suite.ctx, "ollama-service")
 		assert.NoError(t, err, "Finding providers should not error")
-		
+
 		t.Logf("Node %d found %d providers", i, len(peers))
 	}
 }
@@ -205,7 +203,7 @@ func (suite *P2PTestSuite) testMDNSDiscovery(t *testing.T) {
 	for i, node := range suite.nodes {
 		localPeers := node.GetLocalPeers()
 		// Each node should discover at least some other local nodes
-		assert.GreaterOrEqual(t, len(localPeers), 1, 
+		assert.GreaterOrEqual(t, len(localPeers), 1,
 			"Node %d should discover local peers via mDNS", i)
 	}
 }
@@ -227,7 +225,7 @@ func (suite *P2PTestSuite) testRendezvousDiscovery(t *testing.T) {
 	for i, node := range suite.nodes {
 		peers, err := node.DiscoverPeersAtRendezvous(suite.ctx, rendezvousString)
 		assert.NoError(t, err, "Node %d should discover peers at rendezvous", i)
-		assert.GreaterOrEqual(t, len(peers), 1, 
+		assert.GreaterOrEqual(t, len(peers), 1,
 			"Node %d should find peers at rendezvous", i)
 	}
 }
@@ -258,17 +256,17 @@ func (suite *P2PTestSuite) testNetworkTopology(t *testing.T) {
 func (suite *P2PTestSuite) testConnectivityMatrix(t *testing.T) {
 	nodeCount := len(suite.nodes)
 	connectivity := make([][]bool, nodeCount)
-	
+
 	for i := 0; i < nodeCount; i++ {
 		connectivity[i] = make([]bool, nodeCount)
 		connectedPeers := suite.nodes[i].GetConnectedPeers()
-		
+
 		for j := 0; j < nodeCount; j++ {
 			if i == j {
 				connectivity[i][j] = true // Self connection
 				continue
 			}
-			
+
 			targetPeerID := suite.nodes[j].GetPeerID()
 			for _, peer := range connectedPeers {
 				if peer == targetPeerID {
@@ -292,8 +290,8 @@ func (suite *P2PTestSuite) testConnectivityMatrix(t *testing.T) {
 	// In a well-connected network, we should have good connectivity
 	totalPossiblePairs := nodeCount * (nodeCount - 1) / 2
 	connectivityRatio := float64(connectedPairs) / float64(totalPossiblePairs)
-	
-	assert.Greater(t, connectivityRatio, 0.5, 
+
+	assert.Greater(t, connectivityRatio, 0.5,
 		"Network should have good connectivity (>50%% of possible connections)")
 }
 
@@ -301,25 +299,25 @@ func (suite *P2PTestSuite) testConnectivityMatrix(t *testing.T) {
 func (suite *P2PTestSuite) testNetworkDiameter(t *testing.T) {
 	// Use BFS to find shortest paths between all node pairs
 	maxDiameter := suite.calculateNetworkDiameter()
-	
+
 	// Network diameter should be reasonable for a P2P network
-	assert.LessOrEqual(t, maxDiameter, 3, 
+	assert.LessOrEqual(t, maxDiameter, 3,
 		"Network diameter should be ≤ 3 for good performance")
 }
 
 // testClusteringCoefficient tests network clustering
 func (suite *P2PTestSuite) testClusteringCoefficient(t *testing.T) {
 	avgClustering := suite.calculateClusteringCoefficient()
-	
+
 	// Good P2P networks have decent clustering
-	assert.Greater(t, avgClustering, 0.3, 
+	assert.Greater(t, avgClustering, 0.3,
 		"Network should have good clustering (>0.3)")
 }
 
 // testLoadBalancing tests connection load balancing
 func (suite *P2PTestSuite) testLoadBalancing(t *testing.T) {
 	connectionCounts := make([]int, len(suite.nodes))
-	
+
 	for i, node := range suite.nodes {
 		connectionCounts[i] = len(node.GetConnectedPeers())
 	}
@@ -339,7 +337,7 @@ func (suite *P2PTestSuite) testLoadBalancing(t *testing.T) {
 	stddev := variance
 
 	// Standard deviation should be low for good load balancing
-	assert.Less(t, stddev, mean/2, 
+	assert.Less(t, stddev, mean/2,
 		"Connection load should be well balanced across nodes")
 }
 
@@ -372,7 +370,7 @@ func (suite *P2PTestSuite) testDirectMessaging(t *testing.T) {
 	receiver := suite.nodes[1]
 
 	message := []byte("Hello from peer-to-peer network!")
-	
+
 	// Send message
 	err := sender.SendMessage(suite.ctx, receiver.GetPeerID(), message)
 	require.NoError(t, err, "Direct message should be sent successfully")
@@ -382,9 +380,9 @@ func (suite *P2PTestSuite) testDirectMessaging(t *testing.T) {
 
 	// Check if message was received
 	receivedMessages := receiver.GetReceivedMessages()
-	assert.GreaterOrEqual(t, len(receivedMessages), 1, 
+	assert.GreaterOrEqual(t, len(receivedMessages), 1,
 		"Receiver should have received at least one message")
-	
+
 	// Verify message content
 	found := false
 	for _, msg := range receivedMessages {
@@ -411,7 +409,7 @@ func (suite *P2PTestSuite) testBroadcastMessaging(t *testing.T) {
 	// Verify all other nodes received the broadcast
 	for i := 1; i < len(suite.nodes); i++ {
 		receivedMessages := suite.nodes[i].GetReceivedMessages()
-		
+
 		found := false
 		for _, msg := range receivedMessages {
 			if string(msg.Data) == string(broadcastMessage) {
@@ -426,13 +424,13 @@ func (suite *P2PTestSuite) testBroadcastMessaging(t *testing.T) {
 // testMulticastMessaging tests multicast messaging
 func (suite *P2PTestSuite) testMulticastMessaging(t *testing.T) {
 	sender := suite.nodes[0]
-	
+
 	// Select subset of nodes for multicast
 	targetPeers := []peer.ID{
 		suite.nodes[1].GetPeerID(),
 		suite.nodes[2].GetPeerID(),
 	}
-	
+
 	multicastMessage := []byte("Multicast message to selected peers!")
 
 	// Send multicast message
@@ -491,7 +489,7 @@ func (suite *P2PTestSuite) testStreamingMessages(t *testing.T) {
 	// Send multiple messages through stream
 	messageCount := 10
 	messages := make([][]byte, messageCount)
-	
+
 	for i := 0; i < messageCount; i++ {
 		messages[i] = []byte(fmt.Sprintf("Stream message %d", i))
 		_, err := stream.Write(messages[i])
@@ -503,7 +501,7 @@ func (suite *P2PTestSuite) testStreamingMessages(t *testing.T) {
 
 	// Verify messages were received in order
 	receivedStreams := receiver.GetActiveStreams()
-	assert.GreaterOrEqual(t, len(receivedStreams), 1, 
+	assert.GreaterOrEqual(t, len(receivedStreams), 1,
 		"Receiver should have active streams")
 }
 
@@ -525,7 +523,7 @@ func (suite *P2PTestSuite) testMessageOrdering(t *testing.T) {
 
 	// Verify message ordering
 	orderedMessages := receiver.GetOrderedMessages()
-	assert.GreaterOrEqual(t, len(orderedMessages), messageCount, 
+	assert.GreaterOrEqual(t, len(orderedMessages), messageCount,
 		"Should receive all ordered messages")
 
 	// Check sequence
@@ -554,8 +552,8 @@ func (suite *P2PTestSuite) testNetworkPartitions(t *testing.T) {
 // testSplitBrainPrevention tests split-brain prevention
 func (suite *P2PTestSuite) testSplitBrainPrevention(t *testing.T) {
 	// Create network partition by disconnecting nodes
-	partition1 := suite.nodes[:2]  // Nodes 0, 1
-	partition2 := suite.nodes[2:]  // Nodes 2, 3, 4
+	partition1 := suite.nodes[:2] // Nodes 0, 1
+	partition2 := suite.nodes[2:] // Nodes 2, 3, 4
 
 	// Disconnect partitions
 	for _, node1 := range partition1 {
@@ -582,7 +580,7 @@ func (suite *P2PTestSuite) testSplitBrainPrevention(t *testing.T) {
 	// Both partitions should avoid split-brain by stopping operations
 	for _, node := range suite.nodes {
 		operationsBlocked := node.AreOperationsBlocked()
-		assert.True(t, operationsBlocked, 
+		assert.True(t, operationsBlocked,
 			"Operations should be blocked during partition")
 	}
 }
@@ -594,7 +592,7 @@ func (suite *P2PTestSuite) testPartitionHealing(t *testing.T) {
 	bootstrapAddrs := bootstrapNode.GetListenAddresses()
 
 	for i := 1; i < len(suite.nodes); i++ {
-		err := suite.nodes[i].ConnectToPeer(suite.ctx, 
+		err := suite.nodes[i].ConnectToPeer(suite.ctx,
 			bootstrapNode.GetPeerID(), bootstrapAddrs[0])
 		assert.NoError(t, err, "Reconnection should succeed")
 	}
@@ -608,7 +606,7 @@ func (suite *P2PTestSuite) testPartitionHealing(t *testing.T) {
 		assert.False(t, partitionDetected, "Node %d should detect healed partition", i)
 
 		operationsBlocked := node.AreOperationsBlocked()
-		assert.False(t, operationsBlocked, 
+		assert.False(t, operationsBlocked,
 			"Operations should resume after partition healing")
 	}
 
@@ -634,16 +632,16 @@ func (suite *P2PTestSuite) testMessageDeliveryDuringPartition(t *testing.T) {
 
 	message := []byte("Cross-partition message")
 	err := sender.SendMessage(suite.ctx, receiver.GetPeerID(), message)
-	
+
 	// Message should fail or be queued
 	if err == nil {
 		// If no error, message should be queued for later delivery
 		queuedMessages := sender.GetQueuedMessages()
-		assert.GreaterOrEqual(t, len(queuedMessages), 1, 
+		assert.GreaterOrEqual(t, len(queuedMessages), 1,
 			"Message should be queued during partition")
 	} else {
 		// Error is acceptable during partition
-		assert.Contains(t, err.Error(), "partition", 
+		assert.Contains(t, err.Error(), "partition",
 			"Error should indicate partition issue")
 	}
 }
@@ -679,10 +677,10 @@ func (suite *P2PTestSuite) testGracefulShutdown(t *testing.T) {
 	// Verify other nodes detected the departure
 	for i, node := range suite.nodes[:len(suite.nodes)-1] {
 		connectedPeers := node.GetConnectedPeers()
-		
+
 		// Should not be connected to shutdown node
 		for _, peer := range connectedPeers {
-			assert.NotEqual(t, shutdownPeerID, peer, 
+			assert.NotEqual(t, shutdownPeerID, peer,
 				"Node %d should not be connected to shutdown peer", i)
 		}
 	}
@@ -708,7 +706,7 @@ func (suite *P2PTestSuite) testUnexpectedFailure(t *testing.T) {
 	// Verify other nodes detected the failure
 	for i, node := range suite.nodes[:len(suite.nodes)-2] {
 		connectedPeers := node.GetConnectedPeers()
-		
+
 		// Should detect disconnection
 		connected := false
 		for _, peer := range connectedPeers {
@@ -717,7 +715,7 @@ func (suite *P2PTestSuite) testUnexpectedFailure(t *testing.T) {
 				break
 			}
 		}
-		assert.False(t, connected, 
+		assert.False(t, connected,
 			"Node %d should detect failed peer disconnection", i)
 	}
 }
@@ -735,7 +733,7 @@ func (suite *P2PTestSuite) testPeerRecovery(t *testing.T) {
 
 	// Connect to existing network
 	bootstrapNode := suite.nodes[0]
-	err = recoveredNode.ConnectToPeer(suite.ctx, 
+	err = recoveredNode.ConnectToPeer(suite.ctx,
 		bootstrapNode.GetPeerID(), bootstrapNode.GetListenAddresses()[0])
 	require.NoError(t, err, "Recovery node should connect to network")
 
@@ -744,7 +742,7 @@ func (suite *P2PTestSuite) testPeerRecovery(t *testing.T) {
 
 	// Verify recovered node is integrated
 	connectedPeers := recoveredNode.GetConnectedPeers()
-	assert.GreaterOrEqual(t, len(connectedPeers), 1, 
+	assert.GreaterOrEqual(t, len(connectedPeers), 1,
 		"Recovered node should be connected to network")
 
 	// Add to test suite for cleanup
@@ -785,7 +783,7 @@ func (suite *P2PTestSuite) testProtocolNegotiation(t *testing.T) {
 func (suite *P2PTestSuite) testNetworkCongestion(t *testing.T) {
 	// Simulate network congestion by sending many messages simultaneously
 	sender := suite.nodes[0]
-	
+
 	var wg sync.WaitGroup
 	messageCount := 100
 	concurrency := 10
@@ -795,14 +793,14 @@ func (suite *P2PTestSuite) testNetworkCongestion(t *testing.T) {
 		wg.Add(1)
 		go func(workerID int) {
 			defer wg.Done()
-			
+
 			for j := 0; j < messageCount/concurrency; j++ {
 				message := []byte(fmt.Sprintf("Congestion test: worker %d, message %d", workerID, j))
-				
+
 				// Send to random peer
 				targetNode := suite.nodes[1+(workerID+j)%len(suite.nodes[1:])]
 				err := sender.SendMessage(suite.ctx, targetNode.GetPeerID(), message)
-				
+
 				// Some messages may fail due to congestion, which is acceptable
 				if err != nil {
 					t.Logf("Message failed due to congestion: %v", err)
@@ -881,7 +879,7 @@ func (suite *P2PTestSuite) testDHTProviders(t *testing.T) {
 	// Find providers
 	providers, err := dht2.FindProviders(suite.ctx, serviceKey)
 	require.NoError(t, err, "Finding providers should succeed")
-	
+
 	// Should find node1 as provider
 	found := false
 	for _, provider := range providers {
@@ -901,12 +899,12 @@ func (suite *P2PTestSuite) testDHTRouting(t *testing.T) {
 
 		// Get routing table size
 		routingTableSize := dht.GetRoutingTableSize()
-		assert.GreaterOrEqual(t, routingTableSize, 1, 
+		assert.GreaterOrEqual(t, routingTableSize, 1,
 			"Node %d should have entries in routing table", i)
 
 		// Test routing table consistency
 		closestPeers := dht.GetClosestPeers(node.GetPeerID())
-		assert.LessOrEqual(t, len(closestPeers), routingTableSize, 
+		assert.LessOrEqual(t, len(closestPeers), routingTableSize,
 			"Closest peers should not exceed routing table size")
 	}
 }
@@ -929,24 +927,24 @@ func (suite *P2PTestSuite) testConnectionManagement(t *testing.T) {
 // testConnectionLimits tests connection limit enforcement
 func (suite *P2PTestSuite) testConnectionLimits(t *testing.T) {
 	node := suite.nodes[0]
-	
+
 	// Get current connection count
 	initialConnections := len(node.GetConnectedPeers())
 	maxConnections := node.GetMaxConnections()
 
-	assert.LessOrEqual(t, initialConnections, maxConnections, 
+	assert.LessOrEqual(t, initialConnections, maxConnections,
 		"Current connections should not exceed limit")
 
 	// Test that node doesn't exceed connection limits
 	config := node.GetConfig()
-	assert.Greater(t, config.ConnMgrHigh, config.ConnMgrLow, 
+	assert.Greater(t, config.ConnMgrHigh, config.ConnMgrLow,
 		"High watermark should be greater than low watermark")
 }
 
 // testConnectionPruning tests connection pruning
 func (suite *P2PTestSuite) testConnectionPruning(t *testing.T) {
 	node := suite.nodes[0]
-	
+
 	// Force connection pruning
 	err := node.PruneConnections()
 	assert.NoError(t, err, "Connection pruning should succeed")
@@ -982,7 +980,7 @@ func (suite *P2PTestSuite) testConnectionQuality(t *testing.T) {
 
 func (suite *P2PTestSuite) cleanup() {
 	suite.cancel()
-	
+
 	for _, node := range suite.nodes {
 		if node != nil {
 			node.Shutdown(context.Background())
@@ -1094,12 +1092,12 @@ func createTestP2PConfig(nodeIndex int) *p2p.Config {
 	basePort := 11000 + nodeIndex*10
 
 	return &p2p.Config{
-		Listen:          fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", basePort),
-		BootstrapPeers:  []string{},
-		EnableDHT:       true,
-		EnableMDNS:      true,
-		ConnMgrLow:      10,
-		ConnMgrHigh:     100,
+		Listen:             fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", basePort),
+		BootstrapPeers:     []string{},
+		EnableDHT:          true,
+		EnableMDNS:         true,
+		ConnMgrLow:         10,
+		ConnMgrHigh:        100,
 		ConnMgrGracePeriod: 30 * time.Second,
 	}
 }
@@ -1118,7 +1116,7 @@ func BenchmarkP2PMessagePassing(b *testing.B) {
 
 	// Connect nodes
 	for i := 1; i < len(suite.nodes); i++ {
-		err := suite.nodes[i].ConnectToPeer(suite.ctx, 
+		err := suite.nodes[i].ConnectToPeer(suite.ctx,
 			suite.nodes[0].GetPeerID(), suite.nodes[0].GetListenAddresses()[0])
 		require.NoError(b, err)
 	}

@@ -86,17 +86,17 @@ func NewWebServer(config *Config, apiServer *api.Server) *WebServer {
 func (ws *WebServer) setupRouter() {
 	// Set Gin mode based on environment
 	gin.SetMode(gin.ReleaseMode)
-	
+
 	ws.router = gin.New()
-	
+
 	// Add middleware
 	ws.router.Use(gin.Logger())
 	ws.router.Use(gin.Recovery())
 	ws.router.Use(ws.corsMiddleware())
-	
+
 	// Add security headers
 	ws.router.Use(ws.securityHeadersMiddleware())
-	
+
 	// Add metrics middleware
 	ws.router.Use(observability.GinMetricsMiddleware())
 
@@ -142,7 +142,7 @@ func (ws *WebServer) setupStaticFiles() {
 	// Serve main web application
 	ws.router.GET("/", ws.serveIndex)
 	ws.router.GET("/index.html", ws.serveIndex)
-	
+
 	// Serve web application for all other routes (SPA routing)
 	ws.router.NoRoute(ws.serveIndex)
 }
@@ -172,12 +172,12 @@ func (ws *WebServer) corsMiddleware() gin.HandlerFunc {
 		c.Header("Access-Control-Allow-Origin", "*")
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization")
-		
+
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(http.StatusNoContent)
 			return
 		}
-		
+
 		c.Next()
 	}
 }
@@ -189,7 +189,7 @@ func (ws *WebServer) securityHeadersMiddleware() gin.HandlerFunc {
 		c.Header("X-Frame-Options", "DENY")
 		c.Header("X-XSS-Protection", "1; mode=block")
 		c.Header("Referrer-Policy", "strict-origin-when-cross-origin")
-		
+
 		c.Next()
 	}
 }
@@ -198,7 +198,7 @@ func (ws *WebServer) securityHeadersMiddleware() gin.HandlerFunc {
 func (ws *WebServer) proxyToAPI(c *gin.Context) {
 	// Extract the API path
 	apiPath := strings.TrimPrefix(c.Request.URL.Path, "/api")
-	
+
 	// Forward the request to the API server
 	// This is a simplified proxy - in production, you might want to use a proper reverse proxy
 	c.JSON(http.StatusOK, gin.H{

@@ -16,7 +16,7 @@ func (cas *ConcatAggregationStrategy) GetName() string {
 
 func (cas *ConcatAggregationStrategy) Aggregate(context *AggregationContext) (*AggregatedResponse, error) {
 	start := time.Now()
-	
+
 	// Concatenate all partial results
 	results := make([]interface{}, 0)
 	for _, partial := range context.PartialResults {
@@ -24,11 +24,11 @@ func (cas *ConcatAggregationStrategy) Aggregate(context *AggregationContext) (*A
 			results = append(results, partial.Data)
 		}
 	}
-	
+
 	return &AggregatedResponse{
-		TaskID:    context.TaskID,
-		Strategy:  cas.GetName(),
-		Data:      results,
+		TaskID:   context.TaskID,
+		Strategy: cas.GetName(),
+		Data:     results,
 		Metadata: map[string]interface{}{
 			"concatenated_count": len(results),
 			"total_partitions":   len(context.PartialResults),
@@ -49,11 +49,11 @@ func (aas *AverageAggregationStrategy) GetName() string {
 
 func (aas *AverageAggregationStrategy) Aggregate(context *AggregationContext) (*AggregatedResponse, error) {
 	start := time.Now()
-	
+
 	// Average numeric results
 	var total float64
 	var count int
-	
+
 	for _, partial := range context.PartialResults {
 		if partial.Error == "" {
 			if value, ok := partial.Data.(float64); ok {
@@ -62,17 +62,17 @@ func (aas *AverageAggregationStrategy) Aggregate(context *AggregationContext) (*
 			}
 		}
 	}
-	
+
 	if count == 0 {
 		return nil, fmt.Errorf("no valid numeric results to average")
 	}
-	
+
 	average := total / float64(count)
-	
+
 	return &AggregatedResponse{
-		TaskID:    context.TaskID,
-		Strategy:  aas.GetName(),
-		Data:      average,
+		TaskID:   context.TaskID,
+		Strategy: aas.GetName(),
+		Data:     average,
 		Metadata: map[string]interface{}{
 			"total_sum":        total,
 			"count":            count,
@@ -95,11 +95,11 @@ func (was *WeightedAggregationStrategy) GetName() string {
 
 func (was *WeightedAggregationStrategy) Aggregate(context *AggregationContext) (*AggregatedResponse, error) {
 	start := time.Now()
-	
+
 	// Perform weighted aggregation
 	var weightedSum float64
 	var totalWeight float64
-	
+
 	for _, partial := range context.PartialResults {
 		if partial.Error == "" {
 			if value, ok := partial.Data.(float64); ok {
@@ -110,23 +110,23 @@ func (was *WeightedAggregationStrategy) Aggregate(context *AggregationContext) (
 						weight = weightVal
 					}
 				}
-				
+
 				weightedSum += value * weight
 				totalWeight += weight
 			}
 		}
 	}
-	
+
 	if totalWeight == 0 {
 		return nil, fmt.Errorf("no valid weighted results to aggregate")
 	}
-	
+
 	weightedAverage := weightedSum / totalWeight
-	
+
 	return &AggregatedResponse{
-		TaskID:    context.TaskID,
-		Strategy:  was.GetName(),
-		Data:      weightedAverage,
+		TaskID:   context.TaskID,
+		Strategy: was.GetName(),
+		Data:     weightedAverage,
 		Metadata: map[string]interface{}{
 			"weighted_sum":     weightedSum,
 			"total_weight":     totalWeight,
@@ -152,7 +152,7 @@ func (rrps *RoundRobinPartitioningStrategy) Partition(request *OrchestrationRequ
 	// Simple round-robin partitioning
 	nodeCount := 3 // Mock node count
 	partitions := make([]*TaskPartition, nodeCount)
-	
+
 	for i := 0; i < nodeCount; i++ {
 		partitions[i] = &TaskPartition{
 			ID:           fmt.Sprintf("partition_%d", i),
@@ -161,18 +161,18 @@ func (rrps *RoundRobinPartitioningStrategy) Partition(request *OrchestrationRequ
 			Data:         fmt.Sprintf("partition_data_%d", i),
 			Dependencies: []string{},
 			Metadata: map[string]interface{}{
-				"partition_index": i,
+				"partition_index":  i,
 				"total_partitions": nodeCount,
 			},
 		}
 	}
-	
+
 	return &PartitionPlan{
-		ID:        fmt.Sprintf("plan_%d", time.Now().UnixNano()),
-		Strategy:  rrps.GetName(),
+		ID:         fmt.Sprintf("plan_%d", time.Now().UnixNano()),
+		Strategy:   rrps.GetName(),
 		Partitions: partitions,
 		Metadata: map[string]interface{}{
-			"strategy": "round_robin",
+			"strategy":   "round_robin",
 			"node_count": nodeCount,
 		},
 		CreatedAt: time.Now(),
@@ -195,14 +195,14 @@ func (lbps *LoadBasedPartitioningStrategy) Partition(request *OrchestrationReque
 		"node_1": 0.7,
 		"node_2": 0.5,
 	}
-	
+
 	partitions := make([]*TaskPartition, 0)
 	partitionIndex := 0
-	
+
 	for nodeID, load := range nodeLoads {
 		// Assign more partitions to nodes with lower load
-		partitionCount := int((1.0 - load) * 3) + 1
-		
+		partitionCount := int((1.0-load)*3) + 1
+
 		for i := 0; i < partitionCount; i++ {
 			partitions = append(partitions, &TaskPartition{
 				ID:           fmt.Sprintf("partition_%d", partitionIndex),
@@ -211,21 +211,21 @@ func (lbps *LoadBasedPartitioningStrategy) Partition(request *OrchestrationReque
 				Data:         fmt.Sprintf("partition_data_%d", partitionIndex),
 				Dependencies: []string{},
 				Metadata: map[string]interface{}{
-					"node_load": load,
+					"node_load":        load,
 					"partition_weight": 1.0 - load,
 				},
 			})
 			partitionIndex++
 		}
 	}
-	
+
 	return &PartitionPlan{
-		ID:        fmt.Sprintf("plan_%d", time.Now().UnixNano()),
-		Strategy:  lbps.GetName(),
+		ID:         fmt.Sprintf("plan_%d", time.Now().UnixNano()),
+		Strategy:   lbps.GetName(),
 		Partitions: partitions,
 		Metadata: map[string]interface{}{
-			"strategy": "load_based",
-			"node_loads": nodeLoads,
+			"strategy":         "load_based",
+			"node_loads":       nodeLoads,
 			"total_partitions": len(partitions),
 		},
 		CreatedAt: time.Now(),
@@ -248,10 +248,10 @@ func (cbps *CapabilityBasedPartitioningStrategy) Partition(request *Orchestratio
 		"node_1": {"gpu", "memory"},
 		"node_2": {"cpu", "gpu", "memory"},
 	}
-	
+
 	partitions := make([]*TaskPartition, 0)
 	partitionIndex := 0
-	
+
 	for nodeID, capabilities := range nodeCapabilities {
 		// Assign partitions based on capabilities
 		for _, capability := range capabilities {
@@ -263,21 +263,21 @@ func (cbps *CapabilityBasedPartitioningStrategy) Partition(request *Orchestratio
 				Dependencies: []string{},
 				Metadata: map[string]interface{}{
 					"required_capability": capability,
-					"node_capabilities": capabilities,
+					"node_capabilities":   capabilities,
 				},
 			})
 			partitionIndex++
 		}
 	}
-	
+
 	return &PartitionPlan{
-		ID:        fmt.Sprintf("plan_%d", time.Now().UnixNano()),
-		Strategy:  cbps.GetName(),
+		ID:         fmt.Sprintf("plan_%d", time.Now().UnixNano()),
+		Strategy:   cbps.GetName(),
 		Partitions: partitions,
 		Metadata: map[string]interface{}{
-			"strategy": "capability_based",
+			"strategy":          "capability_based",
 			"node_capabilities": nodeCapabilities,
-			"total_partitions": len(partitions),
+			"total_partitions":  len(partitions),
 		},
 		CreatedAt: time.Now(),
 	}, nil

@@ -17,12 +17,12 @@ import (
 
 // ChaosTestSuite represents a chaos testing suite
 type ChaosTestSuite struct {
-	cluster     *integration.TestCluster
-	running     bool
-	stopCh      chan struct{}
-	mu          sync.RWMutex
-	events      []ChaosEvent
-	scenarios   []ChaosScenario
+	cluster   *integration.TestCluster
+	running   bool
+	stopCh    chan struct{}
+	mu        sync.RWMutex
+	events    []ChaosEvent
+	scenarios []ChaosScenario
 }
 
 // ChaosEvent represents a chaos event
@@ -179,15 +179,15 @@ func TestChaosEngineering(t *testing.T) {
 	for _, scenario := range suite.scenarios {
 		t.Run(scenario.Name, func(t *testing.T) {
 			t.Logf("Starting chaos scenario: %s", scenario.Description)
-			
+
 			// Execute the chaos scenario
 			err := scenario.Execute(suite, t)
 			require.NoError(t, err)
-			
+
 			// Validate the results
 			err = scenario.Validate(suite, t)
 			require.NoError(t, err)
-			
+
 			t.Logf("Completed chaos scenario: %s", scenario.Name)
 		})
 	}
@@ -230,7 +230,7 @@ func (cts *ChaosTestSuite) randomNodeFailureScenario(t *testing.T) error {
 		if targetNode != nil {
 			t.Logf("Failing node: %s", targetNode.GetID())
 			cts.logEvent("node_failure", targetNode.GetID(), "shutdown", "Random failure")
-			
+
 			err := targetNode.Shutdown()
 			if err != nil {
 				t.Logf("Failed to shutdown node %s: %v", targetNode.GetID(), err)
@@ -243,7 +243,7 @@ func (cts *ChaosTestSuite) randomNodeFailureScenario(t *testing.T) error {
 			if rand.Float64() < 0.7 { // 70% chance to restart
 				t.Logf("Restarting node: %s", targetNode.GetID())
 				cts.logEvent("node_recovery", targetNode.GetID(), "restart", "Recovery after failure")
-				
+
 				err := targetNode.Start()
 				if err != nil {
 					t.Logf("Failed to restart node %s: %v", targetNode.GetID(), err)
@@ -788,7 +788,7 @@ func (cts *ChaosTestSuite) validateCascadingRecovery(t *testing.T) error {
 	// Check that majority of nodes are active
 	activeNodes := cts.cluster.GetActiveNodes()
 	totalNodes := len(cts.cluster.GetNodes())
-	
+
 	assert.GreaterOrEqual(t, len(activeNodes), totalNodes/2, "Should have majority of nodes active")
 
 	// Test system functionality
@@ -857,9 +857,9 @@ func (cts *ChaosTestSuite) generateReport(t *testing.T) {
 	// Final cluster state
 	activeNodes := cts.cluster.GetActiveNodes()
 	totalNodes := len(cts.cluster.GetNodes())
-	
+
 	t.Logf("Final cluster state: %d/%d nodes active", len(activeNodes), totalNodes)
-	
+
 	leader := cts.cluster.GetLeader()
 	if leader != nil {
 		t.Logf("Current leader: %s", leader.GetID())

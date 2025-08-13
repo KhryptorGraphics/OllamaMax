@@ -23,19 +23,19 @@ func NewIntegration(cfg *config.AuthConfig) (*Integration, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create auth manager: %w", err)
 	}
-	
+
 	// Create JWT manager
 	jwtManager, err := NewJWTManager(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create JWT manager: %w", err)
 	}
-	
+
 	// Create middleware manager
 	middlewareManager := NewMiddlewareManager(authManager, jwtManager, cfg)
-	
+
 	// Create routes
 	routes := NewRoutes(authManager, jwtManager, middlewareManager)
-	
+
 	return &Integration{
 		AuthManager:       authManager,
 		JWTManager:        jwtManager,
@@ -47,10 +47,10 @@ func NewIntegration(cfg *config.AuthConfig) (*Integration, error) {
 // SetupRouter configures a Gin router with authentication
 func (i *Integration) SetupRouter() *gin.Engine {
 	router := gin.New()
-	
+
 	// Register authentication routes
 	i.Routes.RegisterRoutes(router)
-	
+
 	return router
 }
 
@@ -59,7 +59,7 @@ func (i *Integration) ProtectAPIRoutes(router *gin.Engine) {
 	// Apply authentication middleware to protected API routes
 	api := router.Group("/api/v1")
 	api.Use(i.MiddlewareManager.AuthRequired())
-	
+
 	// Node management - requires node permissions
 	nodeRoutes := api.Group("/nodes")
 	nodeRoutes.Use(i.MiddlewareManager.RequireAnyPermission(
@@ -67,7 +67,7 @@ func (i *Integration) ProtectAPIRoutes(router *gin.Engine) {
 		PermissionNodeWrite,
 		PermissionNodeAdmin,
 	))
-	
+
 	// Model management - requires model permissions
 	modelRoutes := api.Group("/models")
 	modelRoutes.Use(i.MiddlewareManager.RequireAnyPermission(
@@ -75,7 +75,7 @@ func (i *Integration) ProtectAPIRoutes(router *gin.Engine) {
 		PermissionModelWrite,
 		PermissionModelAdmin,
 	))
-	
+
 	// Cluster management - requires cluster permissions
 	clusterRoutes := api.Group("/cluster")
 	clusterRoutes.Use(i.MiddlewareManager.RequireAnyPermission(
@@ -83,14 +83,14 @@ func (i *Integration) ProtectAPIRoutes(router *gin.Engine) {
 		PermissionClusterWrite,
 		PermissionClusterAdmin,
 	))
-	
+
 	// Inference - requires inference permissions
 	inferenceRoutes := api.Group("/")
 	inferenceRoutes.Use(i.MiddlewareManager.RequireAnyPermission(
 		PermissionInferenceRead,
 		PermissionInferenceWrite,
 	))
-	
+
 	// Metrics - requires metrics permissions
 	metricsRoutes := api.Group("/metrics")
 	metricsRoutes.Use(i.MiddlewareManager.RequirePermission(PermissionMetricsRead))
@@ -104,7 +104,7 @@ func (i *Integration) CreateServiceToken(serviceID, serviceName string) (string,
 		PermissionInferenceWrite,
 		PermissionClusterRead,
 	}
-	
+
 	return i.JWTManager.GenerateServiceToken(serviceID, serviceName, permissions)
 }
 
@@ -130,23 +130,23 @@ func ExampleIntegration() {
 		Issuer:      "ollama-distributed",
 		Audience:    "ollama-api",
 	}
-	
+
 	// Create authentication integration
 	authIntegration, err := NewIntegration(cfg)
 	if err != nil {
 		log.Fatalf("Failed to create auth integration: %v", err)
 	}
 	defer authIntegration.Close()
-	
+
 	// Setup router with authentication
 	router := gin.New()
-	
+
 	// Register authentication routes
 	authIntegration.Routes.RegisterRoutes(router)
-	
+
 	// Protect existing API routes
 	authIntegration.ProtectAPIRoutes(router)
-	
+
 	// Example: Add a protected endpoint
 	protected := router.Group("/api/v1/protected")
 	protected.Use(authIntegration.MiddlewareManager.AuthRequired())
@@ -161,7 +161,7 @@ func ExampleIntegration() {
 			})
 		})
 	}
-	
+
 	// Example: Create a service token
 	serviceToken, err := authIntegration.CreateServiceToken("node-1", "Ollama Node 1")
 	if err != nil {
@@ -169,7 +169,7 @@ func ExampleIntegration() {
 	} else {
 		log.Printf("Service token created: %s", serviceToken)
 	}
-	
+
 	// Start server
 	log.Println("Starting server with authentication on :8080")
 	router.Run(":8080")
@@ -243,14 +243,14 @@ func (mh *MiddlewareHelpers) RequireInferencePermission(operation string) gin.Ha
 func ExampleAPIIntegration(authIntegration *Integration) {
 	router := gin.New()
 	helpers := NewMiddlewareHelpers(authIntegration)
-	
+
 	// Register auth routes
 	authIntegration.Routes.RegisterRoutes(router)
-	
+
 	// Protected API routes
 	api := router.Group("/api/v1")
 	api.Use(authIntegration.MiddlewareManager.AuthRequired())
-	
+
 	// Node management with granular permissions
 	nodes := api.Group("/nodes")
 	{
@@ -258,18 +258,18 @@ func ExampleAPIIntegration(authIntegration *Integration) {
 			// Get nodes logic
 			c.JSON(200, gin.H{"nodes": []string{}})
 		})
-		
+
 		nodes.POST("", helpers.RequireNodePermission("write"), func(c *gin.Context) {
 			// Create node logic
 			c.JSON(201, gin.H{"message": "Node created"})
 		})
-		
+
 		nodes.DELETE("/:id", helpers.RequireNodePermission("admin"), func(c *gin.Context) {
 			// Delete node logic
 			c.JSON(200, gin.H{"message": "Node deleted"})
 		})
 	}
-	
+
 	// Model management with granular permissions
 	models := api.Group("/models")
 	{
@@ -277,18 +277,18 @@ func ExampleAPIIntegration(authIntegration *Integration) {
 			// Get models logic
 			c.JSON(200, gin.H{"models": []string{}})
 		})
-		
+
 		models.POST("/:name/download", helpers.RequireModelPermission("write"), func(c *gin.Context) {
 			// Download model logic
 			c.JSON(200, gin.H{"message": "Download started"})
 		})
-		
+
 		models.DELETE("/:name", helpers.RequireModelPermission("admin"), func(c *gin.Context) {
 			// Delete model logic
 			c.JSON(200, gin.H{"message": "Model deleted"})
 		})
 	}
-	
+
 	// Inference endpoints
 	inference := api.Group("/")
 	{
@@ -300,13 +300,13 @@ func ExampleAPIIntegration(authIntegration *Integration) {
 				"user":     user.Username,
 			})
 		})
-		
+
 		inference.POST("/chat", helpers.RequireInferencePermission("write"), func(c *gin.Context) {
 			// Chat logic
 			c.JSON(200, gin.H{"response": "Chat response"})
 		})
 	}
-	
+
 	// Metrics (read-only)
 	api.GET("/metrics", helpers.RequireInferencePermission("read"), func(c *gin.Context) {
 		// Metrics logic

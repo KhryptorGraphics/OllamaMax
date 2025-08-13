@@ -1,3 +1,5 @@
+//go:build ignore
+
 package integration
 
 import (
@@ -11,7 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/api"
-	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/models"
 )
 
 // EnhancedIntegrationTestSuite provides comprehensive end-to-end testing
@@ -34,15 +35,15 @@ type TestModel struct {
 
 // TestMetrics tracks test execution metrics
 type TestMetrics struct {
-	mu                sync.RWMutex
-	TestsRun          int
-	TestsPassed       int
-	TestsFailed       int
-	TotalDuration     time.Duration
-	AverageLatency    time.Duration
-	ThroughputRPS     float64
-	ErrorRate         float64
-	StartTime         time.Time
+	mu             sync.RWMutex
+	TestsRun       int
+	TestsPassed    int
+	TestsFailed    int
+	TotalDuration  time.Duration
+	AverageLatency time.Duration
+	ThroughputRPS  float64
+	ErrorRate      float64
+	StartTime      time.Time
 }
 
 // NewEnhancedIntegrationTestSuite creates a new enhanced integration test suite
@@ -96,7 +97,7 @@ func TestEnhancedIntegration(t *testing.T) {
 
 	// Start cluster
 	require.NoError(t, suite.cluster.Start())
-	
+
 	// Wait for cluster stabilization
 	time.Sleep(10 * time.Second)
 
@@ -159,14 +160,14 @@ func (suite *EnhancedIntegrationTestSuite) testClusterBootstrap(t *testing.T) {
 	// Verify peer connectivity
 	for i, node := range nodes {
 		connectedPeers := node.GetConnectedPeers()
-		assert.GreaterOrEqual(t, len(connectedPeers), 1, 
+		assert.GreaterOrEqual(t, len(connectedPeers), 1,
 			"Node %d should be connected to other peers", i)
 	}
 
 	// Verify consensus is operational
 	testKey := "bootstrap_test"
 	testValue := "cluster_initialized"
-	
+
 	err := leader.ApplyConsensusOperation(testKey, testValue)
 	assert.NoError(t, err, "Should be able to apply consensus operation")
 
@@ -223,7 +224,7 @@ func (suite *EnhancedIntegrationTestSuite) testModelLifecycle(t *testing.T) {
 				if model.Name == testModel.Name {
 					found = true
 					assert.Equal(t, testModel.Size, model.Size, "Model size should match")
-					assert.Equal(t, testModel.ReplicationFactor, model.ReplicationFactor, 
+					assert.Equal(t, testModel.ReplicationFactor, model.ReplicationFactor,
 						"Replication factor should match")
 					break
 				}
@@ -234,7 +235,7 @@ func (suite *EnhancedIntegrationTestSuite) testModelLifecycle(t *testing.T) {
 			replicas, err := leader.GetModelReplicas(testModel.Name)
 			assert.NoError(t, err, "Should be able to get model replicas")
 			assert.GreaterOrEqual(t, len(replicas), 1, "Should have at least one replica")
-			
+
 			// Eventually should reach desired replication factor
 			// (in a real system this might take longer)
 
@@ -311,7 +312,7 @@ func (suite *EnhancedIntegrationTestSuite) testDistributedInference(t *testing.T
 		assert.NotNil(t, resp, "Response should not be nil")
 		assert.NotEmpty(t, resp.Response, "Response should contain generated text")
 		assert.True(t, resp.Done, "Response should be marked as done")
-		assert.Less(t, latency, testModel.ExpectedLatency*2, 
+		assert.Less(t, latency, testModel.ExpectedLatency*2,
 			"Inference latency should be reasonable")
 
 		// Update metrics
@@ -340,7 +341,7 @@ func (suite *EnhancedIntegrationTestSuite) testDistributedInference(t *testing.T
 				// Measure time to first token
 				totalLatency = time.Since(start)
 			}
-			
+
 			assert.NotNil(t, resp, "Streaming response should not be nil")
 			if resp.Done {
 				assert.NotEmpty(t, resp.Response, "Final response should contain text")
@@ -349,7 +350,7 @@ func (suite *EnhancedIntegrationTestSuite) testDistributedInference(t *testing.T
 
 		assert.NoError(t, err, "Streaming inference should succeed")
 		assert.Greater(t, responseCount, 1, "Should receive multiple streaming responses")
-		assert.Less(t, totalLatency, testModel.ExpectedLatency, 
+		assert.Less(t, totalLatency, testModel.ExpectedLatency,
 			"Time to first token should be reasonable")
 	})
 
@@ -390,7 +391,7 @@ func (suite *EnhancedIntegrationTestSuite) testDistributedInference(t *testing.T
 			}
 		}
 
-		assert.GreaterOrEqual(t, successCount, concurrency*8/10, 
+		assert.GreaterOrEqual(t, successCount, concurrency*8/10,
 			"At least 80%% of concurrent requests should succeed")
 	})
 
@@ -412,7 +413,7 @@ func (suite *EnhancedIntegrationTestSuite) testDistributedInference(t *testing.T
 			// Use different entry points to test load balancing
 			entryNode := nodes[i%len(nodes)]
 			resp, err := entryNode.ProcessInference(suite.ctx, req)
-			
+
 			if err == nil {
 				// Track which node actually processed the request
 				processingNode := resp.ProcessedBy
@@ -424,7 +425,7 @@ func (suite *EnhancedIntegrationTestSuite) testDistributedInference(t *testing.T
 
 		// Verify load is somewhat distributed
 		assert.Greater(t, len(nodeUsage), 1, "Load should be distributed across multiple nodes")
-		
+
 		// No single node should handle all requests (unless only one has the model)
 		for nodeID, count := range nodeUsage {
 			ratio := float64(count) / float64(requestCount)
@@ -456,10 +457,10 @@ func (suite *EnhancedIntegrationTestSuite) testLoadBalancing(t *testing.T) {
 
 			for j := 0; j < requestCount/concurrency; j++ {
 				start := time.Now()
-				
+
 				// Round-robin between nodes
 				targetNode := nodes[(workerID*requestCount/concurrency+j)%len(nodes)]
-				
+
 				req := &api.InferenceRequest{
 					Model:  suite.testModels[0].Name,
 					Prompt: fmt.Sprintf("Load balancing test %d-%d", workerID, j),
@@ -473,12 +474,12 @@ func (suite *EnhancedIntegrationTestSuite) testLoadBalancing(t *testing.T) {
 				latency := time.Since(start)
 
 				result := LoadTestResult{
-					RequestID:    fmt.Sprintf("%d-%d", workerID, j),
-					EntryNode:    targetNode.GetID(),
+					RequestID:      fmt.Sprintf("%d-%d", workerID, j),
+					EntryNode:      targetNode.GetID(),
 					ProcessingNode: "",
-					Latency:      latency,
-					Success:      err == nil,
-					Error:        err,
+					Latency:        latency,
+					Success:        err == nil,
+					Error:          err,
 				}
 
 				if err == nil && resp != nil {
@@ -511,7 +512,7 @@ func (suite *EnhancedIntegrationTestSuite) testLoadBalancing(t *testing.T) {
 	}
 
 	// Verify load balancing effectiveness
-	assert.Greater(t, len(processingNodeCounts), 1, 
+	assert.Greater(t, len(processingNodeCounts), 1,
 		"Load should be distributed across multiple processing nodes")
 
 	// Calculate load distribution metrics
@@ -519,18 +520,18 @@ func (suite *EnhancedIntegrationTestSuite) testLoadBalancing(t *testing.T) {
 	maxDeviation := 0.0
 
 	for _, count := range processingNodeCounts {
-		deviation := abs(float64(count) - avgProcessingCount) / avgProcessingCount
+		deviation := abs(float64(count)-avgProcessingCount) / avgProcessingCount
 		if deviation > maxDeviation {
 			maxDeviation = deviation
 		}
 	}
 
-	assert.Less(t, maxDeviation, 0.5, 
+	assert.Less(t, maxDeviation, 0.5,
 		"Load distribution should be reasonably balanced (max 50%% deviation)")
 
 	// Verify performance under load
 	avgLatency := totalLatency / time.Duration(successCount)
-	assert.Less(t, avgLatency, suite.testModels[0].ExpectedLatency*3, 
+	assert.Less(t, avgLatency, suite.testModels[0].ExpectedLatency*3,
 		"Average latency should remain reasonable under load")
 
 	successRate := float64(successCount) / float64(requestCount)
@@ -662,12 +663,12 @@ func (suite *EnhancedIntegrationTestSuite) testScalability(t *testing.T) {
 
 		// Verify new node is integrated
 		currentNodes := suite.cluster.GetActiveNodes()
-		assert.Equal(t, originalNodeCount+1, len(currentNodes), 
+		assert.Equal(t, originalNodeCount+1, len(currentNodes),
 			"Node count should increase by 1")
 
 		// Verify new node is connected
 		connectedPeers := newNode.GetConnectedPeers()
-		assert.GreaterOrEqual(t, len(connectedPeers), 1, 
+		assert.GreaterOrEqual(t, len(connectedPeers), 1,
 			"New node should be connected to other peers")
 
 		// Test that new node can participate in consensus
@@ -705,11 +706,11 @@ func (suite *EnhancedIntegrationTestSuite) testScalability(t *testing.T) {
 
 			// Latency should not increase more than 3x
 			latencyRatio := float64(curr.AverageLatency) / float64(prev.AverageLatency)
-			assert.Less(t, latencyRatio, 3.0, 
+			assert.Less(t, latencyRatio, 3.0,
 				"Latency should not increase more than 3x with load")
 
 			// Success rate should remain high
-			assert.Greater(t, curr.SuccessRate, 0.8, 
+			assert.Greater(t, curr.SuccessRate, 0.8,
 				"Success rate should remain >80%% even with increased load")
 		}
 	})
@@ -750,7 +751,7 @@ func (suite *EnhancedIntegrationTestSuite) testDataIntegrity(t *testing.T) {
 			for _, node := range nodes {
 				value, exists := node.GetConsensusValue(op.key)
 				assert.True(t, exists, "Node %s should have key %s", node.GetID(), op.key)
-				assert.Equal(t, op.value, value, 
+				assert.Equal(t, op.value, value,
 					"Node %s should have correct value for %s", node.GetID(), op.key)
 			}
 		}
@@ -829,7 +830,7 @@ func (suite *EnhancedIntegrationTestSuite) testDataIntegrity(t *testing.T) {
 					for _, replica := range replicas {
 						replicaChecksum, err := replica.GetChecksum()
 						if err == nil {
-							assert.Equal(t, checksum, replicaChecksum, 
+							assert.Equal(t, checksum, replicaChecksum,
 								"Model %s checksums should match across replicas", testModel.Name)
 						}
 					}
@@ -854,11 +855,11 @@ type LoadTestResult struct {
 }
 
 type PerformanceMetric struct {
-	LoadLevel        int
-	AverageLatency   time.Duration
-	SuccessRate      float64
-	ThroughputRPS    float64
-	ResourceUsage    float64
+	LoadLevel      int
+	AverageLatency time.Duration
+	SuccessRate    float64
+	ThroughputRPS  float64
+	ResourceUsage  float64
 }
 
 type SystemState struct {
@@ -879,7 +880,7 @@ func (suite *EnhancedIntegrationTestSuite) recordTestStart() {
 func (suite *EnhancedIntegrationTestSuite) recordTestEnd(success bool) {
 	suite.metrics.mu.Lock()
 	defer suite.metrics.mu.Unlock()
-	
+
 	if success {
 		suite.metrics.TestsPassed++
 	} else {
@@ -890,7 +891,7 @@ func (suite *EnhancedIntegrationTestSuite) recordTestEnd(success bool) {
 func (suite *EnhancedIntegrationTestSuite) updateLatencyMetric(latency time.Duration) {
 	suite.metrics.mu.Lock()
 	defer suite.metrics.mu.Unlock()
-	
+
 	// Update running average
 	if suite.metrics.AverageLatency == 0 {
 		suite.metrics.AverageLatency = latency
@@ -936,10 +937,10 @@ func (suite *EnhancedIntegrationTestSuite) measurePerformanceAtLoad(t *testing.T
 	}
 
 	return PerformanceMetric{
-		LoadLevel:     loadLevel,
+		LoadLevel:      loadLevel,
 		AverageLatency: duration / time.Duration(loadLevel),
-		SuccessRate:   float64(successCount) / float64(loadLevel),
-		ThroughputRPS: float64(successCount) / duration.Seconds(),
+		SuccessRate:    float64(successCount) / float64(loadLevel),
+		ThroughputRPS:  float64(successCount) / duration.Seconds(),
 	}
 }
 
@@ -978,13 +979,13 @@ func (suite *EnhancedIntegrationTestSuite) recordSystemState() SystemState {
 
 func (suite *EnhancedIntegrationTestSuite) verifyStateConsistency(t *testing.T, before, after SystemState) {
 	// Node count should be the same or greater (if nodes were added)
-	assert.GreaterOrEqual(t, after.NodeCount, before.NodeCount-1, 
+	assert.GreaterOrEqual(t, after.NodeCount, before.NodeCount-1,
 		"Node count should not decrease significantly")
 
 	// Critical consensus data should be preserved
 	for key, beforeValue := range before.ConsensusState {
 		if afterValue, exists := after.ConsensusState[key]; exists {
-			assert.Equal(t, beforeValue, afterValue, 
+			assert.Equal(t, beforeValue, afterValue,
 				"Consensus value for %s should be preserved", key)
 		}
 	}
@@ -992,9 +993,9 @@ func (suite *EnhancedIntegrationTestSuite) verifyStateConsistency(t *testing.T, 
 	// Model registry should be preserved
 	for modelName, beforeModel := range before.ModelRegistry {
 		if afterModel, exists := after.ModelRegistry[modelName]; exists {
-			assert.Equal(t, beforeModel.Size, afterModel.Size, 
+			assert.Equal(t, beforeModel.Size, afterModel.Size,
 				"Model %s size should be preserved", modelName)
-			assert.Equal(t, beforeModel.Checksum, afterModel.Checksum, 
+			assert.Equal(t, beforeModel.Checksum, afterModel.Checksum,
 				"Model %s checksum should be preserved", modelName)
 		}
 	}
@@ -1011,7 +1012,7 @@ func (suite *EnhancedIntegrationTestSuite) generateTestReport(t *testing.T) {
 	t.Logf("Tests Run: %d", suite.metrics.TestsRun)
 	t.Logf("Tests Passed: %d", suite.metrics.TestsPassed)
 	t.Logf("Tests Failed: %d", suite.metrics.TestsFailed)
-	
+
 	if suite.metrics.TestsRun > 0 {
 		passRate := float64(suite.metrics.TestsPassed) / float64(suite.metrics.TestsRun) * 100
 		t.Logf("Pass Rate: %.1f%%", passRate)

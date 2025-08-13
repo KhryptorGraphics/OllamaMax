@@ -7,13 +7,13 @@ import (
 	"sync"
 	"time"
 
+	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/discovery"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
 	"github.com/libp2p/go-libp2p/p2p/discovery/routing"
-	dht "github.com/libp2p/go-libp2p-kad-dht"
 )
 
 // DHTStrategy implements DHT-based discovery
@@ -63,14 +63,14 @@ func (m *MDNSStrategy) Advertise(ctx context.Context, ns string, opts ...discove
 
 // BootstrapDiscovery implements bootstrap peer discovery
 type BootstrapDiscovery struct {
-	host            host.Host
-	bootstrapPeers  []peer.AddrInfo
-	minPeers        int
-	maxPeers        int
-	
+	host           host.Host
+	bootstrapPeers []peer.AddrInfo
+	minPeers       int
+	maxPeers       int
+
 	// Connection tracking
-	connections     map[peer.ID]*ConnectionInfo
-	connectionsMux  sync.RWMutex
+	connections    map[peer.ID]*ConnectionInfo
+	connectionsMux sync.RWMutex
 }
 
 // ConnectionInfo tracks connection information
@@ -100,10 +100,10 @@ func (b *BootstrapDiscovery) Name() string {
 // FindPeers finds peers from bootstrap list
 func (b *BootstrapDiscovery) FindPeers(ctx context.Context, ns string, opts ...discovery.Option) (<-chan peer.AddrInfo, error) {
 	peerChan := make(chan peer.AddrInfo, len(b.bootstrapPeers))
-	
+
 	go func() {
 		defer close(peerChan)
-		
+
 		for _, peer := range b.bootstrapPeers {
 			select {
 			case peerChan <- peer:
@@ -112,7 +112,7 @@ func (b *BootstrapDiscovery) FindPeers(ctx context.Context, ns string, opts ...d
 			}
 		}
 	}()
-	
+
 	return peerChan, nil
 }
 
@@ -125,10 +125,10 @@ func (b *BootstrapDiscovery) Advertise(ctx context.Context, ns string, opts ...d
 // Start starts the bootstrap discovery process
 func (b *BootstrapDiscovery) Start(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
-	
+
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -142,28 +142,28 @@ func (b *BootstrapDiscovery) Start(ctx context.Context, wg *sync.WaitGroup) {
 // ensureConnections ensures minimum connection requirements
 func (b *BootstrapDiscovery) ensureConnections(ctx context.Context) {
 	connected := len(b.host.Network().Peers())
-	
+
 	if connected < b.minPeers {
 		// Connect to more bootstrap peers
 		for _, peer := range b.bootstrapPeers {
 			if connected >= b.maxPeers {
 				break
 			}
-			
+
 			// Skip if already connected
 			if b.host.Network().Connectedness(peer.ID) == network.Connected {
 				continue
 			}
-			
+
 			// Skip if too many recent failures
 			b.connectionsMux.RLock()
 			connInfo, exists := b.connections[peer.ID]
 			b.connectionsMux.RUnlock()
-			
+
 			if exists && connInfo.Failures > 5 && time.Since(connInfo.LastSeen) < 5*time.Minute {
 				continue
 			}
-			
+
 			go b.connectToPeer(ctx, peer)
 			connected++
 		}
@@ -180,22 +180,22 @@ func (b *BootstrapDiscovery) connectToPeer(ctx context.Context, peer peer.AddrIn
 	}
 	connInfo.Attempts++
 	b.connectionsMux.Unlock()
-	
+
 	connectCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	
+
 	if err := b.host.Connect(connectCtx, peer); err != nil {
 		log.Printf("Failed to connect to bootstrap peer %s: %v", peer.ID, err)
-		
+
 		b.connectionsMux.Lock()
 		connInfo.Failures++
 		connInfo.LastSeen = time.Now()
 		b.connectionsMux.Unlock()
 		return
 	}
-	
+
 	log.Printf("Connected to bootstrap peer: %s", peer.ID)
-	
+
 	b.connectionsMux.Lock()
 	connInfo.ConnectedAt = time.Now()
 	connInfo.LastSeen = time.Now()
@@ -204,10 +204,10 @@ func (b *BootstrapDiscovery) connectToPeer(ctx context.Context, peer peer.AddrIn
 
 // RendezvousDiscovery implements rendezvous-based discovery
 type RendezvousDiscovery struct {
-	host      host.Host
-	dht       *dht.IpfsDHT
-	routing   *routing.RoutingDiscovery
-	
+	host    host.Host
+	dht     *dht.IpfsDHT
+	routing *routing.RoutingDiscovery
+
 	// Rendezvous points
 	rendezvous map[string]*RendezvousPoint
 	rendMux    sync.RWMutex
@@ -215,10 +215,10 @@ type RendezvousDiscovery struct {
 
 // RendezvousPoint represents a rendezvous point
 type RendezvousPoint struct {
-	Namespace   string
-	TTL         time.Duration
-	LastUpdate  time.Time
-	PeerCount   int
+	Namespace  string
+	TTL        time.Duration
+	LastUpdate time.Time
+	PeerCount  int
 }
 
 // NewRendezvousDiscovery creates a new rendezvous discovery strategy
@@ -244,19 +244,19 @@ func (r *RendezvousDiscovery) FindPeers(ctx context.Context, ns string, opts ...
 		fmt.Sprintf("%s/models", ns),
 		fmt.Sprintf("%s/compute", ns),
 	}
-	
+
 	peerChan := make(chan peer.AddrInfo, 100)
-	
+
 	go func() {
 		defer close(peerChan)
-		
+
 		for _, rdv := range rendezvousPoints {
 			peerStream, err := r.routing.FindPeers(ctx, rdv, opts...)
 			if err != nil {
 				log.Printf("Failed to find peers at rendezvous %s: %v", rdv, err)
 				continue
 			}
-			
+
 			for peer := range peerStream {
 				select {
 				case peerChan <- peer:
@@ -266,7 +266,7 @@ func (r *RendezvousDiscovery) FindPeers(ctx context.Context, ns string, opts ...
 			}
 		}
 	}()
-	
+
 	return peerChan, nil
 }
 
@@ -278,16 +278,16 @@ func (r *RendezvousDiscovery) Advertise(ctx context.Context, ns string, opts ...
 		fmt.Sprintf("%s/models", ns),
 		fmt.Sprintf("%s/compute", ns),
 	}
-	
+
 	var minTTL time.Duration
-	
+
 	for _, rdv := range rendezvousPoints {
 		ttl, err := r.routing.Advertise(ctx, rdv, opts...)
 		if err != nil {
 			log.Printf("Failed to advertise at rendezvous %s: %v", rdv, err)
 			continue
 		}
-		
+
 		// Track rendezvous point
 		r.rendMux.Lock()
 		r.rendezvous[rdv] = &RendezvousPoint{
@@ -296,18 +296,18 @@ func (r *RendezvousDiscovery) Advertise(ctx context.Context, ns string, opts ...
 			LastUpdate: time.Now(),
 		}
 		r.rendMux.Unlock()
-		
+
 		if minTTL == 0 || ttl < minTTL {
 			minTTL = ttl
 		}
-		
+
 		log.Printf("Advertised at rendezvous point: %s (TTL: %v)", rdv, ttl)
 	}
-	
+
 	if minTTL == 0 {
 		return 5 * time.Minute, nil
 	}
-	
+
 	return minTTL, nil
 }
 
@@ -315,20 +315,20 @@ func (r *RendezvousDiscovery) Advertise(ctx context.Context, ns string, opts ...
 func (r *RendezvousDiscovery) GetRendezvousPoints() map[string]*RendezvousPoint {
 	r.rendMux.RLock()
 	defer r.rendMux.RUnlock()
-	
+
 	points := make(map[string]*RendezvousPoint)
 	for k, v := range r.rendezvous {
 		points[k] = v
 	}
-	
+
 	return points
 }
 
 // CustomDiscovery implements custom discovery strategies
 type CustomDiscovery struct {
-	host     host.Host
-	name     string
-	finder   func(context.Context, string, ...discovery.Option) (<-chan peer.AddrInfo, error)
+	host       host.Host
+	name       string
+	finder     func(context.Context, string, ...discovery.Option) (<-chan peer.AddrInfo, error)
 	advertiser func(context.Context, string, ...discovery.Option) (time.Duration, error)
 }
 
@@ -359,7 +359,7 @@ func (c *CustomDiscovery) FindPeers(ctx context.Context, ns string, opts ...disc
 		close(peerChan)
 		return peerChan, nil
 	}
-	
+
 	return c.finder(ctx, ns, opts...)
 }
 
@@ -368,7 +368,7 @@ func (c *CustomDiscovery) Advertise(ctx context.Context, ns string, opts ...disc
 	if c.advertiser == nil {
 		return 5 * time.Minute, nil
 	}
-	
+
 	return c.advertiser(ctx, ns, opts...)
 }
 
@@ -376,7 +376,7 @@ func (c *CustomDiscovery) Advertise(ctx context.Context, ns string, opts ...disc
 type HybridDiscovery struct {
 	strategies []DiscoveryStrategy
 	weights    map[string]float64
-	
+
 	// Load balancing
 	lastUsed   map[string]time.Time
 	usageCount map[string]int
@@ -387,14 +387,14 @@ func NewHybridDiscovery(strategies []DiscoveryStrategy) *HybridDiscovery {
 	weights := make(map[string]float64)
 	lastUsed := make(map[string]time.Time)
 	usageCount := make(map[string]int)
-	
+
 	// Initialize equal weights
 	for _, strategy := range strategies {
 		weights[strategy.Name()] = 1.0
 		lastUsed[strategy.Name()] = time.Now()
 		usageCount[strategy.Name()] = 0
 	}
-	
+
 	return &HybridDiscovery{
 		strategies: strategies,
 		weights:    weights,
@@ -411,24 +411,24 @@ func (h *HybridDiscovery) Name() string {
 // FindPeers finds peers using multiple strategies
 func (h *HybridDiscovery) FindPeers(ctx context.Context, ns string, opts ...discovery.Option) (<-chan peer.AddrInfo, error) {
 	peerChan := make(chan peer.AddrInfo, 100)
-	
+
 	go func() {
 		defer close(peerChan)
-		
+
 		var wg sync.WaitGroup
-		
+
 		// Run all strategies in parallel
 		for _, strategy := range h.strategies {
 			wg.Add(1)
 			go func(s DiscoveryStrategy) {
 				defer wg.Done()
-				
+
 				strategyPeers, err := s.FindPeers(ctx, ns, opts...)
 				if err != nil {
 					log.Printf("Strategy %s failed: %v", s.Name(), err)
 					return
 				}
-				
+
 				for peer := range strategyPeers {
 					select {
 					case peerChan <- peer:
@@ -439,10 +439,10 @@ func (h *HybridDiscovery) FindPeers(ctx context.Context, ns string, opts ...disc
 				}
 			}(strategy)
 		}
-		
+
 		wg.Wait()
 	}()
-	
+
 	return peerChan, nil
 }
 
@@ -450,25 +450,25 @@ func (h *HybridDiscovery) FindPeers(ctx context.Context, ns string, opts ...disc
 func (h *HybridDiscovery) Advertise(ctx context.Context, ns string, opts ...discovery.Option) (time.Duration, error) {
 	var minTTL time.Duration
 	var lastErr error
-	
+
 	for _, strategy := range h.strategies {
 		ttl, err := strategy.Advertise(ctx, ns, opts...)
 		if err != nil {
 			lastErr = err
 			continue
 		}
-		
+
 		h.lastUsed[strategy.Name()] = time.Now()
-		
+
 		if minTTL == 0 || ttl < minTTL {
 			minTTL = ttl
 		}
 	}
-	
+
 	if minTTL == 0 {
 		return 5 * time.Minute, lastErr
 	}
-	
+
 	return minTTL, nil
 }
 
@@ -493,14 +493,14 @@ func (h *HybridDiscovery) GetWeights() map[string]float64 {
 // GetUsageStats returns usage statistics
 func (h *HybridDiscovery) GetUsageStats() map[string]interface{} {
 	stats := make(map[string]interface{})
-	
+
 	for strategy := range h.weights {
 		stats[strategy] = map[string]interface{}{
-			"weight":     h.weights[strategy],
-			"last_used":  h.lastUsed[strategy],
+			"weight":      h.weights[strategy],
+			"last_used":   h.lastUsed[strategy],
 			"usage_count": h.usageCount[strategy],
 		}
 	}
-	
+
 	return stats
 }

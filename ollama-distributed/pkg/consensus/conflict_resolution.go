@@ -13,94 +13,94 @@ import (
 
 // ConflictResolver manages advanced conflict resolution strategies
 type ConflictResolver struct {
-	engine          *Engine
-	mu              sync.RWMutex
-	
+	engine *Engine
+	mu     sync.RWMutex
+
 	// Conflict tracking
 	conflicts       map[string]*Conflict
 	resolutionRules []*ResolutionRule
-	
+
 	// Configuration
-	config          *ConflictConfig
-	
+	config *ConflictConfig
+
 	// Metrics
-	metrics         *ConflictMetrics
-	
+	metrics *ConflictMetrics
+
 	// Lifecycle
-	ctx             context.Context
-	cancel          context.CancelFunc
-	wg              sync.WaitGroup
+	ctx    context.Context
+	cancel context.CancelFunc
+	wg     sync.WaitGroup
 }
 
 // Conflict represents a state conflict between nodes
 type Conflict struct {
-	ID              string            `json:"id"`
-	Key             string            `json:"key"`
-	ConflictType    ConflictType      `json:"conflict_type"`
-	
+	ID           string       `json:"id"`
+	Key          string       `json:"key"`
+	ConflictType ConflictType `json:"conflict_type"`
+
 	// Conflicting values
-	Values          []*ConflictValue  `json:"values"`
-	
+	Values []*ConflictValue `json:"values"`
+
 	// Resolution information
 	ResolutionStrategy ResolutionStrategy `json:"resolution_strategy"`
-	ResolvedValue   interface{}       `json:"resolved_value,omitempty"`
-	ResolvedBy      raft.ServerID     `json:"resolved_by,omitempty"`
-	
+	ResolvedValue      interface{}        `json:"resolved_value,omitempty"`
+	ResolvedBy         raft.ServerID      `json:"resolved_by,omitempty"`
+
 	// Timestamps
-	DetectedAt      time.Time         `json:"detected_at"`
-	ResolvedAt      time.Time         `json:"resolved_at,omitempty"`
-	
+	DetectedAt time.Time `json:"detected_at"`
+	ResolvedAt time.Time `json:"resolved_at,omitempty"`
+
 	// Status
-	Status          ConflictStatus    `json:"status"`
-	Priority        ConflictPriority  `json:"priority"`
-	
+	Status   ConflictStatus   `json:"status"`
+	Priority ConflictPriority `json:"priority"`
+
 	// Metadata
-	Metadata        map[string]interface{} `json:"metadata"`
+	Metadata map[string]interface{} `json:"metadata"`
 }
 
 // ConflictValue represents a conflicting value from a specific node
 type ConflictValue struct {
-	Value           interface{}       `json:"value"`
-	NodeID          raft.ServerID     `json:"node_id"`
-	Timestamp       time.Time         `json:"timestamp"`
-	Version         int64             `json:"version"`
-	Confidence      float64           `json:"confidence"` // 0.0 to 1.0
-	Evidence        map[string]interface{} `json:"evidence"`
+	Value      interface{}            `json:"value"`
+	NodeID     raft.ServerID          `json:"node_id"`
+	Timestamp  time.Time              `json:"timestamp"`
+	Version    int64                  `json:"version"`
+	Confidence float64                `json:"confidence"` // 0.0 to 1.0
+	Evidence   map[string]interface{} `json:"evidence"`
 }
 
 // ConflictType represents the type of conflict
 type ConflictType string
 
 const (
-	ConflictTypeValue       ConflictType = "value"
-	ConflictTypeVersion     ConflictType = "version"
-	ConflictTypeTimestamp   ConflictType = "timestamp"
-	ConflictTypeStructural  ConflictType = "structural"
-	ConflictTypePermission  ConflictType = "permission"
+	ConflictTypeValue      ConflictType = "value"
+	ConflictTypeVersion    ConflictType = "version"
+	ConflictTypeTimestamp  ConflictType = "timestamp"
+	ConflictTypeStructural ConflictType = "structural"
+	ConflictTypePermission ConflictType = "permission"
 )
 
 // ResolutionStrategy represents the strategy used to resolve conflicts
 type ResolutionStrategy string
 
 const (
-	StrategyLastWriteWins   ResolutionStrategy = "last_write_wins"
-	StrategyHighestVersion  ResolutionStrategy = "highest_version"
-	StrategyMajorityVote    ResolutionStrategy = "majority_vote"
+	StrategyLastWriteWins     ResolutionStrategy = "last_write_wins"
+	StrategyHighestVersion    ResolutionStrategy = "highest_version"
+	StrategyMajorityVote      ResolutionStrategy = "majority_vote"
 	StrategyHighestConfidence ResolutionStrategy = "highest_confidence"
-	StrategyCustomRule      ResolutionStrategy = "custom_rule"
-	StrategyManualReview    ResolutionStrategy = "manual_review"
+	StrategyCustomRule        ResolutionStrategy = "custom_rule"
+	StrategyManualReview      ResolutionStrategy = "manual_review"
 )
 
 // ConflictStatus represents the status of conflict resolution
 type ConflictStatus string
 
 const (
-	ConflictStatusDetected   ConflictStatus = "detected"
-	ConflictStatusAnalyzing  ConflictStatus = "analyzing"
-	ConflictStatusResolving  ConflictStatus = "resolving"
-	ConflictStatusResolved   ConflictStatus = "resolved"
-	ConflictStatusFailed     ConflictStatus = "failed"
-	ConflictStatusEscalated  ConflictStatus = "escalated"
+	ConflictStatusDetected  ConflictStatus = "detected"
+	ConflictStatusAnalyzing ConflictStatus = "analyzing"
+	ConflictStatusResolving ConflictStatus = "resolving"
+	ConflictStatusResolved  ConflictStatus = "resolved"
+	ConflictStatusFailed    ConflictStatus = "failed"
+	ConflictStatusEscalated ConflictStatus = "escalated"
 )
 
 // ConflictPriority represents the priority of conflict resolution
@@ -115,26 +115,26 @@ const (
 
 // ResolutionRule defines a rule for resolving specific types of conflicts
 type ResolutionRule struct {
-	ID              string            `json:"id"`
-	Name            string            `json:"name"`
-	Description     string            `json:"description"`
-	
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+
 	// Conditions
-	KeyPattern      string            `json:"key_pattern"`
-	ConflictType    ConflictType      `json:"conflict_type"`
-	MinValues       int               `json:"min_values"`
-	
+	KeyPattern   string       `json:"key_pattern"`
+	ConflictType ConflictType `json:"conflict_type"`
+	MinValues    int          `json:"min_values"`
+
 	// Resolution
-	Strategy        ResolutionStrategy `json:"strategy"`
-	Priority        ConflictPriority  `json:"priority"`
-	AutoResolve     bool              `json:"auto_resolve"`
-	
+	Strategy    ResolutionStrategy `json:"strategy"`
+	Priority    ConflictPriority   `json:"priority"`
+	AutoResolve bool               `json:"auto_resolve"`
+
 	// Custom resolution function
-	ResolverFunc    func(*Conflict) (interface{}, error) `json:"-"`
-	
+	ResolverFunc func(*Conflict) (interface{}, error) `json:"-"`
+
 	// Metadata
-	Enabled         bool              `json:"enabled"`
-	CreatedAt       time.Time         `json:"created_at"`
+	Enabled   bool      `json:"enabled"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // ConflictConfig configures conflict resolution
@@ -143,38 +143,38 @@ type ConflictConfig struct {
 	EnableConflictDetection bool
 	DetectionInterval       time.Duration
 	ConflictTimeout         time.Duration
-	
+
 	// Resolution settings
-	DefaultStrategy         ResolutionStrategy
-	AutoResolveThreshold    float64 // Confidence threshold for auto-resolution
-	MaxResolutionAttempts   int
-	
+	DefaultStrategy       ResolutionStrategy
+	AutoResolveThreshold  float64 // Confidence threshold for auto-resolution
+	MaxResolutionAttempts int
+
 	// Escalation settings
-	EscalationTimeout       time.Duration
-	RequireManualReview     []string // Keys that require manual review
-	
+	EscalationTimeout   time.Duration
+	RequireManualReview []string // Keys that require manual review
+
 	// Performance settings
 	MaxConcurrentResolutions int
-	CleanupInterval         time.Duration
-	MaxConflictHistory      int
+	CleanupInterval          time.Duration
+	MaxConflictHistory       int
 }
 
 // ConflictMetrics tracks conflict resolution performance
 type ConflictMetrics struct {
-	TotalConflicts      int64                           `json:"total_conflicts"`
-	ResolvedConflicts   int64                           `json:"resolved_conflicts"`
-	FailedResolutions   int64                           `json:"failed_resolutions"`
-	EscalatedConflicts  int64                           `json:"escalated_conflicts"`
-	ConflictsByType     map[ConflictType]int64          `json:"conflicts_by_type"`
-	ConflictsByStrategy map[ResolutionStrategy]int64    `json:"conflicts_by_strategy"`
-	AverageResolutionTime time.Duration                 `json:"average_resolution_time"`
-	LastConflict        time.Time                       `json:"last_conflict"`
+	TotalConflicts        int64                        `json:"total_conflicts"`
+	ResolvedConflicts     int64                        `json:"resolved_conflicts"`
+	FailedResolutions     int64                        `json:"failed_resolutions"`
+	EscalatedConflicts    int64                        `json:"escalated_conflicts"`
+	ConflictsByType       map[ConflictType]int64       `json:"conflicts_by_type"`
+	ConflictsByStrategy   map[ResolutionStrategy]int64 `json:"conflicts_by_strategy"`
+	AverageResolutionTime time.Duration                `json:"average_resolution_time"`
+	LastConflict          time.Time                    `json:"last_conflict"`
 }
 
 // NewConflictResolver creates a new conflict resolver
 func NewConflictResolver(engine *Engine, config *ConflictConfig) *ConflictResolver {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	if config == nil {
 		config = &ConflictConfig{
 			EnableConflictDetection:  true,
@@ -190,7 +190,7 @@ func NewConflictResolver(engine *Engine, config *ConflictConfig) *ConflictResolv
 			MaxConflictHistory:       1000,
 		}
 	}
-	
+
 	cr := &ConflictResolver{
 		engine:          engine,
 		conflicts:       make(map[string]*Conflict),
@@ -203,12 +203,12 @@ func NewConflictResolver(engine *Engine, config *ConflictConfig) *ConflictResolv
 		ctx:    ctx,
 		cancel: cancel,
 	}
-	
+
 	// Start background tasks
 	cr.wg.Add(2)
 	go cr.detectionLoop()
 	go cr.resolutionLoop()
-	
+
 	return cr
 }
 
@@ -216,9 +216,9 @@ func NewConflictResolver(engine *Engine, config *ConflictConfig) *ConflictResolv
 func (cr *ConflictResolver) DetectConflict(key string, values []*ConflictValue) *Conflict {
 	cr.mu.Lock()
 	defer cr.mu.Unlock()
-	
+
 	conflictID := fmt.Sprintf("conflict_%s_%d", key, time.Now().UnixNano())
-	
+
 	conflict := &Conflict{
 		ID:           conflictID,
 		Key:          key,
@@ -229,15 +229,15 @@ func (cr *ConflictResolver) DetectConflict(key string, values []*ConflictValue) 
 		Priority:     cr.determinePriority(key, values),
 		Metadata:     make(map[string]interface{}),
 	}
-	
+
 	// Determine resolution strategy
 	conflict.ResolutionStrategy = cr.determineResolutionStrategy(conflict)
-	
+
 	cr.conflicts[conflictID] = conflict
 	cr.metrics.TotalConflicts++
 	cr.metrics.ConflictsByType[conflict.ConflictType]++
 	cr.metrics.LastConflict = time.Now()
-	
+
 	return conflict
 }
 
@@ -249,47 +249,47 @@ func (cr *ConflictResolver) ResolveConflict(conflictID string) error {
 		cr.mu.Unlock()
 		return fmt.Errorf("conflict not found: %s", conflictID)
 	}
-	
+
 	if conflict.Status != ConflictStatusDetected {
 		cr.mu.Unlock()
 		return fmt.Errorf("conflict already being processed: %s", conflictID)
 	}
-	
+
 	conflict.Status = ConflictStatusResolving
 	cr.mu.Unlock()
-	
+
 	startTime := time.Now()
 	resolvedValue, err := cr.applyResolutionStrategy(conflict)
-	
+
 	cr.mu.Lock()
 	defer cr.mu.Unlock()
-	
+
 	if err != nil {
 		conflict.Status = ConflictStatusFailed
 		cr.metrics.FailedResolutions++
 		return fmt.Errorf("failed to resolve conflict: %w", err)
 	}
-	
+
 	// Apply the resolved value
 	if err := cr.applyResolvedValue(conflict.Key, resolvedValue); err != nil {
 		conflict.Status = ConflictStatusFailed
 		cr.metrics.FailedResolutions++
 		return fmt.Errorf("failed to apply resolved value: %w", err)
 	}
-	
+
 	conflict.ResolvedValue = resolvedValue
 	conflict.ResolvedAt = time.Now()
 	conflict.Status = ConflictStatusResolved
 	conflict.ResolvedBy = raft.ServerID(cr.engine.GetNodeID())
-	
+
 	// Update metrics
 	cr.metrics.ResolvedConflicts++
 	cr.metrics.ConflictsByStrategy[conflict.ResolutionStrategy]++
-	
+
 	duration := time.Since(startTime)
-	totalTime := time.Duration(cr.metrics.ResolvedConflicts-1) * cr.metrics.AverageResolutionTime + duration
+	totalTime := time.Duration(cr.metrics.ResolvedConflicts-1)*cr.metrics.AverageResolutionTime + duration
 	cr.metrics.AverageResolutionTime = totalTime / time.Duration(cr.metrics.ResolvedConflicts)
-	
+
 	return nil
 }
 
@@ -316,7 +316,7 @@ func (cr *ConflictResolver) resolveLastWriteWins(conflict *Conflict) (interface{
 	if len(conflict.Values) == 0 {
 		return nil, fmt.Errorf("no values to resolve")
 	}
-	
+
 	// Find the value with the latest timestamp
 	latestValue := conflict.Values[0]
 	for _, value := range conflict.Values[1:] {
@@ -324,7 +324,7 @@ func (cr *ConflictResolver) resolveLastWriteWins(conflict *Conflict) (interface{
 			latestValue = value
 		}
 	}
-	
+
 	return latestValue.Value, nil
 }
 
@@ -333,7 +333,7 @@ func (cr *ConflictResolver) resolveHighestVersion(conflict *Conflict) (interface
 	if len(conflict.Values) == 0 {
 		return nil, fmt.Errorf("no values to resolve")
 	}
-	
+
 	// Find the value with the highest version
 	highestValue := conflict.Values[0]
 	for _, value := range conflict.Values[1:] {
@@ -341,7 +341,7 @@ func (cr *ConflictResolver) resolveHighestVersion(conflict *Conflict) (interface
 			highestValue = value
 		}
 	}
-	
+
 	return highestValue.Value, nil
 }
 
@@ -350,18 +350,18 @@ func (cr *ConflictResolver) resolveMajorityVote(conflict *Conflict) (interface{}
 	if len(conflict.Values) == 0 {
 		return nil, fmt.Errorf("no values to resolve")
 	}
-	
+
 	// Count votes for each unique value
 	votes := make(map[string]int)
 	valueMap := make(map[string]interface{})
-	
+
 	for _, value := range conflict.Values {
 		valueJSON, _ := json.Marshal(value.Value)
 		valueStr := string(valueJSON)
 		votes[valueStr]++
 		valueMap[valueStr] = value.Value
 	}
-	
+
 	// Find the value with the most votes
 	maxVotes := 0
 	var winningValue interface{}
@@ -371,7 +371,7 @@ func (cr *ConflictResolver) resolveMajorityVote(conflict *Conflict) (interface{}
 			winningValue = valueMap[valueStr]
 		}
 	}
-	
+
 	return winningValue, nil
 }
 
@@ -380,7 +380,7 @@ func (cr *ConflictResolver) resolveHighestConfidence(conflict *Conflict) (interf
 	if len(conflict.Values) == 0 {
 		return nil, fmt.Errorf("no values to resolve")
 	}
-	
+
 	// Find the value with the highest confidence
 	highestValue := conflict.Values[0]
 	for _, value := range conflict.Values[1:] {
@@ -388,7 +388,7 @@ func (cr *ConflictResolver) resolveHighestConfidence(conflict *Conflict) (interf
 			highestValue = value
 		}
 	}
-	
+
 	return highestValue.Value, nil
 }
 
@@ -403,7 +403,7 @@ func (cr *ConflictResolver) resolveCustomRule(conflict *Conflict) (interface{}, 
 			}
 		}
 	}
-	
+
 	// Fall back to default strategy
 	conflict.ResolutionStrategy = cr.config.DefaultStrategy
 	return cr.applyResolutionStrategy(conflict)
@@ -415,17 +415,17 @@ func (cr *ConflictResolver) ruleApplies(rule *ResolutionRule, conflict *Conflict
 	if rule.ConflictType != "" && rule.ConflictType != conflict.ConflictType {
 		return false
 	}
-	
+
 	// Check minimum values
 	if len(conflict.Values) < rule.MinValues {
 		return false
 	}
-	
+
 	// Check key pattern (simplified - in reality you'd use regex)
 	if rule.KeyPattern != "" && rule.KeyPattern != conflict.Key {
 		return false
 	}
-	
+
 	return true
 }
 
@@ -434,7 +434,7 @@ func (cr *ConflictResolver) applyResolvedValue(key string, value interface{}) er
 	// Apply the resolved value through the consensus engine
 	return cr.engine.Apply(key, value, map[string]interface{}{
 		"resolution": true,
-		"timestamp": time.Now(),
+		"timestamp":  time.Now(),
 	})
 }
 
@@ -443,7 +443,7 @@ func (cr *ConflictResolver) determineConflictType(values []*ConflictValue) Confl
 	if len(values) < 2 {
 		return ConflictTypeValue
 	}
-	
+
 	// Check if it's a version conflict
 	hasVersions := true
 	for _, value := range values {
@@ -452,11 +452,11 @@ func (cr *ConflictResolver) determineConflictType(values []*ConflictValue) Confl
 			break
 		}
 	}
-	
+
 	if hasVersions {
 		return ConflictTypeVersion
 	}
-	
+
 	// Default to value conflict
 	return ConflictTypeValue
 }
@@ -469,20 +469,20 @@ func (cr *ConflictResolver) determinePriority(key string, values []*ConflictValu
 			return PriorityCritical
 		}
 	}
-	
+
 	// Check confidence levels
 	totalConfidence := 0.0
 	for _, value := range values {
 		totalConfidence += value.Confidence
 	}
 	avgConfidence := totalConfidence / float64(len(values))
-	
+
 	if avgConfidence < 0.3 {
 		return PriorityHigh
 	} else if avgConfidence < 0.6 {
 		return PriorityNormal
 	}
-	
+
 	return PriorityLow
 }
 
@@ -494,7 +494,7 @@ func (cr *ConflictResolver) determineResolutionStrategy(conflict *Conflict) Reso
 			return rule.Strategy
 		}
 	}
-	
+
 	// Use default strategy
 	return cr.config.DefaultStrategy
 }
@@ -503,7 +503,7 @@ func (cr *ConflictResolver) determineResolutionStrategy(conflict *Conflict) Reso
 func (cr *ConflictResolver) GetConflict(conflictID string) *Conflict {
 	cr.mu.RLock()
 	defer cr.mu.RUnlock()
-	
+
 	if conflict, exists := cr.conflicts[conflictID]; exists {
 		// Return a copy
 		conflictCopy := *conflict
@@ -516,7 +516,7 @@ func (cr *ConflictResolver) GetConflict(conflictID string) *Conflict {
 func (cr *ConflictResolver) GetActiveConflicts() []*Conflict {
 	cr.mu.RLock()
 	defer cr.mu.RUnlock()
-	
+
 	var active []*Conflict
 	for _, conflict := range cr.conflicts {
 		if conflict.Status != ConflictStatusResolved && conflict.Status != ConflictStatusFailed {
@@ -524,7 +524,7 @@ func (cr *ConflictResolver) GetActiveConflicts() []*Conflict {
 			active = append(active, &conflictCopy)
 		}
 	}
-	
+
 	// Sort by priority and detection time
 	sort.Slice(active, func(i, j int) bool {
 		if active[i].Priority != active[j].Priority {
@@ -532,7 +532,7 @@ func (cr *ConflictResolver) GetActiveConflicts() []*Conflict {
 		}
 		return active[i].DetectedAt.Before(active[j].DetectedAt)
 	})
-	
+
 	return active
 }
 
@@ -556,7 +556,7 @@ func (cr *ConflictResolver) priorityValue(priority ConflictPriority) int {
 func (cr *ConflictResolver) GetConflictMetrics() *ConflictMetrics {
 	cr.mu.RLock()
 	defer cr.mu.RUnlock()
-	
+
 	metrics := *cr.metrics
 	return &metrics
 }
@@ -564,10 +564,10 @@ func (cr *ConflictResolver) GetConflictMetrics() *ConflictMetrics {
 // detectionLoop periodically detects conflicts
 func (cr *ConflictResolver) detectionLoop() {
 	defer cr.wg.Done()
-	
+
 	ticker := time.NewTicker(cr.config.DetectionInterval)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-cr.ctx.Done():
@@ -584,17 +584,17 @@ func (cr *ConflictResolver) performConflictDetection() {
 	// 1. Compare state across nodes
 	// 2. Detect inconsistencies
 	// 3. Create conflict records
-	
+
 	// For now, this is a placeholder
 }
 
 // resolutionLoop periodically processes conflict resolutions
 func (cr *ConflictResolver) resolutionLoop() {
 	defer cr.wg.Done()
-	
+
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-cr.ctx.Done():
@@ -608,7 +608,7 @@ func (cr *ConflictResolver) resolutionLoop() {
 // processConflictResolutions processes pending conflict resolutions
 func (cr *ConflictResolver) processConflictResolutions() {
 	activeConflicts := cr.GetActiveConflicts()
-	
+
 	for _, conflict := range activeConflicts {
 		if conflict.Status == ConflictStatusDetected {
 			// Auto-resolve if conditions are met
@@ -627,14 +627,14 @@ func (cr *ConflictResolver) shouldAutoResolve(conflict *Conflict) bool {
 			return false
 		}
 	}
-	
+
 	// Check confidence threshold
 	totalConfidence := 0.0
 	for _, value := range conflict.Values {
 		totalConfidence += value.Confidence
 	}
 	avgConfidence := totalConfidence / float64(len(conflict.Values))
-	
+
 	return avgConfidence >= cr.config.AutoResolveThreshold
 }
 

@@ -44,12 +44,12 @@ func (sw *ServerWrapper) Stop(ctx context.Context) error {
 type DistributedServerWrapper struct {
 	// Original server components (using interface for compatibility)
 	originalServer interface{}
-	
+
 	// Distributed components
 	distributedRoutes *DistributedRoutes
 	scheduler         *scheduler.Engine
 	modelDistribution *models.Manager
-	
+
 	// Configuration
 	distributedEnabled bool
 	fallbackEnabled    bool
@@ -63,11 +63,11 @@ func NewDistributedServerWrapper(originalServer interface{}, scheduler *schedule
 	if err != nil {
 		return nil, fmt.Errorf("failed to create distributed routes: %w", err)
 	}
-	
+
 	// Create server wrapper for fallback
 	serverWrapper := &ServerWrapper{originalServer: originalServer}
 	distributedRoutes.SetOriginalServer(serverWrapper)
-	
+
 	return &DistributedServerWrapper{
 		originalServer:     originalServer,
 		distributedRoutes:  distributedRoutes,
@@ -87,18 +87,18 @@ func (dsw *DistributedServerWrapper) GenerateRoutesWithDistributed(rc *integrati
 		w.WriteHeader(http.StatusNotImplemented)
 		w.Write([]byte("Original ollama server integration not available in stub mode"))
 	})
-	
+
 	// Create a new router with distributed capabilities
 	router := gin.New()
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
-	
+
 	// Add distributed middleware
 	router.Use(dsw.distributedMiddleware())
-	
+
 	// Setup distributed routes
 	dsw.distributedRoutes.SetupRoutes(router)
-	
+
 	// Add fallback handler for any routes not handled by distributed system
 	router.NoRoute(func(c *gin.Context) {
 		// If distributed mode is disabled or fallback is needed, use original handler
@@ -110,7 +110,7 @@ func (dsw *DistributedServerWrapper) GenerateRoutesWithDistributed(rc *integrati
 			c.JSON(http.StatusNotFound, gin.H{"error": "endpoint not found"})
 		}
 	})
-	
+
 	return router, nil
 }
 
@@ -121,14 +121,14 @@ func (dsw *DistributedServerWrapper) distributedMiddleware() gin.HandlerFunc {
 		c.Header("X-Ollama-Distributed-Wrapper", "true")
 		c.Header("X-Ollama-Distributed-Enabled", fmt.Sprintf("%v", dsw.distributedEnabled))
 		c.Header("X-Ollama-Fallback-Enabled", fmt.Sprintf("%v", dsw.fallbackEnabled))
-		
+
 		// Check if we should enable distributed mode for this request
 		if dsw.shouldUseDistributed(c) {
 			c.Header("X-Ollama-Route-Mode", "distributed")
 		} else {
 			c.Header("X-Ollama-Route-Mode", "local")
 		}
-		
+
 		c.Next()
 	}
 }
@@ -139,19 +139,19 @@ func (dsw *DistributedServerWrapper) shouldUseDistributed(c *gin.Context) bool {
 	if !dsw.distributedEnabled {
 		return false
 	}
-	
+
 	// Check for override headers
 	if c.GetHeader("X-Ollama-Force-Local") == "true" {
 		return false
 	}
-	
+
 	if c.GetHeader("X-Ollama-Force-Distributed") == "true" {
 		return true
 	}
-	
+
 	// Check request path
 	path := c.Request.URL.Path
-	
+
 	// Always use distributed for inference endpoints
 	if strings.HasPrefix(path, "/api/generate") ||
 		strings.HasPrefix(path, "/api/chat") ||
@@ -161,14 +161,14 @@ func (dsw *DistributedServerWrapper) shouldUseDistributed(c *gin.Context) bool {
 		strings.HasPrefix(path, "/v1/embeddings") {
 		return true
 	}
-	
+
 	// Use distributed for model management if model is distributed
 	if strings.HasPrefix(path, "/api/show") ||
 		strings.HasPrefix(path, "/api/tags") ||
 		strings.HasPrefix(path, "/api/pull") {
 		return true
 	}
-	
+
 	// Default to local for other endpoints
 	return false
 }
@@ -179,47 +179,47 @@ func (dsw *DistributedServerWrapper) shouldFallback(c *gin.Context) bool {
 	if !dsw.fallbackEnabled {
 		return false
 	}
-	
+
 	// Check for fallback indicators in headers
 	if c.GetHeader("X-Ollama-Distributed-Error") != "" {
 		return true
 	}
-	
+
 	// Check cluster health
 	if dsw.scheduler.GetClusterSize() < 2 {
 		return true
 	}
-	
+
 	// Check if any nodes are available
 	if dsw.scheduler.GetActiveNodes() == 0 {
 		return true
 	}
-	
+
 	return false
 }
 
 // Start starts the distributed server wrapper
 func (dsw *DistributedServerWrapper) Start(ctx context.Context) error {
 	slog.Info("Starting distributed server wrapper")
-	
+
 	// Start distributed routes
 	if err := dsw.distributedRoutes.Start(ctx); err != nil {
 		return fmt.Errorf("failed to start distributed routes: %w", err)
 	}
-	
+
 	return nil
 }
 
 // Shutdown gracefully shuts down the distributed server wrapper
 func (dsw *DistributedServerWrapper) Shutdown(ctx context.Context) error {
 	slog.Info("Shutting down distributed server wrapper")
-	
+
 	// Shutdown distributed routes
 	if err := dsw.distributedRoutes.Shutdown(ctx); err != nil {
 		slog.Error("Failed to shutdown distributed routes", "error", err)
 		return err
 	}
-	
+
 	return nil
 }
 
@@ -285,7 +285,7 @@ func (dsc *DistributedServerCompatibility) WrapGenerateRoutes(originalServer int
 			})
 			return handler, nil
 		}
-		
+
 		// Use distributed wrapper
 		return dsc.wrapper.GenerateRoutesWithDistributed(rc)
 	}
@@ -294,26 +294,26 @@ func (dsc *DistributedServerCompatibility) WrapGenerateRoutes(originalServer int
 // GetDistributedHandlers returns distributed-specific handlers
 func (dsc *DistributedServerCompatibility) GetDistributedHandlers() map[string]gin.HandlerFunc {
 	distributedRoutes := dsc.wrapper.GetDistributedRoutes()
-	
+
 	return map[string]gin.HandlerFunc{
-		"generate":    distributedRoutes.handleGenerate,
-		"chat":        distributedRoutes.handleChat,
-		"embed":       distributedRoutes.handleEmbed,
-		"embeddings":  distributedRoutes.handleEmbeddings,
-		"pull":        distributedRoutes.handlePull,
-		"show":        distributedRoutes.handleShow,
-		"tags":        distributedRoutes.handleTags,
-		"ps":          distributedRoutes.handlePs,
-		"version":     distributedRoutes.handleVersion,
-		"health":      distributedRoutes.handleHealth,
-		"metrics":     distributedRoutes.handleMetrics,
+		"generate":   distributedRoutes.handleGenerate,
+		"chat":       distributedRoutes.handleChat,
+		"embed":      distributedRoutes.handleEmbed,
+		"embeddings": distributedRoutes.handleEmbeddings,
+		"pull":       distributedRoutes.handlePull,
+		"show":       distributedRoutes.handleShow,
+		"tags":       distributedRoutes.handleTags,
+		"ps":         distributedRoutes.handlePs,
+		"version":    distributedRoutes.handleVersion,
+		"health":     distributedRoutes.handleHealth,
+		"metrics":    distributedRoutes.handleMetrics,
 	}
 }
 
 // InjectDistributedHandlers injects distributed handlers into existing routes
 func (dsc *DistributedServerCompatibility) InjectDistributedHandlers(router *gin.Engine) {
 	handlers := dsc.GetDistributedHandlers()
-	
+
 	// Replace existing handlers with distributed versions
 	api := router.Group("/api")
 	{
@@ -327,7 +327,7 @@ func (dsc *DistributedServerCompatibility) InjectDistributedHandlers(router *gin
 		api.GET("/ps", handlers["ps"])
 		api.GET("/version", handlers["version"])
 	}
-	
+
 	// Add health and metrics
 	router.GET("/health", handlers["health"])
 	router.GET("/metrics", handlers["metrics"])
@@ -341,7 +341,7 @@ func (dsc *DistributedServerCompatibility) CreateDistributedMiddleware() gin.Han
 			// Mark as distributed
 			c.Set("distributed", true)
 			c.Header("X-Ollama-Distributed-Request", "true")
-			
+
 			// Check if fallback is needed
 			if dsc.wrapper.shouldFallback(c) {
 				c.Header("X-Ollama-Fallback-Available", "true")
@@ -351,7 +351,7 @@ func (dsc *DistributedServerCompatibility) CreateDistributedMiddleware() gin.Han
 			c.Set("distributed", false)
 			c.Header("X-Ollama-Distributed-Request", "false")
 		}
-		
+
 		c.Next()
 	}
 }
@@ -359,13 +359,13 @@ func (dsc *DistributedServerCompatibility) CreateDistributedMiddleware() gin.Han
 // GetDistributedStatus returns the status of distributed components
 func (dsc *DistributedServerCompatibility) GetDistributedStatus() map[string]interface{} {
 	return map[string]interface{}{
-		"wrapper_enabled":     dsc.wrapper.IsDistributedEnabled(),
-		"fallback_enabled":    dsc.wrapper.IsFallbackEnabled(),
-		"cluster_size":        dsc.wrapper.scheduler.GetClusterSize(),
-		"active_nodes":        dsc.wrapper.scheduler.GetActiveNodes(),
-		"scheduler_healthy":   dsc.wrapper.scheduler.IsHealthy(),
-		"routes_initialized":  dsc.wrapper.distributedRoutes != nil,
-		"integration_stats":   dsc.wrapper.distributedRoutes.GetIntegrationLayer().GetStats(),
+		"wrapper_enabled":    dsc.wrapper.IsDistributedEnabled(),
+		"fallback_enabled":   dsc.wrapper.IsFallbackEnabled(),
+		"cluster_size":       dsc.wrapper.scheduler.GetClusterSize(),
+		"active_nodes":       dsc.wrapper.scheduler.GetActiveNodes(),
+		"scheduler_healthy":  dsc.wrapper.scheduler.IsHealthy(),
+		"routes_initialized": dsc.wrapper.distributedRoutes != nil,
+		"integration_stats":  dsc.wrapper.distributedRoutes.GetIntegrationLayer().GetStats(),
 	}
 }
 
@@ -373,18 +373,18 @@ func (dsc *DistributedServerCompatibility) GetDistributedStatus() map[string]int
 func (dsc *DistributedServerCompatibility) EnableDistributedMode(config map[string]interface{}) error {
 	// Enable distributed mode
 	dsc.wrapper.SetDistributedEnabled(true)
-	
+
 	// Configure based on provided config
 	if fallback, ok := config["fallback"].(bool); ok {
 		dsc.wrapper.SetFallbackEnabled(fallback)
 	}
-	
+
 	// Start distributed components if not already started
 	ctx := context.Background()
 	if err := dsc.wrapper.Start(ctx); err != nil {
 		return fmt.Errorf("failed to start distributed mode: %w", err)
 	}
-	
+
 	slog.Info("Distributed mode enabled", "config", config)
 	return nil
 }
@@ -393,13 +393,13 @@ func (dsc *DistributedServerCompatibility) EnableDistributedMode(config map[stri
 func (dsc *DistributedServerCompatibility) DisableDistributedMode() error {
 	// Disable distributed mode
 	dsc.wrapper.SetDistributedEnabled(false)
-	
+
 	// Shutdown distributed components
 	ctx := context.Background()
 	if err := dsc.wrapper.Shutdown(ctx); err != nil {
 		return fmt.Errorf("failed to shutdown distributed mode: %w", err)
 	}
-	
+
 	slog.Info("Distributed mode disabled")
 	return nil
 }
@@ -420,7 +420,7 @@ func (dsc *DistributedServerCompatibility) RegisterDistributedEndpoints(router *
 	router.GET("/distributed/status", func(c *gin.Context) {
 		c.JSON(http.StatusOK, dsc.GetDistributedStatus())
 	})
-	
+
 	// Distributed control endpoints
 	admin := router.Group("/distributed/admin")
 	{
@@ -430,21 +430,21 @@ func (dsc *DistributedServerCompatibility) RegisterDistributedEndpoints(router *
 				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 				return
 			}
-			
+
 			if err := dsc.EnableDistributedMode(config); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 				return
 			}
-			
+
 			c.JSON(http.StatusOK, gin.H{"message": "Distributed mode enabled"})
 		})
-		
+
 		admin.POST("/disable", func(c *gin.Context) {
 			if err := dsc.DisableDistributedMode(); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 				return
 			}
-			
+
 			c.JSON(http.StatusOK, gin.H{"message": "Distributed mode disabled"})
 		})
 	}

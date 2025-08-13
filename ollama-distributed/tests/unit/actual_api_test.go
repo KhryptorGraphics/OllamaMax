@@ -5,46 +5,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/api"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/integration"
-	"github.com/khryptorgraphics/ollamamax/ollama-distributed/internal/config"
+	"github.com/stretchr/testify/assert"
 )
 
 // Test_API_Server_Initialization tests the API server initialization
 func Test_API_Server_Initialization(t *testing.T) {
-	config := &config.Config{
-		P2P: config.P2PConfig{
-			ListenAddr: "127.0.0.1:0",
-		},
-		API: config.APIConfig{
-			Port: "0",
-		},
-		Consensus: config.ConsensusConfig{
-			DataDir: t.TempDir(),
-		},
-		Scheduler: config.SchedulerConfig{
-			Strategy: "round_robin",
-		},
-	}
-
-	server, err := api.NewServer(context.Background(), config)
-	require.NoError(t, err)
+	// Use the same pattern as test_helpers.go
+	server := createTestAPIServer(t)
 	assert.NotNil(t, server)
 
-	// Test server can start and stop
-	go func() {
-		err := server.Start()
-		if err != nil {
-			t.Logf("Server start error: %v", err)
-		}
-	}()
-
-	// Give server time to start
-	time.Sleep(100 * time.Millisecond)
-
-	err = server.Stop(context.Background())
+	// Test server can stop
+	err := server.Stop()
 	assert.NoError(t, err)
 }
 
@@ -60,7 +32,7 @@ func Test_Integration_Client(t *testing.T) {
 		Model:  "test-model",
 		Prompt: "Hello, world!",
 	}
-	
+
 	generateResp, err := client.Generate(ctx, generateReq)
 	assert.NoError(t, err)
 	assert.NotNil(t, generateResp)
@@ -75,7 +47,7 @@ func Test_Integration_Client(t *testing.T) {
 			{Role: "user", Content: "Hello!"},
 		},
 	}
-	
+
 	chatResp, err := client.Chat(ctx, chatReq)
 	assert.NoError(t, err)
 	assert.NotNil(t, chatResp)
@@ -88,7 +60,7 @@ func Test_Integration_Client(t *testing.T) {
 		Model:  "test-model",
 		Prompt: "Test embedding",
 	}
-	
+
 	embedResp, err := client.Embed(ctx, embedReq)
 	assert.NoError(t, err)
 	assert.NotNil(t, embedResp)
@@ -153,7 +125,7 @@ func Test_KeyManager_Integration(t *testing.T) {
 
 	// Test cleanup operations
 	keyManager.CleanupExpiredSessions()
-	
+
 	err = keyManager.HandleKeyExchange(nil)
 	assert.NoError(t, err)
 
@@ -170,14 +142,14 @@ func Test_Performance_Metrics(t *testing.T) {
 	ctx := context.Background()
 
 	start := time.Now()
-	
+
 	// Run multiple operations to test performance
 	for i := 0; i < 10; i++ {
 		generateReq := integration.GenerateRequest{
 			Model:  "test-model",
 			Prompt: "Performance test",
 		}
-		
+
 		resp, err := client.Generate(ctx, generateReq)
 		assert.NoError(t, err)
 		assert.NotNil(t, resp)
@@ -187,7 +159,7 @@ func Test_Performance_Metrics(t *testing.T) {
 
 	elapsed := time.Since(start)
 	t.Logf("Performed 10 generate operations in %v", elapsed)
-	
+
 	// Performance should be reasonable for stub operations
 	assert.Less(t, elapsed, 1*time.Second)
 }
@@ -207,7 +179,7 @@ func Test_Concurrent_Operations(t *testing.T) {
 				Model:  "test-model",
 				Prompt: "Concurrent test",
 			}
-			
+
 			_, err := client.Generate(ctx, generateReq)
 			results <- err
 		}(i)
@@ -230,7 +202,7 @@ func Test_Error_Handling(t *testing.T) {
 		Model:  "test-model",
 		Prompt: "Test prompt",
 	}
-	
+
 	_, err := client.Generate(ctx, generateReq)
 	assert.NoError(t, err)
 

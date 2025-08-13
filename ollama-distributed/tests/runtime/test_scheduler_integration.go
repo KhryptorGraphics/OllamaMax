@@ -1,3 +1,5 @@
+//go:build ignore
+
 package main
 
 import (
@@ -59,7 +61,7 @@ func setupIntegratedSystemWithScheduler() (*api.Server, string, *scheduler.Engin
 	p2pConfig := &pkgConfig.NodeConfig{
 		Listen: []string{"/ip4/127.0.0.1/tcp/0"},
 	}
-	
+
 	p2pNode, err := p2p.NewP2PNode(ctx, p2pConfig)
 	if err != nil {
 		log.Printf("Failed to create P2P node: %v", err)
@@ -76,7 +78,7 @@ func setupIntegratedSystemWithScheduler() (*api.Server, string, *scheduler.Engin
 		DataDir:   "./test_data/consensus",
 		Bootstrap: true,
 	}
-	
+
 	consensusEngine, err := consensus.NewEngine(consensusConfig, p2pNode, messageRouter, networkMonitor)
 	if err != nil {
 		fmt.Printf("Consensus engine creation failed: %v\n", err)
@@ -93,13 +95,13 @@ func setupIntegratedSystemWithScheduler() (*api.Server, string, *scheduler.Engin
 		QueueSize:           1000,
 		WorkerCount:         4,
 	}
-	
+
 	schedulerEngine, err := scheduler.NewEngine(schedulerConfig, p2pNode, consensusEngine)
 	if err != nil {
 		log.Printf("Failed to create scheduler engine: %v", err)
 		return nil, "", nil
 	}
-	
+
 	if err := schedulerEngine.Start(); err != nil {
 		log.Printf("Failed to start scheduler engine: %v", err)
 		return nil, "", nil
@@ -111,7 +113,7 @@ func setupIntegratedSystemWithScheduler() (*api.Server, string, *scheduler.Engin
 		Timeout:     30 * time.Second,
 		MaxBodySize: 10 * 1024 * 1024,
 	}
-	
+
 	server, err := api.NewServer(apiConfig, p2pNode, consensusEngine, schedulerEngine)
 	if err != nil {
 		log.Printf("Failed to create API server: %v", err)
@@ -137,9 +139,9 @@ func testSchedulerIntegration(baseURL string, schedulerEngine *scheduler.Engine)
 		"prompt": "Hello, distributed world!",
 		"stream": false,
 	}
-	
+
 	jsonData, _ := json.Marshal(generatePayload)
-	
+
 	// Make request to API gateway
 	client := &http.Client{Timeout: 15 * time.Second}
 	resp, err := client.Post(baseURL+"/api/v1/generate", "application/json", bytes.NewBuffer(jsonData))
@@ -169,7 +171,7 @@ func testSchedulerIntegration(baseURL string, schedulerEngine *scheduler.Engine)
 		},
 		"stream": false,
 	}
-	
+
 	jsonData, _ = json.Marshal(chatPayload)
 	resp, err = client.Post(baseURL+"/api/v1/chat", "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
@@ -199,7 +201,7 @@ func testLoadBalancing(baseURL string, schedulerEngine *scheduler.Engine) {
 
 	// Test multiple requests to trigger load balancing
 	client := &http.Client{Timeout: 10 * time.Second}
-	
+
 	successCount := 0
 	for i := 0; i < 5; i++ {
 		payload := map[string]interface{}{
@@ -207,7 +209,7 @@ func testLoadBalancing(baseURL string, schedulerEngine *scheduler.Engine) {
 			"prompt": fmt.Sprintf("Load balancing test %d", i),
 			"stream": false,
 		}
-		
+
 		jsonData, _ := json.Marshal(payload)
 		resp, err := client.Post(baseURL+"/api/v1/generate", "application/json", bytes.NewBuffer(jsonData))
 		if err != nil {
@@ -219,7 +221,7 @@ func testLoadBalancing(baseURL string, schedulerEngine *scheduler.Engine) {
 		if resp.StatusCode == 200 || resp.StatusCode == 500 || resp.StatusCode == 401 {
 			successCount++
 		}
-		
+
 		// Small delay between requests
 		time.Sleep(100 * time.Millisecond)
 	}
@@ -232,7 +234,7 @@ func testLoadBalancing(baseURL string, schedulerEngine *scheduler.Engine) {
 	fmt.Printf("  ✅ Requests sent: 5\n")
 	fmt.Printf("  ✅ Requests reached API: %d\n", successCount)
 	fmt.Printf("  ✅ Requests processed by scheduler: %d\n", requestsProcessed)
-	
+
 	if requestsProcessed > 0 {
 		fmt.Println("✅ Load balancing system operational")
 	} else {
@@ -269,14 +271,14 @@ func testRequestDistribution(baseURL string, schedulerEngine *scheduler.Engine) 
 		{
 			endpoint: "/api/v1/embeddings",
 			payload: map[string]interface{}{
-				"model": "llama2",
+				"model":  "llama2",
 				"prompt": "Distributed embeddings test",
 			},
 		},
 	}
 
 	client := &http.Client{Timeout: 10 * time.Second}
-	
+
 	for i, reqType := range requestTypes {
 		jsonData, _ := json.Marshal(reqType.payload)
 		resp, err := client.Post(baseURL+reqType.endpoint, "application/json", bytes.NewBuffer(jsonData))

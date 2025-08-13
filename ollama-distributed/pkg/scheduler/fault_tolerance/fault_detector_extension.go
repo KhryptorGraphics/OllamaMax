@@ -8,7 +8,7 @@ import (
 func (fd *FaultDetector) UpdateFaultStatus(faultID string, status FaultStatus) {
 	fd.detectionsMu.Lock()
 	defer fd.detectionsMu.Unlock()
-	
+
 	if fault, exists := fd.detections[faultID]; exists {
 		fault.Status = status
 		if status == FaultStatusResolved {

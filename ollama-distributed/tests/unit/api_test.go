@@ -2,12 +2,10 @@ package unit
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
-	"fmt"
-	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -52,7 +50,7 @@ func TestAPIServer(t *testing.T) {
 
 		// Check response
 		assert.Equal(t, http.StatusOK, w.Code)
-		
+
 		var response api.HealthResponse
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
@@ -81,7 +79,7 @@ func TestAPIServer(t *testing.T) {
 
 		// Check response
 		assert.Equal(t, http.StatusOK, w.Code)
-		
+
 		var response api.NodesResponse
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
@@ -106,7 +104,7 @@ func TestAPIServer(t *testing.T) {
 
 		// Check response
 		assert.Equal(t, http.StatusOK, w.Code)
-		
+
 		var response api.TasksResponse
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
@@ -138,7 +136,7 @@ func TestAPIServer(t *testing.T) {
 
 		// Check response
 		assert.Equal(t, http.StatusOK, w.Code)
-		
+
 		var response api.InferenceResponse
 		err = json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
@@ -155,7 +153,7 @@ func TestAPIServer(t *testing.T) {
 
 		// Check response
 		assert.Equal(t, http.StatusOK, w.Code)
-		
+
 		var response api.MetricsResponse
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
@@ -193,7 +191,7 @@ func TestAPICompatibility(t *testing.T) {
 
 		// Check response
 		assert.Equal(t, http.StatusOK, w.Code)
-		
+
 		var response api.OllamaGenerateResponse
 		err = json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
@@ -228,7 +226,7 @@ func TestAPICompatibility(t *testing.T) {
 
 		// Check response
 		assert.Equal(t, http.StatusOK, w.Code)
-		
+
 		var response api.OllamaChatResponse
 		err = json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
@@ -247,7 +245,7 @@ func TestAPICompatibility(t *testing.T) {
 
 		// Check response
 		assert.Equal(t, http.StatusOK, w.Code)
-		
+
 		var response api.OllamaModelsResponse
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
@@ -274,7 +272,7 @@ func TestAPICompatibility(t *testing.T) {
 
 		// Check response
 		assert.Equal(t, http.StatusOK, w.Code)
-		
+
 		var response api.OllamaShowResponse
 		err = json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
@@ -317,7 +315,7 @@ func TestAPIStreaming(t *testing.T) {
 		// Parse streaming response
 		responses := parseStreamingResponse(w.Body.String())
 		assert.Greater(t, len(responses), 0)
-		
+
 		// Check final response
 		finalResponse := responses[len(responses)-1]
 		assert.True(t, finalResponse.Done)
@@ -355,7 +353,7 @@ func TestAPIStreaming(t *testing.T) {
 		// Parse streaming response
 		responses := parseStreamingChatResponse(w.Body.String())
 		assert.Greater(t, len(responses), 0)
-		
+
 		// Check final response
 		finalResponse := responses[len(responses)-1]
 		assert.True(t, finalResponse.Done)
@@ -391,7 +389,7 @@ func TestAPIErrorHandling(t *testing.T) {
 
 		// Check error response
 		assert.Equal(t, http.StatusNotFound, w.Code)
-		
+
 		var errorResponse api.ErrorResponse
 		err = json.Unmarshal(w.Body.Bytes(), &errorResponse)
 		assert.NoError(t, err)
@@ -409,7 +407,7 @@ func TestAPIErrorHandling(t *testing.T) {
 
 		// Check error response
 		assert.Equal(t, http.StatusBadRequest, w.Code)
-		
+
 		var errorResponse api.ErrorResponse
 		err := json.Unmarshal(w.Body.Bytes(), &errorResponse)
 		assert.NoError(t, err)
@@ -421,7 +419,7 @@ func TestAPIErrorHandling(t *testing.T) {
 		config := &api.Config{
 			RateLimit: 1, // 1 request per second
 		}
-		
+
 		limitedServer := api.NewServerWithConfig(config)
 		require.NotNil(t, limitedServer)
 
@@ -429,9 +427,9 @@ func TestAPIErrorHandling(t *testing.T) {
 		for i := 0; i < 5; i++ {
 			req := httptest.NewRequest("GET", "/health", nil)
 			w := httptest.NewRecorder()
-			
+
 			limitedServer.ServeHTTP(w, req)
-			
+
 			if i == 0 {
 				assert.Equal(t, http.StatusOK, w.Code)
 			} else {
@@ -478,7 +476,7 @@ func TestAPIMiddleware(t *testing.T) {
 
 		// Check response
 		assert.Equal(t, http.StatusOK, w.Code)
-		
+
 		// Request should be logged (we can't easily test this without capturing logs)
 		// but we can verify the response was successful
 	})
@@ -493,92 +491,51 @@ func TestAPIMiddleware(t *testing.T) {
 
 		// Check response
 		assert.Equal(t, http.StatusOK, w.Code)
-		
+
 		// Should have request ID header
 		requestID := w.Header().Get("X-Request-ID")
 		assert.NotEmpty(t, requestID)
 	})
 }
 
-// MockDistributedScheduler implements a mock distributed scheduler for testing
-type MockDistributedScheduler struct {
-	nodes map[string]*distributed.NodeInfo
-	tasks map[string]*distributed.DistributedTask
-}
-
-func (m *MockDistributedScheduler) GetNodes() []*distributed.NodeInfo {
-	nodes := make([]*distributed.NodeInfo, 0, len(m.nodes))
-	for _, node := range m.nodes {
-		nodes = append(nodes, node)
-	}
-	return nodes
-}
-
-func (m *MockDistributedScheduler) GetActiveTasks() []*distributed.DistributedTask {
-	tasks := make([]*distributed.DistributedTask, 0, len(m.tasks))
-	for _, task := range m.tasks {
-		tasks = append(tasks, task)
-	}
-	return tasks
-}
-
-func (m *MockDistributedScheduler) GetMetrics() *distributed.PerformanceMetrics {
-	return &distributed.PerformanceMetrics{
-		TotalRequests:       100,
-		CompletedRequests:   95,
-		FailedRequests:      5,
-		AverageLatency:      50 * time.Millisecond,
-		Throughput:          10.5,
-		ResourceUtilization: 0.65,
-		LastUpdated:         time.Now(),
-	}
-}
-
-func (m *MockDistributedScheduler) ProcessInference(ctx context.Context, req *api.InferenceRequest) (*api.InferenceResponse, error) {
-	// Mock inference processing
-	return &api.InferenceResponse{
-		Response: "This is a mock response to: " + req.Prompt,
-		Done:     true,
-		TotalDuration: 1000000000, // 1 second in nanoseconds
-	}, nil
-}
+// MockDistributedScheduler is defined in test_helpers.go to avoid duplication
 
 // Helper functions for parsing streaming responses
 func parseStreamingResponse(body string) []api.OllamaGenerateResponse {
 	responses := []api.OllamaGenerateResponse{}
-	
+
 	// Split by newlines and parse each JSON object
 	lines := strings.Split(body, "\n")
 	for _, line := range lines {
 		if strings.TrimSpace(line) == "" {
 			continue
 		}
-		
+
 		var response api.OllamaGenerateResponse
 		if err := json.Unmarshal([]byte(line), &response); err == nil {
 			responses = append(responses, response)
 		}
 	}
-	
+
 	return responses
 }
 
 func parseStreamingChatResponse(body string) []api.OllamaChatResponse {
 	responses := []api.OllamaChatResponse{}
-	
+
 	// Split by newlines and parse each JSON object
 	lines := strings.Split(body, "\n")
 	for _, line := range lines {
 		if strings.TrimSpace(line) == "" {
 			continue
 		}
-		
+
 		var response api.OllamaChatResponse
 		if err := json.Unmarshal([]byte(line), &response); err == nil {
 			responses = append(responses, response)
 		}
 	}
-	
+
 	return responses
 }
 
@@ -595,9 +552,9 @@ func BenchmarkAPIEndpoints(b *testing.B) {
 			for pb.Next() {
 				req := httptest.NewRequest("GET", "/health", nil)
 				w := httptest.NewRecorder()
-				
+
 				server.ServeHTTP(w, req)
-				
+
 				if w.Code != http.StatusOK {
 					b.Errorf("Expected status 200, got %d", w.Code)
 				}
@@ -620,9 +577,9 @@ func BenchmarkAPIEndpoints(b *testing.B) {
 				req := httptest.NewRequest("POST", "/api/generate", bytes.NewReader(reqBody))
 				req.Header.Set("Content-Type", "application/json")
 				w := httptest.NewRecorder()
-				
+
 				server.ServeHTTP(w, req)
-				
+
 				if w.Code != http.StatusOK {
 					b.Errorf("Expected status 200, got %d", w.Code)
 				}
@@ -635,9 +592,9 @@ func BenchmarkAPIEndpoints(b *testing.B) {
 			for pb.Next() {
 				req := httptest.NewRequest("GET", "/api/tags", nil)
 				w := httptest.NewRecorder()
-				
+
 				server.ServeHTTP(w, req)
-				
+
 				if w.Code != http.StatusOK {
 					b.Errorf("Expected status 200, got %d", w.Code)
 				}

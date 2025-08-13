@@ -32,7 +32,7 @@ func (frs *FastRecoveryStrategy) CanHandle(fault *FaultDetection) bool {
 // Recover implements fast recovery using checkpointing
 func (frs *FastRecoveryStrategy) Recover(ctx context.Context, fault *FaultDetection) (*RecoveryResult, error) {
 	start := time.Now()
-	
+
 	// For node failure, restore from the latest checkpoint
 	if fault.Type == FaultTypeNodeFailure {
 		// Find the latest checkpoint
@@ -40,71 +40,71 @@ func (frs *FastRecoveryStrategy) Recover(ctx context.Context, fault *FaultDetect
 		if err != nil {
 			return nil, fmt.Errorf("failed to get latest checkpoint: %v", err)
 		}
-		
+
 		if latestCheckpoint == nil {
 			return nil, fmt.Errorf("no checkpoint available for recovery")
 		}
-		
+
 		// Restore system state from checkpoint
 		if err := frs.manager.checkpointing.RestoreFromCheckpoint(latestCheckpoint); err != nil {
 			return nil, fmt.Errorf("failed to restore from checkpoint: %v", err)
 		}
-		
+
 		// Update fault status
 		fault.Status = FaultStatusRecovering
 		frs.manager.detectionSystem.UpdateFaultStatus(fault.ID, FaultStatusRecovering)
-		
+
 		// Wait a bit to ensure recovery is complete
 		time.Sleep(2 * time.Second)
-		
+
 		// Mark fault as resolved
 		now := time.Now()
 		fault.Status = FaultStatusResolved
 		fault.ResolvedAt = &now
 		frs.manager.detectionSystem.UpdateFaultStatus(fault.ID, FaultStatusResolved)
-		
+
 		// Create recovery result
 		result := &RecoveryResult{
-			FaultID:     fault.ID,
-			Strategy:    frs.GetName(),
-			Successful:  true,
-			Duration:    time.Since(start),
-			Metadata:    map[string]interface{}{"checkpoint_id": latestCheckpoint.ID},
-			Timestamp:   time.Now(),
+			FaultID:    fault.ID,
+			Strategy:   frs.GetName(),
+			Successful: true,
+			Duration:   time.Since(start),
+			Metadata:   map[string]interface{}{"checkpoint_id": latestCheckpoint.ID},
+			Timestamp:  time.Now(),
 		}
-		
+
 		return result, nil
 	}
-	
+
 	// For performance anomalies, try to restart the affected components
 	if fault.Type == FaultTypePerformanceAnomaly {
 		// Restart affected services
 		if err := frs.restartAffectedServices(fault); err != nil {
 			return nil, fmt.Errorf("failed to restart services: %v", err)
 		}
-		
+
 		// Wait for services to stabilize
 		time.Sleep(5 * time.Second)
-		
+
 		// Mark fault as resolved
 		now := time.Now()
 		fault.Status = FaultStatusResolved
 		fault.ResolvedAt = &now
 		frs.manager.detectionSystem.UpdateFaultStatus(fault.ID, FaultStatusResolved)
-		
+
 		// Create recovery result
 		result := &RecoveryResult{
-			FaultID:     fault.ID,
-			Strategy:    frs.GetName(),
-			Successful:  true,
-			Duration:    time.Since(start),
-			Metadata:    map[string]interface{}{"action": "service_restart"},
-			Timestamp:   time.Now(),
+			FaultID:    fault.ID,
+			Strategy:   frs.GetName(),
+			Successful: true,
+			Duration:   time.Since(start),
+			Metadata:   map[string]interface{}{"action": "service_restart"},
+			Timestamp:  time.Now(),
 		}
-		
+
 		return result, nil
 	}
-	
+
 	return nil, fmt.Errorf("unsupported fault type: %s", fault.Type)
 }
 
@@ -142,45 +142,45 @@ func (cbRS *CheckpointBasedRecoveryStrategy) CanHandle(fault *FaultDetection) bo
 // Recover implements recovery using checkpoints
 func (cbRS *CheckpointBasedRecoveryStrategy) Recover(ctx context.Context, fault *FaultDetection) (*RecoveryResult, error) {
 	start := time.Now()
-	
+
 	// Find the latest checkpoint
 	latestCheckpoint, err := cbRS.manager.checkpointing.GetLatestCheckpoint()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get latest checkpoint: %v", err)
 	}
-	
+
 	if latestCheckpoint == nil {
 		return nil, fmt.Errorf("no checkpoint available for recovery")
 	}
-	
+
 	// Restore system state from checkpoint
 	if err := cbRS.manager.checkpointing.RestoreFromCheckpoint(latestCheckpoint); err != nil {
 		return nil, fmt.Errorf("failed to restore from checkpoint: %v", err)
 	}
-	
+
 	// Update fault status
 	fault.Status = FaultStatusRecovering
 	cbRS.manager.detectionSystem.UpdateFaultStatus(fault.ID, FaultStatusRecovering)
-	
+
 	// Wait for recovery to complete
 	time.Sleep(3 * time.Second)
-	
+
 	// Mark fault as resolved
 	now := time.Now()
 	fault.Status = FaultStatusResolved
 	fault.ResolvedAt = &now
 	cbRS.manager.detectionSystem.UpdateFaultStatus(fault.ID, FaultStatusResolved)
-	
+
 	// Create recovery result
 	result := &RecoveryResult{
-		FaultID:     fault.ID,
-		Strategy:    cbRS.GetName(),
-		Successful:  true,
-		Duration:    time.Since(start),
-		Metadata:    map[string]interface{}{"checkpoint_id": latestCheckpoint.ID},
-		Timestamp:   time.Now(),
+		FaultID:    fault.ID,
+		Strategy:   cbRS.GetName(),
+		Successful: true,
+		Duration:   time.Since(start),
+		Metadata:   map[string]interface{}{"checkpoint_id": latestCheckpoint.ID},
+		Timestamp:  time.Now(),
 	}
-	
+
 	return result, nil
 }
 
@@ -210,35 +210,35 @@ func (res *RedundantExecutionStrategy) CanHandle(fault *FaultDetection) bool {
 // Recover implements recovery using redundant execution
 func (res *RedundantExecutionStrategy) Recover(ctx context.Context, fault *FaultDetection) (*RecoveryResult, error) {
 	start := time.Now()
-	
+
 	// For critical faults, execute critical tasks on backup nodes
 	if err := res.executeOnBackupNodes(fault); err != nil {
 		return nil, fmt.Errorf("failed to execute on backup nodes: %v", err)
 	}
-	
+
 	// Update fault status
 	fault.Status = FaultStatusRecovering
 	res.manager.detectionSystem.UpdateFaultStatus(fault.ID, FaultStatusRecovering)
-	
+
 	// Wait for redundant execution to complete
 	time.Sleep(5 * time.Second)
-	
+
 	// Mark fault as resolved
 	now := time.Now()
 	fault.Status = FaultStatusResolved
 	fault.ResolvedAt = &now
 	res.manager.detectionSystem.UpdateFaultStatus(fault.ID, FaultStatusResolved)
-	
+
 	// Create recovery result
 	result := &RecoveryResult{
-		FaultID:     fault.ID,
-		Strategy:    res.GetName(),
-		Successful:  true,
-		Duration:    time.Since(start),
-		Metadata:    map[string]interface{}{"backup_nodes_used": 2},
-		Timestamp:   time.Now(),
+		FaultID:    fault.ID,
+		Strategy:   res.GetName(),
+		Successful: true,
+		Duration:   time.Since(start),
+		Metadata:   map[string]interface{}{"backup_nodes_used": 2},
+		Timestamp:  time.Now(),
 	}
-	
+
 	return result, nil
 }
 
@@ -276,35 +276,35 @@ func (gds *GracefulDegradationStrategy) CanHandle(fault *FaultDetection) bool {
 // Recover implements graceful degradation
 func (gds *GracefulDegradationStrategy) Recover(ctx context.Context, fault *FaultDetection) (*RecoveryResult, error) {
 	start := time.Now()
-	
+
 	// For non-critical faults, degrade service gracefully
 	if err := gds.degradeService(fault); err != nil {
 		return nil, fmt.Errorf("failed to degrade service: %v", err)
 	}
-	
+
 	// Update fault status
 	fault.Status = FaultStatusRecovering
 	gds.manager.detectionSystem.UpdateFaultStatus(fault.ID, FaultStatusRecovering)
-	
+
 	// Wait for degradation to take effect
 	time.Sleep(2 * time.Second)
-	
+
 	// Mark fault as resolved
 	now := time.Now()
 	fault.Status = FaultStatusResolved
 	fault.ResolvedAt = &now
 	gds.manager.detectionSystem.UpdateFaultStatus(fault.ID, FaultStatusResolved)
-	
+
 	// Create recovery result
 	result := &RecoveryResult{
-		FaultID:     fault.ID,
-		Strategy:    gds.GetName(),
-		Successful:  true,
-		Duration:    time.Since(start),
-		Metadata:    map[string]interface{}{"degradation_level": "medium"},
-		Timestamp:   time.Now(),
+		FaultID:    fault.ID,
+		Strategy:   gds.GetName(),
+		Successful: true,
+		Duration:   time.Since(start),
+		Metadata:   map[string]interface{}{"degradation_level": "medium"},
+		Timestamp:  time.Now(),
 	}
-	
+
 	return result, nil
 }
 
@@ -324,22 +324,22 @@ func (ftm *FaultToleranceManager) registerAdvancedStrategies() {
 		NewFastRecoveryStrategy(ftm),
 		NewCheckpointBasedRecoveryStrategy(ftm),
 	)
-	
+
 	ftm.recoveryEngine.strategies[FaultTypeNetworkPartition] = append(
 		ftm.recoveryEngine.strategies[FaultTypeNetworkPartition],
 		NewRedundantExecutionStrategy(ftm),
 	)
-	
+
 	ftm.recoveryEngine.strategies[FaultTypeResourceExhaustion] = append(
 		ftm.recoveryEngine.strategies[FaultTypeResourceExhaustion],
 		NewGracefulDegradationStrategy(ftm),
 	)
-	
+
 	ftm.recoveryEngine.strategies[FaultTypePerformanceAnomaly] = append(
 		ftm.recoveryEngine.strategies[FaultTypePerformanceAnomaly],
 		NewFastRecoveryStrategy(ftm),
 	)
-	
+
 	ftm.recoveryEngine.strategies[FaultTypeServiceUnavailable] = append(
 		ftm.recoveryEngine.strategies[FaultTypeServiceUnavailable],
 		NewCheckpointBasedRecoveryStrategy(ftm),

@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/internal/config"
 	nodeconfig "github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/config"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p/resources"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p/routing"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -29,11 +29,11 @@ func TestNewP2PNode(t *testing.T) {
 		{
 			name: "custom config",
 			config: &nodeconfig.NodeConfig{
-				Listen:        []string{"/ip4/127.0.0.1/tcp/0"},
-				ConnMgrLow:    10,
-				ConnMgrHigh:   100,
-				ConnMgrGrace:  time.Minute,
-				EnableDHT:     true,
+				Listen:       []string{"/ip4/127.0.0.1/tcp/0"},
+				ConnMgrLow:   10,
+				ConnMgrHigh:  100,
+				ConnMgrGrace: time.Minute,
+				EnableDHT:    true,
 			},
 			expectError: false,
 		},
@@ -52,24 +52,24 @@ func TestNewP2PNode(t *testing.T) {
 			defer cancel()
 
 			node, err := NewP2PNode(ctx, tt.config)
-			
+
 			if tt.expectError {
 				assert.Error(t, err)
 				assert.Nil(t, node)
 			} else {
 				assert.NoError(t, err)
 				assert.NotNil(t, node)
-				
+
 				// Verify node properties
 				assert.NotEmpty(t, node.ID())
 				assert.NotNil(t, node.GetHost())
 				assert.NotNil(t, node.GetMetrics())
 				assert.NotNil(t, node.GetConfig())
-				
+
 				// Test initial state
 				assert.Equal(t, 0, node.GetPeerCount())
 				assert.Empty(t, node.GetConnectedPeers())
-				
+
 				// Clean up
 				if node != nil {
 					err := node.Stop()
@@ -86,11 +86,11 @@ func TestNewNode(t *testing.T) {
 	defer cancel()
 
 	p2pConfig := &config.P2PConfig{
-		Listen:        "127.0.0.1:0",
-		EnableDHT:     true,
-		ConnMgrLow:    10,
-		ConnMgrHigh:   100,
-		ConnMgrGrace:  "1m",
+		Listen:       "127.0.0.1:0",
+		EnableDHT:    true,
+		ConnMgrLow:   10,
+		ConnMgrHigh:  100,
+		ConnMgrGrace: "1m",
 	}
 
 	node, err := NewNode(ctx, p2pConfig)
@@ -175,7 +175,7 @@ func TestNode_Capabilities(t *testing.T) {
 	}
 
 	node.SetCapabilities(testCaps)
-	
+
 	// Verify capabilities
 	caps = node.GetCapabilities()
 	assert.NotNil(t, caps)
@@ -211,7 +211,7 @@ func TestNode_ResourceMetrics(t *testing.T) {
 	}
 
 	node.SetResourceMetrics(testMetrics)
-	
+
 	// Verify metrics
 	metrics = node.GetResourceMetrics()
 	assert.NotNil(t, metrics)
@@ -342,7 +342,7 @@ func TestNode_PeerOperations(t *testing.T) {
 		if err == nil {
 			// If connection succeeded, verify
 			time.Sleep(100 * time.Millisecond)
-			
+
 			// Check if connected
 			connected := node1.IsConnected(node2.ID())
 			if connected {
@@ -352,7 +352,7 @@ func TestNode_PeerOperations(t *testing.T) {
 				// Test peer info
 				allPeers := node1.GetAllPeers()
 				assert.Contains(t, allPeers, node2.ID())
-				
+
 				peerInfo := allPeers[node2.ID()]
 				assert.Equal(t, node2.ID(), peerInfo.ID)
 				assert.True(t, peerInfo.Connected)
@@ -360,7 +360,7 @@ func TestNode_PeerOperations(t *testing.T) {
 				// Test disconnect
 				err = node1.DisconnectFromPeer(node2.ID())
 				assert.NoError(t, err)
-				
+
 				time.Sleep(100 * time.Millisecond)
 				assert.False(t, node1.IsConnected(node2.ID()))
 			}
@@ -448,7 +448,7 @@ func TestNode_ErrorHandling(t *testing.T) {
 		require.NotNil(t, node)
 
 		// Don't start the node, test operations
-		
+
 		// These should not panic even if node is not started
 		assert.Equal(t, 0, node.GetPeerCount())
 		assert.Empty(t, node.GetConnectedPeers())

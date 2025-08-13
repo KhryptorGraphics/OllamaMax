@@ -11,10 +11,10 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/api"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/security"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestSecurityHardening tests the security hardening implementation
@@ -46,7 +46,7 @@ func testAuthenticationSecurity(t *testing.T) {
 		Issuer:      "test",
 		Audience:    "test",
 	}
-	
+
 	authManager, err := api.NewAuthManager(authConfig)
 	require.NoError(t, err)
 
@@ -72,7 +72,7 @@ func testAuthenticationSecurity(t *testing.T) {
 	// Test 2: Rate limiting should prevent brute force attacks
 	t.Run("RateLimiting", func(t *testing.T) {
 		username := "testuser"
-		
+
 		// Make multiple failed attempts
 		for i := 0; i < 6; i++ {
 			_, _, err := authManager.Authenticate(username, "wrongpassword")
@@ -90,7 +90,7 @@ func testAuthenticationSecurity(t *testing.T) {
 		// Test with admin credentials using environment variable
 		adminPassword := os.Getenv("ADMIN_DEFAULT_PASSWORD")
 		session, token, err := authManager.Authenticate("admin", adminPassword)
-		
+
 		if err == nil {
 			assert.NotNil(t, session)
 			assert.NotEmpty(t, token)
@@ -105,7 +105,7 @@ func testInputValidation(t *testing.T) {
 	t.Log("🛡️ Testing input validation...")
 
 	router := gin.New()
-	
+
 	// Add security middleware
 	hardeningConfig := security.DefaultSecurityHardeningConfig()
 	hardening := security.NewSecurityHardening(hardeningConfig)
@@ -128,13 +128,13 @@ func testInputValidation(t *testing.T) {
 		for _, payload := range sqlInjectionPayloads {
 			body := map[string]string{"input": payload}
 			jsonBody, _ := json.Marshal(body)
-			
+
 			req := httptest.NewRequest("POST", "/api/test", bytes.NewBuffer(jsonBody))
 			req.Header.Set("Content-Type", "application/json")
-			
+
 			w := httptest.NewRecorder()
 			router.ServeHTTP(w, req)
-			
+
 			// Should either reject or sanitize the input
 			assert.True(t, w.Code == http.StatusBadRequest || w.Code == http.StatusOK,
 				"Should handle SQL injection payload: %s", payload)
@@ -153,13 +153,13 @@ func testInputValidation(t *testing.T) {
 		for _, payload := range xssPayloads {
 			body := map[string]string{"input": payload}
 			jsonBody, _ := json.Marshal(body)
-			
+
 			req := httptest.NewRequest("POST", "/api/test", bytes.NewBuffer(jsonBody))
 			req.Header.Set("Content-Type", "application/json")
-			
+
 			w := httptest.NewRecorder()
 			router.ServeHTTP(w, req)
-			
+
 			// Should either reject or sanitize the input
 			assert.True(t, w.Code == http.StatusBadRequest || w.Code == http.StatusOK,
 				"Should handle XSS payload: %s", payload)
@@ -179,7 +179,7 @@ func testInputValidation(t *testing.T) {
 			req := httptest.NewRequest("GET", "/api/test/"+payload, nil)
 			w := httptest.NewRecorder()
 			router.ServeHTTP(w, req)
-			
+
 			// Should reject path traversal attempts
 			assert.Equal(t, http.StatusBadRequest, w.Code,
 				"Should reject path traversal: %s", payload)
@@ -192,7 +192,7 @@ func testSecurityHeaders(t *testing.T) {
 	t.Log("🔒 Testing security headers...")
 
 	router := gin.New()
-	
+
 	// Add security middleware
 	hardeningConfig := security.DefaultSecurityHardeningConfig()
 	hardening := security.NewSecurityHardening(hardeningConfig)
@@ -208,7 +208,7 @@ func testSecurityHeaders(t *testing.T) {
 
 	// Test required security headers
 	headers := w.Header()
-	
+
 	assert.Contains(t, headers.Get("Strict-Transport-Security"), "max-age=",
 		"Should include HSTS header")
 	assert.Equal(t, "nosniff", headers.Get("X-Content-Type-Options"),
@@ -221,7 +221,7 @@ func testSecurityHeaders(t *testing.T) {
 		"Should include Content-Security-Policy header")
 	assert.NotEmpty(t, headers.Get("Referrer-Policy"),
 		"Should include Referrer-Policy header")
-	
+
 	// Server header should be removed or minimal
 	serverHeader := headers.Get("Server")
 	assert.True(t, serverHeader == "" || !strings.Contains(strings.ToLower(serverHeader), "go"),
@@ -233,7 +233,7 @@ func testRateLimiting(t *testing.T) {
 	t.Log("⏱️ Testing rate limiting...")
 
 	router := gin.New()
-	
+
 	// Add security middleware with strict rate limiting
 	hardeningConfig := security.DefaultSecurityHardeningConfig()
 	hardeningConfig.RequestsPerMinute = 5 // Very low for testing
@@ -250,7 +250,7 @@ func testRateLimiting(t *testing.T) {
 		req.RemoteAddr = "127.0.0.1:12345" // Simulate same client
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
-		
+
 		assert.Equal(t, http.StatusOK, w.Code,
 			"Request %d should succeed", i+1)
 	}
@@ -260,7 +260,7 @@ func testRateLimiting(t *testing.T) {
 	req.RemoteAddr = "127.0.0.1:12345"
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	
+
 	assert.Equal(t, http.StatusTooManyRequests, w.Code,
 		"Should be rate limited after exceeding limit")
 }
@@ -295,7 +295,7 @@ func testAuditLogging(t *testing.T) {
 	t.Log("📝 Testing audit logging...")
 
 	router := gin.New()
-	
+
 	// Add security middleware
 	hardeningConfig := security.DefaultSecurityHardeningConfig()
 	hardening := security.NewSecurityHardening(hardeningConfig)
@@ -313,7 +313,7 @@ func testAuditLogging(t *testing.T) {
 	req := httptest.NewRequest("POST", "/admin/test", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	
+
 	// Admin actions should be logged (implementation would write to log file)
 	assert.Equal(t, http.StatusOK, w.Code)
 
@@ -321,7 +321,7 @@ func testAuditLogging(t *testing.T) {
 	req = httptest.NewRequest("POST", "/nonexistent", nil)
 	w = httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	
+
 	// Failed requests should be logged
 	assert.Equal(t, http.StatusNotFound, w.Code)
 }
@@ -333,14 +333,14 @@ func TestEnvironmentValidation(t *testing.T) {
 	// Test missing JWT secret
 	t.Run("MissingJWTSecret", func(t *testing.T) {
 		os.Unsetenv("JWT_SECRET")
-		
+
 		hardeningConfig := security.DefaultSecurityHardeningConfig()
 		hardeningConfig.RequireAuthentication = true
 		hardeningConfig.JWTSecret = ""
-		
+
 		hardening := security.NewSecurityHardening(hardeningConfig)
 		err := hardening.ValidateEnvironment()
-		
+
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "JWT_SECRET")
 	})
@@ -349,14 +349,14 @@ func TestEnvironmentValidation(t *testing.T) {
 	t.Run("ShortJWTSecret", func(t *testing.T) {
 		os.Setenv("JWT_SECRET", "short")
 		defer os.Unsetenv("JWT_SECRET")
-		
+
 		hardeningConfig := security.DefaultSecurityHardeningConfig()
 		hardeningConfig.RequireAuthentication = true
 		hardeningConfig.JWTSecret = ""
-		
+
 		hardening := security.NewSecurityHardening(hardeningConfig)
 		err := hardening.ValidateEnvironment()
-		
+
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "32 characters")
 	})
@@ -365,14 +365,14 @@ func TestEnvironmentValidation(t *testing.T) {
 	t.Run("ValidJWTSecret", func(t *testing.T) {
 		os.Setenv("JWT_SECRET", "this-is-a-very-long-and-secure-jwt-secret-key")
 		defer os.Unsetenv("JWT_SECRET")
-		
+
 		hardeningConfig := security.DefaultSecurityHardeningConfig()
 		hardeningConfig.RequireAuthentication = true
 		hardeningConfig.JWTSecret = ""
-		
+
 		hardening := security.NewSecurityHardening(hardeningConfig)
 		err := hardening.ValidateEnvironment()
-		
+
 		assert.NoError(t, err)
 	})
 }

@@ -14,24 +14,24 @@ type Storage interface {
 	Retrieve(ctx context.Context, key string) (io.ReadCloser, *ObjectMetadata, error)
 	Delete(ctx context.Context, key string) error
 	Exists(ctx context.Context, key string) (bool, error)
-	
+
 	// Metadata operations
 	GetMetadata(ctx context.Context, key string) (*ObjectMetadata, error)
 	SetMetadata(ctx context.Context, key string, metadata *ObjectMetadata) error
 	UpdateMetadata(ctx context.Context, key string, updates map[string]interface{}) error
-	
+
 	// Batch operations
 	BatchStore(ctx context.Context, operations []BatchStoreOperation) error
 	BatchDelete(ctx context.Context, keys []string) error
-	
+
 	// Listing and iteration
 	List(ctx context.Context, prefix string, options *ListOptions) (*ListResult, error)
 	ListKeys(ctx context.Context, prefix string) ([]string, error)
-	
+
 	// Health and monitoring
 	HealthCheck(ctx context.Context) (*HealthStatus, error)
 	GetStats(ctx context.Context) (*StorageStats, error)
-	
+
 	// Lifecycle management
 	Start(ctx context.Context) error
 	Stop(ctx context.Context) error
@@ -41,22 +41,22 @@ type Storage interface {
 // DistributedStorage extends Storage with distributed-specific operations
 type DistributedStorage interface {
 	Storage
-	
+
 	// Replication operations
 	Replicate(ctx context.Context, key string, targetNodes []string) error
 	GetReplicationStatus(ctx context.Context, key string) (*ReplicationStatus, error)
 	SetReplicationPolicy(ctx context.Context, key string, policy *ReplicationPolicy) error
-	
+
 	// Consensus and coordination
 	ProposeWrite(ctx context.Context, key string, data io.Reader, metadata *ObjectMetadata) error
 	ProposeDelete(ctx context.Context, key string) error
 	GetConsensusState(ctx context.Context) (*ConsensusState, error)
-	
+
 	// Node management
 	AddNode(ctx context.Context, nodeID string, nodeInfo *NodeInfo) error
 	RemoveNode(ctx context.Context, nodeID string) error
 	GetNodes(ctx context.Context) ([]*NodeInfo, error)
-	
+
 	// Distributed coordination
 	AcquireLock(ctx context.Context, lockID string, timeout time.Duration) (Lock, error)
 	GetDistributedMetrics(ctx context.Context) (*DistributedMetrics, error)
@@ -65,17 +65,17 @@ type DistributedStorage interface {
 // ModelStorage defines storage operations specific to AI models
 type ModelStorage interface {
 	Storage
-	
+
 	// Model-specific operations
 	StoreModel(ctx context.Context, modelID string, modelData io.Reader, config *ModelConfig) error
 	RetrieveModel(ctx context.Context, modelID string) (io.ReadCloser, *ModelConfig, error)
 	DeleteModel(ctx context.Context, modelID string) error
-	
+
 	// Model metadata and versioning
 	GetModelVersions(ctx context.Context, modelID string) ([]*ModelVersion, error)
 	GetModelConfig(ctx context.Context, modelID string) (*ModelConfig, error)
 	SetModelConfig(ctx context.Context, modelID string, config *ModelConfig) error
-	
+
 	// Model lifecycle
 	ArchiveModel(ctx context.Context, modelID string) error
 	RestoreModel(ctx context.Context, modelID string) error
@@ -88,12 +88,12 @@ type BackupStorage interface {
 	CreateBackup(ctx context.Context, backupID string, options *BackupOptions) error
 	RestoreBackup(ctx context.Context, backupID string, options *RestoreOptions) error
 	DeleteBackup(ctx context.Context, backupID string) error
-	
+
 	// Backup management
 	ListBackups(ctx context.Context) ([]*BackupInfo, error)
 	GetBackupInfo(ctx context.Context, backupID string) (*BackupInfo, error)
 	VerifyBackup(ctx context.Context, backupID string) (*BackupVerification, error)
-	
+
 	// Incremental backup support
 	CreateIncrementalBackup(ctx context.Context, backupID string, baseBackupID string, options *BackupOptions) error
 	GetBackupChain(ctx context.Context, backupID string) ([]*BackupInfo, error)
@@ -119,11 +119,11 @@ type ObjectMetadata struct {
 	AccessedAt  time.Time              `json:"accessed_at"`
 	Version     string                 `json:"version"`
 	Attributes  map[string]interface{} `json:"attributes"`
-	
+
 	// Replication metadata
 	ReplicationPolicy *ReplicationPolicy `json:"replication_policy,omitempty"`
 	ReplicationNodes  []string           `json:"replication_nodes,omitempty"`
-	
+
 	// Model-specific metadata
 	ModelInfo *ModelMetadata `json:"model_info,omitempty"`
 }
@@ -184,12 +184,12 @@ type CheckResult struct {
 
 // NodeHealth represents the health of a storage node
 type NodeHealth struct {
-	NodeID      string    `json:"node_id"`
-	Status      string    `json:"status"`
-	LastSeen    time.Time `json:"last_seen"`
-	Latency     int64     `json:"latency_ms"`
-	StorageUsed int64     `json:"storage_used"`
-	StorageTotal int64    `json:"storage_total"`
+	NodeID       string    `json:"node_id"`
+	Status       string    `json:"status"`
+	LastSeen     time.Time `json:"last_seen"`
+	Latency      int64     `json:"latency_ms"`
+	StorageUsed  int64     `json:"storage_used"`
+	StorageTotal int64     `json:"storage_total"`
 }
 
 // StorageStats contains storage statistics
@@ -224,11 +224,11 @@ type LatencyStats struct {
 
 // Throughput contains throughput metrics
 type Throughput struct {
-	ReadOpsPerSec   float64 `json:"read_ops_per_sec"`
-	WriteOpsPerSec  float64 `json:"write_ops_per_sec"`
-	DeleteOpsPerSec float64 `json:"delete_ops_per_sec"`
-	ReadBytesPerSec int64   `json:"read_bytes_per_sec"`
-	WriteBytesPerSec int64  `json:"write_bytes_per_sec"`
+	ReadOpsPerSec    float64 `json:"read_ops_per_sec"`
+	WriteOpsPerSec   float64 `json:"write_ops_per_sec"`
+	DeleteOpsPerSec  float64 `json:"delete_ops_per_sec"`
+	ReadBytesPerSec  int64   `json:"read_bytes_per_sec"`
+	WriteBytesPerSec int64   `json:"write_bytes_per_sec"`
 }
 
 // ReplicationPolicy defines how objects should be replicated
@@ -245,23 +245,23 @@ type ReplicationPolicy struct {
 
 // ReplicationStatus represents the status of object replication
 type ReplicationStatus struct {
-	Key              string            `json:"key"`
+	Key              string             `json:"key"`
 	Policy           *ReplicationPolicy `json:"policy"`
-	CurrentReplicas  int               `json:"current_replicas"`
-	HealthyReplicas  int               `json:"healthy_replicas"`
-	ReplicaNodes     []string          `json:"replica_nodes"`
-	SyncStatus       map[string]string `json:"sync_status"`
-	LastSync         time.Time         `json:"last_sync"`
-	ConsistencyCheck time.Time         `json:"consistency_check"`
+	CurrentReplicas  int                `json:"current_replicas"`
+	HealthyReplicas  int                `json:"healthy_replicas"`
+	ReplicaNodes     []string           `json:"replica_nodes"`
+	SyncStatus       map[string]string  `json:"sync_status"`
+	LastSync         time.Time          `json:"last_sync"`
+	ConsistencyCheck time.Time          `json:"consistency_check"`
 }
 
 // ReplicationStats contains replication statistics
 type ReplicationStats struct {
-	TotalReplicas     int64             `json:"total_replicas"`
-	HealthyReplicas   int64             `json:"healthy_replicas"`
-	OutOfSyncReplicas int64             `json:"out_of_sync_replicas"`
-	ReplicationLag    map[string]int64  `json:"replication_lag_ms"`
-	SyncOperations    *SyncStats        `json:"sync_operations"`
+	TotalReplicas     int64            `json:"total_replicas"`
+	HealthyReplicas   int64            `json:"healthy_replicas"`
+	OutOfSyncReplicas int64            `json:"out_of_sync_replicas"`
+	ReplicationLag    map[string]int64 `json:"replication_lag_ms"`
+	SyncOperations    *SyncStats       `json:"sync_operations"`
 }
 
 // SyncStats contains synchronization statistics
@@ -274,14 +274,14 @@ type SyncStats struct {
 
 // ConsensusState represents the state of distributed consensus
 type ConsensusState struct {
-	LeaderID       string            `json:"leader_id"`
-	Term           int64             `json:"term"`
-	CommitIndex    int64             `json:"commit_index"`
-	LastApplied    int64             `json:"last_applied"`
-	Nodes          map[string]string `json:"nodes"` // nodeID -> status
-	QuorumSize     int               `json:"quorum_size"`
-	IsHealthy      bool              `json:"is_healthy"`
-	LastHeartbeat  time.Time         `json:"last_heartbeat"`
+	LeaderID      string            `json:"leader_id"`
+	Term          int64             `json:"term"`
+	CommitIndex   int64             `json:"commit_index"`
+	LastApplied   int64             `json:"last_applied"`
+	Nodes         map[string]string `json:"nodes"` // nodeID -> status
+	QuorumSize    int               `json:"quorum_size"`
+	IsHealthy     bool              `json:"is_healthy"`
+	LastHeartbeat time.Time         `json:"last_heartbeat"`
 }
 
 // NodeInfo contains information about a storage node
@@ -303,23 +303,23 @@ type NodeInfo struct {
 
 // DistributedMetrics contains distributed storage metrics
 type DistributedMetrics struct {
-	ClusterSize       int                    `json:"cluster_size"`
-	HealthyNodes      int                    `json:"healthy_nodes"`
-	TotalCapacity     int64                  `json:"total_capacity"`
-	UsedCapacity      int64                  `json:"used_capacity"`
-	ReplicationFactor float64                `json:"replication_factor"`
-	DataDistribution  map[string]int64       `json:"data_distribution"`
-	NetworkMetrics    *NetworkMetrics        `json:"network_metrics"`
-	ConsensusMetrics  *ConsensusMetrics      `json:"consensus_metrics"`
+	ClusterSize       int               `json:"cluster_size"`
+	HealthyNodes      int               `json:"healthy_nodes"`
+	TotalCapacity     int64             `json:"total_capacity"`
+	UsedCapacity      int64             `json:"used_capacity"`
+	ReplicationFactor float64           `json:"replication_factor"`
+	DataDistribution  map[string]int64  `json:"data_distribution"`
+	NetworkMetrics    *NetworkMetrics   `json:"network_metrics"`
+	ConsensusMetrics  *ConsensusMetrics `json:"consensus_metrics"`
 }
 
 // NetworkMetrics contains network-related metrics
 type NetworkMetrics struct {
-	AverageLatency    int64            `json:"average_latency_ms"`
-	TotalBandwidth    int64            `json:"total_bandwidth_bps"`
-	UsedBandwidth     int64            `json:"used_bandwidth_bps"`
-	NetworkErrors     int64            `json:"network_errors"`
-	ConnectionCounts  map[string]int64 `json:"connection_counts"`
+	AverageLatency   int64            `json:"average_latency_ms"`
+	TotalBandwidth   int64            `json:"total_bandwidth_bps"`
+	UsedBandwidth    int64            `json:"used_bandwidth_bps"`
+	NetworkErrors    int64            `json:"network_errors"`
+	ConnectionCounts map[string]int64 `json:"connection_counts"`
 }
 
 // ConsensusMetrics contains consensus-related metrics
@@ -360,25 +360,25 @@ type ModelVersion struct {
 
 // ArchivedModel represents an archived model
 type ArchivedModel struct {
-	ModelID     string    `json:"model_id"`
-	ArchiveID   string    `json:"archive_id"`
-	ArchivePath string    `json:"archive_path"`
-	OriginalSize int64    `json:"original_size"`
-	CompressedSize int64  `json:"compressed_size"`
-	ArchivedAt  time.Time `json:"archived_at"`
-	Reason      string    `json:"reason"`
+	ModelID        string    `json:"model_id"`
+	ArchiveID      string    `json:"archive_id"`
+	ArchivePath    string    `json:"archive_path"`
+	OriginalSize   int64     `json:"original_size"`
+	CompressedSize int64     `json:"compressed_size"`
+	ArchivedAt     time.Time `json:"archived_at"`
+	Reason         string    `json:"reason"`
 }
 
 // BackupOptions contains options for backup operations
 type BackupOptions struct {
-	Compression    string            `json:"compression"`
-	Encryption     bool              `json:"encryption"`
-	IncludeIndex   bool              `json:"include_index"`
-	IncludeMetadata bool             `json:"include_metadata"`
-	Filters        []string          `json:"filters"`
-	ChunkSize      int64             `json:"chunk_size"`
-	Parallel       bool              `json:"parallel"`
-	Metadata       map[string]string `json:"metadata"`
+	Compression     string            `json:"compression"`
+	Encryption      bool              `json:"encryption"`
+	IncludeIndex    bool              `json:"include_index"`
+	IncludeMetadata bool              `json:"include_metadata"`
+	Filters         []string          `json:"filters"`
+	ChunkSize       int64             `json:"chunk_size"`
+	Parallel        bool              `json:"parallel"`
+	Metadata        map[string]string `json:"metadata"`
 }
 
 // RestoreOptions contains options for restore operations
@@ -395,18 +395,18 @@ type RestoreOptions struct {
 
 // BackupInfo contains information about a backup
 type BackupInfo struct {
-	BackupID      string    `json:"backup_id"`
-	BaseBackupID  string    `json:"base_backup_id,omitempty"`
-	Type          string    `json:"type"` // full, incremental
-	Status        string    `json:"status"`
-	Size          int64     `json:"size"`
-	CompressedSize int64    `json:"compressed_size"`
-	ObjectCount   int64     `json:"object_count"`
-	CreatedAt     time.Time `json:"created_at"`
-	CompletedAt   time.Time `json:"completed_at"`
-	ExpiresAt     time.Time `json:"expires_at"`
-	Metadata      map[string]string `json:"metadata"`
-	Checksums     map[string]string `json:"checksums"`
+	BackupID       string            `json:"backup_id"`
+	BaseBackupID   string            `json:"base_backup_id,omitempty"`
+	Type           string            `json:"type"` // full, incremental
+	Status         string            `json:"status"`
+	Size           int64             `json:"size"`
+	CompressedSize int64             `json:"compressed_size"`
+	ObjectCount    int64             `json:"object_count"`
+	CreatedAt      time.Time         `json:"created_at"`
+	CompletedAt    time.Time         `json:"completed_at"`
+	ExpiresAt      time.Time         `json:"expires_at"`
+	Metadata       map[string]string `json:"metadata"`
+	Checksums      map[string]string `json:"checksums"`
 }
 
 // BackupVerification contains the result of backup verification

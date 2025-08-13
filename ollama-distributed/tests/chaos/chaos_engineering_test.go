@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/khryptorgraphics/ollamamax/ollama-distributed/internal/config"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/consensus"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/scheduler"
@@ -28,11 +27,11 @@ type ChaosTest struct {
 
 // TestCluster represents a cluster of nodes for chaos testing
 type TestCluster struct {
-	Nodes        []*TestNode
-	Config       *ClusterConfig
-	Coordinator  *ChaosCoordinator
-	ctx          context.Context
-	cancel       context.CancelFunc
+	Nodes       []*TestNode
+	Config      *ClusterConfig
+	Coordinator *ChaosCoordinator
+	ctx         context.Context
+	cancel      context.CancelFunc
 }
 
 // TestNode represents a single node in the test cluster
@@ -49,10 +48,10 @@ type TestNode struct {
 
 // NodeConfig holds configuration for test nodes
 type NodeConfig struct {
-	DataDir     string
-	P2PPort     int
-	RaftPort    int
-	Bootstrap   bool
+	DataDir   string
+	P2PPort   int
+	RaftPort  int
+	Bootstrap bool
 }
 
 // ClusterConfig holds cluster-wide configuration
@@ -97,7 +96,7 @@ const (
 
 // ChaosCoordinator orchestrates chaos experiments
 type ChaosCoordinator struct {
-	cluster       *TestCluster
+	cluster        *TestCluster
 	activeFailures map[string]*ActiveFailure
 	mu             sync.RWMutex
 }
@@ -302,12 +301,12 @@ func runChaosTest(t *testing.T, test ChaosTest) {
 
 func createTestCluster(t *testing.T, config *ClusterConfig) *TestCluster {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	cluster := &TestCluster{
-		Nodes:   make([]*TestNode, config.Size),
-		Config:  config,
-		ctx:     ctx,
-		cancel:  cancel,
+		Nodes:  make([]*TestNode, config.Size),
+		Config: config,
+		ctx:    ctx,
+		cancel: cancel,
 	}
 
 	for i := 0; i < config.Size; i++ {
@@ -382,7 +381,7 @@ func (c *TestCluster) start(t *testing.T) error {
 
 func (c *TestCluster) cleanup(t *testing.T) {
 	c.cancel()
-	
+
 	for _, node := range c.Nodes {
 		if node != nil {
 			node.stop(t)
@@ -457,11 +456,11 @@ func injectNetworkPartition(t *testing.T, cluster *TestCluster) {
 
 	// Select nodes to partition
 	partitionedNodes := cluster.Nodes[:partitionSize]
-	
+
 	for _, node := range partitionedNodes {
 		cluster.Coordinator.startFailure(node.ID, FailureTypeNetworkPartition, 30*time.Second)
 		node.setStatus(NodeStatusPartitioned)
-		
+
 		// Simulate partition by stopping P2P communication
 		node.addFailure(FailureEvent{
 			Type:        FailureTypeNetworkPartition,
@@ -478,7 +477,7 @@ func injectNetworkPartition(t *testing.T, cluster *TestCluster) {
 func verifyPartitionResilience(t *testing.T, cluster *TestCluster) {
 	// Verify majority partition maintains functionality
 	majorityNodes := cluster.Nodes[len(cluster.Nodes)/2:]
-	
+
 	// Find leader in majority partition
 	var leader *TestNode
 	for _, node := range majorityNodes {
@@ -627,7 +626,7 @@ func verifyLatencyTolerance(t *testing.T, cluster *TestCluster) {
 			start := time.Now()
 			err := leader.ConsensusEngine.Apply("latency-test", "value", nil)
 			duration := time.Since(start)
-			
+
 			assert.NoError(t, err, "Operations should work under high latency")
 			t.Logf("Operation took %v under high latency", duration)
 		}
@@ -654,9 +653,9 @@ func setupMemoryPressureTest(t *testing.T, cluster *TestCluster) {
 func injectMemoryPressure(t *testing.T, cluster *TestCluster) {
 	// Simulate memory pressure on random nodes
 	targetNode := cluster.Nodes[rand.Intn(len(cluster.Nodes))]
-	
+
 	cluster.Coordinator.startFailure(targetNode.ID, FailureTypeMemoryPressure, 60*time.Second)
-	
+
 	targetNode.addFailure(FailureEvent{
 		Type:        FailureTypeMemoryPressure,
 		Timestamp:   time.Now(),
@@ -698,9 +697,9 @@ func setupByzantineTest(t *testing.T, cluster *TestCluster) {
 func injectByzantineFaults(t *testing.T, cluster *TestCluster) {
 	// Make one node Byzantine (send conflicting messages)
 	byzantineNode := cluster.Nodes[len(cluster.Nodes)-1]
-	
+
 	cluster.Coordinator.startFailure(byzantineNode.ID, FailureTypeProcessKill, 60*time.Second)
-	
+
 	byzantineNode.addFailure(FailureEvent{
 		Type:        FailureTypeProcessKill,
 		Timestamp:   time.Now(),
@@ -862,7 +861,7 @@ func (c *TestCluster) injectRandomFailure() {
 	duration := time.Duration(rand.Intn(30)+10) * time.Second
 
 	c.Coordinator.startFailure(node.ID, failureType, duration)
-	
+
 	node.addFailure(FailureEvent{
 		Type:        failureType,
 		Timestamp:   time.Now(),
@@ -892,11 +891,11 @@ func (c *TestCluster) runWorkload(ctx context.Context, workerID int) {
 			// Find a healthy leader
 			healthyNodes := c.getHealthyNodes()
 			leader := c.findLeader(healthyNodes)
-			
+
 			if leader != nil {
 				key := fmt.Sprintf("worker-%d-op-%d", workerID, counter)
 				value := fmt.Sprintf("value-%d", counter)
-				
+
 				err := leader.ConsensusEngine.Apply(key, value, nil)
 				if err != nil {
 					// Log error but continue
@@ -928,12 +927,12 @@ func (c *TestCluster) measureBaselineLatency(t *testing.T) {
 	// Measure baseline consensus latency
 	healthyNodes := c.getHealthyNodes()
 	leader := c.findLeader(healthyNodes)
-	
+
 	if leader != nil {
 		start := time.Now()
 		err := leader.ConsensusEngine.Apply("baseline-test", "value", nil)
 		duration := time.Since(start)
-		
+
 		if err == nil {
 			t.Logf("Baseline consensus latency: %v", duration)
 		}
@@ -949,7 +948,7 @@ func (c *TestCluster) simulateMemoryPressure(node *TestNode, duration time.Durat
 	// Simulate memory pressure by allocating memory
 	// This is a simplified simulation
 	endTime := time.Now().Add(duration)
-	
+
 	for time.Now().Before(endTime) {
 		// Allocate and hold memory to create pressure
 		_ = make([]byte, 1024*1024) // 1MB allocation
@@ -960,7 +959,7 @@ func (c *TestCluster) simulateMemoryPressure(node *TestNode, duration time.Durat
 func (c *TestCluster) simulateResourcePressure(node *TestNode, duration time.Duration) {
 	// Simulate CPU/memory pressure
 	endTime := time.Now().Add(duration)
-	
+
 	for time.Now().Before(endTime) {
 		// CPU intensive operation
 		for i := 0; i < 100000; i++ {
@@ -1041,7 +1040,7 @@ func BenchmarkChaos_ConsensusUnderLatency(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		key := fmt.Sprintf("bench-key-%d", i)
 		value := fmt.Sprintf("bench-value-%d", i)
-		
+
 		err := leader.ConsensusEngine.Apply(key, value, nil)
 		if err != nil {
 			b.Fatal(err)

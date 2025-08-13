@@ -47,26 +47,26 @@ type TenantSettings struct {
 
 // TenantQuotas represents resource quotas for a tenant
 type TenantQuotas struct {
-	MaxUsers           int   `json:"max_users"`
-	MaxAPIKeys         int   `json:"max_api_keys"`
-	MaxSessions        int   `json:"max_sessions"`
-	MaxModels          int   `json:"max_models"`
-	MaxInferences      int64 `json:"max_inferences_per_month"`
-	MaxStorage         int64 `json:"max_storage_bytes"`
-	MaxBandwidth       int64 `json:"max_bandwidth_bytes_per_month"`
-	MaxConcurrentReqs  int   `json:"max_concurrent_requests"`
+	MaxUsers          int   `json:"max_users"`
+	MaxAPIKeys        int   `json:"max_api_keys"`
+	MaxSessions       int   `json:"max_sessions"`
+	MaxModels         int   `json:"max_models"`
+	MaxInferences     int64 `json:"max_inferences_per_month"`
+	MaxStorage        int64 `json:"max_storage_bytes"`
+	MaxBandwidth      int64 `json:"max_bandwidth_bytes_per_month"`
+	MaxConcurrentReqs int   `json:"max_concurrent_requests"`
 }
 
 // TenantUsage represents current usage statistics for a tenant
 type TenantUsage struct {
-	CurrentUsers      int   `json:"current_users"`
-	CurrentAPIKeys    int   `json:"current_api_keys"`
-	CurrentSessions   int   `json:"current_sessions"`
-	CurrentModels     int   `json:"current_models"`
-	InferencesThisMonth int64 `json:"inferences_this_month"`
-	StorageUsed       int64 `json:"storage_used_bytes"`
-	BandwidthThisMonth int64 `json:"bandwidth_this_month_bytes"`
-	LastUpdated       time.Time `json:"last_updated"`
+	CurrentUsers        int       `json:"current_users"`
+	CurrentAPIKeys      int       `json:"current_api_keys"`
+	CurrentSessions     int       `json:"current_sessions"`
+	CurrentModels       int       `json:"current_models"`
+	InferencesThisMonth int64     `json:"inferences_this_month"`
+	StorageUsed         int64     `json:"storage_used_bytes"`
+	BandwidthThisMonth  int64     `json:"bandwidth_this_month_bytes"`
+	LastUpdated         time.Time `json:"last_updated"`
 }
 
 // ContactInfo represents tenant contact information
@@ -100,14 +100,14 @@ type CustomBranding struct {
 
 // SecuritySettings represents tenant-specific security settings
 type SecuritySettings struct {
-	RequireMFA           bool     `json:"require_mfa"`
-	AllowedIPRanges      []string `json:"allowed_ip_ranges"`
-	SessionIdleTimeout   int      `json:"session_idle_timeout_minutes"`
-	MaxLoginAttempts     int      `json:"max_login_attempts"`
-	LockoutDuration      int      `json:"lockout_duration_minutes"`
-	AuditLogRetention    int      `json:"audit_log_retention_days"`
-	EncryptionAtRest     bool     `json:"encryption_at_rest"`
-	EncryptionInTransit  bool     `json:"encryption_in_transit"`
+	RequireMFA          bool     `json:"require_mfa"`
+	AllowedIPRanges     []string `json:"allowed_ip_ranges"`
+	SessionIdleTimeout  int      `json:"session_idle_timeout_minutes"`
+	MaxLoginAttempts    int      `json:"max_login_attempts"`
+	LockoutDuration     int      `json:"lockout_duration_minutes"`
+	AuditLogRetention   int      `json:"audit_log_retention_days"`
+	EncryptionAtRest    bool     `json:"encryption_at_rest"`
+	EncryptionInTransit bool     `json:"encryption_in_transit"`
 }
 
 // TenantManager manages multi-tenancy
@@ -198,7 +198,7 @@ func (tm *TenantManager) CreateTenant(req *CreateTenantRequest, createdBy string
 			MaxSessions:       500,
 			MaxModels:         10,
 			MaxInferences:     10000,
-			MaxStorage:        10 * 1024 * 1024 * 1024, // 10GB
+			MaxStorage:        10 * 1024 * 1024 * 1024,  // 10GB
 			MaxBandwidth:      100 * 1024 * 1024 * 1024, // 100GB
 			MaxConcurrentReqs: 10,
 		}

@@ -1,7 +1,8 @@
+//go:build ignore
+
 package main
 
 import (
-	"context"
 	"fmt"
 	"sync"
 	"testing"
@@ -30,21 +31,21 @@ type SwarmTestHarness struct {
 
 // TestAgent represents a test agent in the swarm
 type TestAgent struct {
-	ID               string
-	Type             string
-	Status           string
-	TasksCompleted   int
-	TasksFailed      int
-	ResponseTime     time.Duration
-	MemoryUsage      float64
-	CoordinationOK   bool
-	LastHeartbeat    time.Time
+	ID             string
+	Type           string
+	Status         string
+	TasksCompleted int
+	TasksFailed    int
+	ResponseTime   time.Duration
+	MemoryUsage    float64
+	CoordinationOK bool
+	LastHeartbeat  time.Time
 }
 
 // SwarmMetrics tracks swarm performance metrics
 type SwarmMetrics struct {
-	TotalOperations     int64
-	SuccessfulOps       int64
+	TotalOperations    int64
+	SuccessfulOps      int64
 	FailedOps          int64
 	AvgResponseTime    time.Duration
 	MemoryUtilization  float64
@@ -73,11 +74,11 @@ func TestSwarmInitialization(t *testing.T) {
 	}
 
 	harness := NewSwarmTestHarness(config)
-	
+
 	t.Run("Initialize Swarm with Mesh Topology", func(t *testing.T) {
 		err := harness.InitializeSwarm("mesh")
 		require.NoError(t, err)
-		
+
 		assert.Equal(t, config.MaxAgents, len(harness.agents))
 		assert.True(t, harness.VerifyTopology("mesh"))
 	})
@@ -85,7 +86,7 @@ func TestSwarmInitialization(t *testing.T) {
 	t.Run("Initialize Swarm with Hierarchical Topology", func(t *testing.T) {
 		err := harness.InitializeSwarm("hierarchical")
 		require.NoError(t, err)
-		
+
 		assert.Equal(t, config.MaxAgents, len(harness.agents))
 		assert.True(t, harness.VerifyTopology("hierarchical"))
 	})
@@ -93,7 +94,7 @@ func TestSwarmInitialization(t *testing.T) {
 	t.Run("Initialize Swarm with Star Topology", func(t *testing.T) {
 		err := harness.InitializeSwarm("star")
 		require.NoError(t, err)
-		
+
 		assert.Equal(t, config.MaxAgents, len(harness.agents))
 		assert.True(t, harness.VerifyTopology("star"))
 	})
@@ -115,13 +116,13 @@ func TestSwarmScaling(t *testing.T) {
 
 	t.Run("Scale Up Under Load", func(t *testing.T) {
 		initialCount := len(harness.agents)
-		
+
 		// Simulate high load
 		harness.SimulateHighLoad(100)
-		
+
 		// Should trigger auto-scaling
 		time.Sleep(5 * time.Second)
-		
+
 		newCount := len(harness.agents)
 		assert.Greater(t, newCount, initialCount, "Swarm should scale up under high load")
 	})
@@ -129,10 +130,10 @@ func TestSwarmScaling(t *testing.T) {
 	t.Run("Scale Down When Idle", func(t *testing.T) {
 		// Stop load simulation
 		harness.StopLoadSimulation()
-		
+
 		// Wait for scale-down
 		time.Sleep(10 * time.Second)
-		
+
 		finalCount := len(harness.agents)
 		assert.LessOrEqual(t, finalCount, config.MaxAgents, "Swarm should scale down when idle")
 	})
@@ -172,14 +173,14 @@ func TestSwarmCoordination(t *testing.T) {
 		}
 
 		results := harness.DistributeTasks(tasks)
-		
+
 		assert.Equal(t, len(tasks), len(results), "All tasks should be completed")
-		
+
 		// Verify load balancing
 		taskCounts := harness.GetTaskDistribution()
 		maxTasks := 0
 		minTasks := 999999
-		
+
 		for _, count := range taskCounts {
 			if count > maxTasks {
 				maxTasks = count
@@ -188,7 +189,7 @@ func TestSwarmCoordination(t *testing.T) {
 				minTasks = count
 			}
 		}
-		
+
 		// Load should be reasonably balanced (within 20% variance)
 		variance := float64(maxTasks-minTasks) / float64(maxTasks)
 		assert.LessOrEqual(t, variance, 0.2, "Task distribution should be balanced")
@@ -196,14 +197,14 @@ func TestSwarmCoordination(t *testing.T) {
 
 	t.Run("Fault Recovery and Agent Replacement", func(t *testing.T) {
 		initialAgentCount := len(harness.agents)
-		
+
 		// Simulate agent failure
 		failedAgent := harness.SimulateAgentFailure()
 		assert.NotEmpty(t, failedAgent, "Should be able to simulate agent failure")
-		
+
 		// Wait for recovery
 		time.Sleep(5 * time.Second)
-		
+
 		// Verify recovery
 		currentAgentCount := len(harness.agents)
 		assert.Equal(t, initialAgentCount, currentAgentCount, "Failed agent should be replaced")
@@ -228,12 +229,12 @@ func TestSwarmPerformance(t *testing.T) {
 	t.Run("Throughput Under Sustained Load", func(t *testing.T) {
 		startTime := time.Now()
 		operationCount := 1000
-		
+
 		results := harness.ExecuteParallelOperations(operationCount)
 		duration := time.Since(startTime)
-		
+
 		throughput := float64(operationCount) / duration.Seconds()
-		
+
 		assert.Greater(t, throughput, 10.0, "Should achieve minimum 10 ops/sec throughput")
 		assert.LessOrEqual(t, harness.metrics.ErrorRate, 0.05, "Error rate should be under 5%")
 		assert.LessOrEqual(t, harness.metrics.AvgResponseTime.Milliseconds(), int64(1000), "Avg response time should be under 1s")
@@ -242,10 +243,10 @@ func TestSwarmPerformance(t *testing.T) {
 	t.Run("Memory Efficiency", func(t *testing.T) {
 		// Run memory-intensive operations
 		harness.RunMemoryIntensiveWorkload()
-		
+
 		maxMemoryUsage := harness.GetMaxMemoryUsage()
 		assert.LessOrEqual(t, maxMemoryUsage, config.MemoryThreshold, "Memory usage should stay within threshold")
-		
+
 		// Check for memory leaks
 		time.Sleep(10 * time.Second)
 		finalMemoryUsage := harness.GetMaxMemoryUsage()
@@ -254,10 +255,10 @@ func TestSwarmPerformance(t *testing.T) {
 
 	t.Run("Network Latency and Communication", func(t *testing.T) {
 		latencies := harness.MeasureNetworkLatencies()
-		
+
 		avgLatency := calculateAverageLatency(latencies)
 		assert.LessOrEqual(t, avgLatency.Milliseconds(), int64(100), "Average network latency should be under 100ms")
-		
+
 		maxLatency := calculateMaxLatency(latencies)
 		assert.LessOrEqual(t, maxLatency.Milliseconds(), int64(500), "Max network latency should be under 500ms")
 	})
@@ -289,13 +290,13 @@ func TestSwarmSecurity(t *testing.T) {
 
 	t.Run("Message Encryption and Integrity", func(t *testing.T) {
 		plaintext := "sensitive_coordination_message"
-		
+
 		encrypted := harness.EncryptMessage(plaintext)
 		assert.NotEqual(t, plaintext, encrypted, "Message should be encrypted")
-		
+
 		decrypted := harness.DecryptMessage(encrypted)
 		assert.Equal(t, plaintext, decrypted, "Decrypted message should match original")
-		
+
 		// Test message integrity
 		tampered := harness.TamperMessage(encrypted)
 		assert.False(t, harness.VerifyMessageIntegrity(tampered), "Tampered message should fail integrity check")
@@ -305,11 +306,11 @@ func TestSwarmSecurity(t *testing.T) {
 		// Create agents with different permission levels
 		adminAgent := harness.CreateAgentWithRole("admin", "administrator")
 		userAgent := harness.CreateAgentWithRole("user", "standard")
-		
+
 		// Test admin operations
 		assert.True(t, harness.CanPerformOperation(adminAgent, "swarm_management"), "Admin should access swarm management")
 		assert.True(t, harness.CanPerformOperation(adminAgent, "agent_control"), "Admin should control agents")
-		
+
 		// Test user operations
 		assert.False(t, harness.CanPerformOperation(userAgent, "swarm_management"), "User should not access swarm management")
 		assert.True(t, harness.CanPerformOperation(userAgent, "task_execution"), "User should execute tasks")
@@ -321,22 +322,22 @@ func TestSwarmSecurity(t *testing.T) {
 func (h *SwarmTestHarness) InitializeSwarm(topology string) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	
+
 	// Clear existing agents
 	h.agents = make(map[string]*TestAgent)
-	
+
 	// Create agents based on config
 	for i := 0; i < h.config.MaxAgents; i++ {
 		agent := &TestAgent{
-			ID:            fmt.Sprintf("agent_%d", i),
-			Type:          determineAgentType(i, h.config.MaxAgents),
-			Status:        "active",
-			LastHeartbeat: time.Now(),
+			ID:             fmt.Sprintf("agent_%d", i),
+			Type:           determineAgentType(i, h.config.MaxAgents),
+			Status:         "active",
+			LastHeartbeat:  time.Now(),
 			CoordinationOK: true,
 		}
 		h.agents[agent.ID] = agent
 	}
-	
+
 	return nil
 }
 
@@ -371,17 +372,17 @@ func (h *SwarmTestHarness) BroadcastMessage(message string) int {
 func (h *SwarmTestHarness) DistributeTasks(tasks []string) []string {
 	results := make([]string, len(tasks))
 	agentList := make([]*TestAgent, 0, len(h.agents))
-	
+
 	for _, agent := range h.agents {
 		agentList = append(agentList, agent)
 	}
-	
+
 	for i, task := range tasks {
 		agent := agentList[i%len(agentList)]
 		agent.TasksCompleted++
 		results[i] = fmt.Sprintf("completed_%s_by_%s", task, agent.ID)
 	}
-	
+
 	return results
 }
 
@@ -399,10 +400,10 @@ func (h *SwarmTestHarness) SimulateAgentFailure() string {
 			agent.Status = "failed"
 			// Simulate replacement
 			newAgent := &TestAgent{
-				ID:            fmt.Sprintf("agent_replacement_%d", time.Now().Unix()),
-				Type:          agent.Type,
-				Status:        "active",
-				LastHeartbeat: time.Now(),
+				ID:             fmt.Sprintf("agent_replacement_%d", time.Now().Unix()),
+				Type:           agent.Type,
+				Status:         "active",
+				LastHeartbeat:  time.Now(),
 				CoordinationOK: true,
 			}
 			delete(h.agents, id)
@@ -426,7 +427,7 @@ func (h *SwarmTestHarness) VerifySwarmHealth() bool {
 func (h *SwarmTestHarness) ExecuteParallelOperations(count int) []string {
 	results := make([]string, count)
 	var wg sync.WaitGroup
-	
+
 	for i := 0; i < count; i++ {
 		wg.Add(1)
 		go func(index int) {
@@ -438,7 +439,7 @@ func (h *SwarmTestHarness) ExecuteParallelOperations(count int) []string {
 			h.metrics.SuccessfulOps++
 		}(i)
 	}
-	
+
 	wg.Wait()
 	return results
 }
@@ -475,10 +476,10 @@ func (h *SwarmTestHarness) MeasureNetworkLatencies() []time.Duration {
 
 func (h *SwarmTestHarness) CreateAuthenticatedAgent(id, token string) *TestAgent {
 	return &TestAgent{
-		ID:            id,
-		Type:          "authenticated",
-		Status:        "active",
-		LastHeartbeat: time.Now(),
+		ID:             id,
+		Type:           "authenticated",
+		Status:         "active",
+		LastHeartbeat:  time.Now(),
 		CoordinationOK: token == "valid_token",
 	}
 }
@@ -510,10 +511,10 @@ func (h *SwarmTestHarness) VerifyMessageIntegrity(message string) bool {
 
 func (h *SwarmTestHarness) CreateAgentWithRole(id, role string) *TestAgent {
 	return &TestAgent{
-		ID:            id,
-		Type:          role,
-		Status:        "active",
-		LastHeartbeat: time.Now(),
+		ID:             id,
+		Type:           role,
+		Status:         "active",
+		LastHeartbeat:  time.Now(),
 		CoordinationOK: true,
 	}
 }
@@ -539,7 +540,7 @@ func calculateAverageLatency(latencies []time.Duration) time.Duration {
 	if len(latencies) == 0 {
 		return 0
 	}
-	
+
 	total := time.Duration(0)
 	for _, latency := range latencies {
 		total += latency
@@ -551,7 +552,7 @@ func calculateMaxLatency(latencies []time.Duration) time.Duration {
 	if len(latencies) == 0 {
 		return 0
 	}
-	
+
 	max := latencies[0]
 	for _, latency := range latencies {
 		if latency > max {

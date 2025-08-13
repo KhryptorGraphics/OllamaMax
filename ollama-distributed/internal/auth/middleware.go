@@ -33,20 +33,20 @@ func (mm *MiddlewareManager) AuthRequired() gin.HandlerFunc {
 			c.Next()
 			return
 		}
-		
+
 		// Skip auth for certain paths
 		if mm.shouldSkipAuth(c.Request.URL.Path, c.Request.Method) {
 			c.Next()
 			return
 		}
-		
+
 		// Try to authenticate
 		authCtx, err := mm.authenticate(c)
 		if err != nil {
 			mm.handleAuthError(c, err)
 			return
 		}
-		
+
 		// Store auth context
 		mm.setAuthContext(c, authCtx)
 		c.Next()
@@ -62,16 +62,16 @@ func (mm *MiddlewareManager) RequirePermission(permission string) gin.HandlerFun
 			c.Abort()
 			return
 		}
-		
+
 		if !mm.authManager.HasPermission(authCtx, permission) {
 			c.JSON(http.StatusForbidden, gin.H{
-				"error": "Insufficient permissions",
+				"error":               "Insufficient permissions",
 				"required_permission": permission,
 			})
 			c.Abort()
 			return
 		}
-		
+
 		c.Next()
 	}
 }
@@ -85,17 +85,17 @@ func (mm *MiddlewareManager) RequireRole(role string) gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		
+
 		if authCtx.User.Role != role && authCtx.User.Role != RoleAdmin {
 			c.JSON(http.StatusForbidden, gin.H{
-				"error": "Insufficient role",
+				"error":         "Insufficient role",
 				"required_role": role,
-				"user_role": authCtx.User.Role,
+				"user_role":     authCtx.User.Role,
 			})
 			c.Abort()
 			return
 		}
-		
+
 		c.Next()
 	}
 }
@@ -109,13 +109,13 @@ func (mm *MiddlewareManager) RequireAnyRole(roles ...string) gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		
+
 		// Admin always has access
 		if authCtx.User.Role == RoleAdmin {
 			c.Next()
 			return
 		}
-		
+
 		// Check if user has any of the required roles
 		hasRole := false
 		for _, role := range roles {
@@ -124,17 +124,17 @@ func (mm *MiddlewareManager) RequireAnyRole(roles ...string) gin.HandlerFunc {
 				break
 			}
 		}
-		
+
 		if !hasRole {
 			c.JSON(http.StatusForbidden, gin.H{
-				"error": "Insufficient role",
+				"error":          "Insufficient role",
 				"required_roles": roles,
-				"user_role": authCtx.User.Role,
+				"user_role":      authCtx.User.Role,
 			})
 			c.Abort()
 			return
 		}
-		
+
 		c.Next()
 	}
 }
@@ -148,7 +148,7 @@ func (mm *MiddlewareManager) RequireAnyPermission(permissions ...string) gin.Han
 			c.Abort()
 			return
 		}
-		
+
 		// Check if user has any of the required permissions
 		hasPermission := false
 		for _, permission := range permissions {
@@ -157,16 +157,16 @@ func (mm *MiddlewareManager) RequireAnyPermission(permissions ...string) gin.Han
 				break
 			}
 		}
-		
+
 		if !hasPermission {
 			c.JSON(http.StatusForbidden, gin.H{
-				"error": "Insufficient permissions",
+				"error":                "Insufficient permissions",
 				"required_permissions": permissions,
 			})
 			c.Abort()
 			return
 		}
-		
+
 		c.Next()
 	}
 }
@@ -178,13 +178,13 @@ func (mm *MiddlewareManager) Optional() gin.HandlerFunc {
 			c.Next()
 			return
 		}
-		
+
 		// Try to authenticate but don't fail if unsuccessful
 		authCtx, _ := mm.authenticate(c)
 		if authCtx != nil {
 			mm.setAuthContext(c, authCtx)
 		}
-		
+
 		c.Next()
 	}
 }
@@ -194,45 +194,45 @@ func (mm *MiddlewareManager) RateLimit() gin.HandlerFunc {
 	// This is a simplified rate limiter
 	// In production, use a proper rate limiting library like tollbooth or redis-based limiter
 	requestCounts := make(map[string]map[int64]int)
-	
+
 	return func(c *gin.Context) {
 		// Get client identifier (IP or user ID if authenticated)
 		clientID := c.ClientIP()
 		if authCtx := mm.getAuthContext(c); authCtx != nil {
 			clientID = authCtx.User.ID
 		}
-		
+
 		// Current minute window
 		currentMinute := time.Now().Unix() / 60
-		
+
 		if requestCounts[clientID] == nil {
 			requestCounts[clientID] = make(map[int64]int)
 		}
-		
+
 		// Clean old entries
 		for minute := range requestCounts[clientID] {
 			if currentMinute-minute > 5 { // Keep last 5 minutes
 				delete(requestCounts[clientID], minute)
 			}
 		}
-		
+
 		// Count requests in current minute
 		requestCounts[clientID][currentMinute]++
-		
+
 		// Check limit (100 requests per minute)
 		if requestCounts[clientID][currentMinute] > 100 {
 			c.JSON(http.StatusTooManyRequests, gin.H{
-				"error": "Rate limit exceeded",
+				"error":       "Rate limit exceeded",
 				"retry_after": 60,
 			})
 			c.Abort()
 			return
 		}
-		
+
 		c.Header("X-RateLimit-Limit", "100")
 		c.Header("X-RateLimit-Remaining", string(rune(100-requestCounts[clientID][currentMinute])))
 		c.Header("X-RateLimit-Reset", string(rune((currentMinute+1)*60)))
-		
+
 		c.Next()
 	}
 }
@@ -241,10 +241,10 @@ func (mm *MiddlewareManager) RateLimit() gin.HandlerFunc {
 func (mm *MiddlewareManager) CORS() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		origin := c.Request.Header.Get("Origin")
-		
+
 		// Default allowed origins
 		allowedOrigins := []string{"http://localhost:8080", "https://localhost:8080"}
-		
+
 		// Check if origin is allowed
 		allowed := false
 		for _, allowedOrigin := range allowedOrigins {
@@ -253,21 +253,21 @@ func (mm *MiddlewareManager) CORS() gin.HandlerFunc {
 				break
 			}
 		}
-		
+
 		if allowed {
 			c.Header("Access-Control-Allow-Origin", origin)
 		}
-		
+
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
 		c.Header("Access-Control-Allow-Credentials", "true")
 		c.Header("Access-Control-Max-Age", "3600")
-		
+
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(http.StatusNoContent)
 			return
 		}
-		
+
 		c.Next()
 	}
 }
@@ -281,7 +281,7 @@ func (mm *MiddlewareManager) SecurityHeaders() gin.HandlerFunc {
 		c.Header("Referrer-Policy", "strict-origin-when-cross-origin")
 		c.Header("Content-Security-Policy", "default-src 'self'")
 		c.Header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
-		
+
 		c.Next()
 	}
 }
@@ -290,24 +290,24 @@ func (mm *MiddlewareManager) SecurityHeaders() gin.HandlerFunc {
 func (mm *MiddlewareManager) AuditLog() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
-		
+
 		// Process request
 		c.Next()
-		
+
 		// Log after request completion
 		duration := time.Since(start)
 		authCtx := mm.getAuthContext(c)
-		
+
 		logData := map[string]interface{}{
-			"timestamp":    start.Unix(),
-			"method":       c.Request.Method,
-			"path":         c.Request.URL.Path,
-			"status":       c.Writer.Status(),
-			"duration_ms":  duration.Milliseconds(),
-			"ip":           c.ClientIP(),
-			"user_agent":   c.Request.Header.Get("User-Agent"),
+			"timestamp":   start.Unix(),
+			"method":      c.Request.Method,
+			"path":        c.Request.URL.Path,
+			"status":      c.Writer.Status(),
+			"duration_ms": duration.Milliseconds(),
+			"ip":          c.ClientIP(),
+			"user_agent":  c.Request.Header.Get("User-Agent"),
 		}
-		
+
 		if authCtx != nil {
 			logData["user_id"] = authCtx.User.ID
 			logData["username"] = authCtx.User.Username
@@ -319,7 +319,7 @@ func (mm *MiddlewareManager) AuditLog() gin.HandlerFunc {
 				logData["api_key_id"] = authCtx.APIKey.ID
 			}
 		}
-		
+
 		// In production, send this to a proper logging system
 		// fmt.Printf("AUDIT: %+v\n", logData)
 	}
@@ -332,12 +332,12 @@ func (mm *MiddlewareManager) authenticate(c *gin.Context) (*AuthContext, error) 
 	if apiKey := mm.extractAPIKey(c); apiKey != "" {
 		return mm.authManager.ValidateAPIKey(apiKey)
 	}
-	
+
 	// Try JWT token authentication
 	if token := mm.extractBearerToken(c); token != "" {
 		return mm.authManager.ValidateToken(token)
 	}
-	
+
 	return nil, ErrInvalidCredentials
 }
 
@@ -346,12 +346,12 @@ func (mm *MiddlewareManager) extractBearerToken(c *gin.Context) string {
 	if authHeader == "" {
 		return ""
 	}
-	
+
 	parts := strings.SplitN(authHeader, " ", 2)
 	if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
 		return ""
 	}
-	
+
 	return parts[1]
 }
 
@@ -361,17 +361,17 @@ func (mm *MiddlewareManager) extractAPIKey(c *gin.Context) string {
 	if strings.HasPrefix(strings.ToLower(authHeader), "apikey ") {
 		return strings.TrimPrefix(authHeader, "ApiKey ")
 	}
-	
+
 	// Check X-API-Key header
 	if apiKey := c.GetHeader("X-API-Key"); apiKey != "" {
 		return apiKey
 	}
-	
+
 	// Check query parameter
 	if apiKey := c.Query("api_key"); apiKey != "" {
 		return apiKey
 	}
-	
+
 	return ""
 }
 
@@ -384,7 +384,7 @@ func (mm *MiddlewareManager) shouldSkipAuth(path, method string) bool {
 		"/metrics",
 		"/favicon.ico",
 	}
-	
+
 	for _, publicPath := range publicPaths {
 		if path == publicPath {
 			return true
@@ -393,19 +393,19 @@ func (mm *MiddlewareManager) shouldSkipAuth(path, method string) bool {
 			return true
 		}
 	}
-	
+
 	// Always allow OPTIONS requests for CORS
 	if method == "OPTIONS" {
 		return true
 	}
-	
+
 	return false
 }
 
 func (mm *MiddlewareManager) handleAuthError(c *gin.Context, err error) {
 	var status int
 	var response gin.H
-	
+
 	switch err.(type) {
 	case AuthError:
 		authErr := err.(AuthError)
@@ -435,7 +435,7 @@ func (mm *MiddlewareManager) handleAuthError(c *gin.Context, err error) {
 			"error": "Authentication required",
 		}
 	}
-	
+
 	c.JSON(status, response)
 	c.Abort()
 }

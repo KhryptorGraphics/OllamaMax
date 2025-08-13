@@ -1,7 +1,6 @@
 package unit
 
 import (
-	"context"
 	"crypto/sha256"
 	"fmt"
 	"testing"
@@ -17,13 +16,13 @@ import (
 func TestModelSyncManager(t *testing.T) {
 	// Create test configuration
 	config := &models.SyncConfig{
-		CheckInterval:     10 * time.Second,
-		MaxConcurrentSync: 3,
-		RetryAttempts:     3,
-		RetryDelay:        1 * time.Second,
-		CompressionLevel:  6,
-		EnableDelta:       true,
-		DeltaThreshold:    0.1,
+		SyncInterval:       10 * time.Second,
+		MaxConcurrentSyncs: 3,
+		RetryAttempts:      3,
+		SyncTimeout:        30 * time.Second,
+		EnableCompression:  true,
+		EnableDeltaSync:    true,
+		BatchSize:          100,
 	}
 
 	// Create sync manager
@@ -85,13 +84,13 @@ func TestModelSyncManager(t *testing.T) {
 
 		// Create sync task
 		task := &models.SyncTask{
-			ID:          "sync-task-1",
-			ModelName:   sourceModel.Name,
-			SourceNode:  "node-1",
-			TargetNode:  "node-2",
-			Status:      models.SyncStatusPending,
-			CreatedAt:   time.Now(),
-			Priority:    1,
+			ID:         "sync-task-1",
+			ModelName:  sourceModel.Name,
+			SourceNode: "node-1",
+			TargetNode: "node-2",
+			Status:     models.SyncStatusPending,
+			CreatedAt:  time.Now(),
+			Priority:   1,
 		}
 
 		// Process sync task
@@ -119,7 +118,7 @@ func TestDeltaTracker(t *testing.T) {
 			Name:     "delta-model",
 			Version:  "1.1.0",
 			Checksum: "new-checksum",
-			Size:     1024 * 1024 * 1024 + 50*1024*1024, // 1GB + 50MB
+			Size:     1024*1024*1024 + 50*1024*1024, // 1GB + 50MB
 		}
 
 		// Create delta
@@ -154,17 +153,17 @@ func TestDeltaTracker(t *testing.T) {
 		largeDelta := &models.Delta{
 			Size: 900 * 1024 * 1024, // 900MB delta
 		}
-		
+
 		originalSize := int64(1024 * 1024 * 1024) // 1GB original
-		
+
 		// Check if delta is worth using
 		isWorthwhile := tracker.IsDeltaWorthwhile(largeDelta, originalSize)
 		assert.False(t, isWorthwhile) // 900MB delta for 1GB file is not worthwhile
-		
+
 		smallDelta := &models.Delta{
 			Size: 50 * 1024 * 1024, // 50MB delta
 		}
-		
+
 		isWorthwhile = tracker.IsDeltaWorthwhile(smallDelta, originalSize)
 		assert.True(t, isWorthwhile) // 50MB delta for 1GB file is worthwhile
 	})
@@ -174,12 +173,12 @@ func TestDeltaTracker(t *testing.T) {
 func TestReplicationManager(t *testing.T) {
 	// Create replication configuration
 	config := &models.ReplicationConfig{
-		DefaultFactor:    3,
-		MinReplicas:      2,
-		MaxReplicas:      5,
-		PlacementPolicy:  "anti_affinity",
+		DefaultFactor:       3,
+		MinReplicas:         2,
+		MaxReplicas:         5,
+		PlacementPolicy:     "anti_affinity",
 		HealthCheckInterval: 30 * time.Second,
-		RepairDelay:      5 * time.Minute,
+		RepairDelay:         5 * time.Minute,
 	}
 
 	// Create replication manager
@@ -207,7 +206,7 @@ func TestReplicationManager(t *testing.T) {
 		targets, err := manager.CalculateReplicationTargets(model, nodes)
 		assert.NoError(t, err)
 		assert.Equal(t, 2, len(targets)) // Need 2 more replicas
-		
+
 		// Verify anti-affinity (different zones/racks)
 		zones := make(map[string]bool)
 		for _, target := range targets {
@@ -226,7 +225,7 @@ func TestReplicationManager(t *testing.T) {
 
 		// Simulate failed replica
 		failedReplicas := []string{"node-2"}
-		
+
 		// Check replication health
 		health := manager.CheckReplicationHealth(model, failedReplicas)
 		assert.False(t, health.IsHealthy)
@@ -238,13 +237,13 @@ func TestReplicationManager(t *testing.T) {
 	t.Run("TestReplicationRepair", func(t *testing.T) {
 		// Create repair task
 		task := &models.RepairTask{
-			ID:          "repair-1",
-			ModelName:   "health-model",
-			FailedNode:  "node-2",
-			TargetNode:  "node-4",
-			Status:      models.RepairStatusPending,
-			CreatedAt:   time.Now(),
-			Priority:    2,
+			ID:         "repair-1",
+			ModelName:  "health-model",
+			FailedNode: "node-2",
+			TargetNode: "node-4",
+			Status:     models.RepairStatusPending,
+			CreatedAt:  time.Now(),
+			Priority:   2,
 		}
 
 		// Process repair task
@@ -262,20 +261,20 @@ func TestCASStore(t *testing.T) {
 	t.Run("TestContentStorage", func(t *testing.T) {
 		// Create test content
 		content := []byte("test content for CAS storage")
-		
+
 		// Calculate hash
 		hash := sha256.Sum256(content)
 		hashStr := fmt.Sprintf("%x", hash)
-		
+
 		// Store content
 		err := store.Put(hashStr, content)
 		assert.NoError(t, err)
-		
+
 		// Retrieve content
 		retrievedContent, err := store.Get(hashStr)
 		assert.NoError(t, err)
 		assert.Equal(t, content, retrievedContent)
-		
+
 		// Check existence
 		exists := store.Has(hashStr)
 		assert.True(t, exists)
@@ -286,15 +285,15 @@ func TestCASStore(t *testing.T) {
 		content := []byte("duplicate content")
 		hash := sha256.Sum256(content)
 		hashStr := fmt.Sprintf("%x", hash)
-		
+
 		// Store first time
 		err := store.Put(hashStr, content)
 		assert.NoError(t, err)
-		
+
 		// Store second time (should be deduplicated)
 		err = store.Put(hashStr, content)
 		assert.NoError(t, err)
-		
+
 		// Verify content is still there
 		retrievedContent, err := store.Get(hashStr)
 		assert.NoError(t, err)
@@ -306,18 +305,18 @@ func TestCASStore(t *testing.T) {
 		content := []byte("content to delete")
 		hash := sha256.Sum256(content)
 		hashStr := fmt.Sprintf("%x", hash)
-		
+
 		err := store.Put(hashStr, content)
 		assert.NoError(t, err)
-		
+
 		// Delete content
 		err = store.Delete(hashStr)
 		assert.NoError(t, err)
-		
+
 		// Verify content is gone
 		exists := store.Has(hashStr)
 		assert.False(t, exists)
-		
+
 		_, err = store.Get(hashStr)
 		assert.Error(t, err)
 	})
@@ -365,7 +364,7 @@ func TestModelDistributionManager(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, strategy)
 		assert.Equal(t, model.ReplicationFactor, len(strategy.TargetNodes))
-		
+
 		// Verify nodes have enough capacity
 		for _, nodeID := range strategy.TargetNodes {
 			node := findNode(nodes, nodeID)
@@ -392,10 +391,10 @@ func TestModelDistributionManager(t *testing.T) {
 		distribution, err := manager.CalculateBalancedDistribution(models, nodes)
 		assert.NoError(t, err)
 		assert.NotNil(t, distribution)
-		
+
 		// Verify all models are distributed
 		assert.Equal(t, len(models), len(distribution.Placements))
-		
+
 		// Check load distribution
 		loadDistribution := distribution.GetLoadDistribution()
 		assert.NotNil(t, loadDistribution)
@@ -421,7 +420,7 @@ func BenchmarkModelSync(b *testing.B) {
 		EnableDelta:       true,
 		CompressionLevel:  6,
 	}
-	
+
 	manager := models.NewSyncManager(config)
 	require.NotNil(b, manager)
 
@@ -438,12 +437,12 @@ func BenchmarkModelSync(b *testing.B) {
 					Size:        1024 * 1024 * 1024, // 1GB
 					LastUpdated: time.Now(),
 				}
-				
+
 				err := manager.RegisterModel(model)
 				if err != nil {
 					b.Errorf("Failed to register model: %v", err)
 				}
-				
+
 				i++
 			}
 		})
@@ -474,7 +473,7 @@ func BenchmarkModelSync(b *testing.B) {
 
 	b.Run("DeltaCreation", func(b *testing.B) {
 		tracker := models.NewDeltaTracker()
-		
+
 		oldModel := &models.ModelInfo{
 			Name:     "bench-delta-model",
 			Version:  "1.0.0",
@@ -486,7 +485,7 @@ func BenchmarkModelSync(b *testing.B) {
 			Name:     "bench-delta-model",
 			Version:  "1.1.0",
 			Checksum: "new-checksum",
-			Size:     1024 * 1024 * 1024 + 50*1024*1024,
+			Size:     1024*1024*1024 + 50*1024*1024,
 		}
 
 		b.RunParallel(func(pb *testing.PB) {

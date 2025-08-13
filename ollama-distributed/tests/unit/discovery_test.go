@@ -18,11 +18,11 @@ import (
 func TestDiscoveryEngine(t *testing.T) {
 	// Create test configuration
 	config := &p2p.NodeConfig{
-		EnableDHT:    true,
-		DHTMode:      "auto",
-		Bootstrap:    []string{},
-		ConnMgrLow:   2,
-		ConnMgrHigh:  10,
+		EnableDHT:   true,
+		DHTMode:     "auto",
+		Bootstrap:   []string{},
+		ConnMgrLow:  2,
+		ConnMgrHigh: 10,
 	}
 
 	// Create test host
@@ -47,21 +47,21 @@ func TestDiscoveryEngine(t *testing.T) {
 
 	t.Run("TestPeerCache", func(t *testing.T) {
 		cache := discovery.NewPeerCache(10, 5*time.Minute)
-		
+
 		// Create test peer
 		testPeer := peer.AddrInfo{
 			ID: peer.ID("test-peer"),
 		}
-		
+
 		// Add peer to cache
 		cache.Add(testPeer, "test")
-		
+
 		// Retrieve peer
 		cachedPeer, exists := cache.Get(testPeer.ID)
 		assert.True(t, exists)
 		assert.Equal(t, testPeer.ID, cachedPeer.AddrInfo.ID)
 		assert.Equal(t, "test", cachedPeer.Source)
-		
+
 		// Remove peer
 		cache.Remove(testPeer.ID)
 		_, exists = cache.Get(testPeer.ID)
@@ -71,10 +71,10 @@ func TestDiscoveryEngine(t *testing.T) {
 	t.Run("TestDiscoveryStrategies", func(t *testing.T) {
 		engine.Start()
 		time.Sleep(2 * time.Second)
-		
+
 		metrics := engine.GetMetrics()
 		assert.GreaterOrEqual(t, len(metrics.StrategyMetrics), 1)
-		
+
 		// Check that strategies are registered
 		for name, strategyMetrics := range metrics.StrategyMetrics {
 			assert.NotEmpty(t, name)
@@ -99,7 +99,7 @@ func TestBootstrapDiscovery(t *testing.T) {
 	defer host.Close()
 
 	bootstrap := discovery.NewBootstrapDiscovery(host, bootstrapPeers, 5, 10)
-	
+
 	t.Run("TestName", func(t *testing.T) {
 		assert.Equal(t, "bootstrap", bootstrap.Name())
 	})
@@ -113,11 +113,11 @@ func TestBootstrapDiscovery(t *testing.T) {
 	t.Run("TestFindPeers", func(t *testing.T) {
 		peerChan, err := bootstrap.FindPeers(ctx, "test-namespace")
 		assert.NoError(t, err)
-		
+
 		// Collect peers with timeout
 		var peers []peer.AddrInfo
 		timeout := time.After(5 * time.Second)
-		
+
 		for {
 			select {
 			case peer := <-peerChan:
@@ -126,8 +126,8 @@ func TestBootstrapDiscovery(t *testing.T) {
 				goto done
 			}
 		}
-		
-		done:
+
+	done:
 		assert.LessOrEqual(t, len(peers), len(bootstrapPeers))
 	})
 }
@@ -143,7 +143,7 @@ func TestMDNSDiscovery(t *testing.T) {
 
 	// Create mDNS discovery
 	mdnsStrategy := discovery.NewMDNSStrategy(host)
-	
+
 	t.Run("TestName", func(t *testing.T) {
 		assert.Equal(t, "mdns", mdnsStrategy.Name())
 	})
@@ -157,7 +157,7 @@ func TestMDNSDiscovery(t *testing.T) {
 	t.Run("TestFindPeers", func(t *testing.T) {
 		peerChan, err := mdnsStrategy.FindPeers(ctx, "ollamacron")
 		assert.NoError(t, err)
-		
+
 		// Should not block even if no peers found
 		select {
 		case <-peerChan:
@@ -181,10 +181,10 @@ func TestDiscoveryMetrics(t *testing.T) {
 
 	// Add strategy metrics
 	metrics.StrategyMetrics["test"] = &discovery.StrategyMetrics{
-		PeersFound:      5,
-		Errors:          1,
-		LastSuccess:     time.Now(),
-		AverageLatency:  100 * time.Millisecond,
+		PeersFound:     5,
+		Errors:         1,
+		LastSuccess:    time.Now(),
+		AverageLatency: 100 * time.Millisecond,
 	}
 
 	// Test strategy metrics
@@ -231,22 +231,22 @@ func BenchmarkDiscoveryEngine(b *testing.B) {
 
 	b.Run("PeerCacheOperations", func(b *testing.B) {
 		cache := discovery.NewPeerCache(1000, 5*time.Minute)
-		
+
 		b.RunParallel(func(pb *testing.PB) {
 			i := 0
 			for pb.Next() {
 				peerID := peer.ID(fmt.Sprintf("peer-%d", i))
 				testPeer := peer.AddrInfo{ID: peerID}
-				
+
 				// Add peer
 				cache.Add(testPeer, "benchmark")
-				
+
 				// Get peer
 				_, exists := cache.Get(peerID)
 				if !exists {
 					b.Errorf("Peer should exist in cache")
 				}
-				
+
 				i++
 			}
 		})
@@ -254,7 +254,7 @@ func BenchmarkDiscoveryEngine(b *testing.B) {
 
 	b.Run("MetricsUpdate", func(b *testing.B) {
 		metrics := engine.GetMetrics()
-		
+
 		b.RunParallel(func(pb *testing.PB) {
 			for pb.Next() {
 				metrics.PeersFound++

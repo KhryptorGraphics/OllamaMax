@@ -19,10 +19,10 @@ type ExecutionEngine struct {
 
 // ExecutionEngineConfig configures the execution engine
 type ExecutionEngineConfig struct {
-	MaxConcurrent           int  `json:"max_concurrent"`
+	MaxConcurrent           int           `json:"max_concurrent"`
 	ExecutionTimeout        time.Duration `json:"execution_timeout"`
-	EnableParallelExecution bool `json:"enable_parallel_execution"`
-	EnableProgressTracking  bool `json:"enable_progress_tracking"`
+	EnableParallelExecution bool          `json:"enable_parallel_execution"`
+	EnableProgressTracking  bool          `json:"enable_progress_tracking"`
 }
 
 // StepExecution represents an active step execution
@@ -86,7 +86,7 @@ func (ee *ExecutionEngine) ExecuteRollback(ctx context.Context, rollback *Rollba
 
 	for _, step := range rollback.Steps {
 		stepCtx, cancel := context.WithTimeout(ctx, step.Timeout)
-		
+
 		result, err := ee.executeStep(stepCtx, step)
 		cancel()
 
@@ -116,9 +116,9 @@ func (ee *ExecutionEngine) ExecuteRollback(ctx context.Context, rollback *Rollba
 		Successful: lastError == nil,
 		Duration:   rollback.Timeout,
 		Metadata: map[string]interface{}{
-			"rollback_steps":      len(rollback.Steps),
-			"successful_steps":    successfulSteps,
-			"rollback_complete":   lastError == nil,
+			"rollback_steps":    len(rollback.Steps),
+			"successful_steps":  successfulSteps,
+			"rollback_complete": lastError == nil,
 		},
 		Timestamp: time.Now(),
 	}
@@ -134,21 +134,21 @@ func (ee *ExecutionEngine) ExecuteRollback(ctx context.Context, rollback *Rollba
 func (ee *ExecutionEngine) executeParallel(ctx context.Context, plan *RecoveryPlan, progress *RecoveryProgress) (*RecoveryResult, error) {
 	// Build dependency graph
 	dependencyGraph := ee.buildStepDependencyGraph(plan.Steps)
-	
+
 	// Execute steps in topological order with parallelization
 	executed := make(map[string]bool)
 	executing := make(map[string]bool)
 	results := make(map[string]interface{})
 	errors := make(map[string]error)
-	
+
 	var wg sync.WaitGroup
 	var mu sync.Mutex
-	
+
 	// Continue until all steps are executed
 	for len(executed) < len(plan.Steps) {
 		// Find steps ready for execution
 		readySteps := ee.findReadySteps(plan.Steps, dependencyGraph, executed, executing)
-		
+
 		if len(readySteps) == 0 {
 			// Check if we're stuck due to errors
 			if len(errors) > 0 {
@@ -158,7 +158,7 @@ func (ee *ExecutionEngine) executeParallel(ctx context.Context, plan *RecoveryPl
 			time.Sleep(100 * time.Millisecond)
 			continue
 		}
-		
+
 		// Execute ready steps in parallel
 		for _, step := range readySteps {
 			// Acquire execution slot
@@ -168,27 +168,27 @@ func (ee *ExecutionEngine) executeParallel(ctx context.Context, plan *RecoveryPl
 			case <-ctx.Done():
 				return nil, ctx.Err()
 			}
-			
+
 			mu.Lock()
 			executing[step.ID] = true
 			mu.Unlock()
-			
+
 			wg.Add(1)
 			go func(s *RecoveryStep) {
 				defer wg.Done()
 				defer func() { <-ee.executionPool }() // Release slot
-				
+
 				stepCtx, cancel := context.WithTimeout(ctx, s.Timeout)
 				defer cancel()
-				
+
 				result, err := ee.executeStep(stepCtx, s)
-				
+
 				mu.Lock()
 				defer mu.Unlock()
-				
+
 				delete(executing, s.ID)
 				executed[s.ID] = true
-				
+
 				if err != nil {
 					errors[s.ID] = err
 					s.Status = StepStatusFailed
@@ -198,17 +198,17 @@ func (ee *ExecutionEngine) executeParallel(ctx context.Context, plan *RecoveryPl
 					s.Status = StepStatusCompleted
 					s.Result = result
 				}
-				
+
 				// Update progress
 				if ee.config.EnableProgressTracking && progress != nil {
 					ee.updateProgress(progress, plan.Steps)
 				}
 			}(step)
 		}
-		
+
 		// Wait for current batch to complete
 		wg.Wait()
-		
+
 		// Check for critical step failures
 		for stepID, err := range errors {
 			step := ee.findStepByID(plan.Steps, stepID)
@@ -217,7 +217,7 @@ func (ee *ExecutionEngine) executeParallel(ctx context.Context, plan *RecoveryPl
 			}
 		}
 	}
-	
+
 	// Create final result
 	return ee.createSuccessResult(plan, results), nil
 }
@@ -225,27 +225,27 @@ func (ee *ExecutionEngine) executeParallel(ctx context.Context, plan *RecoveryPl
 // executeSequential executes steps sequentially
 func (ee *ExecutionEngine) executeSequential(ctx context.Context, plan *RecoveryPlan, progress *RecoveryProgress) (*RecoveryResult, error) {
 	results := make(map[string]interface{})
-	
+
 	for _, step := range plan.Steps {
 		// Check dependencies
 		if !ee.areDependenciesSatisfied(step, plan.Steps) {
-			return ee.createFailureResult(plan, fmt.Errorf("dependencies not satisfied for step %s", step.ID)), 
-				   fmt.Errorf("dependencies not satisfied")
+			return ee.createFailureResult(plan, fmt.Errorf("dependencies not satisfied for step %s", step.ID)),
+				fmt.Errorf("dependencies not satisfied")
 		}
-		
+
 		// Execute step
 		stepCtx, cancel := context.WithTimeout(ctx, step.Timeout)
 		result, err := ee.executeStep(stepCtx, step)
 		cancel()
-		
+
 		if err != nil {
 			step.Status = StepStatusFailed
 			step.Error = err
-			
+
 			if step.Critical {
 				return ee.createFailureResult(plan, fmt.Errorf("critical step %s failed: %w", step.ID, err)), err
 			}
-			
+
 			log.Warn().
 				Err(err).
 				Str("step_id", step.ID).
@@ -255,13 +255,13 @@ func (ee *ExecutionEngine) executeSequential(ctx context.Context, plan *Recovery
 			step.Result = result
 			results[step.ID] = result
 		}
-		
+
 		// Update progress
 		if ee.config.EnableProgressTracking && progress != nil {
 			ee.updateProgress(progress, plan.Steps)
 		}
 	}
-	
+
 	return ee.createSuccessResult(plan, results), nil
 }
 
@@ -274,38 +274,38 @@ func (ee *ExecutionEngine) executeStep(ctx context.Context, step *RecoveryStep) 
 		StartTime: time.Now(),
 		Metadata:  make(map[string]interface{}),
 	}
-	
+
 	ee.mu.Lock()
 	ee.activeExecutions[step.ID] = execution
 	ee.mu.Unlock()
-	
+
 	defer func() {
 		execution.EndTime = time.Now()
 		ee.mu.Lock()
 		delete(ee.activeExecutions, step.ID)
 		ee.mu.Unlock()
 	}()
-	
+
 	step.Status = StepStatusRunning
 	step.StartTime = time.Now()
-	
+
 	log.Info().
 		Str("step_id", step.ID).
 		Str("action", step.Action).
 		Str("target", step.Target).
 		Msg("Executing recovery step")
-	
+
 	// Execute step with retries
 	var result interface{}
 	var err error
-	
+
 	for attempt := 0; attempt <= step.Retries; attempt++ {
 		if attempt > 0 {
 			log.Info().
 				Str("step_id", step.ID).
 				Int("attempt", attempt).
 				Msg("Retrying step execution")
-			
+
 			// Exponential backoff
 			backoff := time.Duration(attempt) * time.Second
 			select {
@@ -314,36 +314,36 @@ func (ee *ExecutionEngine) executeStep(ctx context.Context, step *RecoveryStep) 
 			case <-time.After(backoff):
 			}
 		}
-		
+
 		result, err = ee.performStepAction(ctx, step)
 		if err == nil {
 			break
 		}
-		
+
 		log.Warn().
 			Err(err).
 			Str("step_id", step.ID).
 			Int("attempt", attempt).
 			Msg("Step execution attempt failed")
 	}
-	
+
 	step.EndTime = time.Now()
 	step.Duration = step.EndTime.Sub(step.StartTime)
-	
+
 	if err != nil {
 		execution.Status = StepStatusFailed
 		execution.Error = err
 		return nil, fmt.Errorf("step %s failed after %d attempts: %w", step.ID, step.Retries+1, err)
 	}
-	
+
 	execution.Status = StepStatusCompleted
 	execution.Result = result
-	
+
 	log.Info().
 		Str("step_id", step.ID).
 		Dur("duration", step.Duration).
 		Msg("Step execution completed")
-	
+
 	return result, nil
 }
 
@@ -378,7 +378,7 @@ func (ee *ExecutionEngine) performPreparation(ctx context.Context, step *Recover
 	// Simulate preparation
 	time.Sleep(100 * time.Millisecond)
 	return map[string]interface{}{
-		"prepared": true,
+		"prepared":            true,
 		"resources_allocated": true,
 	}, nil
 }
@@ -388,7 +388,7 @@ func (ee *ExecutionEngine) performValidation(ctx context.Context, step *Recovery
 	time.Sleep(200 * time.Millisecond)
 	return map[string]interface{}{
 		"validation_passed": true,
-		"system_state": "ready",
+		"system_state":      "ready",
 	}, nil
 }
 
@@ -397,8 +397,8 @@ func (ee *ExecutionEngine) performFailover(ctx context.Context, step *RecoverySt
 	time.Sleep(2 * time.Second)
 	return map[string]interface{}{
 		"failover_completed": true,
-		"new_primary": "backup_node_1",
-		"data_migrated": true,
+		"new_primary":        "backup_node_1",
+		"data_migrated":      true,
 	}, nil
 }
 
@@ -406,7 +406,7 @@ func (ee *ExecutionEngine) performServiceRestart(ctx context.Context, step *Reco
 	// Simulate service restart
 	time.Sleep(1 * time.Second)
 	return map[string]interface{}{
-		"service_restarted": true,
+		"service_restarted":   true,
 		"health_check_passed": true,
 	}, nil
 }
@@ -416,7 +416,7 @@ func (ee *ExecutionEngine) performResourceScaling(ctx context.Context, step *Rec
 	time.Sleep(1500 * time.Millisecond)
 	return map[string]interface{}{
 		"scaling_completed": true,
-		"new_capacity": "150%",
+		"new_capacity":      "150%",
 	}, nil
 }
 
@@ -424,7 +424,7 @@ func (ee *ExecutionEngine) performPartitionRecovery(ctx context.Context, step *R
 	// Simulate partition recovery
 	time.Sleep(2500 * time.Millisecond)
 	return map[string]interface{}{
-		"partition_healed": true,
+		"partition_healed":  true,
 		"nodes_reconnected": true,
 		"data_synchronized": true,
 	}, nil
@@ -435,7 +435,7 @@ func (ee *ExecutionEngine) performVerification(ctx context.Context, step *Recove
 	time.Sleep(500 * time.Millisecond)
 	return map[string]interface{}{
 		"verification_passed": true,
-		"system_healthy": true,
+		"system_healthy":      true,
 	}, nil
 }
 
@@ -443,7 +443,7 @@ func (ee *ExecutionEngine) performCleanup(ctx context.Context, step *RecoverySte
 	// Simulate cleanup
 	time.Sleep(300 * time.Millisecond)
 	return map[string]interface{}{
-		"cleanup_completed": true,
+		"cleanup_completed":    true,
 		"temp_resources_freed": true,
 	}, nil
 }
@@ -453,7 +453,7 @@ func (ee *ExecutionEngine) performGenericAction(ctx context.Context, step *Recov
 	time.Sleep(1 * time.Second)
 	return map[string]interface{}{
 		"action_completed": true,
-		"action_type": step.Action,
+		"action_type":      step.Action,
 	}, nil
 }
 
@@ -469,12 +469,12 @@ func (ee *ExecutionEngine) buildStepDependencyGraph(steps []*RecoveryStep) map[s
 
 func (ee *ExecutionEngine) findReadySteps(steps []*RecoveryStep, graph map[string][]string, executed, executing map[string]bool) []*RecoveryStep {
 	var ready []*RecoveryStep
-	
+
 	for _, step := range steps {
 		if executed[step.ID] || executing[step.ID] {
 			continue
 		}
-		
+
 		// Check if all dependencies are satisfied
 		allSatisfied := true
 		for _, depID := range step.Dependencies {
@@ -483,12 +483,12 @@ func (ee *ExecutionEngine) findReadySteps(steps []*RecoveryStep, graph map[strin
 				break
 			}
 		}
-		
+
 		if allSatisfied {
 			ready = append(ready, step)
 		}
 	}
-	
+
 	return ready
 }
 
@@ -514,7 +514,7 @@ func (ee *ExecutionEngine) areDependenciesSatisfied(step *RecoveryStep, allSteps
 func (ee *ExecutionEngine) updateProgress(progress *RecoveryProgress, steps []*RecoveryStep) {
 	completed := 0
 	failed := 0
-	
+
 	for _, step := range steps {
 		switch step.Status {
 		case StepStatusCompleted:
@@ -523,7 +523,7 @@ func (ee *ExecutionEngine) updateProgress(progress *RecoveryProgress, steps []*R
 			failed++
 		}
 	}
-	
+
 	progress.CompletedSteps = completed
 	progress.FailedSteps = failed
 	progress.PercentComplete = float64(completed) / float64(len(steps)) * 100
@@ -537,9 +537,9 @@ func (ee *ExecutionEngine) createSuccessResult(plan *RecoveryPlan, results map[s
 		Successful: true,
 		Duration:   time.Since(plan.CreatedAt),
 		Metadata: map[string]interface{}{
-			"plan_id": plan.ID,
+			"plan_id":        plan.ID,
 			"steps_executed": len(results),
-			"results": results,
+			"results":        results,
 		},
 		Timestamp: time.Now(),
 	}
@@ -553,7 +553,7 @@ func (ee *ExecutionEngine) createFailureResult(plan *RecoveryPlan, err error) *R
 		Duration:   time.Since(plan.CreatedAt),
 		Error:      err.Error(),
 		Metadata: map[string]interface{}{
-			"plan_id": plan.ID,
+			"plan_id":        plan.ID,
 			"failure_reason": err.Error(),
 		},
 		Timestamp: time.Now(),

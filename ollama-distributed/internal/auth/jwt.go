@@ -15,9 +15,9 @@ type JWTManager struct {
 	config     *config.AuthConfig
 	privateKey *rsa.PrivateKey
 	publicKey  *rsa.PublicKey
-	
+
 	// Token blacklist and refresh tokens
-	blacklist    map[string]time.Time
+	blacklist     map[string]time.Time
 	refreshTokens map[string]*RefreshToken
 }
 
@@ -46,7 +46,7 @@ func NewJWTManager(cfg *config.AuthConfig) (*JWTManager, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate RSA key: %w", err)
 	}
-	
+
 	return &JWTManager{
 		config:        cfg,
 		privateKey:    privateKey,
@@ -61,7 +61,7 @@ func (jm *JWTManager) GenerateTokenPair(user *User, sessionID string, metadata m
 	now := time.Now()
 	accessTokenExpiry := now.Add(jm.config.TokenExpiry)
 	refreshTokenExpiry := now.Add(7 * 24 * time.Hour) // 7 days for refresh token
-	
+
 	// Create access token claims
 	accessClaims := &Claims{
 		UserID:      user.ID,
@@ -81,19 +81,19 @@ func (jm *JWTManager) GenerateTokenPair(user *User, sessionID string, metadata m
 			Audience:  []string{jm.config.Audience},
 		},
 	}
-	
+
 	// Sign access token
 	accessToken := jwt.NewWithClaims(jwt.SigningMethodRS256, accessClaims)
 	accessTokenString, err := accessToken.SignedString(jm.privateKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign access token: %w", err)
 	}
-	
+
 	// Create refresh token
 	refreshTokenID := generateID()
 	refreshTokenString := generateAPIKey() // Reuse the secure random generation
 	refreshTokenHash := hashAPIKey(refreshTokenString)
-	
+
 	refreshToken := &RefreshToken{
 		ID:        refreshTokenID,
 		UserID:    user.ID,
@@ -102,9 +102,9 @@ func (jm *JWTManager) GenerateTokenPair(user *User, sessionID string, metadata m
 		CreatedAt: now,
 		Used:      false,
 	}
-	
+
 	jm.refreshTokens[refreshTokenID] = refreshToken
-	
+
 	return &TokenPair{
 		AccessToken:  accessTokenString,
 		RefreshToken: refreshTokenString,
@@ -116,7 +116,7 @@ func (jm *JWTManager) GenerateTokenPair(user *User, sessionID string, metadata m
 // RefreshAccessToken generates a new access token using a refresh token
 func (jm *JWTManager) RefreshAccessToken(refreshTokenString string, user *User) (*TokenPair, error) {
 	refreshTokenHash := hashAPIKey(refreshTokenString)
-	
+
 	// Find the refresh token
 	var refreshToken *RefreshToken
 	for _, rt := range jm.refreshTokens {
@@ -127,14 +127,14 @@ func (jm *JWTManager) RefreshAccessToken(refreshTokenString string, user *User) 
 			}
 		}
 	}
-	
+
 	if refreshToken == nil {
 		return nil, fmt.Errorf("invalid or expired refresh token")
 	}
-	
+
 	// Mark the old refresh token as used
 	refreshToken.Used = true
-	
+
 	// Generate new token pair
 	return jm.GenerateTokenPair(user, "", nil)
 }
@@ -147,21 +147,21 @@ func (jm *JWTManager) ValidateToken(tokenString string) (*Claims, error) {
 		}
 		return jm.publicKey, nil
 	})
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse token: %w", err)
 	}
-	
+
 	claims, ok := token.Claims.(*Claims)
 	if !ok || !token.Valid {
 		return nil, fmt.Errorf("invalid token claims")
 	}
-	
+
 	// Check if token is blacklisted
 	if jm.isBlacklisted(claims.ID) {
 		return nil, fmt.Errorf("token is blacklisted")
 	}
-	
+
 	return claims, nil
 }
 
@@ -173,14 +173,14 @@ func (jm *JWTManager) BlacklistToken(tokenID string, expiry time.Time) {
 // RevokeRefreshToken revokes a refresh token
 func (jm *JWTManager) RevokeRefreshToken(refreshTokenString, userID string) error {
 	refreshTokenHash := hashAPIKey(refreshTokenString)
-	
+
 	for _, rt := range jm.refreshTokens {
 		if rt.TokenHash == refreshTokenHash && rt.UserID == userID {
 			rt.Used = true
 			return nil
 		}
 	}
-	
+
 	return fmt.Errorf("refresh token not found")
 }
 
@@ -197,14 +197,14 @@ func (jm *JWTManager) RevokeAllUserTokens(userID string) {
 // CleanupExpiredTokens removes expired tokens from memory
 func (jm *JWTManager) CleanupExpiredTokens() {
 	now := time.Now()
-	
+
 	// Clean up blacklist
 	for tokenID, expiry := range jm.blacklist {
 		if now.After(expiry) {
 			delete(jm.blacklist, tokenID)
 		}
 	}
-	
+
 	// Clean up refresh tokens
 	for id, rt := range jm.refreshTokens {
 		if now.After(rt.ExpiresAt) || rt.Used {
@@ -218,16 +218,16 @@ func (jm *JWTManager) GetTokenClaims(tokenString string) (*Claims, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
 		return jm.publicKey, nil
 	}, jwt.WithoutClaimsValidation())
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse token: %w", err)
 	}
-	
+
 	claims, ok := token.Claims.(*Claims)
 	if !ok {
 		return nil, fmt.Errorf("invalid token claims")
 	}
-	
+
 	return claims, nil
 }
 
@@ -235,7 +235,7 @@ func (jm *JWTManager) GetTokenClaims(tokenString string) (*Claims, error) {
 func (jm *JWTManager) GenerateServiceToken(serviceID, serviceName string, permissions []string) (string, error) {
 	now := time.Now()
 	expiry := now.Add(365 * 24 * time.Hour) // 1 year
-	
+
 	claims := &Claims{
 		UserID:      serviceID,
 		Username:    serviceName,
@@ -254,7 +254,7 @@ func (jm *JWTManager) GenerateServiceToken(serviceID, serviceName string, permis
 			Audience:  []string{jm.config.Audience},
 		},
 	}
-	
+
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
 	return token.SignedString(jm.privateKey)
 }
@@ -265,12 +265,12 @@ func (jm *JWTManager) ValidateServiceToken(tokenString string) (*Claims, error) 
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Verify this is a service token
 	if claims.Metadata["token_type"] != "service" {
 		return nil, fmt.Errorf("not a service token")
 	}
-	
+
 	return claims, nil
 }
 
@@ -278,7 +278,7 @@ func (jm *JWTManager) ValidateServiceToken(tokenString string) (*Claims, error) 
 func (jm *JWTManager) CreateShortLivedToken(user *User, duration time.Duration, purpose string) (string, error) {
 	now := time.Now()
 	expiry := now.Add(duration)
-	
+
 	claims := &Claims{
 		UserID:      user.ID,
 		Username:    user.Username,
@@ -299,7 +299,7 @@ func (jm *JWTManager) CreateShortLivedToken(user *User, duration time.Duration, 
 			Audience:  []string{jm.config.Audience},
 		},
 	}
-	
+
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
 	return token.SignedString(jm.privateKey)
 }
@@ -314,7 +314,7 @@ func (jm *JWTManager) GetTokenStats() map[string]interface{} {
 	activeRefreshTokens := 0
 	expiredRefreshTokens := 0
 	now := time.Now()
-	
+
 	for _, rt := range jm.refreshTokens {
 		if rt.Used || now.After(rt.ExpiresAt) {
 			expiredRefreshTokens++
@@ -322,7 +322,7 @@ func (jm *JWTManager) GetTokenStats() map[string]interface{} {
 			activeRefreshTokens++
 		}
 	}
-	
+
 	return map[string]interface{}{
 		"active_refresh_tokens":  activeRefreshTokens,
 		"expired_refresh_tokens": expiredRefreshTokens,
@@ -337,11 +337,11 @@ func (jm *JWTManager) isBlacklisted(tokenID string) bool {
 	if !exists {
 		return false
 	}
-	
+
 	if time.Now().After(expiry) {
 		delete(jm.blacklist, tokenID)
 		return false
 	}
-	
+
 	return true
 }

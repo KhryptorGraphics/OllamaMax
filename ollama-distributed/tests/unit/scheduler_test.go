@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/integration"
+	"github.com/ollama/ollama/server"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 

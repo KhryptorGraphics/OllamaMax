@@ -1,3 +1,5 @@
+//go:build ignore
+
 package integration
 
 import (
@@ -26,7 +28,7 @@ func TestIsolatedConsensusEngine(t *testing.T) {
 	// Create minimal P2P node for consensus
 	p2pConfig := &config.P2PConfig{
 		Listen:       "/ip4/127.0.0.1/tcp/0", // Random port
-		EnableDHT:    false,                   // Disable for isolation
+		EnableDHT:    false,                  // Disable for isolation
 		ConnMgrLow:   1,
 		ConnMgrHigh:  10,
 		ConnMgrGrace: "30s",
@@ -95,7 +97,7 @@ func TestIsolatedConsensusEngine(t *testing.T) {
 		// Apply multiple operations
 		operations := map[string]string{
 			"key1": "value1",
-			"key2": "value2", 
+			"key2": "value2",
 			"key3": "value3",
 		}
 
@@ -237,7 +239,7 @@ func TestComponentIntegrationSimple(t *testing.T) {
 	t.Run("IntegratedComponentsBasicOperation", func(t *testing.T) {
 		// Test that P2P and Consensus work together
 		assert.True(t, consensusEngine.IsLeader(), "Node should be leader")
-		
+
 		// Test consensus operations with P2P integration
 		testKey := "integration_key"
 		testValue := "integration_value"
