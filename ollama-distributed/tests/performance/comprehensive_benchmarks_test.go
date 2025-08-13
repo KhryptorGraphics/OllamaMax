@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/khryptorgraphics/ollamamax/ollama-distributed/internal/auth"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/auth"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/api"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/consensus"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/models"

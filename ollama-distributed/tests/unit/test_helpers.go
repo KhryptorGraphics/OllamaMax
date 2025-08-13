@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 
@@ -13,6 +15,7 @@ import (
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/api"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/config"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/consensus"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/models"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p/messaging"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p/monitoring"
@@ -286,4 +289,48 @@ func createMockNodes() []types.NodeInfo {
 			Metadata: map[string]string{"region": "us-east"},
 		},
 	}
+}
+
+// createTestSyncManager creates a test sync manager
+func createTestSyncManager(t *testing.T) *models.SyncManager {
+	// Create test configuration
+	config := &internalConfig.SyncConfig{
+		SyncInterval: 10 * time.Second,
+		WorkerCount:  2,
+		ChunkSize:    1024 * 1024, // 1MB
+		DeltaDir:     t.TempDir(),
+		CASDir:       t.TempDir(),
+	}
+
+	// Create mock components
+	p2pNode := createMockP2PNode(t)
+	modelManager := createMockModelManager(t)
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+
+	// Create sync manager
+	syncManager, err := models.NewSyncManager(config, p2pNode, modelManager, logger)
+	require.NoError(t, err)
+
+	return syncManager
+}
+
+// createMockModelManager creates a mock model manager
+func createMockModelManager(t *testing.T) *models.Manager {
+	// Create test configuration
+	config := &internalConfig.StorageConfig{
+		DataDir:     t.TempDir(),
+		MaxDiskSize: 1024 * 1024 * 1024, // 1GB
+		ModelDir:    t.TempDir(),
+		CacheDir:    t.TempDir(),
+		CleanupAge:  24 * time.Hour,
+	}
+
+	// Create mock P2P node
+	p2pNode := createMockP2PNode(t)
+
+	// Create model manager
+	manager, err := models.NewManager(config, p2pNode)
+	require.NoError(t, err)
+
+	return manager
 }

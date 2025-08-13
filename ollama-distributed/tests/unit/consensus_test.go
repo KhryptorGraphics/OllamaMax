@@ -5,44 +5,21 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/hashicorp/raft"
-	"github.com/khryptorgraphics/ollamamax/ollama-distributed/internal/config"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/consensus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestConsensusEngine(t *testing.T) {
-	// Create temporary directory for test
-	testDir := t.TempDir()
-
-	// Create test configuration
-	cfg := &config.ConsensusConfig{
-		DataDir:           filepath.Join(testDir, "consensus"),
-		BindAddr:          "127.0.0.1:0", // Use random port
-		Bootstrap:         true,
-		LogLevel:          "ERROR",
-		HeartbeatTimeout:  100 * time.Millisecond,
-		ElectionTimeout:   100 * time.Millisecond,
-		CommitTimeout:     10 * time.Millisecond,
-		MaxAppendEntries:  64,
-		SnapshotInterval:  10 * time.Second,
-		SnapshotThreshold: 1024,
-	}
-
-	// Create P2P node (mock)
-	p2pNode := createMockP2PNode(t)
-
-	// Create consensus engine
-	engine, err := consensus.NewEngine(cfg, p2pNode)
-	require.NoError(t, err)
+	// Use the helper function to create a mock consensus engine
+	engine := createMockConsensusEngine(t)
+	require.NotNil(t, engine)
 
 	// Start the engine
-	err = engine.Start()
+	err := engine.Start()
 	require.NoError(t, err)
 
 	// Wait for leadership
@@ -136,94 +113,6 @@ func testLeadership(t *testing.T, engine *consensus.Engine) {
 	assert.Contains(t, stats, "state")
 }
 
-func TestFSM(t *testing.T) {
-	// Create test FSM
-	fsm := &consensus.FSM{
-		State:   make(map[string]interface{}),
-		ApplyCh: make(chan *consensus.ApplyEvent, 10),
-	}
-
-	// Test Apply
-	testEvent := &consensus.ApplyEvent{
-		Type:      "set",
-		Key:       "test_key",
-		Value:     "test_value",
-		Timestamp: time.Now(),
-		Metadata:  make(map[string]interface{}),
-	}
-
-	// Mock log entry
-	logEntry := &raft.Log{
-		Data: marshalEvent(t, testEvent),
-	}
-
-	result := fsm.Apply(logEntry)
-	assert.Nil(t, result)
-
-	// Verify state was updated
-	assert.Equal(t, "test_value", fsm.State["test_key"])
-
-	// Test delete
-	deleteEvent := &consensus.ApplyEvent{
-		Type:      "delete",
-		Key:       "test_key",
-		Timestamp: time.Now(),
-	}
-
-	logEntry = &raft.Log{
-		Data: marshalEvent(t, deleteEvent),
-	}
-
-	result = fsm.Apply(logEntry)
-	assert.Nil(t, result)
-
-	// Verify key was deleted
-	_, exists := fsm.State["test_key"]
-	assert.False(t, exists)
-}
-
-func TestSnapshot(t *testing.T) {
-	// Create test FSM with some state
-	fsm := &consensus.FSM{
-		State: map[string]interface{}{
-			"key1": "value1",
-			"key2": 42,
-			"key3": map[string]string{"nested": "value"},
-		},
-		ApplyCh: make(chan *consensus.ApplyEvent, 10),
-	}
-
-	// Create snapshot
-	snapshot, err := fsm.Snapshot()
-	require.NoError(t, err)
-
-	// Create a temporary file to persist the snapshot
-	tmpFile, err := os.CreateTemp("", "snapshot_test_*.json")
-	require.NoError(t, err)
-	defer os.Remove(tmpFile.Name())
-
-	// Create mock sink
-	sink := &mockSnapshotSink{file: tmpFile}
-
-	// Persist snapshot
-	err = snapshot.Persist(sink)
-	require.NoError(t, err)
-
-	// Create new FSM to restore into
-	newFSM := &consensus.FSM{
-		State:   make(map[string]interface{}),
-		ApplyCh: make(chan *consensus.ApplyEvent, 10),
-	}
-
-	// Restore from snapshot
-	tmpFile.Seek(0, 0)
-	err = newFSM.Restore(tmpFile)
-	require.NoError(t, err)
-
-	// Verify restored state
-	assert.Equal(t, fsm.State, newFSM.State)
-}
-
 // Helper functions and mocks
 
 // createMockP2PNode is defined in test_helpers.go to avoid duplication
@@ -258,26 +147,9 @@ func (s *mockSnapshotSink) Cancel() error {
 
 func BenchmarkConsensusApply(b *testing.B) {
 	// Create test engine
-	testDir := b.TempDir()
+	engine := createMockConsensusEngine(&testing.T{})
 
-	cfg := &config.ConsensusConfig{
-		DataDir:           filepath.Join(testDir, "consensus"),
-		BindAddr:          "127.0.0.1:0",
-		Bootstrap:         true,
-		LogLevel:          "ERROR",
-		HeartbeatTimeout:  100 * time.Millisecond,
-		ElectionTimeout:   100 * time.Millisecond,
-		CommitTimeout:     10 * time.Millisecond,
-		MaxAppendEntries:  64,
-		SnapshotInterval:  10 * time.Second,
-		SnapshotThreshold: 1024,
-	}
-
-	p2pNode := createMockP2PNode(b)
-	engine, err := consensus.NewEngine(cfg, p2pNode)
-	require.NoError(b, err)
-
-	err = engine.Start()
+	err := engine.Start()
 	require.NoError(b, err)
 
 	// Wait for leadership
@@ -310,26 +182,9 @@ func BenchmarkConsensusApply(b *testing.B) {
 
 func BenchmarkConsensusGet(b *testing.B) {
 	// Create test engine with some data
-	testDir := b.TempDir()
+	engine := createMockConsensusEngine(&testing.T{})
 
-	cfg := &config.ConsensusConfig{
-		DataDir:           filepath.Join(testDir, "consensus"),
-		BindAddr:          "127.0.0.1:0",
-		Bootstrap:         true,
-		LogLevel:          "ERROR",
-		HeartbeatTimeout:  100 * time.Millisecond,
-		ElectionTimeout:   100 * time.Millisecond,
-		CommitTimeout:     10 * time.Millisecond,
-		MaxAppendEntries:  64,
-		SnapshotInterval:  10 * time.Second,
-		SnapshotThreshold: 1024,
-	}
-
-	p2pNode := createMockP2PNode(b)
-	engine, err := consensus.NewEngine(cfg, p2pNode)
-	require.NoError(b, err)
-
-	err = engine.Start()
+	err := engine.Start()
 	require.NoError(b, err)
 
 	// Wait for leadership

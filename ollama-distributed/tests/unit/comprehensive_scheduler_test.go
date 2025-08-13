@@ -535,7 +535,7 @@ func createTestSchedulerEngineWithConfig(t *testing.T, config *config.SchedulerC
 // BenchmarkSchedulerOperations benchmarks scheduler operations
 func BenchmarkSchedulerOperations(b *testing.B) {
 	ctx := context.Background()
-	engine := createTestSchedulerEngine(b)
+	engine := createTestSchedulerEngine(&testing.T{})
 	defer engine.Shutdown(ctx)
 
 	err := engine.Start()

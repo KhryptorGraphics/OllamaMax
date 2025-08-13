@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 )
 
 // Registry stub to replace github.com/ollama/ollama/server/internal/client/ollama.Registry
@@ -163,7 +164,7 @@ func (c *Client) Chat(ctx context.Context, request ChatRequest) (*ChatResponse, 
 
 func (c *Client) Embed(ctx context.Context, request EmbedRequest) (*EmbedResponse, error) {
 	// Stub implementation - return dummy embedding
-	embedding := make([]float64, 768) // Standard embedding size
+	embedding := make([]float64, 384) // Standard embedding size
 	for i := range embedding {
 		embedding[i] = 0.1 * float64(i%10)
 	}
@@ -182,6 +183,12 @@ func (c *Client) List(ctx context.Context) (*ListResponse, error) {
 				Size:       3825819519,
 				Digest:     "abc123",
 				ModifiedAt: "2024-01-01T00:00:00Z",
+			},
+			{
+				Name:       "phi3:mini",
+				Size:       2300000000,
+				Digest:     "def456",
+				ModifiedAt: "2024-01-02T00:00:00Z",
 			},
 		},
 	}, nil
@@ -291,6 +298,69 @@ func ValidateModelName(name string) error {
 
 // Health check function
 func (c *Client) Health(ctx context.Context) error {
+	// Stub implementation
+	return nil
+}
+
+// Key management stubs for testing
+
+type SessionKey struct {
+	PublicKey  []byte    `json:"public_key"`
+	PrivateKey []byte    `json:"private_key"`
+	CreatedAt  time.Time `json:"created_at"`
+	ExpiresAt  time.Time `json:"expires_at"`
+}
+
+type PublicKey struct {
+	Key []byte `json:"key"`
+}
+
+func (pk *PublicKey) Verify(data, signature []byte) (bool, error) {
+	// Stub implementation always returns true
+	return true, nil
+}
+
+type DefaultKeyManager struct {
+	// Stub implementation for testing
+}
+
+func (dkm *DefaultKeyManager) GenerateSessionKey() (*SessionKey, error) {
+	// Stub implementation
+	return &SessionKey{
+		PublicKey:  []byte("stub-public-key"),
+		PrivateKey: []byte("stub-private-key"),
+		CreatedAt:  time.Now(),
+		ExpiresAt:  time.Now().Add(time.Hour),
+	}, nil
+}
+
+func (dkm *DefaultKeyManager) GetPeerPublicKey(keyData []byte) (*PublicKey, error) {
+	// Stub implementation
+	return &PublicKey{
+		Key: keyData,
+	}, nil
+}
+
+func (dkm *DefaultKeyManager) GetActiveSessionCount() int {
+	// Stub implementation
+	return 0
+}
+
+func (dkm *DefaultKeyManager) CleanupExpiredSessions() {
+	// Stub implementation
+}
+
+func (dkm *DefaultKeyManager) HandleKeyExchange(stream interface{}) error {
+	// Stub implementation
+	return nil
+}
+
+func (dkm *DefaultKeyManager) RotateKeys() error {
+	// Stub implementation
+	return nil
+}
+
+func (dkm *DefaultKeyManager) Close() error {
 	// Stub implementation
 	return nil
 }
