@@ -1,4 +1,6 @@
-package main
+//go:build ignore
+
+package web_tests
 
 import (
 	"fmt"
@@ -11,7 +13,7 @@ import (
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/security"
 )
 
-func main() {
+func TestDashboardIntegration() {
 	fmt.Println("Testing Web Dashboard Integration...")
 
 	// Setup backend services for testing

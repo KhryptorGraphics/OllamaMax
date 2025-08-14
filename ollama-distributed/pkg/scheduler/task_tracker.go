@@ -11,16 +11,16 @@ import (
 
 // TaskMetrics tracks task execution metrics
 type TaskMetrics struct {
-	TotalTasks          int64         `json:"total_tasks"`
-	ActiveTasks         int64         `json:"active_tasks"`
-	CompletedTasks      int64         `json:"completed_tasks"`
-	FailedTasks         int64         `json:"failed_tasks"`
-	CancelledTasks      int64         `json:"cancelled_tasks"`
+	TotalTasks           int64         `json:"total_tasks"`
+	ActiveTasks          int64         `json:"active_tasks"`
+	CompletedTasks       int64         `json:"completed_tasks"`
+	FailedTasks          int64         `json:"failed_tasks"`
+	CancelledTasks       int64         `json:"cancelled_tasks"`
 	AverageExecutionTime time.Duration `json:"average_execution_time"`
-	AverageQueueTime    time.Duration `json:"average_queue_time"`
-	SuccessRate         float64       `json:"success_rate"`
-	LastUpdated         time.Time     `json:"last_updated"`
-	mu                  sync.RWMutex
+	AverageQueueTime     time.Duration `json:"average_queue_time"`
+	SuccessRate          float64       `json:"success_rate"`
+	LastUpdated          time.Time     `json:"last_updated"`
+	mu                   sync.RWMutex
 }
 
 // NewTaskTracker creates a new task tracker
@@ -33,9 +33,9 @@ func NewTaskTracker(config *TaskTrackerConfig) (*TaskTracker, error) {
 			CleanupInterval:  5 * time.Minute,
 		}
 	}
-	
+
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	tracker := &TaskTracker{
 		config:      config,
 		activeTasks: make(map[string]*TrackedTask),
@@ -46,7 +46,7 @@ func NewTaskTracker(config *TaskTrackerConfig) (*TaskTracker, error) {
 		ctx:    ctx,
 		cancel: cancel,
 	}
-	
+
 	return tracker, nil
 }
 
@@ -55,15 +55,15 @@ func (tt *TaskTracker) Start() error {
 	// Start result processing
 	tt.wg.Add(1)
 	go tt.resultProcessor()
-	
+
 	// Start cleanup routine
 	tt.wg.Add(1)
 	go tt.cleanupLoop()
-	
+
 	// Start metrics collection
 	tt.wg.Add(1)
 	go tt.metricsLoop()
-	
+
 	return nil
 }
 
@@ -71,10 +71,10 @@ func (tt *TaskTracker) Start() error {
 func (tt *TaskTracker) Stop() error {
 	tt.cancel()
 	tt.wg.Wait()
-	
+
 	// Close results channel
 	close(tt.results)
-	
+
 	return nil
 }
 
@@ -83,19 +83,19 @@ func (tt *TaskTracker) TrackTask(task *Task, worker *WorkerNode) error {
 	if task == nil {
 		return fmt.Errorf("task cannot be nil")
 	}
-	
+
 	if worker == nil {
 		return fmt.Errorf("worker cannot be nil")
 	}
-	
+
 	tt.activeTasksMu.Lock()
 	defer tt.activeTasksMu.Unlock()
-	
+
 	// Check if we've reached the maximum number of active tasks
 	if len(tt.activeTasks) >= tt.config.MaxActiveTasks {
 		return fmt.Errorf("maximum number of active tasks reached")
 	}
-	
+
 	// Create tracked task
 	trackedTask := &TrackedTask{
 		Task:       task,
@@ -106,17 +106,17 @@ func (tt *TaskTracker) TrackTask(task *Task, worker *WorkerNode) error {
 		Status:     TaskStatusRunning,
 		Heartbeats: make([]time.Time, 0),
 	}
-	
+
 	// Add to active tasks
 	tt.activeTasks[task.ID] = trackedTask
-	
+
 	// Update task status
 	task.Status = TaskStatusRunning
 	task.StartedAt = time.Now()
-	
+
 	// Update metrics
 	tt.updateMetrics()
-	
+
 	return nil
 }
 
@@ -124,17 +124,17 @@ func (tt *TaskTracker) TrackTask(task *Task, worker *WorkerNode) error {
 func (tt *TaskTracker) UntrackTask(taskID string) error {
 	tt.activeTasksMu.Lock()
 	defer tt.activeTasksMu.Unlock()
-	
+
 	_, exists := tt.activeTasks[taskID]
 	if !exists {
 		return fmt.Errorf("task not being tracked")
 	}
-	
+
 	delete(tt.activeTasks, taskID)
-	
+
 	// Update metrics
 	tt.updateMetrics()
-	
+
 	return nil
 }
 
@@ -142,23 +142,23 @@ func (tt *TaskTracker) UntrackTask(taskID string) error {
 func (tt *TaskTracker) UpdateTaskProgress(taskID string, progress float64) error {
 	tt.activeTasksMu.Lock()
 	defer tt.activeTasksMu.Unlock()
-	
+
 	trackedTask, exists := tt.activeTasks[taskID]
 	if !exists {
 		return fmt.Errorf("task not being tracked")
 	}
-	
+
 	trackedTask.Progress = progress
 	trackedTask.LastUpdate = time.Now()
-	
+
 	// Add heartbeat
 	trackedTask.Heartbeats = append(trackedTask.Heartbeats, time.Now())
-	
+
 	// Keep only recent heartbeats (last 10)
 	if len(trackedTask.Heartbeats) > 10 {
 		trackedTask.Heartbeats = trackedTask.Heartbeats[len(trackedTask.Heartbeats)-10:]
 	}
-	
+
 	return nil
 }
 
@@ -170,11 +170,11 @@ func (tt *TaskTracker) CompleteTask(taskID string, result []byte) error {
 		tt.activeTasksMu.Unlock()
 		return fmt.Errorf("task not being tracked")
 	}
-	
+
 	// Remove from active tasks
 	delete(tt.activeTasks, taskID)
 	tt.activeTasksMu.Unlock()
-	
+
 	// Create task result
 	taskResult := &TaskResult{
 		TaskID:      taskID,
@@ -192,21 +192,21 @@ func (tt *TaskTracker) CompleteTask(taskID string, result []byte) error {
 			Success:       true,
 		},
 	}
-	
+
 	// Update task status
 	trackedTask.Task.Status = TaskStatusCompleted
 	trackedTask.Task.CompletedAt = time.Now()
-	
+
 	// Send result
 	select {
 	case tt.results <- taskResult:
 	case <-time.After(5 * time.Second):
 		// Result buffer full, log warning but don't fail
 	}
-	
+
 	// Update metrics
 	tt.updateMetrics()
-	
+
 	return nil
 }
 
@@ -218,11 +218,11 @@ func (tt *TaskTracker) FailTask(taskID string, errorMsg string) error {
 		tt.activeTasksMu.Unlock()
 		return fmt.Errorf("task not being tracked")
 	}
-	
+
 	// Remove from active tasks
 	delete(tt.activeTasks, taskID)
 	tt.activeTasksMu.Unlock()
-	
+
 	// Create task result
 	taskResult := &TaskResult{
 		TaskID:      taskID,
@@ -241,22 +241,22 @@ func (tt *TaskTracker) FailTask(taskID string, errorMsg string) error {
 			ErrorCount:    1,
 		},
 	}
-	
+
 	// Update task status
 	trackedTask.Task.Status = TaskStatusFailed
 	trackedTask.Task.Error = errorMsg
 	trackedTask.Task.CompletedAt = time.Now()
-	
+
 	// Send result
 	select {
 	case tt.results <- taskResult:
 	case <-time.After(5 * time.Second):
 		// Result buffer full, log warning but don't fail
 	}
-	
+
 	// Update metrics
 	tt.updateMetrics()
-	
+
 	return nil
 }
 
@@ -264,7 +264,7 @@ func (tt *TaskTracker) FailTask(taskID string, errorMsg string) error {
 func (tt *TaskTracker) GetTrackedTask(taskID string) (*TrackedTask, bool) {
 	tt.activeTasksMu.RLock()
 	defer tt.activeTasksMu.RUnlock()
-	
+
 	task, exists := tt.activeTasks[taskID]
 	return task, exists
 }
@@ -273,12 +273,12 @@ func (tt *TaskTracker) GetTrackedTask(taskID string) (*TrackedTask, bool) {
 func (tt *TaskTracker) GetAllTrackedTasks() []*TrackedTask {
 	tt.activeTasksMu.RLock()
 	defer tt.activeTasksMu.RUnlock()
-	
+
 	tasks := make([]*TrackedTask, 0, len(tt.activeTasks))
 	for _, task := range tt.activeTasks {
 		tasks = append(tasks, task)
 	}
-	
+
 	return tasks
 }
 
@@ -286,14 +286,14 @@ func (tt *TaskTracker) GetAllTrackedTasks() []*TrackedTask {
 func (tt *TaskTracker) GetTasksByWorker(workerID peer.ID) []*TrackedTask {
 	tt.activeTasksMu.RLock()
 	defer tt.activeTasksMu.RUnlock()
-	
+
 	var tasks []*TrackedTask
 	for _, task := range tt.activeTasks {
 		if task.Worker.ID == workerID {
 			tasks = append(tasks, task)
 		}
 	}
-	
+
 	return tasks
 }
 
@@ -301,7 +301,7 @@ func (tt *TaskTracker) GetTasksByWorker(workerID peer.ID) []*TrackedTask {
 func (tt *TaskTracker) GetMetrics() *TaskMetrics {
 	tt.metrics.mu.RLock()
 	defer tt.metrics.mu.RUnlock()
-	
+
 	// Create a copy
 	metrics := *tt.metrics
 	return &metrics
@@ -315,7 +315,7 @@ func (tt *TaskTracker) GetResults() <-chan *TaskResult {
 // resultProcessor processes task results
 func (tt *TaskTracker) resultProcessor() {
 	defer tt.wg.Done()
-	
+
 	for {
 		select {
 		case <-tt.ctx.Done():
@@ -333,7 +333,7 @@ func (tt *TaskTracker) processResult(result *TaskResult) {
 	// Update metrics based on result
 	tt.metrics.mu.Lock()
 	defer tt.metrics.mu.Unlock()
-	
+
 	switch result.Status {
 	case TaskStatusCompleted:
 		tt.metrics.CompletedTasks++
@@ -342,7 +342,7 @@ func (tt *TaskTracker) processResult(result *TaskResult) {
 	case TaskStatusCancelled:
 		tt.metrics.CancelledTasks++
 	}
-	
+
 	// Update average execution time
 	if result.Metrics != nil {
 		if tt.metrics.CompletedTasks == 1 {
@@ -353,23 +353,23 @@ func (tt *TaskTracker) processResult(result *TaskResult) {
 			tt.metrics.AverageQueueTime = (tt.metrics.AverageQueueTime + result.Metrics.QueueTime) / 2
 		}
 	}
-	
+
 	// Update success rate
 	totalCompleted := tt.metrics.CompletedTasks + tt.metrics.FailedTasks + tt.metrics.CancelledTasks
 	if totalCompleted > 0 {
 		tt.metrics.SuccessRate = float64(tt.metrics.CompletedTasks) / float64(totalCompleted)
 	}
-	
+
 	tt.metrics.LastUpdated = time.Now()
 }
 
 // cleanupLoop runs the cleanup routine
 func (tt *TaskTracker) cleanupLoop() {
 	defer tt.wg.Done()
-	
+
 	ticker := time.NewTicker(tt.config.CleanupInterval)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-tt.ctx.Done():
@@ -384,21 +384,21 @@ func (tt *TaskTracker) cleanupLoop() {
 func (tt *TaskTracker) cleanupTimedOutTasks() {
 	tt.activeTasksMu.Lock()
 	defer tt.activeTasksMu.Unlock()
-	
+
 	now := time.Now()
 	var timedOutTasks []string
-	
+
 	for taskID, trackedTask := range tt.activeTasks {
 		if now.Sub(trackedTask.StartTime) > tt.config.TaskTimeout {
 			timedOutTasks = append(timedOutTasks, taskID)
 		}
 	}
-	
+
 	// Remove timed out tasks
 	for _, taskID := range timedOutTasks {
 		trackedTask := tt.activeTasks[taskID]
 		delete(tt.activeTasks, taskID)
-		
+
 		// Create timeout result
 		result := &TaskResult{
 			TaskID:      taskID,
@@ -408,7 +408,7 @@ func (tt *TaskTracker) cleanupTimedOutTasks() {
 			CompletedAt: now,
 			Duration:    now.Sub(trackedTask.StartTime),
 		}
-		
+
 		// Send timeout result
 		select {
 		case tt.results <- result:
@@ -422,7 +422,7 @@ func (tt *TaskTracker) cleanupTimedOutTasks() {
 func (tt *TaskTracker) updateMetrics() {
 	tt.metrics.mu.Lock()
 	defer tt.metrics.mu.Unlock()
-	
+
 	tt.metrics.ActiveTasks = int64(len(tt.activeTasks))
 	tt.metrics.TotalTasks = tt.metrics.CompletedTasks + tt.metrics.FailedTasks + tt.metrics.CancelledTasks + tt.metrics.ActiveTasks
 	tt.metrics.LastUpdated = time.Now()
@@ -431,10 +431,10 @@ func (tt *TaskTracker) updateMetrics() {
 // metricsLoop runs the metrics collection loop
 func (tt *TaskTracker) metricsLoop() {
 	defer tt.wg.Done()
-	
+
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-tt.ctx.Done():

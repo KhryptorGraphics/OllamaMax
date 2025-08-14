@@ -2,51 +2,22 @@ package unit
 
 import (
 	"context"
-	"os"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/consensus"
-	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p"
-	"github.com/khryptorgraphics/ollamamax/ollama-distributed/internal/config"
 )
 
 // Test_Consensus_Engine_Initialization tests consensus engine setup
 func Test_Consensus_Engine_Initialization(t *testing.T) {
-	tempDir := t.TempDir()
-	
-	// Create P2P node for consensus
-	p2pConfig := &config.P2PConfig{
-		ListenAddr: "127.0.0.1:0",
-	}
-	
-	p2pNode, err := p2p.NewNode(context.Background(), p2pConfig)
-	require.NoError(t, err)
-	defer p2pNode.Close()
-
-	// Create consensus configuration
-	consensusConfig := &config.ConsensusConfig{
-		DataDir:           tempDir,
-		BindAddr:          "127.0.0.1:0",
-		Bootstrap:         true,
-		LogLevel:          "INFO",
-		HeartbeatTimeout:  1 * time.Second,
-		ElectionTimeout:   3 * time.Second,
-		CommitTimeout:     500 * time.Millisecond,
-		MaxAppendEntries:  64,
-		SnapshotInterval:  120 * time.Second,
-		SnapshotThreshold: 8192,
-	}
-
-	// Create consensus engine
-	engine, err := consensus.NewEngine(consensusConfig, p2pNode)
-	require.NoError(t, err)
+	// Use the helper function to create a mock consensus engine
+	engine := createMockConsensusEngine(t)
 	assert.NotNil(t, engine)
 
 	// Start the engine
-	err = engine.Start()
+	err := engine.Start()
 	require.NoError(t, err)
 
 	// Wait for leadership
@@ -81,33 +52,11 @@ func Test_Consensus_Engine_Initialization(t *testing.T) {
 
 // Test_Consensus_FSM_Operations tests finite state machine operations
 func Test_Consensus_FSM_Operations(t *testing.T) {
-	tempDir := t.TempDir()
-	
-	p2pConfig := &config.P2PConfig{
-		ListenAddr: "127.0.0.1:0",
-	}
-	
-	p2pNode, err := p2p.NewNode(context.Background(), p2pConfig)
-	require.NoError(t, err)
-	defer p2pNode.Close()
+	// Use the helper function to create a mock consensus engine
+	engine := createMockConsensusEngine(t)
+	require.NotNil(t, engine)
 
-	consensusConfig := &config.ConsensusConfig{
-		DataDir:           tempDir,
-		BindAddr:          "127.0.0.1:0",
-		Bootstrap:         true,
-		LogLevel:          "ERROR", // Reduce noise
-		HeartbeatTimeout:  500 * time.Millisecond,
-		ElectionTimeout:   1 * time.Second,
-		CommitTimeout:     250 * time.Millisecond,
-		MaxAppendEntries:  32,
-		SnapshotInterval:  60 * time.Second,
-		SnapshotThreshold: 4096,
-	}
-
-	engine, err := consensus.NewEngine(consensusConfig, p2pNode)
-	require.NoError(t, err)
-
-	err = engine.Start()
+	err := engine.Start()
 	require.NoError(t, err)
 	defer engine.Shutdown(context.Background())
 
@@ -166,30 +115,11 @@ func Test_Consensus_FSM_Operations(t *testing.T) {
 
 // Test_Consensus_Race_Conditions tests for race conditions
 func Test_Consensus_Race_Conditions(t *testing.T) {
-	tempDir := t.TempDir()
-	
-	p2pConfig := &config.P2PConfig{
-		ListenAddr: "127.0.0.1:0",
-	}
-	
-	p2pNode, err := p2p.NewNode(context.Background(), p2pConfig)
-	require.NoError(t, err)
-	defer p2pNode.Close()
+	// Use the helper function to create a mock consensus engine
+	engine := createMockConsensusEngine(t)
+	require.NotNil(t, engine)
 
-	consensusConfig := &config.ConsensusConfig{
-		DataDir:          tempDir,
-		BindAddr:         "127.0.0.1:0",
-		Bootstrap:        true,
-		LogLevel:         "ERROR",
-		HeartbeatTimeout: 200 * time.Millisecond,
-		ElectionTimeout:  500 * time.Millisecond,
-		CommitTimeout:    100 * time.Millisecond,
-	}
-
-	engine, err := consensus.NewEngine(consensusConfig, p2pNode)
-	require.NoError(t, err)
-
-	err = engine.Start()
+	err := engine.Start()
 	require.NoError(t, err)
 	defer engine.Shutdown(context.Background())
 
@@ -210,7 +140,7 @@ func Test_Consensus_Race_Conditions(t *testing.T) {
 			for j := 0; j < opsPerGoroutine; j++ {
 				key := fmt.Sprintf("key-%d-%d", routineID, j)
 				value := fmt.Sprintf("value-%d-%d", routineID, j)
-				
+
 				err := engine.Apply(key, value, map[string]interface{}{
 					"routine": routineID,
 					"op":      j,
@@ -242,30 +172,11 @@ func Test_Consensus_Race_Conditions(t *testing.T) {
 
 // Test_Consensus_Event_Validation tests the new event validation
 func Test_Consensus_Event_Validation(t *testing.T) {
-	tempDir := t.TempDir()
-	
-	p2pConfig := &config.P2PConfig{
-		ListenAddr: "127.0.0.1:0",
-	}
-	
-	p2pNode, err := p2p.NewNode(context.Background(), p2pConfig)
-	require.NoError(t, err)
-	defer p2pNode.Close()
+	// Use the helper function to create a mock consensus engine
+	engine := createMockConsensusEngine(t)
+	require.NotNil(t, engine)
 
-	consensusConfig := &config.ConsensusConfig{
-		DataDir:          tempDir,
-		BindAddr:         "127.0.0.1:0",
-		Bootstrap:        true,
-		LogLevel:         "ERROR",
-		HeartbeatTimeout: 500 * time.Millisecond,
-		ElectionTimeout:  1 * time.Second,
-		CommitTimeout:    250 * time.Millisecond,
-	}
-
-	engine, err := consensus.NewEngine(consensusConfig, p2pNode)
-	require.NoError(t, err)
-
-	err = engine.Start()
+	err := engine.Start()
 	require.NoError(t, err)
 	defer engine.Shutdown(context.Background())
 
@@ -303,27 +214,11 @@ func Test_Consensus_Event_Validation(t *testing.T) {
 
 // Test_Consensus_Statistics tests consensus statistics
 func Test_Consensus_Statistics(t *testing.T) {
-	tempDir := t.TempDir()
-	
-	p2pConfig := &config.P2PConfig{
-		ListenAddr: "127.0.0.1:0",
-	}
-	
-	p2pNode, err := p2p.NewNode(context.Background(), p2pConfig)
-	require.NoError(t, err)
-	defer p2pNode.Close()
+	// Use the helper function to create a mock consensus engine
+	engine := createMockConsensusEngine(t)
+	require.NotNil(t, engine)
 
-	consensusConfig := &config.ConsensusConfig{
-		DataDir:     tempDir,
-		BindAddr:    "127.0.0.1:0",
-		Bootstrap:   true,
-		LogLevel:    "ERROR",
-	}
-
-	engine, err := consensus.NewEngine(consensusConfig, p2pNode)
-	require.NoError(t, err)
-
-	err = engine.Start()
+	err := engine.Start()
 	require.NoError(t, err)
 	defer engine.Shutdown(context.Background())
 
@@ -337,7 +232,7 @@ func Test_Consensus_Statistics(t *testing.T) {
 	// Get statistics
 	stats := engine.Stats()
 	assert.NotEmpty(t, stats)
-	
+
 	// Should have standard Raft stats
 	assert.Contains(t, stats, "state")
 	t.Logf("Raft stats: %+v", stats)

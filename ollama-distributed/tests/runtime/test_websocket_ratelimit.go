@@ -1,3 +1,5 @@
+//go:build ignore
+
 package main
 
 import (
@@ -56,7 +58,7 @@ func setupIntegratedSystem() (*api.Server, string) {
 	p2pConfig := &pkgConfig.NodeConfig{
 		Listen: []string{"/ip4/127.0.0.1/tcp/0"},
 	}
-	
+
 	p2pNode, err := p2p.NewP2PNode(ctx, p2pConfig)
 	if err != nil {
 		log.Printf("Failed to create P2P node: %v", err)
@@ -73,7 +75,7 @@ func setupIntegratedSystem() (*api.Server, string) {
 		DataDir:   "./test_data/consensus",
 		Bootstrap: true,
 	}
-	
+
 	consensusEngine, err := consensus.NewEngine(consensusConfig, p2pNode, messageRouter, networkMonitor)
 	if err != nil {
 		fmt.Printf("Consensus engine creation failed: %v\n", err)
@@ -90,13 +92,13 @@ func setupIntegratedSystem() (*api.Server, string) {
 		QueueSize:           1000,
 		WorkerCount:         2,
 	}
-	
+
 	schedulerEngine, err := scheduler.NewEngine(schedulerConfig, p2pNode, consensusEngine)
 	if err != nil {
 		log.Printf("Failed to create scheduler engine: %v", err)
 		return nil, ""
 	}
-	
+
 	if err := schedulerEngine.Start(); err != nil {
 		log.Printf("Failed to start scheduler engine: %v", err)
 		return nil, ""
@@ -108,7 +110,7 @@ func setupIntegratedSystem() (*api.Server, string) {
 		Timeout:     30 * time.Second,
 		MaxBodySize: 10 * 1024 * 1024,
 	}
-	
+
 	server, err := api.NewServer(apiConfig, p2pNode, consensusEngine, schedulerEngine)
 	if err != nil {
 		log.Printf("Failed to create API server: %v", err)
@@ -134,17 +136,17 @@ func testWebSocketConnection(baseURL string) {
 		fmt.Printf("❌ Failed to parse URL: %v\n", err)
 		return
 	}
-	
+
 	u.Scheme = "ws"
 	u.Path = "/api/v1/ws"
-	
+
 	fmt.Printf("Connecting to WebSocket: %s\n", u.String())
 
 	// Attempt to connect to WebSocket
 	dialer := websocket.Dialer{
 		HandshakeTimeout: 10 * time.Second,
 	}
-	
+
 	conn, resp, err := dialer.Dial(u.String(), nil)
 	if err != nil {
 		if resp != nil {
@@ -167,7 +169,7 @@ func testWebSocketConnection(baseURL string) {
 		"type": "ping",
 		"data": "test message",
 	}
-	
+
 	if err := conn.WriteJSON(testMessage); err != nil {
 		fmt.Printf("⚠️ Failed to send WebSocket message: %v\n", err)
 	} else {
@@ -245,18 +247,18 @@ func testConcurrentRequests(baseURL string) {
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()
-			
+
 			client := &http.Client{
 				Timeout: 10 * time.Second,
 			}
-			
+
 			resp, err := client.Get(baseURL + "/api/v1/health")
 			if err != nil {
 				results <- fmt.Sprintf("Request %d: Error - %v", id, err)
 				return
 			}
 			defer resp.Body.Close()
-			
+
 			results <- fmt.Sprintf("Request %d: Status %d", id, resp.StatusCode)
 		}(i)
 	}
@@ -278,7 +280,7 @@ func testConcurrentRequests(baseURL string) {
 
 	fmt.Printf("Concurrent Request Results:\n")
 	fmt.Printf("  ✅ Successful concurrent requests: %d/10\n", successCount)
-	
+
 	if successCount >= 8 {
 		fmt.Println("✅ Concurrent request handling working correctly")
 	} else {
@@ -287,9 +289,9 @@ func testConcurrentRequests(baseURL string) {
 }
 
 func contains(s, substr string) bool {
-	return len(s) >= len(substr) && s[len(s)-len(substr):] == substr || 
-		   len(s) > len(substr) && s[:len(substr)] == substr ||
-		   len(s) > len(substr) && findSubstring(s, substr)
+	return len(s) >= len(substr) && s[len(s)-len(substr):] == substr ||
+		len(s) > len(substr) && s[:len(substr)] == substr ||
+		len(s) > len(substr) && findSubstring(s, substr)
 }
 
 func findSubstring(s, substr string) bool {

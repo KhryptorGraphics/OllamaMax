@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"runtime"
 	"runtime/debug"
 	"strings"
@@ -217,7 +216,7 @@ func buildVersionCmd() *cobra.Command {
 			fmt.Printf("  Date: %s\n", date)
 			fmt.Printf("  Go version: %s\n", goVersion)
 			fmt.Printf("  OS/Arch: %s/%s\n", runtime.GOOS, runtime.GOARCH)
-			
+
 			if info, ok := debug.ReadBuildInfo(); ok {
 				fmt.Printf("  Module: %s\n", info.Main.Path)
 				if info.Main.Version != "" {
@@ -293,14 +292,14 @@ func (app *Application) initializeLogging() error {
 	if err != nil {
 		return fmt.Errorf("invalid log level: %w", err)
 	}
-	
+
 	if debug {
 		level = zerolog.DebugLevel
 	}
 
 	// Configure logger
 	zerolog.SetGlobalLevel(level)
-	
+
 	if logFormat == "console" {
 		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	}
@@ -440,7 +439,7 @@ func (app *Application) runJoin(cmd *cobra.Command, args []string) error {
 // runConfigGenerate generates a default configuration file
 func (app *Application) runConfigGenerate(cmd *cobra.Command, args []string) error {
 	cfg := config.DefaultConfig()
-	
+
 	// Generate config file
 	filename := "config.yaml"
 	if len(args) > 0 {

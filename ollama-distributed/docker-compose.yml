@@ -1,0 +1,203 @@
+version: '3.8'
+
+services:
+  # Bootstrap node (first node in the cluster)
+  ollamamax-node1:
+    build: .
+    container_name: ollamamax-node1
+    hostname: ollamamax-node1
+    ports:
+      - "8080:8080"  # API server
+      - "9000:9000"  # P2P networking
+      - "7000:7000"  # Raft consensus
+      - "9090:9090"  # Metrics
+    environment:
+      - NODE_ID=node-1
+      - BOOTSTRAP=true
+      - API_LISTEN=0.0.0.0:8080
+      - P2P_LISTEN=/ip4/0.0.0.0/tcp/9000
+      - RAFT_BIND_ADDR=0.0.0.0:7000
+      - RAFT_ADVERTISE_ADDR=ollamamax-node1:7000
+      - LOG_LEVEL=info
+    volumes:
+      - ollamamax-data-1:/app/data
+      - ollamamax-models-1:/app/models
+      - ollamamax-logs-1:/app/logs
+      - ./config/node1.yaml:/app/config/config.yaml:ro
+    networks:
+      - ollamamax-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Second node
+  ollamamax-node2:
+    build: .
+    container_name: ollamamax-node2
+    hostname: ollamamax-node2
+    ports:
+      - "8081:8080"  # API server
+      - "9001:9000"  # P2P networking
+      - "7001:7000"  # Raft consensus
+      - "9091:9090"  # Metrics
+    environment:
+      - NODE_ID=node-2
+      - BOOTSTRAP=false
+      - API_LISTEN=0.0.0.0:8080
+      - P2P_LISTEN=/ip4/0.0.0.0/tcp/9000
+      - P2P_BOOTSTRAP_PEERS=/ip4/ollamamax-node1/tcp/9000
+      - RAFT_BIND_ADDR=0.0.0.0:7000
+      - RAFT_ADVERTISE_ADDR=ollamamax-node2:7000
+      - LOG_LEVEL=info
+    volumes:
+      - ollamamax-data-2:/app/data
+      - ollamamax-models-2:/app/models
+      - ollamamax-logs-2:/app/logs
+      - ./config/node2.yaml:/app/config/config.yaml:ro
+    networks:
+      - ollamamax-network
+    depends_on:
+      ollamamax-node1:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Third node
+  ollamamax-node3:
+    build: .
+    container_name: ollamamax-node3
+    hostname: ollamamax-node3
+    ports:
+      - "8082:8080"  # API server
+      - "9002:9000"  # P2P networking
+      - "7002:7000"  # Raft consensus
+      - "9092:9090"  # Metrics
+    environment:
+      - NODE_ID=node-3
+      - BOOTSTRAP=false
+      - API_LISTEN=0.0.0.0:8080
+      - P2P_LISTEN=/ip4/0.0.0.0/tcp/9000
+      - P2P_BOOTSTRAP_PEERS=/ip4/ollamamax-node1/tcp/9000
+      - RAFT_BIND_ADDR=0.0.0.0:7000
+      - RAFT_ADVERTISE_ADDR=ollamamax-node3:7000
+      - LOG_LEVEL=info
+    volumes:
+      - ollamamax-data-3:/app/data
+      - ollamamax-models-3:/app/models
+      - ollamamax-logs-3:/app/logs
+      - ./config/node3.yaml:/app/config/config.yaml:ro
+    networks:
+      - ollamamax-network
+    depends_on:
+      ollamamax-node1:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Load balancer (HAProxy)
+  loadbalancer:
+    image: haproxy:2.8-alpine
+    container_name: ollamamax-lb
+    ports:
+      - "80:80"      # HTTP
+      - "443:443"    # HTTPS
+      - "8404:8404"  # HAProxy stats
+    volumes:
+      - ./config/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+      - ./certs:/etc/ssl/certs:ro
+    networks:
+      - ollamamax-network
+    depends_on:
+      - ollamamax-node1
+      - ollamamax-node2
+      - ollamamax-node3
+
+  # Prometheus monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ollamamax-prometheus
+    ports:
+      - "9093:9090"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - ollamamax-network
+    depends_on:
+      - ollamamax-node1
+      - ollamamax-node2
+      - ollamamax-node3
+
+  # Grafana dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ollamamax-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./config/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./config/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    networks:
+      - ollamamax-network
+    depends_on:
+      - prometheus
+
+volumes:
+  # Node data volumes
+  ollamamax-data-1:
+    driver: local
+  ollamamax-data-2:
+    driver: local
+  ollamamax-data-3:
+    driver: local
+  
+  # Model storage volumes
+  ollamamax-models-1:
+    driver: local
+  ollamamax-models-2:
+    driver: local
+  ollamamax-models-3:
+    driver: local
+  
+  # Log volumes
+  ollamamax-logs-1:
+    driver: local
+  ollamamax-logs-2:
+    driver: local
+  ollamamax-logs-3:
+    driver: local
+  
+  # Monitoring volumes
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+
+networks:
+  ollamamax-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

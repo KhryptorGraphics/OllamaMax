@@ -84,7 +84,9 @@ logging:
   level: "debug"
   format: "text"
   output: "console"
-  file: ""
+  file:
+    enabled: false
+    path: ""
 
 sync:
   enabled: true

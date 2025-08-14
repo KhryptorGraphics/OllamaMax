@@ -296,12 +296,12 @@ func testTokenUniqueness(t *testing.T, count int) bool {
 
 	for i := 0; i < count; i++ {
 		token := generateRandomToken(32)
-		
+
 		if tokens[token] {
 			t.Logf("Token uniqueness violation: duplicate token generated")
 			return false
 		}
-		
+
 		tokens[token] = true
 	}
 
@@ -312,10 +312,10 @@ func testSignatureVerification(t *testing.T, message []byte) bool {
 	// Simplified signature test using HMAC
 	key := []byte("test-signing-key")
 	signature := hmacSHA256(message, key)
-	
+
 	// Verify signature
 	expectedSignature := hmacSHA256(message, key)
-	
+
 	if !hmacEqual(signature, expectedSignature) {
 		t.Logf("Signature verification failed for valid signature")
 		return false
@@ -324,7 +324,7 @@ func testSignatureVerification(t *testing.T, message []byte) bool {
 	// Test with wrong key
 	wrongKey := []byte("wrong-key")
 	wrongSignature := hmacSHA256(message, wrongKey)
-	
+
 	if hmacEqual(signature, wrongSignature) {
 		t.Logf("Signature verification passed for invalid signature")
 		return false
@@ -356,7 +356,7 @@ func testEncryptionRoundtrip(t *testing.T, plaintext []byte) bool {
 func testTokenExpiry(t *testing.T, expirySeconds int) bool {
 	now := time.Now()
 	expiryTime := now.Add(time.Duration(expirySeconds) * time.Second)
-	
+
 	token := AuthToken{
 		UserID:    "user123",
 		Role:      "user",
@@ -368,7 +368,7 @@ func testTokenExpiry(t *testing.T, expirySeconds int) bool {
 	shouldBeValid := expirySeconds > 0
 
 	if isValid != shouldBeValid {
-		t.Logf("Token expiry violation: token validity (%v) doesn't match expected (%v)", 
+		t.Logf("Token expiry violation: token validity (%v) doesn't match expected (%v)",
 			isValid, shouldBeValid)
 		return false
 	}
@@ -382,7 +382,7 @@ func testRateLimitingEnforcement(t *testing.T, requestCount, limit int) bool {
 	}
 
 	rateLimiter := NewSimpleRateLimiter(limit, time.Minute)
-	
+
 	allowedCount := 0
 	deniedCount := 0
 
@@ -403,7 +403,7 @@ func testRateLimitingEnforcement(t *testing.T, requestCount, limit int) bool {
 	// Should deny requests beyond the limit
 	expectedDenied := requestCount - limit
 	if expectedDenied > 0 && deniedCount < expectedDenied {
-		t.Logf("Rate limiting violation: should have denied %d requests, only denied %d", 
+		t.Logf("Rate limiting violation: should have denied %d requests, only denied %d",
 			expectedDenied, deniedCount)
 		return false
 	}
@@ -413,7 +413,7 @@ func testRateLimitingEnforcement(t *testing.T, requestCount, limit int) bool {
 
 func testInputValidation(t *testing.T, input string) bool {
 	// Test that malicious inputs are properly validated/sanitized
-	
+
 	// Check for SQL injection patterns
 	if containsSQLInjection(input) {
 		sanitized := sanitizeInput(input)
@@ -446,7 +446,7 @@ func testInputValidation(t *testing.T, input string) bool {
 
 func testAccessControlConsistency(t *testing.T, userRole, resource string) bool {
 	// Test that access control decisions are consistent
-	
+
 	decision1 := checkAccess(userRole, resource)
 	decision2 := checkAccess(userRole, resource)
 	decision3 := checkAccess(userRole, resource)
@@ -534,10 +534,10 @@ func testConcurrentAccessSafety(t *testing.T, operations []DataOperation) bool {
 
 	// Simplified concurrent access test
 	dataStore := NewSafeDataStore()
-	
+
 	// Execute operations concurrently
 	done := make(chan bool, len(operations))
-	
+
 	for _, op := range operations {
 		go func(operation DataOperation) {
 			switch operation.Type {
@@ -569,7 +569,7 @@ func testVersionMonotonicity(t *testing.T, versions []uint64) bool {
 	// Sort versions
 	sortedVersions := make([]uint64, len(versions))
 	copy(sortedVersions, versions)
-	
+
 	for i := 0; i < len(sortedVersions); i++ {
 		for j := i + 1; j < len(sortedVersions); j++ {
 			if sortedVersions[i] > sortedVersions[j] {
@@ -660,7 +660,7 @@ func NewSimpleRateLimiter(limit int, window time.Duration) *SimpleRateLimiter {
 
 func (rl *SimpleRateLimiter) Allow(clientID string) bool {
 	now := time.Now()
-	
+
 	// Clean old requests
 	if requests, exists := rl.requests[clientID]; exists {
 		var validRequests []time.Time
@@ -759,9 +759,9 @@ func deserializeTestData(data []byte) (TestData, error) {
 }
 
 func testDataEqual(a, b TestData) bool {
-	return a.ID == b.ID && 
-		   bytesEqual(a.Content, b.Content) &&
-		   a.Version == b.Version
+	return a.ID == b.ID &&
+		bytesEqual(a.Content, b.Content) &&
+		a.Version == b.Version
 }
 
 // Safe data store for concurrent testing
@@ -805,7 +805,7 @@ func (s *SafeDataStore) IsConsistent() bool {
 
 func BenchmarkProperty_HashDeterminism(b *testing.B) {
 	data := []byte("test data for hashing")
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		result := testHashDeterminism(&testing.T{}, data)
@@ -817,7 +817,7 @@ func BenchmarkProperty_HashDeterminism(b *testing.B) {
 
 func BenchmarkProperty_EncryptionRoundtrip(b *testing.B) {
 	data := []byte("sensitive data to encrypt")
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		result := testEncryptionRoundtrip(&testing.T{}, data)

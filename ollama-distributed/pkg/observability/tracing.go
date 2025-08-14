@@ -19,37 +19,37 @@ type TraceContext struct {
 
 // Span represents a single span in a trace
 type Span struct {
-	TraceID     string                 `json:"trace_id"`
-	SpanID      string                 `json:"span_id"`
-	ParentID    string                 `json:"parent_id,omitempty"`
-	OperationName string               `json:"operation_name"`
-	ServiceName   string               `json:"service_name"`
-	
+	TraceID       string `json:"trace_id"`
+	SpanID        string `json:"span_id"`
+	ParentID      string `json:"parent_id,omitempty"`
+	OperationName string `json:"operation_name"`
+	ServiceName   string `json:"service_name"`
+
 	// Timing
-	StartTime   time.Time              `json:"start_time"`
-	EndTime     time.Time              `json:"end_time,omitempty"`
-	Duration    time.Duration          `json:"duration,omitempty"`
-	
+	StartTime time.Time     `json:"start_time"`
+	EndTime   time.Time     `json:"end_time,omitempty"`
+	Duration  time.Duration `json:"duration,omitempty"`
+
 	// Status
-	Status      SpanStatus             `json:"status"`
-	StatusCode  SpanStatusCode         `json:"status_code"`
-	
+	Status     SpanStatus     `json:"status"`
+	StatusCode SpanStatusCode `json:"status_code"`
+
 	// Metadata
-	Tags        map[string]interface{} `json:"tags"`
-	Logs        []SpanLog              `json:"logs"`
-	
+	Tags map[string]interface{} `json:"tags"`
+	Logs []SpanLog              `json:"logs"`
+
 	// Context
-	BaggageItems map[string]string     `json:"baggage_items"`
-	
+	BaggageItems map[string]string `json:"baggage_items"`
+
 	// Internal
-	finished    bool
-	mu          sync.RWMutex
+	finished bool
+	mu       sync.RWMutex
 }
 
 // SpanStatus represents the status of a span
 type SpanStatus struct {
-	Code        SpanStatusCode `json:"code"`
-	Message     string         `json:"message,omitempty"`
+	Code    SpanStatusCode `json:"code"`
+	Message string         `json:"message,omitempty"`
 }
 
 // SpanStatusCode represents span status codes
@@ -75,39 +75,39 @@ type Tracer struct {
 	exporters   []SpanExporter
 	sampler     Sampler
 	mu          sync.RWMutex
-	
+
 	// Background processing
-	ctx         context.Context
-	cancel      context.CancelFunc
-	wg          sync.WaitGroup
+	ctx    context.Context
+	cancel context.CancelFunc
+	wg     sync.WaitGroup
 }
 
 // TracerConfig configures the tracer
 type TracerConfig struct {
-	ServiceName     string
-	ServiceVersion  string
-	Environment     string
-	
+	ServiceName    string
+	ServiceVersion string
+	Environment    string
+
 	// Sampling
-	SamplingRate    float64
-	SamplingRules   []SamplingRule
-	
+	SamplingRate  float64
+	SamplingRules []SamplingRule
+
 	// Export
 	EnableExport    bool
 	ExportInterval  time.Duration
 	ExportBatchSize int
 	ExportTimeout   time.Duration
-	
+
 	// Resource limits
-	MaxSpans        int
-	SpanTTL         time.Duration
+	MaxSpans int
+	SpanTTL  time.Duration
 }
 
 // SamplingRule defines sampling rules
 type SamplingRule struct {
-	ServicePattern  string
+	ServicePattern   string
 	OperationPattern string
-	SamplingRate    float64
+	SamplingRate     float64
 }
 
 // Sampler determines if a trace should be sampled
@@ -135,9 +135,9 @@ func NewTracer(config *TracerConfig) *Tracer {
 			SpanTTL:         time.Hour,
 		}
 	}
-	
+
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	tracer := &Tracer{
 		serviceName: config.ServiceName,
 		config:      config,
@@ -147,12 +147,12 @@ func NewTracer(config *TracerConfig) *Tracer {
 		ctx:         ctx,
 		cancel:      cancel,
 	}
-	
+
 	// Start background tasks
 	tracer.wg.Add(2)
 	go tracer.exportLoop()
 	go tracer.cleanupLoop()
-	
+
 	return tracer
 }
 
@@ -160,7 +160,7 @@ func NewTracer(config *TracerConfig) *Tracer {
 func (t *Tracer) StartSpan(ctx context.Context, operationName string) (*Span, context.Context) {
 	// Extract parent context
 	parentSpan := SpanFromContext(ctx)
-	
+
 	// Generate IDs
 	var traceID, parentID string
 	if parentSpan != nil {
@@ -169,12 +169,12 @@ func (t *Tracer) StartSpan(ctx context.Context, operationName string) (*Span, co
 	} else {
 		traceID = generateID()
 	}
-	
+
 	spanID := generateID()
-	
+
 	// Check sampling
 	sampled := t.sampler.ShouldSample(ctx, traceID, operationName)
-	
+
 	span := &Span{
 		TraceID:       traceID,
 		SpanID:        spanID,
@@ -189,17 +189,17 @@ func (t *Tracer) StartSpan(ctx context.Context, operationName string) (*Span, co
 		Logs:         make([]SpanLog, 0),
 		BaggageItems: make(map[string]string),
 	}
-	
+
 	// Store span if sampled
 	if sampled {
 		t.mu.Lock()
 		t.spans[spanID] = span
 		t.mu.Unlock()
 	}
-	
+
 	// Create new context with span
 	newCtx := ContextWithSpan(ctx, span)
-	
+
 	return span, newCtx
 }
 
@@ -207,15 +207,15 @@ func (t *Tracer) StartSpan(ctx context.Context, operationName string) (*Span, co
 func (t *Tracer) FinishSpan(span *Span) {
 	span.mu.Lock()
 	defer span.mu.Unlock()
-	
+
 	if span.finished {
 		return
 	}
-	
+
 	span.EndTime = time.Now()
 	span.Duration = span.EndTime.Sub(span.StartTime)
 	span.finished = true
-	
+
 	// Set default status if not set
 	if span.Status.Code == SpanStatusCodeUnset {
 		span.Status.Code = SpanStatusCodeOK
@@ -232,14 +232,14 @@ func (t *Tracer) AddExporter(exporter SpanExporter) {
 // exportLoop periodically exports spans
 func (t *Tracer) exportLoop() {
 	defer t.wg.Done()
-	
+
 	if !t.config.EnableExport {
 		return
 	}
-	
+
 	ticker := time.NewTicker(t.config.ExportInterval)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-t.ctx.Done():
@@ -254,7 +254,7 @@ func (t *Tracer) exportLoop() {
 // exportFinishedSpans exports finished spans
 func (t *Tracer) exportFinishedSpans() {
 	t.mu.Lock()
-	
+
 	var finishedSpans []*Span
 	for spanID, span := range t.spans {
 		span.mu.RLock()
@@ -263,26 +263,26 @@ func (t *Tracer) exportFinishedSpans() {
 			delete(t.spans, spanID)
 		}
 		span.mu.RUnlock()
-		
+
 		if len(finishedSpans) >= t.config.ExportBatchSize {
 			break
 		}
 	}
-	
+
 	exporters := make([]SpanExporter, len(t.exporters))
 	copy(exporters, t.exporters)
 	t.mu.Unlock()
-	
+
 	if len(finishedSpans) == 0 {
 		return
 	}
-	
+
 	// Export to all exporters
 	for _, exporter := range exporters {
 		go func(exp SpanExporter) {
 			ctx, cancel := context.WithTimeout(context.Background(), t.config.ExportTimeout)
 			defer cancel()
-			
+
 			if err := exp.Export(ctx, finishedSpans); err != nil {
 				// Log export error
 				fmt.Printf("Failed to export spans: %v\n", err)
@@ -294,20 +294,20 @@ func (t *Tracer) exportFinishedSpans() {
 // exportAllSpans exports all remaining spans
 func (t *Tracer) exportAllSpans() {
 	t.mu.Lock()
-	
+
 	var allSpans []*Span
 	for _, span := range t.spans {
 		allSpans = append(allSpans, span)
 	}
-	
+
 	exporters := make([]SpanExporter, len(t.exporters))
 	copy(exporters, t.exporters)
 	t.mu.Unlock()
-	
+
 	if len(allSpans) == 0 {
 		return
 	}
-	
+
 	// Export to all exporters
 	for _, exporter := range exporters {
 		ctx, cancel := context.WithTimeout(context.Background(), t.config.ExportTimeout)
@@ -319,10 +319,10 @@ func (t *Tracer) exportAllSpans() {
 // cleanupLoop periodically cleans up old spans
 func (t *Tracer) cleanupLoop() {
 	defer t.wg.Done()
-	
+
 	ticker := time.NewTicker(time.Hour)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-t.ctx.Done():
@@ -337,9 +337,9 @@ func (t *Tracer) cleanupLoop() {
 func (t *Tracer) cleanupOldSpans() {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	
+
 	cutoff := time.Now().Add(-t.config.SpanTTL)
-	
+
 	for spanID, span := range t.spans {
 		span.mu.RLock()
 		if span.StartTime.Before(cutoff) {
@@ -353,14 +353,14 @@ func (t *Tracer) cleanupOldSpans() {
 func (t *Tracer) Close() error {
 	t.cancel()
 	t.wg.Wait()
-	
+
 	// Shutdown all exporters
 	for _, exporter := range t.exporters {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		exporter.Shutdown(ctx)
 		cancel()
 	}
-	
+
 	return nil
 }
 
@@ -387,12 +387,12 @@ func (s *Span) SetStatus(code SpanStatusCode, message string) {
 func (s *Span) LogFields(fields map[string]interface{}) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	log := SpanLog{
 		Timestamp: time.Now(),
 		Fields:    fields,
 	}
-	
+
 	s.Logs = append(s.Logs, log)
 }
 
@@ -442,7 +442,7 @@ func NewProbabilitySampler(rate float64) *ProbabilitySampler {
 	if rate > 1 {
 		rate = 1
 	}
-	
+
 	return &ProbabilitySampler{rate: rate}
 }
 
@@ -454,7 +454,7 @@ func (ps *ProbabilitySampler) ShouldSample(ctx context.Context, traceID string, 
 	if ps.rate == 1 {
 		return true
 	}
-	
+
 	// Use trace ID for consistent sampling decisions
 	// This is a simplified implementation
 	return len(traceID)%100 < int(ps.rate*100)
@@ -486,7 +486,7 @@ func FinishOperation(span *Span, tracer *Tracer, err error) {
 			"error.type":    fmt.Sprintf("%T", err),
 		})
 	}
-	
+
 	tracer.FinishSpan(span)
 }
 
@@ -496,12 +496,12 @@ func TraceFunction(ctx context.Context, tracer *Tracer, functionName string, fn 
 	defer func() {
 		tracer.FinishSpan(span)
 	}()
-	
+
 	err := fn(newCtx)
 	if err != nil {
 		span.SetStatus(SpanStatusCodeError, err.Error())
 		span.SetTag("error", true)
 	}
-	
+
 	return err
 }

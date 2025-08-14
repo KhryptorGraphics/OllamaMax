@@ -37,18 +37,18 @@ func NewRecoveryPlanner(config *RecoveryPlannerConfig) *RecoveryPlanner {
 // CreateSingleFaultPlan creates a recovery plan for a single fault
 func (rp *RecoveryPlanner) CreateSingleFaultPlan(fault *FaultDetection) (*RecoveryPlan, error) {
 	plan := &RecoveryPlan{
-		ID:          fmt.Sprintf("plan_%d", time.Now().UnixNano()),
-		Name:        fmt.Sprintf("Recovery for %s", fault.Type),
-		Description: fmt.Sprintf("Recovery plan for fault %s on %s", fault.ID, fault.Target),
-		FaultIDs:    []string{fault.ID},
-		NodeIDs:     []string{fault.Target},
-		Steps:       make([]*RecoveryStep, 0),
-		Dependencies: make([]*RecoveryDependency, 0),
-		Priority:    rp.calculatePlanPriority(fault),
+		ID:            fmt.Sprintf("plan_%d", time.Now().UnixNano()),
+		Name:          fmt.Sprintf("Recovery for %s", fault.Type),
+		Description:   fmt.Sprintf("Recovery plan for fault %s on %s", fault.ID, fault.Target),
+		FaultIDs:      []string{fault.ID},
+		NodeIDs:       []string{fault.Target},
+		Steps:         make([]*RecoveryStep, 0),
+		Dependencies:  make([]*RecoveryDependency, 0),
+		Priority:      rp.calculatePlanPriority(fault),
 		EstimatedTime: rp.estimateRecoveryTime(fault),
-		CreatedAt:   time.Now(),
-		CreatedBy:   "recovery_planner",
-		Metadata:    make(map[string]interface{}),
+		CreatedAt:     time.Now(),
+		CreatedBy:     "recovery_planner",
+		Metadata:      make(map[string]interface{}),
 	}
 
 	// Create recovery steps based on fault type
@@ -98,17 +98,17 @@ func (rp *RecoveryPlanner) CreateMultiNodePlan(faults []*FaultDetection) (*Recov
 	}
 
 	plan := &RecoveryPlan{
-		ID:          fmt.Sprintf("multiplan_%d", time.Now().UnixNano()),
-		Name:        "Multi-Node Recovery Plan",
-		Description: fmt.Sprintf("Recovery plan for %d faults across %d nodes", len(faults), len(nodeList)),
-		FaultIDs:    faultIDs,
-		NodeIDs:     nodeList,
-		Steps:       make([]*RecoveryStep, 0),
-		Dependencies: make([]*RecoveryDependency, 0),
-		Priority:    rp.calculateMultiFaultPriority(faults),
+		ID:            fmt.Sprintf("multiplan_%d", time.Now().UnixNano()),
+		Name:          "Multi-Node Recovery Plan",
+		Description:   fmt.Sprintf("Recovery plan for %d faults across %d nodes", len(faults), len(nodeList)),
+		FaultIDs:      faultIDs,
+		NodeIDs:       nodeList,
+		Steps:         make([]*RecoveryStep, 0),
+		Dependencies:  make([]*RecoveryDependency, 0),
+		Priority:      rp.calculateMultiFaultPriority(faults),
 		EstimatedTime: rp.estimateMultiRecoveryTime(faults),
-		CreatedAt:   time.Now(),
-		CreatedBy:   "recovery_planner",
+		CreatedAt:     time.Now(),
+		CreatedBy:     "recovery_planner",
 		Metadata: map[string]interface{}{
 			"fault_count": len(faults),
 			"node_count":  len(nodeList),
@@ -149,18 +149,18 @@ func (rp *RecoveryPlanner) createStepsForFault(fault *FaultDetection) ([]*Recove
 
 	// Preparation step
 	steps = append(steps, &RecoveryStep{
-		ID:           fmt.Sprintf("prep_%s", fault.ID),
-		Name:         "Preparation",
-		Type:         StepTypePreparation,
-		Action:       "prepare_recovery",
-		Target:       fault.Target,
-		Parameters:   map[string]interface{}{"fault_id": fault.ID},
-		Timeout:      30 * time.Second,
-		Retries:      1,
-		Critical:     false,
-		Parallel:     false,
-		Status:       StepStatusPending,
-		Metadata:     make(map[string]interface{}),
+		ID:         fmt.Sprintf("prep_%s", fault.ID),
+		Name:       "Preparation",
+		Type:       StepTypePreparation,
+		Action:     "prepare_recovery",
+		Target:     fault.Target,
+		Parameters: map[string]interface{}{"fault_id": fault.ID},
+		Timeout:    30 * time.Second,
+		Retries:    1,
+		Critical:   false,
+		Parallel:   false,
+		Status:     StepStatusPending,
+		Metadata:   make(map[string]interface{}),
 	})
 
 	// Validation step
@@ -186,19 +186,19 @@ func (rp *RecoveryPlanner) createStepsForFault(fault *FaultDetection) ([]*Recove
 
 	// Verification step
 	steps = append(steps, &RecoveryStep{
-		ID:         fmt.Sprintf("verify_%s", fault.ID),
-		Name:       "Verification",
-		Type:       StepTypeVerification,
-		Action:     "verify_recovery",
-		Target:     fault.Target,
-		Parameters: map[string]interface{}{"expected_state": "healthy"},
+		ID:           fmt.Sprintf("verify_%s", fault.ID),
+		Name:         "Verification",
+		Type:         StepTypeVerification,
+		Action:       "verify_recovery",
+		Target:       fault.Target,
+		Parameters:   map[string]interface{}{"expected_state": "healthy"},
 		Dependencies: rp.getExecutionStepIDs(executionSteps),
-		Timeout:    120 * time.Second,
-		Retries:    3,
-		Critical:   true,
-		Parallel:   false,
-		Status:     StepStatusPending,
-		Metadata:   make(map[string]interface{}),
+		Timeout:      120 * time.Second,
+		Retries:      3,
+		Critical:     true,
+		Parallel:     false,
+		Status:       StepStatusPending,
+		Metadata:     make(map[string]interface{}),
 	})
 
 	// Cleanup step
@@ -228,13 +228,13 @@ func (rp *RecoveryPlanner) createExecutionSteps(fault *FaultDetection) []*Recove
 	switch fault.Type {
 	case FaultTypeNodeFailure:
 		steps = append(steps, &RecoveryStep{
-			ID:       fmt.Sprintf("failover_%s", fault.ID),
-			Name:     "Node Failover",
-			Type:     StepTypeExecution,
-			Action:   "failover_node",
-			Target:   fault.Target,
+			ID:     fmt.Sprintf("failover_%s", fault.ID),
+			Name:   "Node Failover",
+			Type:   StepTypeExecution,
+			Action: "failover_node",
+			Target: fault.Target,
 			Parameters: map[string]interface{}{
-				"backup_node": "auto_select",
+				"backup_node":  "auto_select",
 				"migrate_data": true,
 			},
 			Timeout:  5 * time.Minute,
@@ -247,11 +247,11 @@ func (rp *RecoveryPlanner) createExecutionSteps(fault *FaultDetection) []*Recove
 
 	case FaultTypeServiceUnavailable:
 		steps = append(steps, &RecoveryStep{
-			ID:       fmt.Sprintf("restart_%s", fault.ID),
-			Name:     "Service Restart",
-			Type:     StepTypeExecution,
-			Action:   "restart_service",
-			Target:   fault.Target,
+			ID:     fmt.Sprintf("restart_%s", fault.ID),
+			Name:   "Service Restart",
+			Type:   StepTypeExecution,
+			Action: "restart_service",
+			Target: fault.Target,
 			Parameters: map[string]interface{}{
 				"graceful": true,
 				"timeout":  30,
@@ -266,13 +266,13 @@ func (rp *RecoveryPlanner) createExecutionSteps(fault *FaultDetection) []*Recove
 
 	case FaultTypeResourceExhaustion:
 		steps = append(steps, &RecoveryStep{
-			ID:       fmt.Sprintf("scale_%s", fault.ID),
-			Name:     "Resource Scaling",
-			Type:     StepTypeExecution,
-			Action:   "scale_resources",
-			Target:   fault.Target,
+			ID:     fmt.Sprintf("scale_%s", fault.ID),
+			Name:   "Resource Scaling",
+			Type:   StepTypeExecution,
+			Action: "scale_resources",
+			Target: fault.Target,
 			Parameters: map[string]interface{}{
-				"scale_factor": 1.5,
+				"scale_factor":  1.5,
 				"resource_type": "auto_detect",
 			},
 			Timeout:  3 * time.Minute,
@@ -285,14 +285,14 @@ func (rp *RecoveryPlanner) createExecutionSteps(fault *FaultDetection) []*Recove
 
 	case FaultTypeNetworkPartition:
 		steps = append(steps, &RecoveryStep{
-			ID:       fmt.Sprintf("partition_%s", fault.ID),
-			Name:     "Partition Recovery",
-			Type:     StepTypeExecution,
-			Action:   "recover_partition",
-			Target:   fault.Target,
+			ID:     fmt.Sprintf("partition_%s", fault.ID),
+			Name:   "Partition Recovery",
+			Type:   StepTypeExecution,
+			Action: "recover_partition",
+			Target: fault.Target,
 			Parameters: map[string]interface{}{
 				"reconnect_nodes": true,
-				"sync_data": true,
+				"sync_data":       true,
 			},
 			Timeout:  4 * time.Minute,
 			Retries:  2,
@@ -305,11 +305,11 @@ func (rp *RecoveryPlanner) createExecutionSteps(fault *FaultDetection) []*Recove
 	default:
 		// Generic recovery step
 		steps = append(steps, &RecoveryStep{
-			ID:       fmt.Sprintf("generic_%s", fault.ID),
-			Name:     "Generic Recovery",
-			Type:     StepTypeExecution,
-			Action:   "generic_recovery",
-			Target:   fault.Target,
+			ID:     fmt.Sprintf("generic_%s", fault.ID),
+			Name:   "Generic Recovery",
+			Type:   StepTypeExecution,
+			Action: "generic_recovery",
+			Target: fault.Target,
 			Parameters: map[string]interface{}{
 				"fault_type": fault.Type,
 			},
@@ -331,13 +331,13 @@ func (rp *RecoveryPlanner) createCoordinatedSteps(faults []*FaultDetection) ([]*
 
 	// Global preparation step
 	steps = append(steps, &RecoveryStep{
-		ID:       fmt.Sprintf("global_prep_%d", time.Now().UnixNano()),
-		Name:     "Global Preparation",
-		Type:     StepTypePreparation,
-		Action:   "prepare_multi_recovery",
-		Target:   "cluster",
+		ID:     fmt.Sprintf("global_prep_%d", time.Now().UnixNano()),
+		Name:   "Global Preparation",
+		Type:   StepTypePreparation,
+		Action: "prepare_multi_recovery",
+		Target: "cluster",
 		Parameters: map[string]interface{}{
-			"fault_count": len(faults),
+			"fault_count":       len(faults),
 			"coordination_mode": "parallel",
 		},
 		Timeout:  60 * time.Second,
@@ -462,12 +462,12 @@ func (rp *RecoveryPlanner) getExecutionStepIDs(steps []*RecoveryStep) []string {
 // calculateResourceRequirements calculates resource requirements
 func (rp *RecoveryPlanner) calculateResourceRequirements(fault *FaultDetection) *ResourceRequirements {
 	return &ResourceRequirements{
-		CPU:    1.0,
-		Memory: 1024 * 1024 * 1024, // 1GB
-		Disk:   1024 * 1024 * 1024, // 1GB
-		Network: 100 * 1024 * 1024, // 100MB
-		Nodes:   []string{fault.Target},
-		Services: []string{"recovery_service"},
+		CPU:         1.0,
+		Memory:      1024 * 1024 * 1024, // 1GB
+		Disk:        1024 * 1024 * 1024, // 1GB
+		Network:     100 * 1024 * 1024,  // 100MB
+		Nodes:       []string{fault.Target},
+		Services:    []string{"recovery_service"},
 		Constraints: make(map[string]interface{}),
 	}
 }
@@ -485,12 +485,12 @@ func (rp *RecoveryPlanner) calculateMultiResourceRequirements(faults []*FaultDet
 	}
 
 	return &ResourceRequirements{
-		CPU:    float64(len(faults)) * 1.0,
-		Memory: int64(len(faults)) * 1024 * 1024 * 1024,
-		Disk:   int64(len(faults)) * 1024 * 1024 * 1024,
-		Network: int64(len(faults)) * 100 * 1024 * 1024,
-		Nodes:   nodes,
-		Services: []string{"recovery_service", "coordination_service"},
+		CPU:         float64(len(faults)) * 1.0,
+		Memory:      int64(len(faults)) * 1024 * 1024 * 1024,
+		Disk:        int64(len(faults)) * 1024 * 1024 * 1024,
+		Network:     int64(len(faults)) * 100 * 1024 * 1024,
+		Nodes:       nodes,
+		Services:    []string{"recovery_service", "coordination_service"},
 		Constraints: make(map[string]interface{}),
 	}
 }
@@ -538,11 +538,11 @@ func (rp *RecoveryPlanner) createRollbackPlan(plan *RecoveryPlan) *RollbackPlan 
 		step := plan.Steps[i]
 		if step.Type == StepTypeExecution {
 			rollbackStep := &RecoveryStep{
-				ID:       fmt.Sprintf("rollback_%s", step.ID),
-				Name:     fmt.Sprintf("Rollback %s", step.Name),
-				Type:     StepTypeRollback,
-				Action:   fmt.Sprintf("rollback_%s", step.Action),
-				Target:   step.Target,
+				ID:     fmt.Sprintf("rollback_%s", step.ID),
+				Name:   fmt.Sprintf("Rollback %s", step.Name),
+				Type:   StepTypeRollback,
+				Action: fmt.Sprintf("rollback_%s", step.Action),
+				Target: step.Target,
 				Parameters: map[string]interface{}{
 					"original_step_id": step.ID,
 					"rollback_mode":    "safe",

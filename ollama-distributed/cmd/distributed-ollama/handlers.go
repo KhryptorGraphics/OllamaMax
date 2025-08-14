@@ -112,19 +112,48 @@ func (s *DistributedOllamaServer) handlePullModel(c *gin.Context) {
 
 	s.logger.Info("Received pull request", "model", req.Name)
 
-	// Add model to distributed system
-	model, err := s.modelManager.AddModel(req.Name, "/tmp/models/"+req.Name)
+	// TODO: Real pull: fetch from remote registry or peer
+	// For now, treat pull as registering an existing local model file path
+	modelPath := "/tmp/models/" + req.Name
+	model, err := s.modelManager.AddModel(req.Name, modelPath)
 	if err != nil {
 		s.logger.Error("Failed to pull model", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
+	// Fan out replication to connected peers in background (non-blocking)
+	go func(modelName string) {
+		peerIDs := s.p2pNode.GetConnectedPeers()
+		if len(peerIDs) == 0 {
+			return
+		}
+		peers := make([]string, 0, len(peerIDs))
+		for _, id := range peerIDs {
+			peers = append(peers, id.String())
+		}
+		if err := s.modelManager.ReplicateModelToPeers(modelName, peers); err != nil {
+			s.logger.Error("replication fan-out failed", "model", modelName, "error", err)
+		}
+	}(req.Name)
+
 	response := ollamaAPI.ProgressResponse{
 		Status:    "success",
 		Digest:    model.Hash,
 		Total:     model.Size,
 		Completed: model.Size,
+	}
+
+	if s.integration != nil && s.integrationConfigBlockPull() {
+		// If configured to block pull until min replicas, wait briefly
+		deadline := time.Now().Add(20 * time.Second)
+		min := s.integrationConfigMinNodes()
+		for time.Now().Before(deadline) {
+			if s.modelManager.GetReplicaCount(req.Name) >= min {
+				break
+			}
+			time.Sleep(500 * time.Millisecond)
+		}
 	}
 
 	c.JSON(http.StatusOK, response)
@@ -140,9 +169,11 @@ func (s *DistributedOllamaServer) handleDeleteModel(c *gin.Context) {
 
 	s.logger.Info("Received delete request", "model", req.Name)
 
-	// For now, just return success since RemoveModel method doesn't exist
-	// In a real implementation, this would remove the model from the distributed system
-	s.logger.Info("Model deletion requested", "model", req.Name)
+	if err := s.modelManager.RemoveModel(req.Name); err != nil {
+		s.logger.Error("Failed to delete model", "error", err)
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{"status": "success"})
 }
@@ -260,12 +291,18 @@ func (s *DistributedOllamaServer) handleEmbed(c *gin.Context) {
 func (s *DistributedOllamaServer) handleDistributedStatus(c *gin.Context) {
 	peers := s.p2pNode.GetConnectedPeers()
 
+	// Serialize peers as strings for JSON
+	peerIDs := make([]string, len(peers))
+	for i, pid := range peers {
+		peerIDs[i] = pid.String()
+	}
+
 	status := gin.H{
 		"node_id":         s.p2pNode.ID().String(),
 		"connected_peers": len(peers),
-		"peers":           peers,
+		"peers":           peerIDs,
 		"models_loaded":   len(s.modelManager.GetDistributedModels()),
-		"uptime":          time.Since(time.Now()).String(), // This would track actual uptime
+		"uptime":          time.Since(s.startedAt).String(),
 		"version":         "1.0.0",
 	}
 
@@ -316,6 +353,18 @@ func (s *DistributedOllamaServer) handleDistributedModels(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, response)
+}
+
+// handleModelReplicas handles /api/distributed/models/:name/replicas
+func (s *DistributedOllamaServer) handleModelReplicas(c *gin.Context) {
+	name := c.Param("name")
+	replicas := s.modelManager.GetReplicas(name)
+	resp := gin.H{
+		"model":    name,
+		"replicas": replicas,
+		"count":    len(replicas),
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
 // handleMetrics handles the /api/distributed/metrics endpoint
@@ -373,6 +422,12 @@ func (s *DistributedOllamaServer) handleActiveRequests(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+// handleReplicationStatus handles the /api/distributed/replication/status endpoint
+func (s *DistributedOllamaServer) handleReplicationStatus(c *gin.Context) {
+	summary := s.modelManager.GetReplicationSummary()
+	c.JSON(http.StatusOK, summary)
+}
+
 // handleHealth handles the /health endpoint
 func (s *DistributedOllamaServer) handleHealth(c *gin.Context) {
 	health := gin.H{
@@ -387,4 +442,15 @@ func (s *DistributedOllamaServer) handleHealth(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, health)
+}
+
+// handleVersion handles the /api/v1/version endpoint
+func (s *DistributedOllamaServer) handleVersion(c *gin.Context) {
+	version := gin.H{
+		"version":    "1.0.0",
+		"build_time": time.Now().Format(time.RFC3339),
+		"go_version": "go1.21+",
+		"platform":   "distributed",
+	}
+	c.JSON(http.StatusOK, version)
 }

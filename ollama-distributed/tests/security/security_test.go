@@ -211,13 +211,13 @@ func (s *SecurityTestSuite) testAuthenticationFailures(t *testing.T) {
 	// Test blocked peer
 	blockedPeer, err := generateTestPeer()
 	require.NoError(t, err)
-	
+
 	// Add peer to blocked list
 	authMgr.BlockPeer(blockedPeer)
-	
+
 	authReq.PeerID = blockedPeer.String()
 	authReq.Timestamp = time.Now()
-	
+
 	_, err = authMgr.ProcessAuthRequest(blockedPeer, authReq)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "peer is blocked")
@@ -225,7 +225,7 @@ func (s *SecurityTestSuite) testAuthenticationFailures(t *testing.T) {
 	// Test unsupported auth method
 	authReq.Method = security.AuthMethod(999) // Invalid method
 	authReq.PeerID = testPeer.String()
-	
+
 	_, err = authMgr.ProcessAuthRequest(testPeer, authReq)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "unsupported auth method")
@@ -331,7 +331,7 @@ func (s *SecurityTestSuite) testAsymmetricEncryption(t *testing.T) {
 // testKeyExchange tests key exchange protocols
 func (s *SecurityTestSuite) testKeyExchange(t *testing.T) {
 	keyMgr := s.securityMgr.GetKeyManager()
-	
+
 	// Test Diffie-Hellman key exchange
 	privKeyA, pubKeyA, err := keyMgr.GenerateKeyPair()
 	require.NoError(t, err)
@@ -510,7 +510,7 @@ func (s *SecurityTestSuite) testSecurityProtocols(t *testing.T) {
 func (s *SecurityTestSuite) testNoiseProtocol(t *testing.T) {
 	// Test Noise protocol handshake
 	keyMgr := s.securityMgr.GetKeyManager()
-	
+
 	// Generate test keys
 	staticKey, err := keyMgr.GenerateStaticKey()
 	require.NoError(t, err)
@@ -537,7 +537,7 @@ func (s *SecurityTestSuite) testNoiseProtocol(t *testing.T) {
 func (s *SecurityTestSuite) testTLSProtocol(t *testing.T) {
 	// Test TLS certificate generation
 	keyMgr := s.securityMgr.GetKeyManager()
-	
+
 	cert, key, err := keyMgr.GenerateTLSCertificate("localhost")
 	require.NoError(t, err)
 	assert.NotEmpty(t, cert)
@@ -637,7 +637,7 @@ func (s *SecurityTestSuite) testReplayAttacks(t *testing.T) {
 func (s *SecurityTestSuite) testManInTheMiddleAttacks(t *testing.T) {
 	// Test certificate pinning
 	keyMgr := s.securityMgr.GetKeyManager()
-	
+
 	// Generate legitimate certificate
 	legit_cert, _, err := keyMgr.GenerateTLSCertificate("legitimate.example.com")
 	require.NoError(t, err)
@@ -744,7 +744,7 @@ func (s *SecurityTestSuite) testIntegrityThreats(t *testing.T) {
 func (s *SecurityTestSuite) testAvailabilityThreats(t *testing.T) {
 	// Test resource exhaustion protection
 	rateLimiter := s.securityMgr.GetRateLimiter()
-	
+
 	// Multiple peers attacking simultaneously
 	attackerCount := 10
 	for i := 0; i < attackerCount; i++ {
@@ -806,7 +806,7 @@ func generateTestPeer() (peer.ID, error) {
 	if err != nil {
 		return "", err
 	}
-	
+
 	// In a real implementation, this would use libp2p's peer ID generation
 	return peer.ID(fmt.Sprintf("test-peer-%x", randBytes[:8])), nil
 }

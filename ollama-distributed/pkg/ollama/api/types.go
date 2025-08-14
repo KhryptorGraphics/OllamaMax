@@ -69,10 +69,10 @@ type ListResponse struct {
 
 // ModelResponse represents information about a model
 type ModelResponse struct {
-	Name       string    `json:"name"`
-	Size       int64     `json:"size"`
-	Digest     string    `json:"digest"`
-	ModifiedAt time.Time `json:"modified_at"`
+	Name       string       `json:"name"`
+	Size       int64        `json:"size"`
+	Digest     string       `json:"digest"`
+	ModifiedAt time.Time    `json:"modified_at"`
 	Details    ModelDetails `json:"details,omitempty"`
 }
 
@@ -177,27 +177,27 @@ type Options map[string]interface{}
 
 // Common option keys
 const (
-	OptionTemperature     = "temperature"
-	OptionTopP           = "top_p"
-	OptionTopK           = "top_k"
-	OptionRepeatPenalty  = "repeat_penalty"
-	OptionSeed           = "seed"
-	OptionNumPredict     = "num_predict"
-	OptionNumCtx         = "num_ctx"
-	OptionNumBatch       = "num_batch"
-	OptionNumGQA         = "num_gqa"
-	OptionNumGPU         = "num_gpu"
-	OptionMainGPU        = "main_gpu"
-	OptionLowVRAM        = "low_vram"
-	OptionF16KV          = "f16_kv"
-	OptionLogitsAll      = "logits_all"
-	OptionVocabOnly      = "vocab_only"
-	OptionUseMMap        = "use_mmap"
-	OptionUseMlock       = "use_mlock"
-	OptionEmbeddingOnly  = "embedding_only"
-	OptionRopeFreqBase   = "rope_frequency_base"
-	OptionRopeFreqScale  = "rope_frequency_scale"
-	OptionNumThread      = "num_thread"
+	OptionTemperature   = "temperature"
+	OptionTopP          = "top_p"
+	OptionTopK          = "top_k"
+	OptionRepeatPenalty = "repeat_penalty"
+	OptionSeed          = "seed"
+	OptionNumPredict    = "num_predict"
+	OptionNumCtx        = "num_ctx"
+	OptionNumBatch      = "num_batch"
+	OptionNumGQA        = "num_gqa"
+	OptionNumGPU        = "num_gpu"
+	OptionMainGPU       = "main_gpu"
+	OptionLowVRAM       = "low_vram"
+	OptionF16KV         = "f16_kv"
+	OptionLogitsAll     = "logits_all"
+	OptionVocabOnly     = "vocab_only"
+	OptionUseMMap       = "use_mmap"
+	OptionUseMlock      = "use_mlock"
+	OptionEmbeddingOnly = "embedding_only"
+	OptionRopeFreqBase  = "rope_frequency_base"
+	OptionRopeFreqScale = "rope_frequency_scale"
+	OptionNumThread     = "num_thread"
 )
 
 // Role constants for chat messages

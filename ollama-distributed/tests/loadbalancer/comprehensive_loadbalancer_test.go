@@ -1,16 +1,14 @@
 package loadbalancer
 
 import (
-	"context"
 	"fmt"
 	"math"
-	"sort"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/scheduler/loadbalancer"
 )
@@ -31,7 +29,7 @@ func TestLoadBalancingAlgorithms(t *testing.T) {
 func testRoundRobinBalancer(t *testing.T) {
 	// Create nodes
 	nodes := createTestNodes(4)
-	
+
 	// Create round-robin balancer
 	balancer := loadbalancer.NewRoundRobinBalancer()
 	for _, node := range nodes {
@@ -139,7 +137,7 @@ func testWeightedRoundRobinBalancer(t *testing.T) {
 		expectedRatio := float64(node.Weight) / float64(totalWeight)
 		expectedCount := int(expectedRatio * float64(requestCount))
 		actualCount := nodeSelections[node.ID]
-		
+
 		diff := math.Abs(float64(actualCount-expectedCount)) / float64(expectedCount)
 		assert.Less(t, diff, tolerance, "Node %s distribution should match weight", node.ID)
 	}
@@ -148,7 +146,7 @@ func testWeightedRoundRobinBalancer(t *testing.T) {
 // testLeastConnectionsBalancer tests least connections load balancing
 func testLeastConnectionsBalancer(t *testing.T) {
 	nodes := createTestNodes(3)
-	
+
 	balancer := loadbalancer.NewLeastConnectionsBalancer()
 	for _, node := range nodes {
 		err := balancer.AddNode(node)
@@ -269,7 +267,7 @@ func testWeightedLeastConnectionsBalancer(t *testing.T) {
 // testIPHashBalancer tests IP hash-based load balancing
 func testIPHashBalancer(t *testing.T) {
 	nodes := createTestNodes(4)
-	
+
 	balancer := loadbalancer.NewIPHashBalancer()
 	for _, node := range nodes {
 		err := balancer.AddNode(node)
@@ -341,7 +339,7 @@ func testIPHashBalancer(t *testing.T) {
 // testConsistentHashBalancer tests consistent hash load balancing
 func testConsistentHashBalancer(t *testing.T) {
 	nodes := createTestNodes(4)
-	
+
 	config := &loadbalancer.ConsistentHashConfig{
 		VirtualNodes: 100, // Number of virtual nodes per real node
 		HashFunction: "sha256",
@@ -560,7 +558,7 @@ func testResourceBasedBalancer(t *testing.T) {
 // testAdaptiveBalancer tests adaptive load balancing
 func testAdaptiveBalancer(t *testing.T) {
 	nodes := createTestNodes(3)
-	
+
 	config := &loadbalancer.AdaptiveConfig{
 		MetricsWindow:    5 * time.Second,
 		AdjustmentFactor: 0.1,
@@ -637,7 +635,7 @@ func TestLoadBalancerHealth(t *testing.T) {
 // testHealthChecking tests health checking mechanisms
 func testHealthChecking(t *testing.T) {
 	nodes := createTestNodes(3)
-	
+
 	healthConfig := &loadbalancer.HealthConfig{
 		CheckInterval:    1 * time.Second,
 		Timeout:          500 * time.Millisecond,
@@ -658,7 +656,7 @@ func testHealthChecking(t *testing.T) {
 
 	// Initially all nodes should be healthy
 	time.Sleep(2 * time.Second)
-	
+
 	for _, node := range nodes {
 		status := balancer.GetNodeStatus(node.ID)
 		assert.Equal(t, loadbalancer.NodeStatusHealthy, status)
@@ -681,7 +679,7 @@ func testHealthChecking(t *testing.T) {
 // testUnhealthyNodeExclusion tests exclusion of unhealthy nodes
 func testUnhealthyNodeExclusion(t *testing.T) {
 	nodes := createTestNodes(3)
-	
+
 	balancer := loadbalancer.NewRoundRobinBalancer()
 	for _, node := range nodes {
 		err := balancer.AddNode(node)
@@ -726,7 +724,7 @@ func testUnhealthyNodeExclusion(t *testing.T) {
 // testNodeRecovery tests node recovery functionality
 func testNodeRecovery(t *testing.T) {
 	nodes := createTestNodes(3)
-	
+
 	healthConfig := &loadbalancer.HealthConfig{
 		CheckInterval:    500 * time.Millisecond,
 		Timeout:          200 * time.Millisecond,
@@ -780,7 +778,7 @@ func testNodeRecovery(t *testing.T) {
 // testHealthCheckFailover tests failover during health check failures
 func testHealthCheckFailover(t *testing.T) {
 	nodes := createTestNodes(2) // Minimal cluster for failover testing
-	
+
 	balancer := loadbalancer.NewRoundRobinBalancer()
 	for _, node := range nodes {
 		err := balancer.AddNode(node)
@@ -848,7 +846,7 @@ func TestLoadBalancerPerformance(t *testing.T) {
 // testHighThroughputBalancing tests high throughput scenarios
 func testHighThroughputBalancing(t *testing.T) {
 	nodes := createTestNodes(5)
-	
+
 	balancer := loadbalancer.NewRoundRobinBalancer()
 	for _, node := range nodes {
 		err := balancer.AddNode(node)
@@ -874,7 +872,7 @@ func testHighThroughputBalancing(t *testing.T) {
 	throughput := float64(requestCount) / duration.Seconds()
 
 	t.Logf("Load balancer throughput: %.2f requests/second", throughput)
-	
+
 	// Should achieve high throughput
 	assert.Greater(t, throughput, 10000.0, "Load balancer should handle at least 10k req/sec")
 }
@@ -882,7 +880,7 @@ func testHighThroughputBalancing(t *testing.T) {
 // testConcurrentRequestBalancing tests concurrent request handling
 func testConcurrentRequestBalancing(t *testing.T) {
 	nodes := createTestNodes(4)
-	
+
 	balancer := loadbalancer.NewRoundRobinBalancer()
 	for _, node := range nodes {
 		err := balancer.AddNode(node)
@@ -892,7 +890,7 @@ func testConcurrentRequestBalancing(t *testing.T) {
 	// Test concurrent requests
 	concurrency := 100
 	requestsPerGoroutine := 100
-	
+
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	nodeSelections := make(map[string]int)
@@ -903,7 +901,7 @@ func testConcurrentRequestBalancing(t *testing.T) {
 			defer wg.Done()
 
 			localSelections := make(map[string]int)
-			
+
 			for j := 0; j < requestsPerGoroutine; j++ {
 				request := &loadbalancer.Request{
 					ID:   fmt.Sprintf("concurrent-req-%d-%d", goroutineID, j),
@@ -949,7 +947,7 @@ func testLoadBalancerScalability(t *testing.T) {
 	// Test with large number of nodes
 	nodeCount := 100
 	nodes := createTestNodes(nodeCount)
-	
+
 	balancer := loadbalancer.NewConsistentHashBalancer(&loadbalancer.ConsistentHashConfig{
 		VirtualNodes: 50,
 		HashFunction: "sha256",
@@ -993,9 +991,9 @@ func testLoadBalancerScalability(t *testing.T) {
 // testLoadBalancerMemoryUsage tests memory usage characteristics
 func testLoadBalancerMemoryUsage(t *testing.T) {
 	nodes := createTestNodes(50)
-	
+
 	balancer := loadbalancer.NewWeightedRoundRobinBalancer()
-	
+
 	// Measure initial memory
 	var m1 runtime.MemStats
 	runtime.GC()
@@ -1044,12 +1042,12 @@ func testLoadBalancerMemoryUsage(t *testing.T) {
 // createTestNodes creates test nodes for load balancer testing
 func createTestNodes(count int) []*loadbalancer.Node {
 	nodes := make([]*loadbalancer.Node, count)
-	
+
 	for i := 0; i < count; i++ {
 		nodes[i] = &loadbalancer.Node{
-			ID:     fmt.Sprintf("node-%d", i+1),
-			Status: loadbalancer.NodeStatusHealthy,
-			Weight: 1,
+			ID:      fmt.Sprintf("node-%d", i+1),
+			Status:  loadbalancer.NodeStatusHealthy,
+			Weight:  1,
 			Address: fmt.Sprintf("192.168.1.%d:8080", i+1),
 			Resources: &loadbalancer.Resources{
 				CPU:    4.0,
@@ -1062,15 +1060,15 @@ func createTestNodes(count int) []*loadbalancer.Node {
 				GPU:    0,
 			},
 			Metrics: &loadbalancer.NodeMetrics{
-				RequestCount:     0,
-				ErrorCount:       0,
-				AverageLatency:   100 * time.Millisecond,
-				LastHealthCheck:  time.Now(),
-				ConnectionCount:  0,
+				RequestCount:    0,
+				ErrorCount:      0,
+				AverageLatency:  100 * time.Millisecond,
+				LastHealthCheck: time.Now(),
+				ConnectionCount: 0,
 			},
 		}
 	}
-	
+
 	return nodes
 }
 

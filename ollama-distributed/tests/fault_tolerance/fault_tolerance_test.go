@@ -3,8 +3,8 @@ package fault_tolerance
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -19,11 +19,11 @@ import (
 
 // FaultToleranceTestSuite provides comprehensive fault tolerance testing
 type FaultToleranceTestSuite struct {
-	cluster           *integration.TestCluster
-	faultManager      *fault_tolerance.FaultToleranceManager
+	cluster            *integration.TestCluster
+	faultManager       *fault_tolerance.FaultToleranceManager
 	recoveryStrategies []fault_tolerance.RecoveryStrategy
-	ctx               context.Context
-	cancel            context.CancelFunc
+	ctx                context.Context
+	cancel             context.CancelFunc
 }
 
 // NewFaultToleranceTestSuite creates a new fault tolerance test suite
@@ -37,11 +37,11 @@ func NewFaultToleranceTestSuite(nodeCount int) (*FaultToleranceTestSuite, error)
 
 	// Create fault tolerance manager
 	faultConfig := &fault_tolerance.Config{
-		HeartbeatInterval:     2 * time.Second,
+		HeartbeatInterval:       2 * time.Second,
 		FailureDetectionTimeout: 10 * time.Second,
-		RecoveryTimeout:       30 * time.Second,
-		MaxRetries:           3,
-		EnableAutoRecovery:   true,
+		RecoveryTimeout:         30 * time.Second,
+		MaxRetries:              3,
+		EnableAutoRecovery:      true,
 	}
 
 	faultManager, err := fault_tolerance.NewFaultToleranceManager(faultConfig)
@@ -338,7 +338,7 @@ func (suite *FaultToleranceTestSuite) testAutomaticNodeRestart(t *testing.T) {
 	require.NotNil(t, recoveredNode, "Recovered node should be available")
 
 	assert.True(t, recoveredNode.IsRunning(), "Recovered node should be running")
-	
+
 	// Verify state consistency
 	currentState := recoveredNode.GetState()
 	suite.verifyStateConsistency(t, originalState, currentState)
@@ -354,10 +354,10 @@ func (suite *FaultToleranceTestSuite) testNodeStateRecovery(t *testing.T) {
 
 	// Set up some state data
 	testData := map[string]interface{}{
-		"model_cache": []string{"llama3.2:1b", "llama3.2:8b"},
+		"model_cache":  []string{"llama3.2:1b", "llama3.2:8b"},
 		"active_tasks": []string{"task1", "task2", "task3"},
 		"configuration": map[string]string{
-			"max_memory": "8GB",
+			"max_memory":   "8GB",
 			"worker_count": "4",
 		},
 	}
@@ -380,7 +380,7 @@ func (suite *FaultToleranceTestSuite) testNodeStateRecovery(t *testing.T) {
 	// Verify state is recovered
 	time.Sleep(3 * time.Second)
 	recoveredState := targetNode.GetState()
-	
+
 	for key, expectedValue := range testData {
 		actualValue, exists := recoveredState[key]
 		assert.True(t, exists, "Key %s should exist in recovered state", key)
@@ -414,17 +414,17 @@ func (suite *FaultToleranceTestSuite) testConfigurationRecovery(t *testing.T) {
 	// Verify configuration is restored
 	time.Sleep(2 * time.Second)
 	recoveredConfig := targetNode.GetConfiguration()
-	
+
 	// Compare critical configuration values
 	criticalKeys := []string{"listen_port", "data_dir", "max_connections"}
 	for _, key := range criticalKeys {
 		original, originalExists := originalConfig[key]
 		recovered, recoveredExists := recoveredConfig[key]
-		
-		assert.Equal(t, originalExists, recoveredExists, 
+
+		assert.Equal(t, originalExists, recoveredExists,
 			"Configuration key %s existence should match", key)
 		if originalExists && recoveredExists {
-			assert.Equal(t, original, recovered, 
+			assert.Equal(t, original, recovered,
 				"Configuration value for %s should be recovered", key)
 		}
 	}
@@ -517,16 +517,16 @@ func (suite *FaultToleranceTestSuite) testLeaderElectionRecovery(t *testing.T) {
 	select {
 	case newLeaderID := <-newLeaderElected:
 		t.Logf("New leader elected: %s", newLeaderID)
-		
+
 		// Verify new leader is functional
 		newLeader := suite.cluster.GetNodeByID(newLeaderID)
 		require.NotNil(t, newLeader, "New leader should be available")
 		assert.True(t, newLeader.IsLeader(), "New leader should be in leader state")
-		
+
 		// Test consensus operation with new leader
 		err := newLeader.ApplyConsensusOperation("test_key", "test_value")
 		assert.NoError(t, err, "New leader should be able to perform consensus operations")
-		
+
 	case <-time.After(30 * time.Second):
 		t.Fatal("New leader not elected within timeout")
 	}
@@ -538,8 +538,8 @@ func (suite *FaultToleranceTestSuite) testSplitBrainRecovery(t *testing.T) {
 	require.GreaterOrEqual(t, len(nodes), 4, "Need at least 4 nodes for split-brain test")
 
 	// Create network partition
-	partition1 := nodes[:2]  // Minority partition
-	partition2 := nodes[2:]  // Majority partition
+	partition1 := nodes[:2] // Minority partition
+	partition2 := nodes[2:] // Majority partition
 
 	// Isolate partitions
 	for _, node1 := range partition1 {
@@ -649,7 +649,7 @@ func (suite *FaultToleranceTestSuite) testQuorumRecovery(t *testing.T) {
 			err := nodeToFail.SimulateFailure(fault_tolerance.FailureTypeCrash)
 			require.NoError(t, err, "Should be able to fail node")
 			failedNodes = append(failedNodes, nodeToFail)
-			
+
 			t.Logf("Failed node %s (%d/%d)", nodeToFail.GetID(), i+1, nodesToFail)
 		}
 	}
@@ -893,10 +893,10 @@ func (suite *FaultToleranceTestSuite) testWriteConsistency(t *testing.T) {
 		wg.Add(1)
 		go func(index int) {
 			defer wg.Done()
-			
+
 			key := fmt.Sprintf("write_test_%d", index)
 			value := fmt.Sprintf("value_%d", index)
-			
+
 			err := leader.ApplyConsensusOperation(key, value)
 			if err == nil {
 				atomic.AddInt32(&successCount, 1)
@@ -909,7 +909,7 @@ func (suite *FaultToleranceTestSuite) testWriteConsistency(t *testing.T) {
 	wg.Wait()
 
 	// Verify writes succeeded
-	assert.Greater(t, int(successCount), writeCount/2, 
+	assert.Greater(t, int(successCount), writeCount/2,
 		"Most writes should succeed")
 
 	// Wait for replication
@@ -923,7 +923,7 @@ func (suite *FaultToleranceTestSuite) testWriteConsistency(t *testing.T) {
 		for _, node := range nodes {
 			value, exists := node.GetConsensusValue(key)
 			if exists {
-				assert.Equal(t, expectedValue, value, 
+				assert.Equal(t, expectedValue, value,
 					"Node %s should have consistent write result for %s", node.GetID(), key)
 			}
 		}
@@ -1095,11 +1095,11 @@ func (suite *FaultToleranceTestSuite) simulateConsensusFailure() error {
 func (suite *FaultToleranceTestSuite) verifyStateConsistency(t *testing.T, originalState, currentState map[string]interface{}) {
 	// Verify critical state elements are preserved
 	criticalKeys := []string{"node_id", "cluster_config", "peer_list"}
-	
+
 	for _, key := range criticalKeys {
 		original, originalExists := originalState[key]
 		current, currentExists := currentState[key]
-		
+
 		if originalExists {
 			assert.True(t, currentExists, "Critical state key %s should be preserved", key)
 			if currentExists {

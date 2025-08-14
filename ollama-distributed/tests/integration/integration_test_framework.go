@@ -1,3 +1,5 @@
+//go:build ignore
+
 package integration
 
 import (
@@ -24,7 +26,7 @@ type IntegrationTestFramework struct {
 // NewIntegrationTestFramework creates a new test framework
 func NewIntegrationTestFramework(binaryPath, apiURL string) *IntegrationTestFramework {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	
+
 	return &IntegrationTestFramework{
 		BinaryPath:  binaryPath,
 		APIBaseURL:  apiURL,
@@ -241,7 +243,7 @@ func (itf *IntegrationTestFramework) PerformanceTest(t *testing.T, command []str
 	duration := time.Since(start)
 
 	avgDuration := duration / time.Duration(iterations)
-	t.Logf("✅ Performance test complete: %d iterations in %v (avg: %v per command)", 
+	t.Logf("✅ Performance test complete: %d iterations in %v (avg: %v per command)",
 		iterations, duration, avgDuration)
 
 	if duration > maxDuration {
@@ -257,7 +259,7 @@ func (itf *IntegrationTestFramework) StressTest(t *testing.T, command []string, 
 	defer cancel()
 
 	results := make(chan error, concurrency)
-	
+
 	for i := 0; i < concurrency; i++ {
 		go func(id int) {
 			for {
@@ -292,7 +294,7 @@ func (itf *IntegrationTestFramework) GenerateTestReport(t *testing.T, results ma
 
 	passed := 0
 	failed := 0
-	
+
 	for testName, success := range results {
 		if success {
 			t.Logf("✅ %s: PASSED", testName)

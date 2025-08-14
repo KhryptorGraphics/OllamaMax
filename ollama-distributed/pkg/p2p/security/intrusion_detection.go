@@ -11,64 +11,64 @@ import (
 
 // IntrusionDetectionSystem monitors network activity for suspicious behavior
 type IntrusionDetectionSystem struct {
-	mu                sync.RWMutex
-	peerBehavior      map[peer.ID]*PeerBehavior
-	threatRules       []ThreatRule
-	alertHandlers     []AlertHandler
-	config            *IDSConfig
-	
+	mu            sync.RWMutex
+	peerBehavior  map[peer.ID]*PeerBehavior
+	threatRules   []ThreatRule
+	alertHandlers []AlertHandler
+	config        *IDSConfig
+
 	// Metrics
-	metrics           *IDSMetrics
-	
+	metrics *IDSMetrics
+
 	// Lifecycle
-	ctx               context.Context
-	cancel            context.CancelFunc
-	wg                sync.WaitGroup
+	ctx    context.Context
+	cancel context.CancelFunc
+	wg     sync.WaitGroup
 }
 
 // PeerBehavior tracks behavior patterns for a peer
 type PeerBehavior struct {
-	PeerID            peer.ID
-	ConnectionCount   int64
-	MessageCount      int64
-	BytesTransferred  int64
-	FailedAttempts    int64
-	LastActivity      time.Time
-	FirstSeen         time.Time
-	
+	PeerID           peer.ID
+	ConnectionCount  int64
+	MessageCount     int64
+	BytesTransferred int64
+	FailedAttempts   int64
+	LastActivity     time.Time
+	FirstSeen        time.Time
+
 	// Behavioral patterns
-	ConnectionRate    float64  // connections per minute
-	MessageRate       float64  // messages per minute
-	DataRate          float64  // bytes per minute
-	FailureRate       float64  // failures per minute
-	
+	ConnectionRate float64 // connections per minute
+	MessageRate    float64 // messages per minute
+	DataRate       float64 // bytes per minute
+	FailureRate    float64 // failures per minute
+
 	// Anomaly scores
-	AnomalyScore      float64
-	ThreatLevel       ThreatLevel
-	
+	AnomalyScore float64
+	ThreatLevel  ThreatLevel
+
 	// Historical data
-	ActivityWindows   []*ActivityWindow
+	ActivityWindows []*ActivityWindow
 }
 
 // ActivityWindow represents activity in a time window
 type ActivityWindow struct {
-	StartTime         time.Time
-	EndTime           time.Time
-	Connections       int64
-	Messages          int64
-	Bytes             int64
-	Failures          int64
+	StartTime   time.Time
+	EndTime     time.Time
+	Connections int64
+	Messages    int64
+	Bytes       int64
+	Failures    int64
 }
 
 // ThreatRule defines a rule for detecting threats
 type ThreatRule struct {
-	ID                string
-	Name              string
-	Description       string
-	Severity          ThreatSeverity
-	Condition         func(*PeerBehavior) bool
-	Action            ThreatAction
-	Enabled           bool
+	ID          string
+	Name        string
+	Description string
+	Severity    ThreatSeverity
+	Condition   func(*PeerBehavior) bool
+	Action      ThreatAction
+	Enabled     bool
 }
 
 // ThreatLevel represents the threat level of a peer
@@ -105,14 +105,14 @@ const (
 
 // SecurityAlert represents a security alert
 type SecurityAlert struct {
-	ID          string
-	Timestamp   time.Time
-	PeerID      peer.ID
-	RuleID      string
-	Severity    ThreatSeverity
-	Message     string
-	Details     map[string]interface{}
-	Action      ThreatAction
+	ID        string
+	Timestamp time.Time
+	PeerID    peer.ID
+	RuleID    string
+	Severity  ThreatSeverity
+	Message   string
+	Details   map[string]interface{}
+	Action    ThreatAction
 }
 
 // AlertHandler handles security alerts
@@ -120,50 +120,50 @@ type AlertHandler func(*SecurityAlert)
 
 // IDSConfig configures the intrusion detection system
 type IDSConfig struct {
-	WindowSize        time.Duration
-	MaxWindows        int
-	UpdateInterval    time.Duration
-	AnomalyThreshold  float64
-	
+	WindowSize       time.Duration
+	MaxWindows       int
+	UpdateInterval   time.Duration
+	AnomalyThreshold float64
+
 	// Rate limits for anomaly detection
-	MaxConnectionRate float64  // connections per minute
-	MaxMessageRate    float64  // messages per minute
-	MaxDataRate       float64  // bytes per minute
-	MaxFailureRate    float64  // failures per minute
-	
+	MaxConnectionRate float64 // connections per minute
+	MaxMessageRate    float64 // messages per minute
+	MaxDataRate       float64 // bytes per minute
+	MaxFailureRate    float64 // failures per minute
+
 	// Behavioral analysis
-	LearningPeriod    time.Duration
-	BaselineWindow    time.Duration
+	LearningPeriod time.Duration
+	BaselineWindow time.Duration
 }
 
 // IDSMetrics tracks IDS performance
 type IDSMetrics struct {
-	TotalAlerts       int64
-	AlertsBySeverity  map[ThreatSeverity]int64
-	PeersMonitored    int64
-	ThreatsBlocked    int64
-	LastUpdate        time.Time
+	TotalAlerts      int64
+	AlertsBySeverity map[ThreatSeverity]int64
+	PeersMonitored   int64
+	ThreatsBlocked   int64
+	LastUpdate       time.Time
 }
 
 // NewIntrusionDetectionSystem creates a new IDS
 func NewIntrusionDetectionSystem(config *IDSConfig) *IntrusionDetectionSystem {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	if config == nil {
 		config = &IDSConfig{
 			WindowSize:        time.Minute,
 			MaxWindows:        60, // 1 hour of history
 			UpdateInterval:    10 * time.Second,
 			AnomalyThreshold:  0.8,
-			MaxConnectionRate: 10.0,  // 10 connections per minute
-			MaxMessageRate:    100.0, // 100 messages per minute
+			MaxConnectionRate: 10.0,        // 10 connections per minute
+			MaxMessageRate:    100.0,       // 100 messages per minute
 			MaxDataRate:       1024 * 1024, // 1MB per minute
-			MaxFailureRate:    5.0,   // 5 failures per minute
+			MaxFailureRate:    5.0,         // 5 failures per minute
 			LearningPeriod:    24 * time.Hour,
 			BaselineWindow:    time.Hour,
 		}
 	}
-	
+
 	ids := &IntrusionDetectionSystem{
 		peerBehavior:  make(map[peer.ID]*PeerBehavior),
 		threatRules:   getDefaultThreatRules(),
@@ -175,11 +175,11 @@ func NewIntrusionDetectionSystem(config *IDSConfig) *IntrusionDetectionSystem {
 		ctx:    ctx,
 		cancel: cancel,
 	}
-	
+
 	// Start monitoring
 	ids.wg.Add(1)
 	go ids.monitoringLoop()
-	
+
 	return ids
 }
 
@@ -187,7 +187,7 @@ func NewIntrusionDetectionSystem(config *IDSConfig) *IntrusionDetectionSystem {
 func (ids *IntrusionDetectionSystem) RecordActivity(peerID peer.ID, activityType string, data map[string]interface{}) {
 	ids.mu.Lock()
 	defer ids.mu.Unlock()
-	
+
 	behavior, exists := ids.peerBehavior[peerID]
 	if !exists {
 		behavior = &PeerBehavior{
@@ -198,9 +198,9 @@ func (ids *IntrusionDetectionSystem) RecordActivity(peerID peer.ID, activityType
 		}
 		ids.peerBehavior[peerID] = behavior
 	}
-	
+
 	behavior.LastActivity = time.Now()
-	
+
 	// Update counters based on activity type
 	switch activityType {
 	case "connection":
@@ -213,7 +213,7 @@ func (ids *IntrusionDetectionSystem) RecordActivity(peerID peer.ID, activityType
 	case "failure":
 		behavior.FailedAttempts++
 	}
-	
+
 	// Update current window
 	ids.updateActivityWindow(behavior)
 }
@@ -222,7 +222,7 @@ func (ids *IntrusionDetectionSystem) RecordActivity(peerID peer.ID, activityType
 func (ids *IntrusionDetectionSystem) updateActivityWindow(behavior *PeerBehavior) {
 	now := time.Now()
 	windowStart := now.Truncate(ids.config.WindowSize)
-	
+
 	// Find or create current window
 	var currentWindow *ActivityWindow
 	if len(behavior.ActivityWindows) > 0 {
@@ -231,20 +231,20 @@ func (ids *IntrusionDetectionSystem) updateActivityWindow(behavior *PeerBehavior
 			currentWindow = lastWindow
 		}
 	}
-	
+
 	if currentWindow == nil {
 		currentWindow = &ActivityWindow{
 			StartTime: windowStart,
 			EndTime:   windowStart.Add(ids.config.WindowSize),
 		}
 		behavior.ActivityWindows = append(behavior.ActivityWindows, currentWindow)
-		
+
 		// Limit window history
 		if len(behavior.ActivityWindows) > ids.config.MaxWindows {
 			behavior.ActivityWindows = behavior.ActivityWindows[1:]
 		}
 	}
-	
+
 	// Update window counters (simplified - in reality you'd track increments)
 	currentWindow.Connections = behavior.ConnectionCount
 	currentWindow.Messages = behavior.MessageCount
@@ -257,22 +257,22 @@ func (ids *IntrusionDetectionSystem) AnalyzeBehavior(peerID peer.ID) {
 	ids.mu.RLock()
 	behavior, exists := ids.peerBehavior[peerID]
 	ids.mu.RUnlock()
-	
+
 	if !exists {
 		return
 	}
-	
+
 	// Calculate rates
 	ids.calculateRates(behavior)
-	
+
 	// Calculate anomaly score
 	anomalyScore := ids.calculateAnomalyScore(behavior)
-	
+
 	ids.mu.Lock()
 	behavior.AnomalyScore = anomalyScore
 	behavior.ThreatLevel = ids.calculateThreatLevel(anomalyScore)
 	ids.mu.Unlock()
-	
+
 	// Check threat rules
 	ids.checkThreatRules(behavior)
 }
@@ -282,18 +282,18 @@ func (ids *IntrusionDetectionSystem) calculateRates(behavior *PeerBehavior) {
 	if len(behavior.ActivityWindows) < 2 {
 		return
 	}
-	
+
 	// Calculate rates based on recent windows
 	recentWindows := behavior.ActivityWindows
 	if len(recentWindows) > 10 {
 		recentWindows = recentWindows[len(recentWindows)-10:] // Last 10 windows
 	}
-	
+
 	totalTime := float64(len(recentWindows)) * ids.config.WindowSize.Minutes()
 	if totalTime == 0 {
 		return
 	}
-	
+
 	// Calculate average rates
 	var totalConnections, totalMessages, totalBytes, totalFailures int64
 	for _, window := range recentWindows {
@@ -302,7 +302,7 @@ func (ids *IntrusionDetectionSystem) calculateRates(behavior *PeerBehavior) {
 		totalBytes += window.Bytes
 		totalFailures += window.Failures
 	}
-	
+
 	behavior.ConnectionRate = float64(totalConnections) / totalTime
 	behavior.MessageRate = float64(totalMessages) / totalTime
 	behavior.DataRate = float64(totalBytes) / totalTime
@@ -312,7 +312,7 @@ func (ids *IntrusionDetectionSystem) calculateRates(behavior *PeerBehavior) {
 // calculateAnomalyScore calculates an anomaly score for a peer
 func (ids *IntrusionDetectionSystem) calculateAnomalyScore(behavior *PeerBehavior) float64 {
 	score := 0.0
-	
+
 	// Check rate anomalies
 	if behavior.ConnectionRate > ids.config.MaxConnectionRate {
 		score += 0.3
@@ -326,12 +326,12 @@ func (ids *IntrusionDetectionSystem) calculateAnomalyScore(behavior *PeerBehavio
 	if behavior.FailureRate > ids.config.MaxFailureRate {
 		score += 0.3
 	}
-	
+
 	// Normalize score
 	if score > 1.0 {
 		score = 1.0
 	}
-	
+
 	return score
 }
 
@@ -357,7 +357,7 @@ func (ids *IntrusionDetectionSystem) checkThreatRules(behavior *PeerBehavior) {
 		if !rule.Enabled {
 			continue
 		}
-		
+
 		if rule.Condition(behavior) {
 			alert := &SecurityAlert{
 				ID:        fmt.Sprintf("alert-%d", time.Now().UnixNano()),
@@ -373,7 +373,7 @@ func (ids *IntrusionDetectionSystem) checkThreatRules(behavior *PeerBehavior) {
 				},
 				Action: rule.Action,
 			}
-			
+
 			ids.handleAlert(alert)
 		}
 	}
@@ -383,7 +383,7 @@ func (ids *IntrusionDetectionSystem) checkThreatRules(behavior *PeerBehavior) {
 func (ids *IntrusionDetectionSystem) handleAlert(alert *SecurityAlert) {
 	ids.metrics.TotalAlerts++
 	ids.metrics.AlertsBySeverity[alert.Severity]++
-	
+
 	// Call alert handlers
 	for _, handler := range ids.alertHandlers {
 		go handler(alert)
@@ -401,7 +401,7 @@ func (ids *IntrusionDetectionSystem) AddAlertHandler(handler AlertHandler) {
 func (ids *IntrusionDetectionSystem) GetPeerThreatLevel(peerID peer.ID) ThreatLevel {
 	ids.mu.RLock()
 	defer ids.mu.RUnlock()
-	
+
 	if behavior, exists := ids.peerBehavior[peerID]; exists {
 		return behavior.ThreatLevel
 	}
@@ -412,21 +412,21 @@ func (ids *IntrusionDetectionSystem) GetPeerThreatLevel(peerID peer.ID) ThreatLe
 func (ids *IntrusionDetectionSystem) GetMetrics() *IDSMetrics {
 	ids.mu.RLock()
 	defer ids.mu.RUnlock()
-	
+
 	metrics := *ids.metrics
 	metrics.PeersMonitored = int64(len(ids.peerBehavior))
 	metrics.LastUpdate = time.Now()
-	
+
 	return &metrics
 }
 
 // monitoringLoop runs the main monitoring loop
 func (ids *IntrusionDetectionSystem) monitoringLoop() {
 	defer ids.wg.Done()
-	
+
 	ticker := time.NewTicker(ids.config.UpdateInterval)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-ids.ctx.Done():
@@ -445,7 +445,7 @@ func (ids *IntrusionDetectionSystem) performAnalysis() {
 		peers = append(peers, peerID)
 	}
 	ids.mu.RUnlock()
-	
+
 	for _, peerID := range peers {
 		ids.AnalyzeBehavior(peerID)
 	}

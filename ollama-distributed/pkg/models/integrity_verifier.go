@@ -16,54 +16,54 @@ import (
 
 // IntegrityVerifier handles model integrity verification with multiple hash algorithms
 type IntegrityVerifier struct {
-	mu              sync.RWMutex
-	
+	mu sync.RWMutex
+
 	// Verification cache
 	verificationCache map[string]*VerificationResult
-	
+
 	// Configuration
-	config          *VerificationConfig
-	
+	config *VerificationConfig
+
 	// Metrics
-	metrics         *VerificationMetrics
+	metrics *VerificationMetrics
 }
 
 // VerificationResult represents the result of an integrity verification
 type VerificationResult struct {
-	ModelName       string                  `json:"model_name"`
-	ModelVersion    string                  `json:"model_version"`
-	FilePath        string                  `json:"file_path"`
-	FileSize        int64                   `json:"file_size"`
-	
+	ModelName    string `json:"model_name"`
+	ModelVersion string `json:"model_version"`
+	FilePath     string `json:"file_path"`
+	FileSize     int64  `json:"file_size"`
+
 	// Hash results
-	Checksums       map[HashAlgorithm]string `json:"checksums"`
+	Checksums         map[HashAlgorithm]string `json:"checksums"`
 	ExpectedChecksums map[HashAlgorithm]string `json:"expected_checksums"`
-	
+
 	// Verification status
-	Verified        bool                    `json:"verified"`
-	VerificationTime time.Time              `json:"verification_time"`
-	Duration        time.Duration           `json:"duration"`
-	
+	Verified         bool          `json:"verified"`
+	VerificationTime time.Time     `json:"verification_time"`
+	Duration         time.Duration `json:"duration"`
+
 	// Error information
-	ErrorMessage    string                  `json:"error_message,omitempty"`
-	FailedAlgorithms []HashAlgorithm        `json:"failed_algorithms,omitempty"`
+	ErrorMessage     string          `json:"error_message,omitempty"`
+	FailedAlgorithms []HashAlgorithm `json:"failed_algorithms,omitempty"`
 }
 
 // VerificationConfig configures integrity verification
 type VerificationConfig struct {
 	// Hash algorithms to use
-	HashAlgorithms  []HashAlgorithm
-	
+	HashAlgorithms []HashAlgorithm
+
 	// Verification settings
-	EnableCaching   bool
-	CacheTimeout    time.Duration
-	MaxCacheSize    int
-	
+	EnableCaching bool
+	CacheTimeout  time.Duration
+	MaxCacheSize  int
+
 	// Performance settings
-	BufferSize      int
-	EnableParallel  bool
-	MaxConcurrent   int
-	
+	BufferSize     int
+	EnableParallel bool
+	MaxConcurrent  int
+
 	// Verification policies
 	RequireAllHashes bool
 	FailOnFirstError bool
@@ -72,14 +72,14 @@ type VerificationConfig struct {
 
 // VerificationMetrics tracks verification performance
 type VerificationMetrics struct {
-	TotalVerifications    int64                           `json:"total_verifications"`
-	SuccessfulVerifications int64                         `json:"successful_verifications"`
-	FailedVerifications   int64                           `json:"failed_verifications"`
-	CacheHits            int64                           `json:"cache_hits"`
-	CacheMisses          int64                           `json:"cache_misses"`
-	AverageVerificationTime time.Duration                `json:"average_verification_time"`
-	VerificationsByAlgorithm map[HashAlgorithm]int64     `json:"verifications_by_algorithm"`
-	LastUpdated          time.Time                       `json:"last_updated"`
+	TotalVerifications       int64                   `json:"total_verifications"`
+	SuccessfulVerifications  int64                   `json:"successful_verifications"`
+	FailedVerifications      int64                   `json:"failed_verifications"`
+	CacheHits                int64                   `json:"cache_hits"`
+	CacheMisses              int64                   `json:"cache_misses"`
+	AverageVerificationTime  time.Duration           `json:"average_verification_time"`
+	VerificationsByAlgorithm map[HashAlgorithm]int64 `json:"verifications_by_algorithm"`
+	LastUpdated              time.Time               `json:"last_updated"`
 }
 
 // HashAlgorithm represents supported hash algorithms
@@ -108,7 +108,7 @@ func NewIntegrityVerifier(config *VerificationConfig) *IntegrityVerifier {
 			EnableDeepVerify: true,
 		}
 	}
-	
+
 	return &IntegrityVerifier{
 		verificationCache: make(map[string]*VerificationResult),
 		config:            config,
@@ -121,7 +121,7 @@ func NewIntegrityVerifier(config *VerificationConfig) *IntegrityVerifier {
 // VerifyModel verifies the integrity of a model file
 func (iv *IntegrityVerifier) VerifyModel(modelName, modelVersion, filePath string, expectedChecksums map[HashAlgorithm]string) (*VerificationResult, error) {
 	startTime := time.Now()
-	
+
 	// Check cache first
 	if iv.config.EnableCaching {
 		cacheKey := fmt.Sprintf("%s_%s_%s", modelName, modelVersion, filePath)
@@ -131,13 +131,13 @@ func (iv *IntegrityVerifier) VerifyModel(modelName, modelVersion, filePath strin
 		}
 		iv.metrics.CacheMisses++
 	}
-	
+
 	// Get file info
 	fileInfo, err := os.Stat(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to stat file: %w", err)
 	}
-	
+
 	// Create verification result
 	result := &VerificationResult{
 		ModelName:         modelName,
@@ -148,7 +148,7 @@ func (iv *IntegrityVerifier) VerifyModel(modelName, modelVersion, filePath strin
 		ExpectedChecksums: expectedChecksums,
 		VerificationTime:  startTime,
 	}
-	
+
 	// Calculate checksums
 	if err := iv.calculateChecksums(filePath, result); err != nil {
 		result.ErrorMessage = err.Error()
@@ -156,20 +156,20 @@ func (iv *IntegrityVerifier) VerifyModel(modelName, modelVersion, filePath strin
 		iv.metrics.FailedVerifications++
 		return result, err
 	}
-	
+
 	// Verify checksums
 	result.Verified = iv.verifyChecksums(result)
 	result.Duration = time.Since(startTime)
-	
+
 	// Update metrics
 	iv.updateMetrics(result)
-	
+
 	// Cache result
 	if iv.config.EnableCaching {
 		cacheKey := fmt.Sprintf("%s_%s_%s", modelName, modelVersion, filePath)
 		iv.cacheResult(cacheKey, result)
 	}
-	
+
 	return result, nil
 }
 
@@ -180,11 +180,11 @@ func (iv *IntegrityVerifier) calculateChecksums(filePath string, result *Verific
 		return fmt.Errorf("failed to open file: %w", err)
 	}
 	defer file.Close()
-	
+
 	if iv.config.EnableParallel && len(iv.config.HashAlgorithms) > 1 {
 		return iv.calculateChecksumsParallel(file, result)
 	}
-	
+
 	return iv.calculateChecksumsSequential(file, result)
 }
 
@@ -195,7 +195,7 @@ func (iv *IntegrityVerifier) calculateChecksumsSequential(file *os.File, result 
 		if _, err := file.Seek(0, 0); err != nil {
 			return fmt.Errorf("failed to seek file: %w", err)
 		}
-		
+
 		checksum, err := iv.calculateSingleChecksum(file, algorithm)
 		if err != nil {
 			if iv.config.FailOnFirstError {
@@ -204,11 +204,11 @@ func (iv *IntegrityVerifier) calculateChecksumsSequential(file *os.File, result 
 			result.FailedAlgorithms = append(result.FailedAlgorithms, algorithm)
 			continue
 		}
-		
+
 		result.Checksums[algorithm] = checksum
 		iv.metrics.VerificationsByAlgorithm[algorithm]++
 	}
-	
+
 	return nil
 }
 
@@ -217,7 +217,7 @@ func (iv *IntegrityVerifier) calculateChecksumsParallel(file *os.File, result *V
 	// Create hash writers for each algorithm
 	hashers := make(map[HashAlgorithm]hash.Hash)
 	writers := make([]io.Writer, 0, len(iv.config.HashAlgorithms))
-	
+
 	for _, algorithm := range iv.config.HashAlgorithms {
 		hasher := iv.createHasher(algorithm)
 		if hasher == nil {
@@ -226,27 +226,27 @@ func (iv *IntegrityVerifier) calculateChecksumsParallel(file *os.File, result *V
 		hashers[algorithm] = hasher
 		writers = append(writers, hasher)
 	}
-	
+
 	if len(writers) == 0 {
 		return fmt.Errorf("no valid hash algorithms configured")
 	}
-	
+
 	// Create multi-writer to write to all hashers simultaneously
 	multiWriter := io.MultiWriter(writers...)
-	
+
 	// Copy file data to all hashers
 	buffer := make([]byte, iv.config.BufferSize)
 	if _, err := io.CopyBuffer(multiWriter, file, buffer); err != nil {
 		return fmt.Errorf("failed to read file: %w", err)
 	}
-	
+
 	// Extract checksums
 	for algorithm, hasher := range hashers {
 		checksum := hex.EncodeToString(hasher.Sum(nil))
 		result.Checksums[algorithm] = checksum
 		iv.metrics.VerificationsByAlgorithm[algorithm]++
 	}
-	
+
 	return nil
 }
 
@@ -256,12 +256,12 @@ func (iv *IntegrityVerifier) calculateSingleChecksum(reader io.Reader, algorithm
 	if hasher == nil {
 		return "", fmt.Errorf("unsupported hash algorithm: %s", algorithm)
 	}
-	
+
 	buffer := make([]byte, iv.config.BufferSize)
 	if _, err := io.CopyBuffer(hasher, reader, buffer); err != nil {
 		return "", fmt.Errorf("failed to calculate %s checksum: %w", algorithm, err)
 	}
-	
+
 	return hex.EncodeToString(hasher.Sum(nil)), nil
 }
 
@@ -287,10 +287,10 @@ func (iv *IntegrityVerifier) verifyChecksums(result *VerificationResult) bool {
 		// No expected checksums provided, consider verified if we calculated any
 		return len(result.Checksums) > 0
 	}
-	
+
 	verified := true
 	matchedAlgorithms := 0
-	
+
 	for algorithm, expectedChecksum := range result.ExpectedChecksums {
 		actualChecksum, exists := result.Checksums[algorithm]
 		if !exists {
@@ -300,7 +300,7 @@ func (iv *IntegrityVerifier) verifyChecksums(result *VerificationResult) bool {
 			}
 			continue
 		}
-		
+
 		if actualChecksum != expectedChecksum {
 			verified = false
 			result.FailedAlgorithms = append(result.FailedAlgorithms, algorithm)
@@ -308,12 +308,12 @@ func (iv *IntegrityVerifier) verifyChecksums(result *VerificationResult) bool {
 			matchedAlgorithms++
 		}
 	}
-	
+
 	// If we don't require all hashes, at least one must match
 	if !iv.config.RequireAllHashes && matchedAlgorithms == 0 && len(result.ExpectedChecksums) > 0 {
 		verified = false
 	}
-	
+
 	return verified
 }
 
@@ -323,10 +323,10 @@ func (iv *IntegrityVerifier) VerifyChunk(chunkData []byte, expectedChecksum stri
 	if hasher == nil {
 		return false, "", fmt.Errorf("unsupported hash algorithm: %s", algorithm)
 	}
-	
+
 	hasher.Write(chunkData)
 	actualChecksum := hex.EncodeToString(hasher.Sum(nil))
-	
+
 	verified := actualChecksum == expectedChecksum
 	return verified, actualChecksum, nil
 }
@@ -338,12 +338,12 @@ func (iv *IntegrityVerifier) QuickVerify(filePath string, expectedSHA256 string)
 		return false, fmt.Errorf("failed to open file: %w", err)
 	}
 	defer file.Close()
-	
+
 	checksum, err := iv.calculateSingleChecksum(file, HashAlgorithmSHA256)
 	if err != nil {
 		return false, err
 	}
-	
+
 	return checksum == expectedSHA256, nil
 }
 
@@ -352,13 +352,13 @@ func (iv *IntegrityVerifier) DeepVerify(modelName, modelVersion, filePath string
 	if !iv.config.EnableDeepVerify {
 		return iv.VerifyModel(modelName, modelVersion, filePath, expectedChecksums)
 	}
-	
+
 	// Perform standard verification first
 	result, err := iv.VerifyModel(modelName, modelVersion, filePath, expectedChecksums)
 	if err != nil {
 		return result, err
 	}
-	
+
 	// Additional deep verification checks
 	if result.Verified {
 		// Check file permissions
@@ -370,17 +370,17 @@ func (iv *IntegrityVerifier) DeepVerify(modelName, modelVersion, filePath string
 				result.ErrorMessage = "file is not readable"
 			}
 		}
-		
+
 		// Verify file is not empty
 		if result.FileSize == 0 {
 			result.Verified = false
 			result.ErrorMessage = "file is empty"
 		}
-		
+
 		// Additional format-specific checks could be added here
 		// For example, checking if the file is a valid model format
 	}
-	
+
 	return result, nil
 }
 
@@ -388,18 +388,18 @@ func (iv *IntegrityVerifier) DeepVerify(modelName, modelVersion, filePath string
 func (iv *IntegrityVerifier) getCachedResult(cacheKey string) *VerificationResult {
 	iv.mu.RLock()
 	defer iv.mu.RUnlock()
-	
+
 	result, exists := iv.verificationCache[cacheKey]
 	if !exists {
 		return nil
 	}
-	
+
 	// Check if cache entry is still valid
 	if time.Since(result.VerificationTime) > iv.config.CacheTimeout {
 		delete(iv.verificationCache, cacheKey)
 		return nil
 	}
-	
+
 	return result
 }
 
@@ -407,25 +407,25 @@ func (iv *IntegrityVerifier) getCachedResult(cacheKey string) *VerificationResul
 func (iv *IntegrityVerifier) cacheResult(cacheKey string, result *VerificationResult) {
 	iv.mu.Lock()
 	defer iv.mu.Unlock()
-	
+
 	// Check cache size limit
 	if len(iv.verificationCache) >= iv.config.MaxCacheSize {
 		// Remove oldest entry
 		var oldestKey string
 		var oldestTime time.Time
-		
+
 		for key, cachedResult := range iv.verificationCache {
 			if oldestKey == "" || cachedResult.VerificationTime.Before(oldestTime) {
 				oldestKey = key
 				oldestTime = cachedResult.VerificationTime
 			}
 		}
-		
+
 		if oldestKey != "" {
 			delete(iv.verificationCache, oldestKey)
 		}
 	}
-	
+
 	// Cache the result
 	iv.verificationCache[cacheKey] = result
 }
@@ -434,23 +434,23 @@ func (iv *IntegrityVerifier) cacheResult(cacheKey string, result *VerificationRe
 func (iv *IntegrityVerifier) updateMetrics(result *VerificationResult) {
 	iv.mu.Lock()
 	defer iv.mu.Unlock()
-	
+
 	iv.metrics.TotalVerifications++
-	
+
 	if result.Verified {
 		iv.metrics.SuccessfulVerifications++
 	} else {
 		iv.metrics.FailedVerifications++
 	}
-	
+
 	// Update average verification time
 	if iv.metrics.TotalVerifications == 1 {
 		iv.metrics.AverageVerificationTime = result.Duration
 	} else {
-		totalTime := time.Duration(iv.metrics.TotalVerifications-1) * iv.metrics.AverageVerificationTime + result.Duration
+		totalTime := time.Duration(iv.metrics.TotalVerifications-1)*iv.metrics.AverageVerificationTime + result.Duration
 		iv.metrics.AverageVerificationTime = totalTime / time.Duration(iv.metrics.TotalVerifications)
 	}
-	
+
 	iv.metrics.LastUpdated = time.Now()
 }
 
@@ -458,7 +458,7 @@ func (iv *IntegrityVerifier) updateMetrics(result *VerificationResult) {
 func (iv *IntegrityVerifier) GetMetrics() *VerificationMetrics {
 	iv.mu.RLock()
 	defer iv.mu.RUnlock()
-	
+
 	metrics := *iv.metrics
 	return &metrics
 }
@@ -467,7 +467,7 @@ func (iv *IntegrityVerifier) GetMetrics() *VerificationMetrics {
 func (iv *IntegrityVerifier) ClearCache() {
 	iv.mu.Lock()
 	defer iv.mu.Unlock()
-	
+
 	iv.verificationCache = make(map[string]*VerificationResult)
 }
 
@@ -475,7 +475,7 @@ func (iv *IntegrityVerifier) ClearCache() {
 func (iv *IntegrityVerifier) GetCacheStats() map[string]interface{} {
 	iv.mu.RLock()
 	defer iv.mu.RUnlock()
-	
+
 	return map[string]interface{}{
 		"cache_size":     len(iv.verificationCache),
 		"max_cache_size": iv.config.MaxCacheSize,

@@ -15,14 +15,14 @@ type AlertingIntegration struct {
 	healthManager   *HealthCheckManager
 	notificationSys *NotificationSystem
 	dashboard       *MonitoringDashboard
-	
+
 	// Alert rules and thresholds
-	alertRules    map[string]*AlertRule
-	alertHistory  map[string]*AlertHistory
-	
+	alertRules   map[string]*AlertRule
+	alertHistory map[string]*AlertHistory
+
 	// Configuration
 	config *AlertingConfig
-	
+
 	// State management
 	mu     sync.RWMutex
 	ctx    context.Context
@@ -31,45 +31,45 @@ type AlertingIntegration struct {
 
 // AlertingConfig configures the alerting integration
 type AlertingConfig struct {
-	Enabled           bool          `json:"enabled"`
+	Enabled            bool          `json:"enabled"`
 	EvaluationInterval time.Duration `json:"evaluation_interval"`
-	AlertTimeout      time.Duration `json:"alert_timeout"`
-	
+	AlertTimeout       time.Duration `json:"alert_timeout"`
+
 	// Thresholds
-	HighErrorRateThreshold    float64 `json:"high_error_rate_threshold"`
-	HighLatencyThreshold      float64 `json:"high_latency_threshold"`
-	LowConnectivityThreshold  int     `json:"low_connectivity_threshold"`
-	HighMemoryThreshold       float64 `json:"high_memory_threshold"`
-	HighCPUThreshold          float64 `json:"high_cpu_threshold"`
-	
+	HighErrorRateThreshold   float64 `json:"high_error_rate_threshold"`
+	HighLatencyThreshold     float64 `json:"high_latency_threshold"`
+	LowConnectivityThreshold int     `json:"low_connectivity_threshold"`
+	HighMemoryThreshold      float64 `json:"high_memory_threshold"`
+	HighCPUThreshold         float64 `json:"high_cpu_threshold"`
+
 	// Rate limiting
 	AlertCooldown time.Duration `json:"alert_cooldown"`
 }
 
 // AlertRule defines an alerting rule
 type AlertRule struct {
-	Name        string                 `json:"name"`
-	Description string                 `json:"description"`
-	Query       string                 `json:"query"`
-	Threshold   float64                `json:"threshold"`
-	Operator    string                 `json:"operator"` // >, <, >=, <=, ==, !=
-	Duration    time.Duration          `json:"duration"`
-	Severity    string                 `json:"severity"`
-	Labels      map[string]string      `json:"labels"`
-	Annotations map[string]string      `json:"annotations"`
-	Enabled     bool                   `json:"enabled"`
-	LastFired   time.Time              `json:"last_fired"`
+	Name        string            `json:"name"`
+	Description string            `json:"description"`
+	Query       string            `json:"query"`
+	Threshold   float64           `json:"threshold"`
+	Operator    string            `json:"operator"` // >, <, >=, <=, ==, !=
+	Duration    time.Duration     `json:"duration"`
+	Severity    string            `json:"severity"`
+	Labels      map[string]string `json:"labels"`
+	Annotations map[string]string `json:"annotations"`
+	Enabled     bool              `json:"enabled"`
+	LastFired   time.Time         `json:"last_fired"`
 }
 
 // AlertHistory tracks alert firing history
 type AlertHistory struct {
-	RuleName    string    `json:"rule_name"`
-	FiredAt     time.Time `json:"fired_at"`
-	ResolvedAt  time.Time `json:"resolved_at"`
-	Duration    time.Duration `json:"duration"`
-	Status      string    `json:"status"` // firing, resolved
-	Value       float64   `json:"value"`
-	Threshold   float64   `json:"threshold"`
+	RuleName   string        `json:"rule_name"`
+	FiredAt    time.Time     `json:"fired_at"`
+	ResolvedAt time.Time     `json:"resolved_at"`
+	Duration   time.Duration `json:"duration"`
+	Status     string        `json:"status"` // firing, resolved
+	Value      float64       `json:"value"`
+	Threshold  float64       `json:"threshold"`
 }
 
 // NewAlertingIntegration creates a new alerting integration
@@ -83,9 +83,9 @@ func NewAlertingIntegration(
 	if config == nil {
 		config = DefaultAlertingConfig()
 	}
-	
+
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	ai := &AlertingIntegration{
 		metricsRegistry: metricsRegistry,
 		healthManager:   healthManager,
@@ -97,10 +97,10 @@ func NewAlertingIntegration(
 		ctx:             ctx,
 		cancel:          cancel,
 	}
-	
+
 	// Initialize default alert rules
 	ai.initializeDefaultRules()
-	
+
 	return ai
 }
 
@@ -124,7 +124,7 @@ func (ai *AlertingIntegration) initializeDefaultRules() {
 			"description": "Error rate is above threshold",
 		},
 	}
-	
+
 	// High latency alert
 	ai.alertRules["high_latency"] = &AlertRule{
 		Name:        "HighLatency",
@@ -143,7 +143,7 @@ func (ai *AlertingIntegration) initializeDefaultRules() {
 			"description": "Response latency is above threshold",
 		},
 	}
-	
+
 	// Low P2P connectivity alert
 	ai.alertRules["low_connectivity"] = &AlertRule{
 		Name:        "LowP2PConnectivity",
@@ -162,7 +162,7 @@ func (ai *AlertingIntegration) initializeDefaultRules() {
 			"description": "Number of P2P connections is below threshold",
 		},
 	}
-	
+
 	// Service health alert
 	ai.alertRules["service_unhealthy"] = &AlertRule{
 		Name:        "ServiceUnhealthy",
@@ -181,7 +181,7 @@ func (ai *AlertingIntegration) initializeDefaultRules() {
 			"description": "Service health check is failing",
 		},
 	}
-	
+
 	log.Info().
 		Int("rules_count", len(ai.alertRules)).
 		Msg("Default alert rules initialized")
@@ -193,14 +193,14 @@ func (ai *AlertingIntegration) Start() error {
 		log.Info().Msg("Alerting integration disabled")
 		return nil
 	}
-	
+
 	// Start alert evaluation loop
 	go ai.evaluationLoop()
-	
+
 	log.Info().
 		Dur("evaluation_interval", ai.config.EvaluationInterval).
 		Msg("Alerting integration started")
-	
+
 	return nil
 }
 
@@ -208,7 +208,7 @@ func (ai *AlertingIntegration) Start() error {
 func (ai *AlertingIntegration) evaluationLoop() {
 	ticker := time.NewTicker(ai.config.EvaluationInterval)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-ai.ctx.Done():
@@ -223,20 +223,20 @@ func (ai *AlertingIntegration) evaluationLoop() {
 func (ai *AlertingIntegration) evaluateRules() {
 	ai.mu.RLock()
 	defer ai.mu.RUnlock()
-	
+
 	for ruleName, rule := range ai.alertRules {
 		if !rule.Enabled {
 			continue
 		}
-		
+
 		// Check cooldown period
 		if time.Since(rule.LastFired) < ai.config.AlertCooldown {
 			continue
 		}
-		
+
 		// Evaluate rule
 		shouldFire, value := ai.evaluateRule(rule)
-		
+
 		if shouldFire {
 			ai.fireAlert(ruleName, rule, value)
 		}
@@ -246,7 +246,7 @@ func (ai *AlertingIntegration) evaluateRules() {
 // evaluateRule evaluates a single alert rule
 func (ai *AlertingIntegration) evaluateRule(rule *AlertRule) (bool, float64) {
 	var value float64
-	
+
 	switch rule.Labels["type"] {
 	case "error_rate":
 		value = ai.getErrorRate()
@@ -259,7 +259,7 @@ func (ai *AlertingIntegration) evaluateRule(rule *AlertRule) (bool, float64) {
 	default:
 		return false, 0
 	}
-	
+
 	// Evaluate threshold
 	switch rule.Operator {
 	case ">":
@@ -284,15 +284,15 @@ func (ai *AlertingIntegration) getErrorRate() float64 {
 	if ai.metricsRegistry == nil {
 		return 0
 	}
-	
+
 	// Get error rate from metrics
 	totalRequests := ai.metricsRegistry.GetMetricValue("ollama_distributed_api_requests_total")
 	errorRequests := ai.metricsRegistry.GetMetricValue("ollama_distributed_api_requests_total{status=~\"5..\"}")
-	
+
 	if totalRequests > 0 {
 		return errorRequests / totalRequests
 	}
-	
+
 	return 0
 }
 
@@ -301,7 +301,7 @@ func (ai *AlertingIntegration) getLatency() float64 {
 	if ai.metricsRegistry == nil {
 		return 0
 	}
-	
+
 	// Get 95th percentile latency
 	return ai.metricsRegistry.GetMetricValue("ollama_distributed_api_request_duration_seconds{quantile=\"0.95\"}")
 }
@@ -311,7 +311,7 @@ func (ai *AlertingIntegration) getP2PConnectivity() float64 {
 	if ai.metricsRegistry == nil {
 		return 0
 	}
-	
+
 	return ai.metricsRegistry.GetMetricValue("ollama_distributed_p2p_connections_active")
 }
 
@@ -320,22 +320,22 @@ func (ai *AlertingIntegration) getServiceHealth() float64 {
 	if ai.healthManager == nil {
 		return 1 // Assume healthy if no health manager
 	}
-	
+
 	health := ai.healthManager.GetOverallHealth()
 	if health.Status == "healthy" {
 		return 1
 	}
-	
+
 	return 0
 }
 
 // fireAlert fires an alert
 func (ai *AlertingIntegration) fireAlert(ruleName string, rule *AlertRule, value float64) {
 	now := time.Now()
-	
+
 	// Update rule last fired time
 	rule.LastFired = now
-	
+
 	// Create alert history entry
 	history := &AlertHistory{
 		RuleName:  ruleName,
@@ -345,16 +345,16 @@ func (ai *AlertingIntegration) fireAlert(ruleName string, rule *AlertRule, value
 		Threshold: rule.Threshold,
 	}
 	ai.alertHistory[fmt.Sprintf("%s-%d", ruleName, now.Unix())] = history
-	
+
 	// Create notification
 	notification := &Notification{
-		ID:        fmt.Sprintf("alert-%s-%d", ruleName, now.Unix()),
-		Title:     rule.Annotations["summary"],
-		Message:   fmt.Sprintf("%s: Current value %.2f, threshold %.2f", rule.Annotations["description"], value, rule.Threshold),
-		Severity:  rule.Severity,
-		Component: rule.Labels["component"],
-		Timestamp: now,
-		Labels:    rule.Labels,
+		ID:          fmt.Sprintf("alert-%s-%d", ruleName, now.Unix()),
+		Title:       rule.Annotations["summary"],
+		Message:     fmt.Sprintf("%s: Current value %.2f, threshold %.2f", rule.Annotations["description"], value, rule.Threshold),
+		Severity:    rule.Severity,
+		Component:   rule.Labels["component"],
+		Timestamp:   now,
+		Labels:      rule.Labels,
 		Annotations: rule.Annotations,
 		Metadata: map[string]interface{}{
 			"rule_name": ruleName,
@@ -363,7 +363,7 @@ func (ai *AlertingIntegration) fireAlert(ruleName string, rule *AlertRule, value
 			"operator":  rule.Operator,
 		},
 	}
-	
+
 	// Send notification
 	if ai.notificationSys != nil {
 		if err := ai.notificationSys.SendNotification(notification); err != nil {
@@ -373,7 +373,7 @@ func (ai *AlertingIntegration) fireAlert(ruleName string, rule *AlertRule, value
 				Msg("Failed to send alert notification")
 		}
 	}
-	
+
 	log.Warn().
 		Str("rule_name", ruleName).
 		Float64("value", value).
@@ -386,7 +386,7 @@ func (ai *AlertingIntegration) fireAlert(ruleName string, rule *AlertRule, value
 func (ai *AlertingIntegration) AddRule(name string, rule *AlertRule) {
 	ai.mu.Lock()
 	defer ai.mu.Unlock()
-	
+
 	ai.alertRules[name] = rule
 	log.Info().
 		Str("rule_name", name).
@@ -397,7 +397,7 @@ func (ai *AlertingIntegration) AddRule(name string, rule *AlertRule) {
 func (ai *AlertingIntegration) RemoveRule(name string) {
 	ai.mu.Lock()
 	defer ai.mu.Unlock()
-	
+
 	delete(ai.alertRules, name)
 	log.Info().
 		Str("rule_name", name).
@@ -408,13 +408,13 @@ func (ai *AlertingIntegration) RemoveRule(name string) {
 func (ai *AlertingIntegration) GetAlertHistory() map[string]*AlertHistory {
 	ai.mu.RLock()
 	defer ai.mu.RUnlock()
-	
+
 	// Return a copy
 	history := make(map[string]*AlertHistory)
 	for k, v := range ai.alertHistory {
 		history[k] = v
 	}
-	
+
 	return history
 }
 
@@ -428,14 +428,14 @@ func (ai *AlertingIntegration) Shutdown() error {
 // DefaultAlertingConfig returns a default alerting configuration
 func DefaultAlertingConfig() *AlertingConfig {
 	return &AlertingConfig{
-		Enabled:                   true,
-		EvaluationInterval:        30 * time.Second,
-		AlertTimeout:              5 * time.Minute,
-		HighErrorRateThreshold:    0.05, // 5%
-		HighLatencyThreshold:      10.0, // 10 seconds
-		LowConnectivityThreshold:  2,    // 2 connections
-		HighMemoryThreshold:       0.85, // 85%
-		HighCPUThreshold:          0.80, // 80%
-		AlertCooldown:             5 * time.Minute,
+		Enabled:                  true,
+		EvaluationInterval:       30 * time.Second,
+		AlertTimeout:             5 * time.Minute,
+		HighErrorRateThreshold:   0.05, // 5%
+		HighLatencyThreshold:     10.0, // 10 seconds
+		LowConnectivityThreshold: 2,    // 2 connections
+		HighMemoryThreshold:      0.85, // 85%
+		HighCPUThreshold:         0.80, // 80%
+		AlertCooldown:            5 * time.Minute,
 	}
 }

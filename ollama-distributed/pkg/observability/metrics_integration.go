@@ -11,15 +11,15 @@ import (
 // MetricsIntegration provides a unified interface for components to report metrics
 type MetricsIntegration struct {
 	registry *MetricsRegistry
-	
+
 	// Component-specific integrators
 	schedulerIntegrator      *SchedulerIntegrator
 	consensusIntegrator      *ConsensusIntegrator
-	p2pIntegrator           *P2PIntegrator
-	apiIntegrator           *APIIntegrator
+	p2pIntegrator            *P2PIntegrator
+	apiIntegrator            *APIIntegrator
 	faultToleranceIntegrator *FaultToleranceIntegrator
-	modelIntegrator         *ModelIntegrator
-	
+	modelIntegrator          *ModelIntegrator
+
 	// Lifecycle
 	ctx     context.Context
 	cancel  context.CancelFunc
@@ -73,44 +73,44 @@ type ModelIntegrator struct {
 // NewMetricsIntegration creates a new metrics integration
 func NewMetricsIntegration(registry *MetricsRegistry, nodeID string) *MetricsIntegration {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	mi := &MetricsIntegration{
 		registry: registry,
 		ctx:      ctx,
 		cancel:   cancel,
 	}
-	
+
 	// Initialize component integrators
 	mi.schedulerIntegrator = &SchedulerIntegrator{
 		metrics: registry.GetSchedulerMetrics(),
 		nodeID:  nodeID,
 	}
-	
+
 	mi.consensusIntegrator = &ConsensusIntegrator{
 		metrics: registry.GetConsensusMetrics(),
 		nodeID:  nodeID,
 	}
-	
+
 	mi.p2pIntegrator = &P2PIntegrator{
 		metrics: registry.GetP2PMetrics(),
 		nodeID:  nodeID,
 	}
-	
+
 	mi.apiIntegrator = &APIIntegrator{
 		metrics: registry.GetAPIMetrics(),
 		nodeID:  nodeID,
 	}
-	
+
 	mi.faultToleranceIntegrator = &FaultToleranceIntegrator{
 		metrics: registry.GetFaultToleranceMetrics(),
 		nodeID:  nodeID,
 	}
-	
+
 	mi.modelIntegrator = &ModelIntegrator{
 		metrics: registry.GetModelMetrics(),
 		nodeID:  nodeID,
 	}
-	
+
 	return mi
 }
 
@@ -118,15 +118,15 @@ func NewMetricsIntegration(registry *MetricsRegistry, nodeID string) *MetricsInt
 func (mi *MetricsIntegration) Start() error {
 	mi.mu.Lock()
 	defer mi.mu.Unlock()
-	
+
 	if mi.started {
 		return nil
 	}
-	
+
 	// Start metrics collection loop
 	mi.wg.Add(1)
 	go mi.metricsCollectionLoop()
-	
+
 	mi.started = true
 	log.Info().Msg("Metrics integration started")
 	return nil
@@ -136,14 +136,14 @@ func (mi *MetricsIntegration) Start() error {
 func (mi *MetricsIntegration) Stop() error {
 	mi.mu.Lock()
 	defer mi.mu.Unlock()
-	
+
 	if !mi.started {
 		return nil
 	}
-	
+
 	mi.cancel()
 	mi.wg.Wait()
-	
+
 	mi.started = false
 	log.Info().Msg("Metrics integration stopped")
 	return nil
@@ -182,10 +182,10 @@ func (mi *MetricsIntegration) GetModelIntegrator() *ModelIntegrator {
 // metricsCollectionLoop runs the metrics collection loop
 func (mi *MetricsIntegration) metricsCollectionLoop() {
 	defer mi.wg.Done()
-	
+
 	ticker := time.NewTicker(15 * time.Second)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-mi.ctx.Done():

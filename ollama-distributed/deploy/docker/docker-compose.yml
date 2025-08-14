@@ -46,7 +46,7 @@ services:
       - ENCRYPTION_KEY_FILE=${ENCRYPTION_KEY_FILE}
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/health"]
+      test: ["CMD", "curl", "-f", "-k", "https://localhost:11434/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -95,7 +95,7 @@ services:
       - coordinator
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/health"]
+      test: ["CMD", "curl", "-f", "-k", "https://localhost:11434/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -144,7 +144,7 @@ services:
       - coordinator
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/health"]
+      test: ["CMD", "curl", "-f", "-k", "https://localhost:11434/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3

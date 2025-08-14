@@ -117,7 +117,7 @@ func getTrendDirection(trend float64) string {
 // featuresToVector converts feature map to vector for neural network
 func (mlp *MLPredictor) featuresToVector(features map[string]float64) []float64 {
 	vector := make([]float64, mlp.neuralNetwork.InputSize)
-	
+
 	// Map features to vector positions
 	featureNames := []string{
 		"cpu_usage", "memory_usage", "response_time", "error_rate", "connectivity",
@@ -139,7 +139,7 @@ func (mlp *MLPredictor) featuresToVector(features map[string]float64) []float64 
 // forwardPass performs forward pass through neural network
 func (mlp *MLPredictor) forwardPass(input []float64) []float64 {
 	nn := mlp.neuralNetwork
-	
+
 	// Hidden layer
 	hidden := make([]float64, nn.HiddenSize)
 	for j := 0; j < nn.HiddenSize; j++ {
@@ -209,8 +209,8 @@ func (mlp *MLPredictor) outputToPredictions(output []float64, modelName string, 
 			ModelUsed:     modelName,
 			Features:      features,
 			Metadata: map[string]interface{}{
-				"output_vector": output,
-				"max_index":     maxIndex,
+				"output_vector":   output,
+				"max_index":       maxIndex,
 				"all_confidences": output,
 			},
 			Status: PredictionStatusPending,

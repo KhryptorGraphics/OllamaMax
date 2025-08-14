@@ -1,0 +1,51 @@
+node:
+  id: node-3
+  name: E2E Node 3
+  region: local
+  zone: e2e
+  environment: test
+
+api:
+  listen: "0.0.0.0:18080"
+  timeout: "30s"
+  tls:
+    enabled: false
+
+web:
+  enabled: true
+  listen: "0.0.0.0:18081"
+  static_dir: ""
+  tls:
+    enabled: false
+
+p2p:
+  enabled: true
+  listen: "/ip4/0.0.0.0/tcp/19092"
+  bootstrap: ["/dns4/node1/tcp/19090", "/dns4/node2/tcp/19091"]
+  enable_dht: true
+  enable_pubsub: true
+  conn_mgr_low: 10
+  conn_mgr_high: 50
+  conn_mgr_grace: "30s"
+  dial_timeout: 30s
+  max_streams: 1000
+  # Enable automatic discovery
+  auto_discovery: true
+  rendezvous_string: "ollama-distributed-e2e"
+  # Enable mDNS for local discovery
+  enable_mdns: true
+  mdns_service: "ollama-distributed"
+
+metrics:
+  enabled: true
+  listen: "0.0.0.0:19100"
+  path: "/metrics"
+
+security:
+  tls:
+    enabled: false
+
+logging:
+  level: "info"
+  format: "json"
+

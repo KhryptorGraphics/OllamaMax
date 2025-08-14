@@ -22,10 +22,10 @@ type AuthManager struct {
 	config     *config.AuthConfig
 	privateKey *rsa.PrivateKey
 	publicKey  *rsa.PublicKey
-	
+
 	// Certificate management
 	certManager *CertificateManager
-	
+
 	// Token blacklist
 	blacklistedTokens map[string]time.Time
 }
@@ -40,11 +40,11 @@ type CertificateManager struct {
 
 // Claims represents JWT claims
 type Claims struct {
-	UserID    string            `json:"user_id"`
-	Username  string            `json:"username"`
-	Role      string            `json:"role"`
-	Permissions []string        `json:"permissions"`
-	Metadata  map[string]string `json:"metadata"`
+	UserID      string            `json:"user_id"`
+	Username    string            `json:"username"`
+	Role        string            `json:"role"`
+	Permissions []string          `json:"permissions"`
+	Metadata    map[string]string `json:"metadata"`
 	jwt.RegisteredClaims
 }
 
@@ -54,20 +54,20 @@ func NewAuthManager(config *config.AuthConfig) (*AuthManager, error) {
 		config:            config,
 		blacklistedTokens: make(map[string]time.Time),
 	}
-	
+
 	// Generate or load RSA key pair
 	if err := manager.initializeKeys(); err != nil {
 		return nil, fmt.Errorf("failed to initialize keys: %w", err)
 	}
-	
+
 	// Initialize certificate manager
 	if err := manager.initializeCertificates(); err != nil {
 		return nil, fmt.Errorf("failed to initialize certificates: %w", err)
 	}
-	
+
 	// Start cleanup routine for blacklisted tokens
 	go manager.cleanupBlacklistedTokens()
-	
+
 	return manager, nil
 }
 
@@ -78,17 +78,17 @@ func (am *AuthManager) initializeKeys() error {
 	if err != nil {
 		return fmt.Errorf("failed to generate private key: %w", err)
 	}
-	
+
 	am.privateKey = privateKey
 	am.publicKey = &privateKey.PublicKey
-	
+
 	return nil
 }
 
 // initializeCertificates initializes X.509 certificates
 func (am *AuthManager) initializeCertificates() error {
 	certManager := &CertificateManager{}
-	
+
 	// Generate CA certificate
 	caTemplate := &x509.Certificate{
 		SerialNumber: bigIntFromString("1"),
@@ -107,27 +107,27 @@ func (am *AuthManager) initializeCertificates() error {
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
 		BasicConstraintsValid: true,
 	}
-	
+
 	// Generate CA key
 	caKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		return fmt.Errorf("failed to generate CA key: %w", err)
 	}
-	
+
 	// Create CA certificate
 	caCertDER, err := x509.CreateCertificate(rand.Reader, caTemplate, caTemplate, &caKey.PublicKey, caKey)
 	if err != nil {
 		return fmt.Errorf("failed to create CA certificate: %w", err)
 	}
-	
+
 	caCert, err := x509.ParseCertificate(caCertDER)
 	if err != nil {
 		return fmt.Errorf("failed to parse CA certificate: %w", err)
 	}
-	
+
 	certManager.caCert = caCert
 	certManager.caKey = caKey
-	
+
 	// Generate server certificate
 	serverTemplate := &x509.Certificate{
 		SerialNumber: bigIntFromString("2"),
@@ -145,29 +145,29 @@ func (am *AuthManager) initializeCertificates() error {
 		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		KeyUsage:     x509.KeyUsageDigitalSignature,
 	}
-	
+
 	// Generate server key
 	serverKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		return fmt.Errorf("failed to generate server key: %w", err)
 	}
-	
+
 	// Create server certificate
 	serverCertDER, err := x509.CreateCertificate(rand.Reader, serverTemplate, caCert, &serverKey.PublicKey, caKey)
 	if err != nil {
 		return fmt.Errorf("failed to create server certificate: %w", err)
 	}
-	
+
 	serverCert, err := x509.ParseCertificate(serverCertDER)
 	if err != nil {
 		return fmt.Errorf("failed to parse server certificate: %w", err)
 	}
-	
+
 	certManager.serverCert = serverCert
 	certManager.serverKey = serverKey
-	
+
 	am.certManager = certManager
-	
+
 	return nil
 }
 
@@ -189,7 +189,7 @@ func (am *AuthManager) GenerateToken(userID, username, role string, permissions 
 			Audience:  []string{am.config.Audience},
 		},
 	}
-	
+
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
 	return token.SignedString(am.privateKey)
 }
@@ -202,20 +202,20 @@ func (am *AuthManager) ValidateToken(tokenString string) (*Claims, error) {
 		}
 		return am.publicKey, nil
 	})
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse token: %w", err)
 	}
-	
+
 	if claims, ok := token.Claims.(*Claims); ok && token.Valid {
 		// Check if token is blacklisted
 		if am.isTokenBlacklisted(claims.ID) {
 			return nil, fmt.Errorf("token is blacklisted")
 		}
-		
+
 		return claims, nil
 	}
-	
+
 	return nil, fmt.Errorf("invalid token")
 }
 
@@ -230,13 +230,13 @@ func (am *AuthManager) isTokenBlacklisted(tokenID string) bool {
 	if !exists {
 		return false
 	}
-	
+
 	// Check if blacklist entry has expired
 	if time.Now().After(expiry) {
 		delete(am.blacklistedTokens, tokenID)
 		return false
 	}
-	
+
 	return true
 }
 
@@ -244,7 +244,7 @@ func (am *AuthManager) isTokenBlacklisted(tokenID string) bool {
 func (am *AuthManager) cleanupBlacklistedTokens() {
 	ticker := time.NewTicker(time.Hour)
 	defer ticker.Stop()
-	
+
 	for range ticker.C {
 		now := time.Now()
 		for tokenID, expiry := range am.blacklistedTokens {
@@ -262,35 +262,35 @@ func (am *AuthManager) AuthMiddleware() gin.HandlerFunc {
 			c.Next()
 			return
 		}
-		
+
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header required"})
 			c.Abort()
 			return
 		}
-		
+
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 		if tokenString == authHeader {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Bearer token required"})
 			c.Abort()
 			return
 		}
-		
+
 		claims, err := am.ValidateToken(tokenString)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
 			c.Abort()
 			return
 		}
-		
+
 		// Store claims in context
 		c.Set("claims", claims)
 		c.Set("user_id", claims.UserID)
 		c.Set("username", claims.Username)
 		c.Set("role", claims.Role)
 		c.Set("permissions", claims.Permissions)
-		
+
 		c.Next()
 	}
 }
@@ -304,14 +304,14 @@ func (am *AuthManager) RequirePermission(permission string) gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		
+
 		userClaims, ok := claims.(*Claims)
 		if !ok {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid claims"})
 			c.Abort()
 			return
 		}
-		
+
 		// Check if user has required permission
 		hasPermission := false
 		for _, perm := range userClaims.Permissions {
@@ -320,13 +320,13 @@ func (am *AuthManager) RequirePermission(permission string) gin.HandlerFunc {
 				break
 			}
 		}
-		
+
 		if !hasPermission {
 			c.JSON(http.StatusForbidden, gin.H{"error": "Insufficient permissions"})
 			c.Abort()
 			return
 		}
-		
+
 		c.Next()
 	}
 }
@@ -340,20 +340,20 @@ func (am *AuthManager) RequireRole(role string) gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		
+
 		userClaims, ok := claims.(*Claims)
 		if !ok {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid claims"})
 			c.Abort()
 			return
 		}
-		
+
 		if userClaims.Role != role && userClaims.Role != "admin" {
 			c.JSON(http.StatusForbidden, gin.H{"error": "Insufficient role"})
 			c.Abort()
 			return
 		}
-		
+
 		c.Next()
 	}
 }
@@ -363,12 +363,12 @@ func (am *AuthManager) GetCACertificate() ([]byte, error) {
 	if am.certManager == nil || am.certManager.caCert == nil {
 		return nil, fmt.Errorf("CA certificate not available")
 	}
-	
+
 	certPEM := &pem.Block{
 		Type:  "CERTIFICATE",
 		Bytes: am.certManager.caCert.Raw,
 	}
-	
+
 	return pem.EncodeToMemory(certPEM), nil
 }
 
@@ -377,12 +377,12 @@ func (am *AuthManager) GetServerCertificate() ([]byte, error) {
 	if am.certManager == nil || am.certManager.serverCert == nil {
 		return nil, fmt.Errorf("server certificate not available")
 	}
-	
+
 	certPEM := &pem.Block{
 		Type:  "CERTIFICATE",
 		Bytes: am.certManager.serverCert.Raw,
 	}
-	
+
 	return pem.EncodeToMemory(certPEM), nil
 }
 
@@ -391,12 +391,12 @@ func (am *AuthManager) GetServerKey() ([]byte, error) {
 	if am.certManager == nil || am.certManager.serverKey == nil {
 		return nil, fmt.Errorf("server key not available")
 	}
-	
+
 	keyPEM := &pem.Block{
 		Type:  "RSA PRIVATE KEY",
 		Bytes: x509.MarshalPKCS1PrivateKey(am.certManager.serverKey),
 	}
-	
+
 	return pem.EncodeToMemory(keyPEM), nil
 }
 
@@ -413,4 +413,3 @@ func bigIntFromString(s string) *big.Int {
 	i.SetString(s, 10)
 	return i
 }
-

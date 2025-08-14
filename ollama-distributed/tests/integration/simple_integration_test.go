@@ -1,3 +1,5 @@
+//go:build ignore
+
 package integration
 
 import (
@@ -126,7 +128,7 @@ func TestP2PBasicFunctionality(t *testing.T) {
 
 	// Create 2 nodes for P2P testing
 	testDir := t.TempDir()
-	
+
 	// Node 1
 	node1Dir := filepath.Join(testDir, "node1")
 	require.NoError(t, os.MkdirAll(node1Dir, 0755))

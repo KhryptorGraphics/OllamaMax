@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"os"
 	"runtime"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/khryptorgraphics/ollamamax/ollama-distributed/internal/auth"
-	"github.com/khryptorgraphics/ollamamax/ollama-distributed/internal/config"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/auth"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/api"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/consensus"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/models"
@@ -27,11 +27,11 @@ type BenchmarkSuite struct {
 
 // TestCluster represents a cluster for performance testing
 type TestCluster struct {
-	Nodes   []*TestNode
-	Size    int
-	Config  *ClusterConfig
-	ctx     context.Context
-	cancel  context.CancelFunc
+	Nodes  []*TestNode
+	Size   int
+	Config *ClusterConfig
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 // TestNode represents a single node for benchmarking
@@ -48,19 +48,19 @@ type TestNode struct {
 
 // NodeConfig holds node configuration
 type NodeConfig struct {
-	DataDir    string
-	P2PPort    int
-	APIPort    int
-	RaftPort   int
-	Bootstrap  bool
+	DataDir   string
+	P2PPort   int
+	APIPort   int
+	RaftPort  int
+	Bootstrap bool
 }
 
 // ClusterConfig holds cluster configuration
 type ClusterConfig struct {
-	Size              int
-	NetworkLatency    time.Duration
-	DiskIOLatency     time.Duration
-	MemoryLimitMB     int
+	Size           int
+	NetworkLatency time.Duration
+	DiskIOLatency  time.Duration
+	MemoryLimitMB  int
 }
 
 // WorkloadConfig defines benchmark workload parameters
@@ -74,22 +74,22 @@ type WorkloadConfig struct {
 
 // PerformanceMetrics holds benchmark results
 type PerformanceMetrics struct {
-	Throughput       float64
-	Latency          LatencyMetrics
-	ResourceUsage    ResourceMetrics
-	ErrorRate        float64
-	NetworkIO        NetworkMetrics
-	DiskIO           DiskMetrics
+	Throughput    float64
+	Latency       LatencyMetrics
+	ResourceUsage ResourceMetrics
+	ErrorRate     float64
+	NetworkIO     NetworkMetrics
+	DiskIO        DiskMetrics
 }
 
 // LatencyMetrics holds latency statistics
 type LatencyMetrics struct {
-	Mean      time.Duration
-	P50       time.Duration
-	P95       time.Duration
-	P99       time.Duration
-	P99_9     time.Duration
-	Max       time.Duration
+	Mean  time.Duration
+	P50   time.Duration
+	P95   time.Duration
+	P99   time.Duration
+	P99_9 time.Duration
+	Max   time.Duration
 }
 
 // ResourceMetrics holds resource usage statistics
@@ -102,9 +102,9 @@ type ResourceMetrics struct {
 
 // NetworkMetrics holds network I/O statistics
 type NetworkMetrics struct {
-	BytesIn   int64
-	BytesOut  int64
-	PacketsIn int64
+	BytesIn    int64
+	BytesOut   int64
+	PacketsIn  int64
 	PacketsOut int64
 }
 
@@ -281,10 +281,10 @@ func BenchmarkConcurrentOperations(b *testing.B) {
 
 func setupBenchmarkSuite(b *testing.B, clusterSize int, workloadConfig *WorkloadConfig) *BenchmarkSuite {
 	clusterConfig := &ClusterConfig{
-		Size:              clusterSize,
-		NetworkLatency:    1 * time.Millisecond,
-		DiskIOLatency:     5 * time.Millisecond,
-		MemoryLimitMB:     512,
+		Size:           clusterSize,
+		NetworkLatency: 1 * time.Millisecond,
+		DiskIOLatency:  5 * time.Millisecond,
+		MemoryLimitMB:  512,
 	}
 
 	cluster := createBenchmarkCluster(b, clusterConfig)
@@ -308,7 +308,7 @@ func (s *BenchmarkSuite) cleanup(b *testing.B) {
 
 func createBenchmarkCluster(b *testing.B, config *ClusterConfig) *TestCluster {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	cluster := &TestCluster{
 		Nodes:  make([]*TestNode, config.Size),
 		Size:   config.Size,
@@ -373,10 +373,10 @@ func createBenchmarkNode(b *testing.B, index int, config *ClusterConfig) *TestNo
 
 	// Create auth manager
 	authConfig := &config.AuthConfig{
-		SecretKey:    "benchmark-secret-key",
-		TokenExpiry:  time.Hour,
-		Issuer:       "benchmark-issuer",
-		Audience:     "benchmark-audience",
+		SecretKey:   "benchmark-secret-key",
+		TokenExpiry: time.Hour,
+		Issuer:      "benchmark-issuer",
+		Audience:    "benchmark-audience",
 	}
 
 	authManager, err := auth.NewManager(authConfig)
@@ -425,7 +425,7 @@ func (c *TestCluster) start(b *testing.B) error {
 
 func (c *TestCluster) cleanup(b *testing.B) {
 	c.cancel()
-	
+
 	for _, node := range c.Nodes {
 		if node != nil {
 			node.stop(b)
@@ -506,7 +506,7 @@ func (s *BenchmarkSuite) benchmarkConsensusOperations(b *testing.B, concurrency 
 		for pb.Next() {
 			key := fmt.Sprintf("bench-key-%d-%d", b.N, counter)
 			value := fmt.Sprintf("bench-value-%d", counter)
-			
+
 			err := leader.ConsensusEngine.Apply(key, value, nil)
 			if err != nil {
 				b.Fatal(err)
@@ -518,13 +518,13 @@ func (s *BenchmarkSuite) benchmarkConsensusOperations(b *testing.B, concurrency 
 
 func (s *BenchmarkSuite) benchmarkPeerDiscovery(b *testing.B) {
 	node := s.cluster.Nodes[0]
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		// Simulate peer discovery operations
 		peers := node.P2PNode.GetConnectedPeers()
 		_ = len(peers)
-		
+
 		status := node.P2PNode.GetStatus()
 		_ = status.ConnectedPeers
 	}
@@ -534,7 +534,7 @@ func (s *BenchmarkSuite) benchmarkMessageBroadcast(b *testing.B) {
 	node := s.cluster.Nodes[0]
 	testData := make([]byte, s.workloadConfig.DataSize)
 	rand.Read(testData)
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		// Simulate message broadcasting
@@ -548,7 +548,7 @@ func (s *BenchmarkSuite) benchmarkMessageBroadcast(b *testing.B) {
 
 func (s *BenchmarkSuite) benchmarkContentRouting(b *testing.B) {
 	node := s.cluster.Nodes[0]
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		contentID := fmt.Sprintf("content-%d", i)
@@ -562,12 +562,12 @@ func (s *BenchmarkSuite) benchmarkContentRouting(b *testing.B) {
 func (s *BenchmarkSuite) benchmarkModelDownload(b *testing.B) {
 	sourceNode := s.cluster.Nodes[0]
 	targetNode := s.cluster.Nodes[1]
-	
+
 	// Create test model
 	testModelPath := s.createTestModel(b, sourceNode)
 	err := sourceNode.ModelManager.RegisterModel("bench-model", testModelPath)
 	require.NoError(b, err)
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		modelName := fmt.Sprintf("bench-model-%d", i)
@@ -579,11 +579,11 @@ func (s *BenchmarkSuite) benchmarkModelDownload(b *testing.B) {
 
 func (s *BenchmarkSuite) benchmarkModelReplication(b *testing.B) {
 	sourceNode := s.cluster.Nodes[0]
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		modelName := fmt.Sprintf("replication-model-%d", i)
-		
+
 		// Simulate model replication across cluster
 		for _, node := range s.cluster.Nodes[1:] {
 			err := node.ModelManager.DownloadFromPeer(modelName, sourceNode.ID)
@@ -594,7 +594,7 @@ func (s *BenchmarkSuite) benchmarkModelReplication(b *testing.B) {
 
 func (s *BenchmarkSuite) benchmarkConcurrentModelAccess(b *testing.B) {
 	node := s.cluster.Nodes[0]
-	
+
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
@@ -609,7 +609,7 @@ func (s *BenchmarkSuite) benchmarkAPIEndpoint(b *testing.B, method, path string,
 	// This would implement HTTP client benchmarking
 	// For now, simulate API operations
 	node := s.cluster.Nodes[0]
-	
+
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
@@ -634,16 +634,16 @@ func (s *BenchmarkSuite) benchmarkAPIEndpoint(b *testing.B, method, path string,
 
 func (s *BenchmarkSuite) benchmarkJWTValidation(b *testing.B) {
 	node := s.cluster.Nodes[0]
-	
+
 	// Create test user and get token
 	authCtx, err := node.AuthManager.Authenticate("admin", "admin123", map[string]string{
 		"ip_address": "127.0.0.1",
 		"user_agent": "benchmark",
 	})
 	require.NoError(b, err)
-	
+
 	token := authCtx.TokenString
-	
+
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
@@ -657,7 +657,7 @@ func (s *BenchmarkSuite) benchmarkJWTValidation(b *testing.B) {
 
 func (s *BenchmarkSuite) benchmarkAPIKeyValidation(b *testing.B) {
 	node := s.cluster.Nodes[0]
-	
+
 	// Create test API key
 	user := &auth.CreateUserRequest{
 		Username: "apiuser",
@@ -665,17 +665,17 @@ func (s *BenchmarkSuite) benchmarkAPIKeyValidation(b *testing.B) {
 		Email:    "api@test.com",
 		Role:     auth.RoleUser,
 	}
-	
+
 	createdUser, err := node.AuthManager.CreateUser(user)
 	require.NoError(b, err)
-	
+
 	apiKeyReq := &auth.CreateAPIKeyRequest{
 		Name: "benchmark-key",
 	}
-	
+
 	_, rawKey, err := node.AuthManager.CreateAPIKey(createdUser.ID, apiKeyReq)
 	require.NoError(b, err)
-	
+
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
@@ -689,11 +689,11 @@ func (s *BenchmarkSuite) benchmarkAPIKeyValidation(b *testing.B) {
 
 func (s *BenchmarkSuite) benchmarkPermissionCheck(b *testing.B) {
 	node := s.cluster.Nodes[0]
-	
+
 	// Create auth context
 	authCtx, err := node.AuthManager.Authenticate("admin", "admin123", nil)
 	require.NoError(b, err)
-	
+
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
@@ -705,7 +705,7 @@ func (s *BenchmarkSuite) benchmarkPermissionCheck(b *testing.B) {
 
 func (s *BenchmarkSuite) benchmarkTaskScheduling(b *testing.B) {
 	node := s.cluster.Nodes[0]
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		req := &scheduler.Request{
@@ -715,7 +715,7 @@ func (s *BenchmarkSuite) benchmarkTaskScheduling(b *testing.B) {
 			Timeout:    30 * time.Second,
 			ResponseCh: make(chan *scheduler.Response, 1),
 		}
-		
+
 		err := node.SchedulerEngine.Schedule(req)
 		_ = err // Might fail due to no available nodes
 	}
@@ -723,7 +723,7 @@ func (s *BenchmarkSuite) benchmarkTaskScheduling(b *testing.B) {
 
 func (s *BenchmarkSuite) benchmarkLoadBalancing(b *testing.B) {
 	node := s.cluster.Nodes[0]
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		// Simulate load balancing decisions
@@ -736,7 +736,7 @@ func (s *BenchmarkSuite) benchmarkLoadBalancing(b *testing.B) {
 
 func (s *BenchmarkSuite) benchmarkResourceAllocation(b *testing.B) {
 	node := s.cluster.Nodes[0]
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		// Simulate resource allocation
@@ -751,42 +751,42 @@ func (s *BenchmarkSuite) benchmarkMemoryEfficiency(b *testing.B) {
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
 	initialAlloc := memStats.Alloc
-	
+
 	node := s.cluster.Nodes[0]
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		// Perform memory-intensive operations
 		key := fmt.Sprintf("memory-test-%d", i)
 		value := make([]byte, 1024) // 1KB per operation
-		
+
 		err := node.ConsensusEngine.Apply(key, string(value), nil)
 		if err != nil {
 			b.Fatal(err)
 		}
 	}
-	
+
 	runtime.ReadMemStats(&memStats)
 	finalAlloc := memStats.Alloc
-	
+
 	b.ReportMetric(float64(finalAlloc-initialAlloc)/float64(b.N), "bytes/op")
 }
 
 func (s *BenchmarkSuite) benchmarkGarbageCollection(b *testing.B) {
 	var memStats runtime.MemStats
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		// Allocate memory that will be GC'd
 		data := make([]byte, 10*1024) // 10KB
 		_ = data
-		
+
 		if i%1000 == 0 {
 			runtime.GC()
 			runtime.ReadMemStats(&memStats)
 		}
 	}
-	
+
 	runtime.ReadMemStats(&memStats)
 	b.ReportMetric(float64(memStats.NumGC), "gc-cycles")
 	b.ReportMetric(float64(memStats.PauseTotalNs)/1e6, "gc-pause-ms")
@@ -797,14 +797,14 @@ func (s *BenchmarkSuite) benchmarkMixedWorkload(b *testing.B) {
 	if leader == nil {
 		b.Fatal("No leader found")
 	}
-	
+
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		counter := 0
 		for pb.Next() {
 			operation := counter % 4
 			counter++
-			
+
 			switch operation {
 			case 0: // Consensus operation
 				key := fmt.Sprintf("mixed-key-%d", counter)
@@ -825,28 +825,28 @@ func (s *BenchmarkSuite) benchmarkStressTest(b *testing.B) {
 	// High-intensity stress test
 	var wg sync.WaitGroup
 	numWorkers := s.workloadConfig.ConcurrentClients
-	
+
 	b.ResetTimer()
-	
+
 	for w := 0; w < numWorkers; w++ {
 		wg.Add(1)
 		go func(workerID int) {
 			defer wg.Done()
-			
+
 			node := s.cluster.Nodes[workerID%len(s.cluster.Nodes)]
-			
+
 			for i := 0; i < b.N/numWorkers; i++ {
 				// Mixed high-intensity operations
 				key := fmt.Sprintf("stress-key-%d-%d", workerID, i)
 				value := fmt.Sprintf("stress-value-%d", i)
-				
+
 				if node.ConsensusEngine.IsLeader() {
 					err := node.ConsensusEngine.Apply(key, value, nil)
 					_ = err
 				} else {
 					_, _ = node.ConsensusEngine.Get(key)
 				}
-				
+
 				// Add small delay to prevent overwhelming
 				if i%100 == 0 {
 					time.Sleep(time.Microsecond)
@@ -854,7 +854,7 @@ func (s *BenchmarkSuite) benchmarkStressTest(b *testing.B) {
 			}
 		}(w)
 	}
-	
+
 	wg.Wait()
 }
 
@@ -873,24 +873,24 @@ func (s *BenchmarkSuite) createTestModel(b *testing.B, node *TestNode) string {
 	modelPath := node.Config.DataDir + "/test-model.gguf"
 	modelData := make([]byte, s.workloadConfig.ModelSize)
 	rand.Read(modelData)
-	
+
 	err := os.WriteFile(modelPath, modelData, 0644)
 	require.NoError(b, err)
-	
+
 	return modelPath
 }
 
 func (s *BenchmarkSuite) collectMetrics(b *testing.B) *PerformanceMetrics {
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
-	
+
 	metrics := &PerformanceMetrics{
 		ResourceUsage: ResourceMetrics{
 			MemoryUsage:    int64(memStats.Alloc),
 			GoroutineCount: runtime.NumGoroutine(),
 		},
 	}
-	
+
 	// Collect GC pause times
 	for i := 0; i < 256 && i < len(memStats.PauseNs); i++ {
 		if memStats.PauseNs[i] > 0 {
@@ -900,7 +900,7 @@ func (s *BenchmarkSuite) collectMetrics(b *testing.B) *PerformanceMetrics {
 			)
 		}
 	}
-	
+
 	return metrics
 }
 
@@ -908,7 +908,7 @@ func (s *BenchmarkSuite) collectMetrics(b *testing.B) *PerformanceMetrics {
 
 func BenchmarkConsensusScalability(b *testing.B) {
 	clusterSizes := []int{1, 3, 5, 7}
-	
+
 	for _, size := range clusterSizes {
 		b.Run(fmt.Sprintf("Nodes_%d", size), func(b *testing.B) {
 			suite := setupBenchmarkSuite(b, size, &WorkloadConfig{
@@ -916,17 +916,17 @@ func BenchmarkConsensusScalability(b *testing.B) {
 				DataSize:          1024,
 			})
 			defer suite.cleanup(b)
-			
+
 			leader := suite.findLeader()
 			if leader == nil {
 				b.Fatal("No leader found")
 			}
-			
+
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				key := fmt.Sprintf("scale-key-%d", i)
 				value := fmt.Sprintf("scale-value-%d", i)
-				
+
 				err := leader.ConsensusEngine.Apply(key, value, nil)
 				if err != nil {
 					b.Fatal(err)
@@ -938,29 +938,29 @@ func BenchmarkConsensusScalability(b *testing.B) {
 
 func BenchmarkDataSizeImpact(b *testing.B) {
 	dataSizes := []int{64, 256, 1024, 4096, 16384}
-	
+
 	for _, size := range dataSizes {
 		b.Run(fmt.Sprintf("Size_%dB", size), func(b *testing.B) {
 			suite := setupBenchmarkSuite(b, 3, &WorkloadConfig{
 				DataSize: size,
 			})
 			defer suite.cleanup(b)
-			
+
 			leader := suite.findLeader()
 			if leader == nil {
 				b.Fatal("No leader found")
 			}
-			
+
 			testData := make([]byte, size)
 			rand.Read(testData)
-			
+
 			b.SetBytes(int64(size))
 			b.ResetTimer()
-			
+
 			for i := 0; i < b.N; i++ {
 				key := fmt.Sprintf("data-key-%d", i)
 				value := string(testData)
-				
+
 				err := leader.ConsensusEngine.Apply(key, value, nil)
 				if err != nil {
 					b.Fatal(err)
@@ -972,14 +972,14 @@ func BenchmarkDataSizeImpact(b *testing.B) {
 
 func BenchmarkConcurrencyLevels(b *testing.B) {
 	concurrencyLevels := []int{1, 5, 10, 25, 50, 100}
-	
+
 	for _, level := range concurrencyLevels {
 		b.Run(fmt.Sprintf("Concurrency_%d", level), func(b *testing.B) {
 			suite := setupBenchmarkSuite(b, 3, &WorkloadConfig{
 				ConcurrentClients: level,
 			})
 			defer suite.cleanup(b)
-			
+
 			suite.benchmarkConsensusOperations(b, level)
 		})
 	}
@@ -990,33 +990,33 @@ func BenchmarkConcurrencyLevels(b *testing.B) {
 func BenchmarkMemoryLeaks(b *testing.B) {
 	suite := setupBenchmarkSuite(b, 1, &WorkloadConfig{})
 	defer suite.cleanup(b)
-	
+
 	node := suite.cluster.Nodes[0]
-	
+
 	var initialMemStats, finalMemStats runtime.MemStats
 	runtime.GC()
 	runtime.ReadMemStats(&initialMemStats)
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		// Operations that might cause memory leaks
 		key := fmt.Sprintf("leak-test-%d", i)
 		value := make([]byte, 1024)
-		
+
 		err := node.ConsensusEngine.Apply(key, string(value), nil)
 		if err != nil {
 			b.Fatal(err)
 		}
-		
+
 		// Force cleanup
 		if i%1000 == 0 {
 			runtime.GC()
 		}
 	}
-	
+
 	runtime.GC()
 	runtime.ReadMemStats(&finalMemStats)
-	
+
 	memGrowth := finalMemStats.Alloc - initialMemStats.Alloc
 	b.ReportMetric(float64(memGrowth), "memory-growth-bytes")
 	b.ReportMetric(float64(finalMemStats.NumGC-initialMemStats.NumGC), "gc-cycles")
@@ -1027,9 +1027,9 @@ func BenchmarkGoroutineUsage(b *testing.B) {
 		ConcurrentClients: 50,
 	})
 	defer suite.cleanup(b)
-	
+
 	initialGoroutines := runtime.NumGoroutine()
-	
+
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
@@ -1038,7 +1038,7 @@ func BenchmarkGoroutineUsage(b *testing.B) {
 			_ = node.P2PNode.GetStatus()
 		}
 	})
-	
+
 	finalGoroutines := runtime.NumGoroutine()
 	b.ReportMetric(float64(finalGoroutines-initialGoroutines), "goroutine-growth")
 }

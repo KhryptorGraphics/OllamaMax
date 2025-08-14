@@ -1,9 +1,7 @@
 package fault_tolerance
 
 import (
-	"context"
 	"fmt"
-	"sync"
 	"testing"
 	"time"
 
@@ -25,15 +23,15 @@ func TestFaultToleranceManager(t *testing.T) {
 // testManagerCreation tests fault tolerance manager creation
 func testManagerCreation(t *testing.T) {
 	config := &fault_tolerance.Config{
-		HeartbeatInterval:    1 * time.Second,
-		FailureTimeout:       5 * time.Second,
-		RecoveryTimeout:      10 * time.Second,
-		MaxRetries:           3,
-		BackoffMultiplier:    2.0,
-		EnableAutoFailover:   true,
-		EnableAutoRecovery:   true,
-		HealthCheckEndpoint:  "/health",
-		HealthCheckTimeout:   2 * time.Second,
+		HeartbeatInterval:   1 * time.Second,
+		FailureTimeout:      5 * time.Second,
+		RecoveryTimeout:     10 * time.Second,
+		MaxRetries:          3,
+		BackoffMultiplier:   2.0,
+		EnableAutoFailover:  true,
+		EnableAutoRecovery:  true,
+		HealthCheckEndpoint: "/health",
+		HealthCheckTimeout:  2 * time.Second,
 	}
 
 	manager, err := fault_tolerance.NewManager(config)
@@ -82,7 +80,7 @@ func testNodeFailureDetection(t *testing.T) {
 	// Verify failure event was recorded
 	events := manager.GetFailureEvents()
 	assert.NotEmpty(t, events)
-	
+
 	var failureEvent *fault_tolerance.FailureEvent
 	for _, event := range events {
 		if event.NodeID == nodes[0].ID && event.Type == fault_tolerance.EventTypeNodeFailure {
@@ -145,11 +143,11 @@ func testNodeRecovery(t *testing.T) {
 // testAutoFailover tests automatic failover functionality
 func testAutoFailover(t *testing.T) {
 	config := &fault_tolerance.Config{
-		HeartbeatInterval:    500 * time.Millisecond,
-		FailureTimeout:       2 * time.Second,
-		EnableAutoFailover:   true,
-		FailoverStrategy:     fault_tolerance.StrategyFastFailover,
-		ReplicationFactor:    2,
+		HeartbeatInterval:  500 * time.Millisecond,
+		FailureTimeout:     2 * time.Second,
+		EnableAutoFailover: true,
+		FailoverStrategy:   fault_tolerance.StrategyFastFailover,
+		ReplicationFactor:  2,
 	}
 
 	manager, err := fault_tolerance.NewManager(config)
@@ -175,7 +173,7 @@ func testAutoFailover(t *testing.T) {
 
 	err = manager.AddNode(primaryNode)
 	require.NoError(t, err)
-	
+
 	err = manager.AddNode(backupNode)
 	require.NoError(t, err)
 
@@ -212,7 +210,7 @@ func testAutoFailover(t *testing.T) {
 	// Verify failover event
 	events := manager.GetFailoverEvents()
 	assert.NotEmpty(t, events)
-	
+
 	var failoverEvent *fault_tolerance.FailoverEvent
 	for _, event := range events {
 		if event.ServiceID == service.ID && event.Type == fault_tolerance.FailoverTypeAutomatic {
@@ -293,11 +291,11 @@ func TestNetworkPartitions(t *testing.T) {
 // testSplitBrainPrevention tests split-brain scenario prevention
 func testSplitBrainPrevention(t *testing.T) {
 	config := &fault_tolerance.Config{
-		EnableQuorum:        true,
-		QuorumSize:          3,
+		EnableQuorum:         true,
+		QuorumSize:           3,
 		SplitBrainProtection: true,
-		HeartbeatInterval:   500 * time.Millisecond,
-		PartitionTimeout:    2 * time.Second,
+		HeartbeatInterval:    500 * time.Millisecond,
+		PartitionTimeout:     2 * time.Second,
 	}
 
 	manager, err := fault_tolerance.NewManager(config)
@@ -322,7 +320,7 @@ func testSplitBrainPrevention(t *testing.T) {
 
 	// Simulate network partition: 3 nodes vs 2 nodes
 	partition1 := []string{nodes[0].ID, nodes[1].ID, nodes[2].ID} // Majority
-	partition2 := []string{nodes[3].ID, nodes[4].ID}             // Minority
+	partition2 := []string{nodes[3].ID, nodes[4].ID}              // Minority
 
 	manager.SimulateNetworkPartition(partition1, partition2)
 
@@ -331,7 +329,7 @@ func testSplitBrainPrevention(t *testing.T) {
 
 	// Majority partition should maintain quorum and leadership
 	assert.True(t, manager.HasQuorum())
-	
+
 	// Only majority partition should accept writes
 	err = manager.TestWrite("partition-test", "majority-data")
 	assert.NoError(t, err, "Majority partition should accept writes")
@@ -339,7 +337,7 @@ func testSplitBrainPrevention(t *testing.T) {
 	// Minority partition should reject writes (split-brain prevention)
 	manager.SwitchToPartition(partition2)
 	assert.False(t, manager.HasQuorum())
-	
+
 	err = manager.TestWrite("partition-test", "minority-data")
 	assert.Error(t, err, "Minority partition should reject writes")
 
@@ -387,11 +385,11 @@ func testPartitionRecovery(t *testing.T) {
 	// Verify data consistency across all nodes
 	for _, node := range nodes {
 		manager.SwitchToNode(node.ID)
-		
+
 		value, err := manager.TestRead("pre-partition")
 		assert.NoError(t, err)
 		assert.Equal(t, "initial-data", value)
-		
+
 		value, err = manager.TestRead("during-partition")
 		assert.NoError(t, err)
 		assert.Equal(t, "majority-update", value)
@@ -429,7 +427,7 @@ func testQuorumMaintenance(t *testing.T) {
 
 	// Recover one node (regain quorum: 3/5)
 	manager.SimulateNodeRecovery(nodes[2].ID)
-	
+
 	assert.Eventually(t, func() bool {
 		return manager.HasQuorum()
 	}, 10*time.Second, 500*time.Millisecond, "Should regain quorum when node recovers")
@@ -453,13 +451,13 @@ func testNetworkHealing(t *testing.T) {
 		// Create temporary partition
 		partition1 := []string{nodes[0].ID}
 		partition2 := []string{nodes[1].ID, nodes[2].ID}
-		
+
 		manager.SimulateNetworkPartition(partition1, partition2)
 		time.Sleep(1 * time.Second)
 
 		// Heal partition
 		manager.HealNetworkPartition()
-		
+
 		// Wait for healing
 		assert.Eventually(t, func() bool {
 			return manager.IsClusterHealthy()
@@ -474,7 +472,7 @@ func testNetworkHealing(t *testing.T) {
 	for cycle := 0; cycle < 3; cycle++ {
 		key := fmt.Sprintf("heal-test-%d", cycle)
 		expectedValue := fmt.Sprintf("cycle-%d", cycle)
-		
+
 		for _, node := range nodes {
 			manager.SwitchToNode(node.ID)
 			value, err := manager.TestRead(key)
@@ -533,7 +531,7 @@ func testLoadRedistribution(t *testing.T) {
 		currentLoad := manager.GetNodeLoad(node.ID)
 		additionalLoad := currentLoad - initialLoad[node.ID]
 		totalRedistributedLoad += additionalLoad
-		
+
 		// Node should not be overloaded
 		assert.LessOrEqual(t, currentLoad, node.Capacity, "Node %s should not be overloaded", node.ID)
 	}
@@ -543,7 +541,7 @@ func testLoadRedistribution(t *testing.T) {
 
 	// Test recovery and load rebalancing
 	manager.SimulateNodeRecovery(nodes[2].ID)
-	
+
 	assert.Eventually(t, func() bool {
 		// Check if load is rebalanced
 		maxLoad := 0
@@ -706,7 +704,7 @@ func testGracefulDegradation(t *testing.T) {
 
 	// Test recovery and service restoration
 	manager.SimulateNodeRecovery(nodes[0].ID)
-	
+
 	assert.Eventually(t, func() bool {
 		// All services should be restored
 		for _, service := range services {
@@ -722,11 +720,11 @@ func testGracefulDegradation(t *testing.T) {
 func testCircuitBreaker(t *testing.T) {
 	config := &fault_tolerance.Config{
 		CircuitBreaker: &fault_tolerance.CircuitBreakerConfig{
-			Enabled:           true,
-			FailureThreshold:  5,
-			SuccessThreshold:  3,
-			Timeout:           2 * time.Second,
-			HalfOpenMaxCalls:  2,
+			Enabled:          true,
+			FailureThreshold: 5,
+			SuccessThreshold: 3,
+			Timeout:          2 * time.Second,
+			HalfOpenMaxCalls: 2,
 		},
 	}
 
@@ -748,9 +746,9 @@ func testCircuitBreaker(t *testing.T) {
 	// Simulate repeated failures to trip circuit breaker
 	for i := 0; i < 6; i++ {
 		request := &fault_tolerance.Request{
-			ID:       fmt.Sprintf("failing-req-%d", i),
-			NodeID:   node.ID,
-			Timeout:  1 * time.Second,
+			ID:      fmt.Sprintf("failing-req-%d", i),
+			NodeID:  node.ID,
+			Timeout: 1 * time.Second,
 		}
 
 		// Simulate failure
@@ -776,7 +774,7 @@ func testCircuitBreaker(t *testing.T) {
 
 	// Wait for half-open state
 	time.Sleep(3 * time.Second)
-	
+
 	state := manager.GetCircuitBreakerState(node.ID)
 	assert.Equal(t, fault_tolerance.CircuitBreakerStateHalfOpen, state)
 
@@ -851,8 +849,8 @@ func testImmediateRecovery(t *testing.T) {
 // testGradualRecovery tests gradual recovery strategy
 func testGradualRecovery(t *testing.T) {
 	config := &fault_tolerance.Config{
-		RecoveryStrategy:    fault_tolerance.RecoveryStrategyGradual,
-		GradualRecoveryRate: 0.2, // 20% capacity increase per step
+		RecoveryStrategy:     fault_tolerance.RecoveryStrategyGradual,
+		GradualRecoveryRate:  0.2, // 20% capacity increase per step
 		RecoveryStepInterval: 500 * time.Millisecond,
 	}
 
@@ -924,10 +922,10 @@ func testBackoffRecovery(t *testing.T) {
 
 	// Simulate failure and failed recovery attempts
 	manager.SimulateNodeFailure(node.ID)
-	
+
 	// First attempt fails immediately
 	manager.SimulateFailedRecovery(node.ID)
-	
+
 	// Wait and observe backoff intervals
 	time.Sleep(4 * time.Second)
 
@@ -938,13 +936,13 @@ func testBackoffRecovery(t *testing.T) {
 		// Check backoff intervals
 		interval1 := recoveryAttempts[1].Sub(recoveryAttempts[0])
 		interval2 := recoveryAttempts[2].Sub(recoveryAttempts[1])
-		
+
 		assert.GreaterOrEqual(t, interval2, interval1*2, "Backoff should increase exponentially")
 	}
 
 	// Finally succeed recovery
 	manager.SimulateNodeRecovery(node.ID)
-	
+
 	assert.Eventually(t, func() bool {
 		status := manager.GetNodeStatus(node.ID)
 		return status == fault_tolerance.NodeStatusHealthy
@@ -977,13 +975,13 @@ func testHealthBasedRecovery(t *testing.T) {
 	// Start recovery with intermittent health
 	manager.SimulateHealthyCheck(node.ID, false) // Unhealthy
 	time.Sleep(250 * time.Millisecond)
-	
+
 	manager.SimulateHealthyCheck(node.ID, true) // Healthy
 	time.Sleep(250 * time.Millisecond)
-	
+
 	manager.SimulateHealthyCheck(node.ID, false) // Unhealthy (resets counter)
 	time.Sleep(250 * time.Millisecond)
-	
+
 	// Should not be recovered yet
 	assert.Equal(t, fault_tolerance.NodeStatusFailed, manager.GetNodeStatus(node.ID))
 
@@ -1005,12 +1003,12 @@ func testHealthBasedRecovery(t *testing.T) {
 // createTestManager creates a test fault tolerance manager
 func createTestManager(t *testing.T) *fault_tolerance.Manager {
 	config := &fault_tolerance.Config{
-		HeartbeatInterval:   500 * time.Millisecond,
-		FailureTimeout:      2 * time.Second,
-		RecoveryTimeout:     5 * time.Second,
-		EnableAutoFailover:  true,
-		EnableAutoRecovery:  true,
-		HealthCheckTimeout:  1 * time.Second,
+		HeartbeatInterval:  500 * time.Millisecond,
+		FailureTimeout:     2 * time.Second,
+		RecoveryTimeout:    5 * time.Second,
+		EnableAutoFailover: true,
+		EnableAutoRecovery: true,
+		HealthCheckTimeout: 1 * time.Second,
 	}
 
 	manager, err := fault_tolerance.NewManager(config)
@@ -1054,7 +1052,7 @@ func createTestManagerWithQuorum(t *testing.T, nodeCount int) *fault_tolerance.M
 // createTestNodes creates test nodes for fault tolerance testing
 func createTestNodes(count int) []*fault_tolerance.Node {
 	nodes := make([]*fault_tolerance.Node, count)
-	
+
 	for i := 0; i < count; i++ {
 		nodes[i] = &fault_tolerance.Node{
 			ID:       fmt.Sprintf("test-node-%d", i+1),
@@ -1072,7 +1070,7 @@ func createTestNodes(count int) []*fault_tolerance.Node {
 			},
 		}
 	}
-	
+
 	return nodes
 }
 

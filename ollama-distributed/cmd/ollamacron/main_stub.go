@@ -50,7 +50,7 @@ Features:
 • Web-based management interface
 
 This is a demonstration stub showing the command structure.`,
-		Version: buildVersion(),
+		Version:      buildVersion(),
 		SilenceUsage: true,
 	}
 
@@ -257,20 +257,20 @@ func buildMetricsCmd(app *Application) *cobra.Command {
 func (app *Application) runNode(cmd *cobra.Command, args []string) error {
 	fmt.Println("🚀 Starting Ollamacron Node (Stub Mode)")
 	fmt.Println("📋 Configuration:")
-	
+
 	// Get flag values
 	listen, _ := cmd.Flags().GetString("listen")
 	p2pListen, _ := cmd.Flags().GetString("p2p-listen")
 	bootstrap, _ := cmd.Flags().GetStringSlice("bootstrap")
 	dataDir, _ := cmd.Flags().GetString("data-dir")
 	nodeName, _ := cmd.Flags().GetString("node-name")
-	
+
 	fmt.Printf("  • API Listen: %s\n", listen)
 	fmt.Printf("  • P2P Listen: %s\n", p2pListen)
 	fmt.Printf("  • Bootstrap: %v\n", bootstrap)
 	fmt.Printf("  • Data Dir: %s\n", dataDir)
 	fmt.Printf("  • Node Name: %s\n", nodeName)
-	
+
 	fmt.Println("\n🎯 Services Starting:")
 	fmt.Println("  ✅ Security initialized")
 	fmt.Println("  ✅ P2P networking ready")
@@ -278,15 +278,15 @@ func (app *Application) runNode(cmd *cobra.Command, args []string) error {
 	fmt.Println("  ✅ Scheduler engine running")
 	fmt.Println("  ✅ API server listening")
 	fmt.Println("  ✅ Metrics server started")
-	
+
 	fmt.Println("\n🌐 Endpoints:")
 	fmt.Printf("  • API: http://localhost:%s\n", strings.Split(listen, ":")[1])
 	fmt.Printf("  • Web UI: http://localhost:8080\n")
 	fmt.Printf("  • Metrics: http://localhost:9090/metrics\n")
-	
+
 	fmt.Println("\n📊 Node Status: RUNNING")
 	fmt.Println("✨ All services are operational (stub mode)")
-	
+
 	return app.waitForShutdown()
 }
 
@@ -294,20 +294,20 @@ func (app *Application) runNode(cmd *cobra.Command, args []string) error {
 func (app *Application) runCoordinator(cmd *cobra.Command, args []string) error {
 	fmt.Println("🚀 Starting Ollamacron Coordinator (Stub Mode)")
 	fmt.Println("📋 Configuration:")
-	
+
 	// Get flag values
 	listen, _ := cmd.Flags().GetString("listen")
 	p2pListen, _ := cmd.Flags().GetString("p2p-listen")
 	consensusListen, _ := cmd.Flags().GetString("consensus-listen")
 	dataDir, _ := cmd.Flags().GetString("data-dir")
 	bootstrap, _ := cmd.Flags().GetBool("bootstrap")
-	
+
 	fmt.Printf("  • API Listen: %s\n", listen)
 	fmt.Printf("  • P2P Listen: %s\n", p2pListen)
 	fmt.Printf("  • Consensus Listen: %s\n", consensusListen)
 	fmt.Printf("  • Data Dir: %s\n", dataDir)
 	fmt.Printf("  • Bootstrap: %v\n", bootstrap)
-	
+
 	fmt.Println("\n🎯 Services Starting:")
 	fmt.Println("  ✅ Security initialized")
 	fmt.Println("  ✅ P2P networking ready")
@@ -316,15 +316,15 @@ func (app *Application) runCoordinator(cmd *cobra.Command, args []string) error 
 	fmt.Println("  ✅ Scheduler engine running")
 	fmt.Println("  ✅ API server listening")
 	fmt.Println("  ✅ Metrics server started")
-	
+
 	fmt.Println("\n🌐 Endpoints:")
 	fmt.Printf("  • API: http://localhost:%s\n", strings.Split(listen, ":")[1])
 	fmt.Printf("  • Web UI: http://localhost:8080\n")
 	fmt.Printf("  • Metrics: http://localhost:9090/metrics\n")
-	
+
 	fmt.Println("\n📊 Coordinator Status: RUNNING")
 	fmt.Println("✨ All services are operational (stub mode)")
-	
+
 	return app.waitForShutdown()
 }
 
@@ -332,31 +332,31 @@ func (app *Application) runCoordinator(cmd *cobra.Command, args []string) error 
 func (app *Application) runStandalone(cmd *cobra.Command, args []string) error {
 	fmt.Println("🚀 Starting Ollamacron Standalone (Stub Mode)")
 	fmt.Println("📋 Configuration:")
-	
+
 	// Get flag values
 	listen, _ := cmd.Flags().GetString("listen")
 	dataDir, _ := cmd.Flags().GetString("data-dir")
 	modelDir, _ := cmd.Flags().GetString("model-dir")
-	
+
 	fmt.Printf("  • API Listen: %s\n", listen)
 	fmt.Printf("  • Data Dir: %s\n", dataDir)
 	fmt.Printf("  • Model Dir: %s\n", modelDir)
-	
+
 	fmt.Println("\n🎯 Services Starting:")
 	fmt.Println("  ✅ Security initialized")
 	fmt.Println("  ✅ Model manager started")
 	fmt.Println("  ✅ Scheduler engine running")
 	fmt.Println("  ✅ API server listening")
 	fmt.Println("  ✅ Metrics server started")
-	
+
 	fmt.Println("\n🌐 Endpoints:")
 	fmt.Printf("  • API: http://localhost:%s\n", strings.Split(listen, ":")[1])
 	fmt.Printf("  • Web UI: http://localhost:8080\n")
 	fmt.Printf("  • Metrics: http://localhost:9090/metrics\n")
-	
+
 	fmt.Println("\n📊 Standalone Status: RUNNING")
 	fmt.Println("✨ All services are operational (stub mode)")
-	
+
 	return app.waitForShutdown()
 }
 
@@ -380,21 +380,21 @@ func (app *Application) runStatus(cmd *cobra.Command, args []string) error {
 // runJoin runs the join command
 func (app *Application) runJoin(cmd *cobra.Command, args []string) error {
 	peers, _ := cmd.Flags().GetStringSlice("peers")
-	
+
 	fmt.Println("🔗 Joining Ollamacron Cluster (Stub Mode)")
 	fmt.Printf("📋 Target Peers: %v\n", peers)
 	fmt.Println("🎯 Connecting to peers...")
-	
+
 	time.Sleep(2 * time.Second)
-	
+
 	fmt.Println("✅ Connected to cluster")
 	fmt.Println("📊 Synchronizing state...")
-	
+
 	time.Sleep(1 * time.Second)
-	
+
 	fmt.Println("✅ Successfully joined cluster")
 	fmt.Println("Note: This is a demonstration stub")
-	
+
 	return nil
 }
 
@@ -404,25 +404,25 @@ func (app *Application) runConfigGenerate(cmd *cobra.Command, args []string) err
 	if len(args) > 0 {
 		filename = args[0]
 	}
-	
+
 	fmt.Printf("📝 Generating default configuration: %s\n", filename)
-	
+
 	// For demo purposes, just show what would be generated
 	fmt.Println("✅ Configuration template would be generated")
 	fmt.Println("Note: This is a demonstration stub")
-	
+
 	return nil
 }
 
 // runConfigValidate validates the configuration
 func (app *Application) runConfigValidate(cmd *cobra.Command, args []string) error {
 	fmt.Println("🔍 Validating configuration...")
-	
+
 	time.Sleep(1 * time.Second)
-	
+
 	fmt.Println("✅ Configuration is valid")
 	fmt.Println("Note: This is a demonstration stub")
-	
+
 	return nil
 }
 
@@ -477,15 +477,15 @@ func (app *Application) waitForShutdown() error {
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
 	fmt.Println("\n🛑 Press Ctrl+C to shutdown...")
-	
+
 	sig := <-sigChan
 	fmt.Printf("\n📡 Received signal: %s\n", sig.String())
-	
+
 	fmt.Println("🔄 Shutting down gracefully...")
-	
+
 	// Simulate shutdown process
 	time.Sleep(1 * time.Second)
-	
+
 	fmt.Println("✅ Shutdown completed")
 	return nil
 }

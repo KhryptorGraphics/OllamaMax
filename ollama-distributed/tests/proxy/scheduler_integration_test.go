@@ -26,7 +26,7 @@ func main() {
 	fmt.Println("===================================")
 
 	tester := &SchedulerIntegrationTester{}
-	
+
 	// Run integration tests
 	if err := tester.runTests(); err != nil {
 		log.Fatalf("Integration tests failed: %v", err)
@@ -92,7 +92,7 @@ func (t *SchedulerIntegrationTester) initializeComponents() error {
 		Algorithm: "raft",
 		DataDir:   "./test-data/consensus",
 	}
-	
+
 	// Create a mock consensus engine for testing
 	t.consensus = &consensus.Engine{} // Simplified for testing
 
@@ -212,7 +212,7 @@ type TestResult struct {
 func (t *SchedulerIntegrationTester) printTestSummary() {
 	fmt.Println("\n" + "="*60)
 	fmt.Println("📊 INTEGRATION TEST SUMMARY")
-	fmt.Println("="*60)
+	fmt.Println("=" * 60)
 
 	fmt.Println("\n🎯 TESTED COMPONENTS:")
 	fmt.Println("1. ✅ Scheduler Engine Integration")

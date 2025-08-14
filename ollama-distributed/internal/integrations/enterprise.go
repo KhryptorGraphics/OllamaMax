@@ -57,17 +57,17 @@ type SlackConfig struct {
 
 // DatadogConfig configures Datadog integration
 type DatadogConfig struct {
-	APIKey     string `json:"api_key"`
-	AppKey     string `json:"app_key"`
-	Site       string `json:"site"`
-	Enabled    bool   `json:"enabled"`
+	APIKey  string `json:"api_key"`
+	AppKey  string `json:"app_key"`
+	Site    string `json:"site"`
+	Enabled bool   `json:"enabled"`
 }
 
 // NewRelicConfig configures New Relic integration
 type NewRelicConfig struct {
-	APIKey     string `json:"api_key"`
-	AccountID  string `json:"account_id"`
-	Enabled    bool   `json:"enabled"`
+	APIKey    string `json:"api_key"`
+	AccountID string `json:"account_id"`
+	Enabled   bool   `json:"enabled"`
 }
 
 // NewEnterpriseIntegrationManager creates a new enterprise integration manager
@@ -123,10 +123,10 @@ func (sn *ServiceNowIntegration) CreateIncident(title, description, severity str
 	incident := map[string]interface{}{
 		"short_description": title,
 		"description":       description,
-		"urgency":          severity,
-		"impact":           severity,
-		"category":         "Software",
-		"subcategory":      "Application",
+		"urgency":           severity,
+		"impact":            severity,
+		"category":          "Software",
+		"subcategory":       "Application",
 	}
 
 	data, err := json.Marshal(incident)
@@ -233,9 +233,9 @@ func NewSlackIntegration(config *SlackConfig) *SlackIntegration {
 // SendMessage sends a message to Slack
 func (s *SlackIntegration) SendMessage(message, level string) error {
 	payload := map[string]interface{}{
-		"channel":   s.config.Channel,
-		"username":  s.config.Username,
-		"text":      message,
+		"channel":    s.config.Channel,
+		"username":   s.config.Username,
+		"text":       message,
 		"icon_emoji": s.getEmojiForLevel(level),
 	}
 

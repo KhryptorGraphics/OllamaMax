@@ -10,17 +10,17 @@ import (
 
 // FaultToleranceManager manages fault tolerance and recovery mechanisms
 type FaultToleranceManager struct {
-	config           *Config
-	detectionSystem  *FaultDetector
-	recoveryEngine   *RecoveryEngine
-	replicationMgr   *ReplicationManager
-	circuitBreaker   *CircuitBreaker
-	checkpointing    *CheckpointManager
-	metrics          *FaultToleranceMetrics
-	mu               sync.RWMutex
-	ctx              context.Context
-	cancel           context.CancelFunc
-	started          bool
+	config          *Config
+	detectionSystem *FaultDetector
+	recoveryEngine  *RecoveryEngine
+	replicationMgr  *ReplicationManager
+	circuitBreaker  *CircuitBreaker
+	checkpointing   *CheckpointManager
+	metrics         *FaultToleranceMetrics
+	mu              sync.RWMutex
+	ctx             context.Context
+	cancel          context.CancelFunc
+	started         bool
 }
 
 // Config holds fault tolerance configuration
@@ -59,10 +59,10 @@ type SystemMonitor interface {
 
 // AlertingSystem manages fault alerts
 type AlertingSystem struct {
-	alerts    []*FaultAlert
-	alertsMu  sync.RWMutex
-	handlers  map[string]AlertHandler
-	config    *AlertConfig
+	alerts   []*FaultAlert
+	alertsMu sync.RWMutex
+	handlers map[string]AlertHandler
+	config   *AlertConfig
 }
 
 // AlertHandler interface for handling alerts
@@ -96,8 +96,8 @@ type FaultDetection struct {
 type FaultType string
 
 const (
-	FaultTypeNodeFailure     FaultType = "node_failure"
-	FaultTypeNetworkPartition FaultType = "network_partition"
+	FaultTypeNodeFailure        FaultType = "node_failure"
+	FaultTypeNetworkPartition   FaultType = "network_partition"
 	FaultTypeResourceExhaustion FaultType = "resource_exhaustion"
 	FaultTypePerformanceAnomaly FaultType = "performance_anomaly"
 	FaultTypeServiceUnavailable FaultType = "service_unavailable"
@@ -144,13 +144,13 @@ type MonitorResult struct {
 
 // FaultAlert represents a fault alert
 type FaultAlert struct {
-	ID          string                 `json:"id"`
-	FaultID     string                 `json:"fault_id"`
-	Severity    FaultSeverity          `json:"severity"`
-	Message     string                 `json:"message"`
-	Timestamp   time.Time              `json:"timestamp"`
-	Handled     bool                   `json:"handled"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	ID        string                 `json:"id"`
+	FaultID   string                 `json:"fault_id"`
+	Severity  FaultSeverity          `json:"severity"`
+	Message   string                 `json:"message"`
+	Timestamp time.Time              `json:"timestamp"`
+	Handled   bool                   `json:"handled"`
+	Metadata  map[string]interface{} `json:"metadata"`
 }
 
 // RecoveryEngine handles fault recovery
@@ -179,13 +179,13 @@ type RecoveryRequest struct {
 
 // RecoveryResult represents the result of a recovery attempt
 type RecoveryResult struct {
-	FaultID     string                 `json:"fault_id"`
-	Strategy    string                 `json:"strategy"`
-	Successful  bool                   `json:"successful"`
-	Duration    time.Duration          `json:"duration"`
-	Error       string                 `json:"error,omitempty"`
-	Metadata    map[string]interface{} `json:"metadata"`
-	Timestamp   time.Time              `json:"timestamp"`
+	FaultID    string                 `json:"fault_id"`
+	Strategy   string                 `json:"strategy"`
+	Successful bool                   `json:"successful"`
+	Duration   time.Duration          `json:"duration"`
+	Error      string                 `json:"error,omitempty"`
+	Metadata   map[string]interface{} `json:"metadata"`
+	Timestamp  time.Time              `json:"timestamp"`
 }
 
 // RecoveryAttempt represents a recovery attempt
@@ -208,16 +208,16 @@ type ReplicationManager struct {
 
 // ReplicationJob represents a replication job
 type ReplicationJob struct {
-	ID            string                 `json:"id"`
-	Type          ReplicationType        `json:"type"`
-	Source        string                 `json:"source"`
-	Targets       []string               `json:"targets"`
-	Status        ReplicationStatus      `json:"status"`
-	Progress      float64                `json:"progress"`
-	StartedAt     time.Time              `json:"started_at"`
-	CompletedAt   *time.Time             `json:"completed_at,omitempty"`
-	Error         string                 `json:"error,omitempty"`
-	Metadata      map[string]interface{} `json:"metadata"`
+	ID          string                 `json:"id"`
+	Type        ReplicationType        `json:"type"`
+	Source      string                 `json:"source"`
+	Targets     []string               `json:"targets"`
+	Status      ReplicationStatus      `json:"status"`
+	Progress    float64                `json:"progress"`
+	StartedAt   time.Time              `json:"started_at"`
+	CompletedAt *time.Time             `json:"completed_at,omitempty"`
+	Error       string                 `json:"error,omitempty"`
+	Metadata    map[string]interface{} `json:"metadata"`
 }
 
 // ReplicationType represents the type of replication
@@ -250,23 +250,23 @@ const (
 
 // CircuitBreaker implements circuit breaker pattern
 type CircuitBreaker struct {
-	manager         *FaultToleranceManager
-	circuits        map[string]*Circuit
-	circuitsMu      sync.RWMutex
-	defaultConfig   *CircuitConfig
+	manager       *FaultToleranceManager
+	circuits      map[string]*Circuit
+	circuitsMu    sync.RWMutex
+	defaultConfig *CircuitConfig
 }
 
 // Circuit represents a circuit breaker
 type Circuit struct {
-	Name          string              `json:"name"`
-	State         CircuitState        `json:"state"`
-	Config        *CircuitConfig      `json:"config"`
-	FailureCount  int                 `json:"failure_count"`
-	SuccessCount  int                 `json:"success_count"`
-	LastFailure   time.Time           `json:"last_failure"`
-	LastSuccess   time.Time           `json:"last_success"`
-	StateChanged  time.Time           `json:"state_changed"`
-	mu            sync.RWMutex
+	Name         string         `json:"name"`
+	State        CircuitState   `json:"state"`
+	Config       *CircuitConfig `json:"config"`
+	FailureCount int            `json:"failure_count"`
+	SuccessCount int            `json:"success_count"`
+	LastFailure  time.Time      `json:"last_failure"`
+	LastSuccess  time.Time      `json:"last_success"`
+	StateChanged time.Time      `json:"state_changed"`
+	mu           sync.RWMutex
 }
 
 // CircuitState represents the state of a circuit breaker
@@ -288,13 +288,13 @@ type CircuitConfig struct {
 
 // CheckpointManager handles checkpointing and recovery
 type CheckpointManager struct {
-	manager     *FaultToleranceManager
-	storage     CheckpointStorage
-	frequency   time.Duration
-	compression CompressionAlgorithm
-	encryption  EncryptionMethod
-	cleanup     CleanupPolicy
-	checkpoints map[string]*Checkpoint
+	manager       *FaultToleranceManager
+	storage       CheckpointStorage
+	frequency     time.Duration
+	compression   CompressionAlgorithm
+	encryption    EncryptionMethod
+	cleanup       CleanupPolicy
+	checkpoints   map[string]*Checkpoint
 	checkpointsMu sync.RWMutex
 }
 
@@ -328,24 +328,24 @@ type CleanupPolicy interface {
 
 // Checkpoint represents a system checkpoint
 type Checkpoint struct {
-	ID            string                 `json:"id"`
-	Timestamp     time.Time              `json:"timestamp"`
-	ModelState    ModelState             `json:"model_state"`
-	RequestQueue  []Request              `json:"request_queue"`
-	NodeStates    map[string]NodeState   `json:"node_states"`
-	Metadata      map[string]interface{} `json:"metadata"`
-	Size          int64                  `json:"size"`
-	Compressed    bool                   `json:"compressed"`
-	Encrypted     bool                   `json:"encrypted"`
+	ID           string                 `json:"id"`
+	Timestamp    time.Time              `json:"timestamp"`
+	ModelState   ModelState             `json:"model_state"`
+	RequestQueue []Request              `json:"request_queue"`
+	NodeStates   map[string]NodeState   `json:"node_states"`
+	Metadata     map[string]interface{} `json:"metadata"`
+	Size         int64                  `json:"size"`
+	Compressed   bool                   `json:"compressed"`
+	Encrypted    bool                   `json:"encrypted"`
 }
 
 // ModelState represents the state of a model
 type ModelState struct {
-	Name        string                 `json:"name"`
-	Version     string                 `json:"version"`
-	State       map[string]interface{} `json:"state"`
-	Weights     []byte                 `json:"weights"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	Name     string                 `json:"name"`
+	Version  string                 `json:"version"`
+	State    map[string]interface{} `json:"state"`
+	Weights  []byte                 `json:"weights"`
+	Metadata map[string]interface{} `json:"metadata"`
 }
 
 // Request represents a request in the system
@@ -366,30 +366,30 @@ type NodeState struct {
 
 // FaultToleranceMetrics tracks fault tolerance metrics
 type FaultToleranceMetrics struct {
-	FaultsDetected      int64     `json:"faults_detected"`
-	FaultsResolved      int64     `json:"faults_resolved"`
-	RecoveryAttempts    int64     `json:"recovery_attempts"`
-	SuccessfulRecoveries int64    `json:"successful_recoveries"`
-	AverageRecoveryTime time.Duration `json:"average_recovery_time"`
-	Uptime              time.Duration `json:"uptime"`
-	LastFault           *time.Time    `json:"last_fault"`
-	LastRecovery        *time.Time    `json:"last_recovery"`
+	FaultsDetected       int64         `json:"faults_detected"`
+	FaultsResolved       int64         `json:"faults_resolved"`
+	RecoveryAttempts     int64         `json:"recovery_attempts"`
+	SuccessfulRecoveries int64         `json:"successful_recoveries"`
+	AverageRecoveryTime  time.Duration `json:"average_recovery_time"`
+	Uptime               time.Duration `json:"uptime"`
+	LastFault            *time.Time    `json:"last_fault"`
+	LastRecovery         *time.Time    `json:"last_recovery"`
 }
 
 // NewFaultToleranceManager creates a new fault tolerance manager
 func NewFaultToleranceManager(config *Config) *FaultToleranceManager {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	ftm := &FaultToleranceManager{
 		config:  config,
 		ctx:     ctx,
 		cancel:  cancel,
 		metrics: &FaultToleranceMetrics{},
 	}
-	
+
 	// Initialize components
 	ftm.initializeComponents()
-	
+
 	return ftm
 }
 
@@ -403,7 +403,7 @@ func (ftm *FaultToleranceManager) initializeComponents() {
 		thresholds:     make(map[string]float64),
 		detections:     make(map[string]*FaultDetection),
 	}
-	
+
 	// Initialize alerting system
 	ftm.detectionSystem.alerting = &AlertingSystem{
 		alerts:   make([]*FaultAlert, 0),
@@ -415,7 +415,7 @@ func (ftm *FaultToleranceManager) initializeComponents() {
 			SeverityLevel: "medium",
 		},
 	}
-	
+
 	// Initialize recovery engine
 	ftm.recoveryEngine = &RecoveryEngine{
 		manager:         ftm,
@@ -423,7 +423,7 @@ func (ftm *FaultToleranceManager) initializeComponents() {
 		recoveryQueue:   make(chan *RecoveryRequest, 100),
 		recoveryHistory: make([]*RecoveryAttempt, 0),
 	}
-	
+
 	// Initialize replication manager
 	ftm.replicationMgr = &ReplicationManager{
 		manager:         ftm,
@@ -431,7 +431,7 @@ func (ftm *FaultToleranceManager) initializeComponents() {
 		factor:          ftm.config.ReplicationFactor,
 		strategy:        ReplicationStrategyAdaptive,
 	}
-	
+
 	// Initialize circuit breaker
 	ftm.circuitBreaker = &CircuitBreaker{
 		manager:  ftm,
@@ -443,17 +443,17 @@ func (ftm *FaultToleranceManager) initializeComponents() {
 			ResetTimeout:     60 * time.Second,
 		},
 	}
-	
+
 	// Initialize checkpoint manager
 	ftm.checkpointing = &CheckpointManager{
 		manager:     ftm,
 		frequency:   ftm.config.CheckpointInterval,
 		checkpoints: make(map[string]*Checkpoint),
 	}
-	
+
 	// Register default recovery strategies
 	ftm.registerDefaultStrategies()
-	
+
 	// Register default health checkers
 	ftm.registerDefaultHealthCheckers()
 }
@@ -466,25 +466,25 @@ func (ftm *FaultToleranceManager) registerDefaultStrategies() {
 		&RequestMigrationStrategy{},
 		&ModelReplicationStrategy{},
 	}
-	
+
 	// Network partition recovery strategies
 	ftm.recoveryEngine.strategies[FaultTypeNetworkPartition] = []RecoveryStrategy{
 		&PartitionToleranceStrategy{},
 		&RequestMigrationStrategy{},
 	}
-	
+
 	// Resource exhaustion recovery strategies
 	ftm.recoveryEngine.strategies[FaultTypeResourceExhaustion] = []RecoveryStrategy{
 		&ResourceScalingStrategy{},
 		&LoadSheddingStrategy{},
 	}
-	
+
 	// Performance anomaly recovery strategies
 	ftm.recoveryEngine.strategies[FaultTypePerformanceAnomaly] = []RecoveryStrategy{
 		&PerformanceTuningStrategy{},
 		&LoadBalancingStrategy{},
 	}
-	
+
 	// Register advanced strategies
 	ftm.registerAdvancedStrategies()
 }
@@ -501,27 +501,27 @@ func (ftm *FaultToleranceManager) registerDefaultHealthCheckers() {
 func (ftm *FaultToleranceManager) Start() error {
 	ftm.mu.Lock()
 	defer ftm.mu.Unlock()
-	
+
 	if ftm.started {
 		return fmt.Errorf("fault tolerance manager already started")
 	}
-	
+
 	// Start fault detection
 	go ftm.detectionSystem.Start(ftm.ctx)
-	
+
 	// Start recovery engine
 	go ftm.recoveryEngine.Start(ftm.ctx)
-	
+
 	// Start checkpointing
 	go ftm.checkpointing.Start(ftm.ctx)
-	
+
 	ftm.started = true
-	
+
 	slog.Info("fault tolerance manager started",
 		"replication_factor", ftm.config.ReplicationFactor,
 		"health_check_interval", ftm.config.HealthCheckInterval,
 		"circuit_breaker_enabled", ftm.config.CircuitBreakerEnabled)
-	
+
 	return nil
 }
 
@@ -557,17 +557,17 @@ func (cm *CheckpointManager) CreateCheckpoint() *Checkpoint {
 		Compressed:   false,
 		Encrypted:    false,
 	}
-	
+
 	// Store system metadata (placeholder)
 	checkpoint.Metadata["system_health"] = "ok"
 	checkpoint.Metadata["active_connections"] = 100
 	checkpoint.Metadata["memory_usage"] = "500MB"
-	
+
 	// Store in checkpoints map
 	cm.checkpointsMu.Lock()
 	cm.checkpoints[checkpoint.ID] = checkpoint
 	cm.checkpointsMu.Unlock()
-	
+
 	return checkpoint
 }
 
@@ -575,22 +575,22 @@ func (cm *CheckpointManager) CreateCheckpoint() *Checkpoint {
 func (cm *CheckpointManager) GetLatestCheckpoint() (*Checkpoint, error) {
 	cm.checkpointsMu.RLock()
 	defer cm.checkpointsMu.RUnlock()
-	
+
 	if len(cm.checkpoints) == 0 {
 		return nil, nil
 	}
-	
+
 	// Find the most recent checkpoint
 	var latest *Checkpoint
 	var latestTime time.Time
-	
+
 	for _, checkpoint := range cm.checkpoints {
 		if latest == nil || checkpoint.Timestamp.After(latestTime) {
 			latest = checkpoint
 			latestTime = checkpoint.Timestamp
 		}
 	}
-	
+
 	return latest, nil
 }
 
@@ -621,17 +621,17 @@ func (ftm *FaultToleranceManager) DetectFault(faultType FaultType, target, descr
 		Status:      FaultStatusDetected,
 		Metadata:    metadata,
 	}
-	
+
 	// Store fault detection
 	ftm.detectionSystem.detectionsMu.Lock()
 	ftm.detectionSystem.detections[fault.ID] = fault
 	ftm.detectionSystem.detectionsMu.Unlock()
-	
+
 	// Update metrics
 	ftm.metrics.FaultsDetected++
 	now := time.Now()
 	ftm.metrics.LastFault = &now
-	
+
 	// Create alert
 	alert := &FaultAlert{
 		ID:        fmt.Sprintf("alert_%d", time.Now().UnixNano()),
@@ -641,20 +641,20 @@ func (ftm *FaultToleranceManager) DetectFault(faultType FaultType, target, descr
 		Timestamp: time.Now(),
 		Metadata:  metadata,
 	}
-	
+
 	// Send alert
 	ftm.detectionSystem.alerting.sendAlert(alert)
-	
+
 	// Trigger recovery
 	go ftm.triggerRecovery(fault)
-	
+
 	slog.Warn("fault detected",
 		"fault_id", fault.ID,
 		"type", fault.Type,
 		"severity", fault.Severity,
 		"target", fault.Target,
 		"description", fault.Description)
-	
+
 	return fault
 }
 
@@ -683,7 +683,7 @@ func (ftm *FaultToleranceManager) triggerRecovery(fault *FaultDetection) {
 		Priority:  ftm.getPriority(fault.Severity),
 		Timestamp: time.Now(),
 	}
-	
+
 	select {
 	case ftm.recoveryEngine.recoveryQueue <- recoveryRequest:
 		slog.Debug("recovery request queued", "fault_id", fault.ID)
@@ -712,12 +712,12 @@ func (ftm *FaultToleranceManager) getPriority(severity FaultSeverity) int {
 func (ftm *FaultToleranceManager) GetMetrics() *FaultToleranceMetrics {
 	ftm.mu.RLock()
 	defer ftm.mu.RUnlock()
-	
+
 	// Calculate uptime
 	if ftm.started {
 		ftm.metrics.Uptime = time.Since(time.Now().Add(-ftm.metrics.Uptime))
 	}
-	
+
 	// Calculate average recovery time
 	ftm.recoveryEngine.historyMu.RLock()
 	if len(ftm.recoveryEngine.recoveryHistory) > 0 {
@@ -730,7 +730,7 @@ func (ftm *FaultToleranceManager) GetMetrics() *FaultToleranceMetrics {
 		ftm.metrics.AverageRecoveryTime = totalTime / time.Duration(len(ftm.recoveryEngine.recoveryHistory))
 	}
 	ftm.recoveryEngine.historyMu.RUnlock()
-	
+
 	return ftm.metrics
 }
 
@@ -738,12 +738,12 @@ func (ftm *FaultToleranceManager) GetMetrics() *FaultToleranceMetrics {
 func (ftm *FaultToleranceManager) GetFaultDetections() []*FaultDetection {
 	ftm.detectionSystem.detectionsMu.RLock()
 	defer ftm.detectionSystem.detectionsMu.RUnlock()
-	
+
 	detections := make([]*FaultDetection, 0, len(ftm.detectionSystem.detections))
 	for _, detection := range ftm.detectionSystem.detections {
 		detections = append(detections, detection)
 	}
-	
+
 	return detections
 }
 
@@ -751,10 +751,10 @@ func (ftm *FaultToleranceManager) GetFaultDetections() []*FaultDetection {
 func (ftm *FaultToleranceManager) GetRecoveryHistory() []*RecoveryAttempt {
 	ftm.recoveryEngine.historyMu.RLock()
 	defer ftm.recoveryEngine.historyMu.RUnlock()
-	
+
 	history := make([]*RecoveryAttempt, len(ftm.recoveryEngine.recoveryHistory))
 	copy(history, ftm.recoveryEngine.recoveryHistory)
-	
+
 	return history
 }
 
@@ -762,27 +762,27 @@ func (ftm *FaultToleranceManager) GetRecoveryHistory() []*RecoveryAttempt {
 func (ftm *FaultToleranceManager) Shutdown(ctx context.Context) error {
 	ftm.mu.Lock()
 	defer ftm.mu.Unlock()
-	
+
 	if !ftm.started {
 		return nil
 	}
-	
+
 	slog.Info("shutting down fault tolerance manager")
-	
+
 	// Cancel context
 	ftm.cancel()
-	
+
 	// Wait for components to shutdown
 	shutdownCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	
+
 	// Shutdown components
 	if err := ftm.shutdownComponents(shutdownCtx); err != nil {
 		slog.Warn("error during shutdown", "error", err)
 	}
-	
+
 	ftm.started = false
-	
+
 	return nil
 }
 
@@ -795,9 +795,9 @@ func (ftm *FaultToleranceManager) shutdownComponents(ctx context.Context) error 
 			slog.Warn("failed to create final checkpoint")
 		}
 	}
-	
+
 	// Close recovery queue
 	close(ftm.recoveryEngine.recoveryQueue)
-	
+
 	return nil
 }

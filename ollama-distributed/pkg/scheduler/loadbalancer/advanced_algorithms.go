@@ -23,14 +23,14 @@ type PredictionHistory struct {
 
 // PredictionRecord represents a prediction record
 type PredictionRecord struct {
-	NodeID           string
-	TaskType         string
-	PredictedLatency time.Duration
-	ActualLatency    time.Duration
+	NodeID              string
+	TaskType            string
+	PredictedLatency    time.Duration
+	ActualLatency       time.Duration
 	PredictedThroughput float64
-	ActualThroughput float64
-	Accuracy         float64
-	Timestamp        time.Time
+	ActualThroughput    float64
+	Accuracy            float64
+	Timestamp           time.Time
 }
 
 // NewPredictiveLoadBalancingAlgorithm creates a new predictive load balancing algorithm
@@ -61,11 +61,11 @@ func (plba *PredictiveLoadBalancingAlgorithm) UpdateMetrics(result *SelectionRes
 	plba.metrics.Selections++
 	if result.Successful {
 		plba.metrics.SuccessRate = (plba.metrics.SuccessRate*float64(plba.metrics.Selections-1) + 1.0) / float64(plba.metrics.Selections)
-		plba.metrics.AverageLatency = (plba.metrics.AverageLatency*time.Duration(plba.metrics.Selections-1) + 
+		plba.metrics.AverageLatency = (plba.metrics.AverageLatency*time.Duration(plba.metrics.Selections-1) +
 			result.ExecutionLatency) / time.Duration(plba.metrics.Selections)
 		plba.metrics.Throughput = (plba.metrics.Throughput*float64(plba.metrics.Selections-1) + result.Throughput) / float64(plba.metrics.Selections)
 	} else {
-		plba.metrics.SuccessRate = (plba.metrics.SuccessRate*float64(plba.metrics.Selections-1)) / float64(plba.metrics.Selections)
+		plba.metrics.SuccessRate = (plba.metrics.SuccessRate * float64(plba.metrics.Selections-1)) / float64(plba.metrics.Selections)
 	}
 	plba.metrics.LastUsed = time.Now()
 }
@@ -75,9 +75,9 @@ func (plba *PredictiveLoadBalancingAlgorithm) SelectNodes(task interface{}, node
 	if len(nodes) == 0 {
 		return nil, fmt.Errorf("no nodes available")
 	}
-	
+
 	start := time.Now()
-	
+
 	// Get task type
 	taskType := "general"
 	if taskMap, ok := task.(map[string]interface{}); ok {
@@ -87,30 +87,30 @@ func (plba *PredictiveLoadBalancingAlgorithm) SelectNodes(task interface{}, node
 			}
 		}
 	}
-	
+
 	// Predict performance for each node
 	nodeScores := make([]NodeScore, len(nodes))
-	
+
 	for i, node := range nodes {
 		// Predict performance
 		predictedLatency, predictedThroughput := plba.predictor.PredictPerformance(node, taskType)
-		
+
 		// Calculate score based on predictions and current load
 		score := plba.calculateScore(node, predictedLatency, predictedThroughput)
-		
+
 		nodeScores[i] = NodeScore{
-			Node:     node,
-			Score:    score,
-			Latency:  predictedLatency,
+			Node:       node,
+			Score:      score,
+			Latency:    predictedLatency,
 			Throughput: predictedThroughput,
 		}
 	}
-	
+
 	// Sort nodes by score (higher is better)
 	sort.Slice(nodeScores, func(i, j int) bool {
 		return nodeScores[i].Score > nodeScores[j].Score
 	})
-	
+
 	// Select top nodes (at least 1, up to 3)
 	selectedCount := 1
 	if len(nodeScores) > 3 {
@@ -118,24 +118,24 @@ func (plba *PredictiveLoadBalancingAlgorithm) SelectNodes(task interface{}, node
 	} else if len(nodeScores) > 1 {
 		selectedCount = len(nodeScores)
 	}
-	
+
 	selectedNodes := make([]*NodeInfo, selectedCount)
 	for i := 0; i < selectedCount; i++ {
 		selectedNodes[i] = nodeScores[i].Node
 	}
-	
+
 	// Record selection for learning
 	selectionTime := time.Since(start)
 	plba.recordSelection(selectedNodes, taskType, selectionTime)
-	
+
 	return selectedNodes, nil
 }
 
 // NodeScore represents a node with its score
 type NodeScore struct {
-	Node      *NodeInfo
-	Score     float64
-	Latency   time.Duration
+	Node       *NodeInfo
+	Score      float64
+	Latency    time.Duration
 	Throughput float64
 }
 
@@ -147,25 +147,25 @@ func (plba *PredictiveLoadBalancingAlgorithm) calculateScore(node *NodeInfo, pre
 	// 3. Current load (lower is better)
 	// 4. Health score (higher is better)
 	// 5. Performance score (higher is better)
-	
+
 	// Normalize latency (0-1, where 1 is best)
 	latencyScore := 1.0 - math.Min(float64(predictedLatency)/float64(10*time.Second), 1.0)
-	
+
 	// Normalize throughput (0-1, where 1 is best)
 	throughputScore := math.Min(predictedThroughput/1000.0, 1.0) // Assuming 1000 ops/sec is good
-	
+
 	// Load score (0-1, where 1 is best - lower load)
 	loadScore := 1.0 - (node.Usage.CPUUtilization+node.Usage.MemoryUtilization)/2.0/100.0
-	
+
 	// Health score (0-1)
 	healthScore := node.HealthScore / 100.0
-	
+
 	// Performance score (0-1)
 	performanceScore := node.PerformanceScore / 100.0
-	
+
 	// Weighted combination
 	score := 0.3*latencyScore + 0.2*throughputScore + 0.2*loadScore + 0.15*healthScore + 0.15*performanceScore
-	
+
 	return score
 }
 
@@ -216,14 +216,14 @@ func (alba *AdaptiveLoadBalancingAlgorithm) UpdateMetrics(result *SelectionResul
 	alba.metrics.Selections++
 	if result.Successful {
 		alba.metrics.SuccessRate = (alba.metrics.SuccessRate*float64(alba.metrics.Selections-1) + 1.0) / float64(alba.metrics.Selections)
-		alba.metrics.AverageLatency = (alba.metrics.AverageLatency*time.Duration(alba.metrics.Selections-1) + 
+		alba.metrics.AverageLatency = (alba.metrics.AverageLatency*time.Duration(alba.metrics.Selections-1) +
 			result.ExecutionLatency) / time.Duration(alba.metrics.Selections)
 		alba.metrics.Throughput = (alba.metrics.Throughput*float64(alba.metrics.Selections-1) + result.Throughput) / float64(alba.metrics.Selections)
 	} else {
-		alba.metrics.SuccessRate = (alba.metrics.SuccessRate*float64(alba.metrics.Selections-1)) / float64(alba.metrics.Selections)
+		alba.metrics.SuccessRate = (alba.metrics.SuccessRate * float64(alba.metrics.Selections-1)) / float64(alba.metrics.Selections)
 	}
 	alba.metrics.LastUsed = time.Now()
-	
+
 	// Learn from result
 	alba.learnFromResult(result)
 }
@@ -233,7 +233,7 @@ func (alba *AdaptiveLoadBalancingAlgorithm) SelectNodes(task interface{}, nodes 
 	if len(nodes) == 0 {
 		return nil, fmt.Errorf("no nodes available")
 	}
-	
+
 	// Get historical patterns for this task type
 	taskType := "general"
 	if taskMap, ok := task.(map[string]interface{}); ok {
@@ -243,12 +243,12 @@ func (alba *AdaptiveLoadBalancingAlgorithm) SelectNodes(task interface{}, nodes 
 			}
 		}
 	}
-	
+
 	pattern := alba.history.getPattern(taskType)
-	
+
 	// Calculate scores for each node
 	nodeScores := make([]NodeScore, len(nodes))
-	
+
 	for i, node := range nodes {
 		score := alba.calculateAdaptiveScore(node, pattern)
 		nodeScores[i] = NodeScore{
@@ -256,15 +256,15 @@ func (alba *AdaptiveLoadBalancingAlgorithm) SelectNodes(task interface{}, nodes 
 			Score: score,
 		}
 	}
-	
+
 	// Sort nodes by score (higher is better)
 	sort.Slice(nodeScores, func(i, j int) bool {
 		return nodeScores[i].Score > nodeScores[j].Score
 	})
-	
+
 	// Select top node
 	selectedNodes := []*NodeInfo{nodeScores[0].Node}
-	
+
 	return selectedNodes, nil
 }
 
@@ -281,14 +281,14 @@ func (alba *AdaptiveLoadBalancingAlgorithm) calculateAdaptiveScore(node *NodeInf
 	loadScore := 1.0 - (node.Usage.CPUUtilization+node.Usage.MemoryUtilization)/2.0/100.0
 	healthScore := node.HealthScore / 100.0
 	performanceScore := node.PerformanceScore / 100.0
-	
+
 	// Apply weights
 	score := alba.weightFactors["latency"]*latencyScore +
 		alba.weightFactors["throughput"]*throughputScore +
 		alba.weightFactors["load"]*loadScore +
 		alba.weightFactors["health"]*healthScore +
 		alba.weightFactors["performance"]*performanceScore
-	
+
 	// Adjust based on pattern if available
 	if pattern != nil && pattern.Confidence > 0.5 {
 		// Check if this node is preferred in the pattern
@@ -299,12 +299,12 @@ func (alba *AdaptiveLoadBalancingAlgorithm) calculateAdaptiveScore(node *NodeInf
 				break
 			}
 		}
-		
+
 		if isPreferred {
 			score *= (1.0 + pattern.Confidence*0.2) // Boost score for preferred nodes
 		}
 	}
-	
+
 	return score
 }
 
@@ -323,7 +323,7 @@ func (alba *AdaptiveLoadBalancingAlgorithm) learnFromResult(result *SelectionRes
 			alba.weightFactors["throughput"] *= (1.0 + alba.learningRate*0.2)
 		}
 	}
-	
+
 	// Normalize weights
 	alba.normalizeWeights()
 }
@@ -334,7 +334,7 @@ func (alba *AdaptiveLoadBalancingAlgorithm) normalizeWeights() {
 	for _, weight := range alba.weightFactors {
 		sum += weight
 	}
-	
+
 	if sum > 0 {
 		for key, weight := range alba.weightFactors {
 			alba.weightFactors[key] = weight / sum
@@ -346,11 +346,11 @@ func (alba *AdaptiveLoadBalancingAlgorithm) normalizeWeights() {
 func (rh *RequestHistory) getPattern(taskType string) *RequestPattern {
 	rh.patternsMu.RLock()
 	defer rh.patternsMu.RUnlock()
-	
+
 	if pattern, exists := rh.patterns[taskType]; exists {
 		return pattern
 	}
-	
+
 	return nil
 }
 
@@ -381,11 +381,11 @@ func (ralba *ResourceAwareLoadBalancingAlgorithm) UpdateMetrics(result *Selectio
 	ralba.metrics.Selections++
 	if result.Successful {
 		ralba.metrics.SuccessRate = (ralba.metrics.SuccessRate*float64(ralba.metrics.Selections-1) + 1.0) / float64(ralba.metrics.Selections)
-		ralba.metrics.AverageLatency = (ralba.metrics.AverageLatency*time.Duration(ralba.metrics.Selections-1) + 
+		ralba.metrics.AverageLatency = (ralba.metrics.AverageLatency*time.Duration(ralba.metrics.Selections-1) +
 			result.ExecutionLatency) / time.Duration(ralba.metrics.Selections)
 		ralba.metrics.Throughput = (ralba.metrics.Throughput*float64(ralba.metrics.Selections-1) + result.Throughput) / float64(ralba.metrics.Selections)
 	} else {
-		ralba.metrics.SuccessRate = (ralba.metrics.SuccessRate*float64(ralba.metrics.Selections-1)) / float64(ralba.metrics.Selections)
+		ralba.metrics.SuccessRate = (ralba.metrics.SuccessRate * float64(ralba.metrics.Selections-1)) / float64(ralba.metrics.Selections)
 	}
 	ralba.metrics.LastUsed = time.Now()
 }
@@ -395,13 +395,13 @@ func (ralba *ResourceAwareLoadBalancingAlgorithm) SelectNodes(task interface{}, 
 	if len(nodes) == 0 {
 		return nil, fmt.Errorf("no nodes available")
 	}
-	
+
 	// Estimate resource requirements from task
 	taskRequirements := ralba.estimateTaskRequirements(task)
-	
+
 	// Score nodes based on resource availability
 	nodeScores := make([]NodeScore, len(nodes))
-	
+
 	for i, node := range nodes {
 		score := ralba.calculateResourceScore(node, taskRequirements)
 		nodeScores[i] = NodeScore{
@@ -409,12 +409,12 @@ func (ralba *ResourceAwareLoadBalancingAlgorithm) SelectNodes(task interface{}, 
 			Score: score,
 		}
 	}
-	
+
 	// Sort nodes by score (higher is better)
 	sort.Slice(nodeScores, func(i, j int) bool {
 		return nodeScores[i].Score > nodeScores[j].Score
 	})
-	
+
 	// Select top nodes (1-3 depending on availability)
 	selectedCount := 1
 	if len(nodeScores) > 3 {
@@ -422,21 +422,21 @@ func (ralba *ResourceAwareLoadBalancingAlgorithm) SelectNodes(task interface{}, 
 	} else if len(nodeScores) > 1 {
 		selectedCount = len(nodeScores)
 	}
-	
+
 	selectedNodes := make([]*NodeInfo, selectedCount)
 	for i := 0; i < selectedCount; i++ {
 		selectedNodes[i] = nodeScores[i].Node
 	}
-	
+
 	return selectedNodes, nil
 }
 
 // TaskRequirements represents the resource requirements of a task
 type TaskRequirements struct {
-	CPU     int64   // CPU cores required
-	Memory  int64   // Memory in bytes required
-	GPU     int     // GPU count required
-	Network int64   // Network bandwidth required
+	CPU     int64 // CPU cores required
+	Memory  int64 // Memory in bytes required
+	GPU     int   // GPU count required
+	Network int64 // Network bandwidth required
 }
 
 // estimateTaskRequirements estimates resource requirements for a task
@@ -446,9 +446,9 @@ func (ralba *ResourceAwareLoadBalancingAlgorithm) estimateTaskRequirements(task 
 		CPU:     2,
 		Memory:  4 * 1024 * 1024 * 1024, // 4GB
 		GPU:     1,
-		Network: 100 * 1024 * 1024,     // 100MB/s
+		Network: 100 * 1024 * 1024, // 100MB/s
 	}
-	
+
 	// Try to extract more specific requirements from task
 	if taskMap, ok := task.(map[string]interface{}); ok {
 		// Extract model size if available
@@ -468,7 +468,7 @@ func (ralba *ResourceAwareLoadBalancingAlgorithm) estimateTaskRequirements(task 
 				}
 			}
 		}
-		
+
 		// Extract context length if available
 		if options, exists := taskMap["options"]; exists {
 			if optionsMap, ok := options.(map[string]interface{}); ok {
@@ -483,7 +483,7 @@ func (ralba *ResourceAwareLoadBalancingAlgorithm) estimateTaskRequirements(task 
 			}
 		}
 	}
-	
+
 	return requirements
 }
 
@@ -493,41 +493,41 @@ func (ralba *ResourceAwareLoadBalancingAlgorithm) calculateResourceScore(node *N
 	if node.Capacity.CPUCores < requirements.CPU {
 		return 0.0 // Insufficient CPU
 	}
-	
+
 	if node.Capacity.MemoryBytes < requirements.Memory {
 		return 0.0 // Insufficient memory
 	}
-	
+
 	if node.Capacity.GPUCount < requirements.GPU {
 		return 0.0 // Insufficient GPU
 	}
-	
+
 	if node.Capacity.NetworkBandwidth < requirements.Network {
 		return 0.0 // Insufficient network
 	}
-	
+
 	// Calculate resource utilization scores (0-1, where 1 is best - low utilization)
 	cpuUtilization := node.Usage.CPUUtilization / 100.0
 	memoryUtilization := node.Usage.MemoryUtilization / 100.0
 	gpuUtilization := node.Usage.GPUUtilization / 100.0
 	networkUtilization := node.Usage.NetworkUtilization / 100.0
-	
+
 	// Resource availability scores (higher is better)
 	cpuScore := 1.0 - cpuUtilization
 	memoryScore := 1.0 - memoryUtilization
 	gpuScore := 1.0 - gpuUtilization
 	networkScore := 1.0 - networkUtilization
-	
+
 	// Weighted combination
 	score := 0.3*cpuScore + 0.3*memoryScore + 0.2*gpuScore + 0.2*networkScore
-	
+
 	// Boost score for nodes with plenty of free resources
 	freeCPURatio := float64(node.Capacity.CPUCores-requirements.CPU) / float64(node.Capacity.CPUCores)
 	freeMemoryRatio := float64(node.Capacity.MemoryBytes-requirements.Memory) / float64(node.Capacity.MemoryBytes)
-	
+
 	if freeCPURatio > 0.5 && freeMemoryRatio > 0.5 {
 		score *= 1.2 // 20% boost for nodes with plenty of free resources
 	}
-	
+
 	return score
 }

@@ -11,48 +11,48 @@ import (
 
 // NetworkMonitor monitors network health and performance
 type NetworkMonitor struct {
-	config   *NetworkMonitorConfig
-	metrics  *NetworkMetrics
-	peers    map[peer.ID]*PeerMetrics
-	mu       sync.RWMutex
-	ctx      context.Context
-	cancel   context.CancelFunc
-	running  bool
+	config  *NetworkMonitorConfig
+	metrics *NetworkMetrics
+	peers   map[peer.ID]*PeerMetrics
+	mu      sync.RWMutex
+	ctx     context.Context
+	cancel  context.CancelFunc
+	running bool
 }
 
 // NetworkMonitorConfig configures the network monitor
 type NetworkMonitorConfig struct {
-	MonitorInterval     time.Duration `json:"monitor_interval"`
-	HealthCheckTimeout  time.Duration `json:"health_check_timeout"`
-	MaxPeers           int           `json:"max_peers"`
-	EnableLatencyCheck bool          `json:"enable_latency_check"`
-	EnableBandwidthCheck bool         `json:"enable_bandwidth_check"`
+	MonitorInterval      time.Duration `json:"monitor_interval"`
+	HealthCheckTimeout   time.Duration `json:"health_check_timeout"`
+	MaxPeers             int           `json:"max_peers"`
+	EnableLatencyCheck   bool          `json:"enable_latency_check"`
+	EnableBandwidthCheck bool          `json:"enable_bandwidth_check"`
 }
 
 // NetworkMetrics holds network-wide metrics
 type NetworkMetrics struct {
-	TotalPeers        int                    `json:"total_peers"`
-	ActivePeers       int                    `json:"active_peers"`
-	AverageLatency    time.Duration          `json:"average_latency"`
-	TotalBandwidth    int64                  `json:"total_bandwidth"`
-	PacketLoss        float64                `json:"packet_loss"`
-	LastUpdated       time.Time              `json:"last_updated"`
-	PeerMetrics       map[peer.ID]*PeerMetrics `json:"peer_metrics"`
+	TotalPeers     int                      `json:"total_peers"`
+	ActivePeers    int                      `json:"active_peers"`
+	AverageLatency time.Duration            `json:"average_latency"`
+	TotalBandwidth int64                    `json:"total_bandwidth"`
+	PacketLoss     float64                  `json:"packet_loss"`
+	LastUpdated    time.Time                `json:"last_updated"`
+	PeerMetrics    map[peer.ID]*PeerMetrics `json:"peer_metrics"`
 }
 
 // PeerMetrics holds metrics for individual peers
 type PeerMetrics struct {
-	PeerID          peer.ID       `json:"peer_id"`
-	Latency         time.Duration `json:"latency"`
-	Bandwidth       int64         `json:"bandwidth"`
-	PacketLoss      float64       `json:"packet_loss"`
-	ConnectionTime  time.Time     `json:"connection_time"`
-	LastSeen        time.Time     `json:"last_seen"`
-	MessagesSent    int64         `json:"messages_sent"`
-	MessagesReceived int64        `json:"messages_received"`
-	BytesSent       int64         `json:"bytes_sent"`
-	BytesReceived   int64         `json:"bytes_received"`
-	IsHealthy       bool          `json:"is_healthy"`
+	PeerID           peer.ID       `json:"peer_id"`
+	Latency          time.Duration `json:"latency"`
+	Bandwidth        int64         `json:"bandwidth"`
+	PacketLoss       float64       `json:"packet_loss"`
+	ConnectionTime   time.Time     `json:"connection_time"`
+	LastSeen         time.Time     `json:"last_seen"`
+	MessagesSent     int64         `json:"messages_sent"`
+	MessagesReceived int64         `json:"messages_received"`
+	BytesSent        int64         `json:"bytes_sent"`
+	BytesReceived    int64         `json:"bytes_received"`
+	IsHealthy        bool          `json:"is_healthy"`
 }
 
 // NewNetworkMonitor creates a new network monitor
@@ -61,7 +61,7 @@ func NewNetworkMonitor(config *NetworkMonitorConfig) *NetworkMonitor {
 		config = &NetworkMonitorConfig{
 			MonitorInterval:      30 * time.Second,
 			HealthCheckTimeout:   10 * time.Second,
-			MaxPeers:            1000,
+			MaxPeers:             1000,
 			EnableLatencyCheck:   true,
 			EnableBandwidthCheck: true,
 		}
@@ -261,19 +261,19 @@ func (nm *NetworkMonitor) isPeerHealthy(peer *PeerMetrics) bool {
 	// 1. Latency is reasonable (< 1 second)
 	// 2. Packet loss is low (< 5%)
 	// 3. Has been seen recently
-	
+
 	if peer.Latency > time.Second {
 		return false
 	}
-	
+
 	if peer.PacketLoss > 0.05 {
 		return false
 	}
-	
+
 	if time.Since(peer.LastSeen) > nm.config.HealthCheckTimeout {
 		return false
 	}
-	
+
 	return true
 }
 
@@ -282,27 +282,27 @@ func (nm *NetworkMonitor) updateMetrics() {
 	nm.metrics.TotalPeers = len(nm.peers)
 	nm.metrics.ActivePeers = 0
 	nm.metrics.TotalBandwidth = 0
-	
+
 	var totalLatency time.Duration
 	var totalPacketLoss float64
-	
+
 	for id, peer := range nm.peers {
 		nm.metrics.PeerMetrics[id] = peer
-		
+
 		if peer.IsHealthy {
 			nm.metrics.ActivePeers++
 		}
-		
+
 		nm.metrics.TotalBandwidth += peer.Bandwidth
 		totalLatency += peer.Latency
 		totalPacketLoss += peer.PacketLoss
 	}
-	
+
 	if nm.metrics.TotalPeers > 0 {
 		nm.metrics.AverageLatency = totalLatency / time.Duration(nm.metrics.TotalPeers)
 		nm.metrics.PacketLoss = totalPacketLoss / float64(nm.metrics.TotalPeers)
 	}
-	
+
 	nm.metrics.LastUpdated = time.Now()
 }
 

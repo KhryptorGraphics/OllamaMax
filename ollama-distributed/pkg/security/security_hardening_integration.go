@@ -13,14 +13,14 @@ import (
 type SecurityHardeningIntegration struct {
 	// Core components
 	securityManager   *SecurityManager
-	auditor          *SecurityAuditor
+	auditor           *SecurityAuditor
 	encryptionManager *AdvancedEncryptionManager
-	monitor          *SecurityMonitor
-	hardeningManager *SecurityHardeningManager
-	
+	monitor           *SecurityMonitor
+	hardeningManager  *SecurityHardeningManager
+
 	// Configuration
 	config *HardeningIntegrationConfig
-	
+
 	// State management
 	mu     sync.RWMutex
 	ctx    context.Context
@@ -29,36 +29,36 @@ type SecurityHardeningIntegration struct {
 
 // HardeningIntegrationConfig configures the security hardening integration
 type HardeningIntegrationConfig struct {
-	Enabled                    bool          `json:"enabled"`
-	EnableAuditIntegration     bool          `json:"enable_audit_integration"`
-	EnableMonitoringIntegration bool         `json:"enable_monitoring_integration"`
-	EnableEncryptionIntegration bool         `json:"enable_encryption_integration"`
-	EnableHardeningIntegration bool          `json:"enable_hardening_integration"`
-	
+	Enabled                     bool `json:"enabled"`
+	EnableAuditIntegration      bool `json:"enable_audit_integration"`
+	EnableMonitoringIntegration bool `json:"enable_monitoring_integration"`
+	EnableEncryptionIntegration bool `json:"enable_encryption_integration"`
+	EnableHardeningIntegration  bool `json:"enable_hardening_integration"`
+
 	// Integration intervals
 	AuditInterval      time.Duration `json:"audit_interval"`
 	MonitoringInterval time.Duration `json:"monitoring_interval"`
 	SyncInterval       time.Duration `json:"sync_interval"`
-	
+
 	// Security levels
-	SecurityLevel      string `json:"security_level"` // basic, standard, strict, maximum
-	AutoRemediation    bool   `json:"auto_remediation"`
-	AlertThreshold     int    `json:"alert_threshold"`
+	SecurityLevel   string `json:"security_level"` // basic, standard, strict, maximum
+	AutoRemediation bool   `json:"auto_remediation"`
+	AlertThreshold  int    `json:"alert_threshold"`
 }
 
 // SecurityStatus represents the overall security status
 type SecurityStatus struct {
-	Timestamp        time.Time                 `json:"timestamp"`
-	OverallScore     float64                   `json:"overall_score"`
-	SecurityLevel    string                    `json:"security_level"`
-	AuditScore       float64                   `json:"audit_score"`
-	ValidationScore  float64                   `json:"validation_score"`
-	ThreatLevel      string                    `json:"threat_level"`
-	ActiveThreats    int                       `json:"active_threats"`
-	SecurityAlerts   int                       `json:"security_alerts"`
-	Compliance       map[string]bool           `json:"compliance"`
-	Recommendations  []string                  `json:"recommendations"`
-	Components       map[string]ComponentStatus `json:"components"`
+	Timestamp       time.Time                  `json:"timestamp"`
+	OverallScore    float64                    `json:"overall_score"`
+	SecurityLevel   string                     `json:"security_level"`
+	AuditScore      float64                    `json:"audit_score"`
+	ValidationScore float64                    `json:"validation_score"`
+	ThreatLevel     string                     `json:"threat_level"`
+	ActiveThreats   int                        `json:"active_threats"`
+	SecurityAlerts  int                        `json:"security_alerts"`
+	Compliance      map[string]bool            `json:"compliance"`
+	Recommendations []string                   `json:"recommendations"`
+	Components      map[string]ComponentStatus `json:"components"`
 }
 
 // ComponentStatus represents the status of a security component
@@ -72,15 +72,15 @@ type ComponentStatus struct {
 
 // SecurityReport represents a comprehensive security report
 type SecurityReport struct {
-	GeneratedAt      time.Time                    `json:"generated_at"`
-	ReportType       string                       `json:"report_type"`
-	SecurityStatus   *SecurityStatus              `json:"security_status"`
-	AuditResults     *AuditResults                `json:"audit_results"`
-	ValidationResults *ValidationResult           `json:"validation_results"`
-	ThreatIndicators []ThreatIndicator            `json:"threat_indicators"`
-	SecurityAlerts   []SecurityAlert              `json:"security_alerts"`
-	Recommendations  []SecurityRecommendation     `json:"recommendations"`
-	ExecutiveSummary string                       `json:"executive_summary"`
+	GeneratedAt       time.Time                `json:"generated_at"`
+	ReportType        string                   `json:"report_type"`
+	SecurityStatus    *SecurityStatus          `json:"security_status"`
+	AuditResults      *AuditResults            `json:"audit_results"`
+	ValidationResults *ValidationResult        `json:"validation_results"`
+	ThreatIndicators  []ThreatIndicator        `json:"threat_indicators"`
+	SecurityAlerts    []SecurityAlert          `json:"security_alerts"`
+	Recommendations   []SecurityRecommendation `json:"recommendations"`
+	ExecutiveSummary  string                   `json:"executive_summary"`
 }
 
 // SecurityRecommendation represents a security recommendation
@@ -206,10 +206,10 @@ func (shi *SecurityHardeningIntegration) GetSecurityStatus() (*SecurityStatus, e
 	defer shi.mu.RUnlock()
 
 	status := &SecurityStatus{
-		Timestamp:     time.Now(),
-		SecurityLevel: shi.config.SecurityLevel,
-		Compliance:    make(map[string]bool),
-		Components:    make(map[string]ComponentStatus),
+		Timestamp:       time.Now(),
+		SecurityLevel:   shi.config.SecurityLevel,
+		Compliance:      make(map[string]bool),
+		Components:      make(map[string]ComponentStatus),
 		Recommendations: make([]string, 0),
 	}
 
@@ -236,10 +236,10 @@ func (shi *SecurityHardeningIntegration) GetSecurityStatus() (*SecurityStatus, e
 	if shi.monitor != nil {
 		indicators := shi.monitor.GetThreatIndicators()
 		alerts := shi.monitor.GetSecurityAlerts()
-		
+
 		status.ActiveThreats = len(indicators)
 		status.SecurityAlerts = len(alerts)
-		
+
 		// Determine threat level
 		status.ThreatLevel = shi.calculateThreatLevel(indicators)
 	}
@@ -292,7 +292,7 @@ func (shi *SecurityHardeningIntegration) GenerateSecurityReport() (*SecurityRepo
 	if shi.monitor != nil {
 		indicators := shi.monitor.GetThreatIndicators()
 		alerts := shi.monitor.GetSecurityAlerts()
-		
+
 		for _, indicator := range indicators {
 			report.ThreatIndicators = append(report.ThreatIndicators, *indicator)
 		}

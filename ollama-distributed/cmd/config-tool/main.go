@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/spf13/cobra"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/internal/config"
+	"github.com/spf13/cobra"
 )
 
 var (
-	configFile string
-	outputFile string
+	configFile  string
+	outputFile  string
 	environment string
 )
 
@@ -90,7 +90,7 @@ func generateConfig(cmd *cobra.Command, args []string) error {
 
 	// Get default configuration
 	cfg := config.DefaultConfig()
-	
+
 	// Customize for environment
 	switch environment {
 	case "development":

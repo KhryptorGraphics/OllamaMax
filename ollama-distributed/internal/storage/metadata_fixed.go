@@ -11,24 +11,24 @@ import (
 func (mm *MetadataManager) updateIndexSafe(indexName string, key string, metadata *ObjectMetadata) {
 	mm.indexMutex.Lock()
 	defer mm.indexMutex.Unlock()
-	
+
 	index, exists := mm.indexes[indexName]
 	if !exists {
 		return
 	}
-	
+
 	// Get index field value
 	value := mm.getIndexValue(metadata, index.Fields)
 	if value == nil {
 		return
 	}
-	
+
 	valueStr := mm.valueToString(value)
-	
+
 	// Update index with proper synchronization
 	index.mutex.Lock()
 	defer index.mutex.Unlock()
-	
+
 	if keys, found := index.Values[valueStr]; found {
 		// Add key if not already present
 		keyExists := false
@@ -44,7 +44,7 @@ func (mm *MetadataManager) updateIndexSafe(indexName string, key string, metadat
 	} else {
 		index.Values[valueStr] = []string{key}
 	}
-	
+
 	index.UpdatedAt = time.Now()
 	index.Stats.UpdateCount++
 }
@@ -57,7 +57,7 @@ func (mm *MetadataManager) updateIndexesSafe(key string, metadata *ObjectMetadat
 		indexNames = append(indexNames, name)
 	}
 	mm.indexMutex.RUnlock()
-	
+
 	// Update each index separately to avoid holding multiple locks
 	for _, indexName := range indexNames {
 		mm.updateIndexSafe(indexName, key, metadata)
@@ -74,7 +74,7 @@ type ThreadSafeIndex struct {
 func (mm *MetadataManager) makeIndexesSafe() {
 	mm.indexMutex.Lock()
 	defer mm.indexMutex.Unlock()
-	
+
 	// This would be called during initialization to wrap indexes
 	// with thread-safe mutexes if needed
 }
@@ -84,11 +84,11 @@ func (mm *MetadataManager) getIndexValue(metadata *ObjectMetadata, fields []stri
 	if len(fields) == 0 {
 		return nil
 	}
-	
+
 	// Use reflection to get field values from metadata
 	v := reflect.ValueOf(metadata).Elem()
 	t := v.Type()
-	
+
 	for _, fieldName := range fields {
 		// Find field by name (case insensitive)
 		for i := 0; i < t.NumField(); i++ {
@@ -101,7 +101,7 @@ func (mm *MetadataManager) getIndexValue(metadata *ObjectMetadata, fields []stri
 			}
 		}
 	}
-	
+
 	return nil
 }
 
@@ -110,7 +110,7 @@ func (mm *MetadataManager) valueToString(value interface{}) string {
 	if value == nil {
 		return ""
 	}
-	
+
 	switch v := value.(type) {
 	case string:
 		return v

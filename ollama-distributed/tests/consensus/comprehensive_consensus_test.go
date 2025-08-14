@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/consensus"
-	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p"
 )
 
 // TestConsensusEngine tests the consensus engine lifecycle
@@ -25,15 +24,15 @@ func TestConsensusEngine(t *testing.T) {
 // testEngineCreation tests consensus engine creation
 func testEngineCreation(t *testing.T) {
 	config := &consensus.Config{
-		NodeID:          "test-node-1",
-		DataDir:         "/tmp/consensus-test-1",
-		BindAddr:        "127.0.0.1:0",
-		BootstrapExpect: 1,
-		HeartbeatTimeout: 1000 * time.Millisecond,
-		ElectionTimeout:  5000 * time.Millisecond,
-		CommitTimeout:    500 * time.Millisecond,
-		MaxAppendEntries: 64,
-		SnapshotInterval: 1000,
+		NodeID:            "test-node-1",
+		DataDir:           "/tmp/consensus-test-1",
+		BindAddr:          "127.0.0.1:0",
+		BootstrapExpect:   1,
+		HeartbeatTimeout:  1000 * time.Millisecond,
+		ElectionTimeout:   5000 * time.Millisecond,
+		CommitTimeout:     500 * time.Millisecond,
+		MaxAppendEntries:  64,
+		SnapshotInterval:  1000,
 		SnapshotThreshold: 8192,
 	}
 
@@ -193,7 +192,7 @@ func testFiveNodeCluster(t *testing.T) {
 			defer wg.Done()
 			key := fmt.Sprintf("concurrent-key-%d", index)
 			value := fmt.Sprintf("concurrent-value-%d", index)
-			
+
 			err := leader.Set(key, value)
 			assert.NoError(t, err)
 		}(i)
@@ -287,7 +286,7 @@ func testLeaderElection(t *testing.T) {
 
 	// Wait for initial leader election
 	cluster.WaitForLeader(10 * time.Second)
-	
+
 	initialLeader := cluster.GetLeader()
 	assert.NotNil(t, initialLeader)
 	initialLeaderID := initialLeader.GetNodeID()
@@ -613,7 +612,7 @@ func testHighThroughput(t *testing.T) {
 	for i := 0; i < numOperations; i++ {
 		key := fmt.Sprintf("throughput-key-%d", i)
 		value := fmt.Sprintf("throughput-value-%d", i)
-		
+
 		err = leader.Set(key, value)
 		assert.NoError(t, err)
 	}
@@ -622,7 +621,7 @@ func testHighThroughput(t *testing.T) {
 	throughput := float64(numOperations) / duration.Seconds()
 
 	t.Logf("Throughput: %.2f operations/second for %d operations", throughput, numOperations)
-	
+
 	// Verify minimum acceptable throughput (this may vary by system)
 	assert.Greater(t, throughput, 100.0, "Throughput should be at least 100 ops/sec")
 
@@ -630,7 +629,7 @@ func testHighThroughput(t *testing.T) {
 	cluster.WaitForConsistency(10 * time.Second)
 
 	// Spot check some values
-	checkIndices := []int{0, numOperations/2, numOperations - 1}
+	checkIndices := []int{0, numOperations / 2, numOperations - 1}
 	for _, i := range checkIndices {
 		key := fmt.Sprintf("throughput-key-%d", i)
 		expectedValue := fmt.Sprintf("throughput-value-%d", i)
@@ -798,7 +797,7 @@ func testSnapshotCreation(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		key := fmt.Sprintf("snapshot-key-%d", i)
 		expectedValue := fmt.Sprintf("snapshot-value-%d", i)
-		
+
 		value, exists := engine.Get(key)
 		assert.True(t, exists)
 		assert.Equal(t, expectedValue, value)
@@ -910,7 +909,7 @@ func testSnapshotCompaction(t *testing.T) {
 	for i := 0; i < 200; i++ {
 		key := fmt.Sprintf("compaction-key-%d", i)
 		expectedValue := fmt.Sprintf("compaction-value-%d", i)
-		
+
 		value, exists := engine.Get(key)
 		assert.True(t, exists, "Key %s should exist after compaction", key)
 		assert.Equal(t, expectedValue, value, "Value should be correct after compaction")
@@ -929,15 +928,15 @@ type TestCluster struct {
 // createTestEngine creates a single test consensus engine
 func createTestEngine(t *testing.T, name string, bootstrapExpected int) *consensus.Engine {
 	config := &consensus.Config{
-		NodeID:           fmt.Sprintf("%s-node", name),
-		DataDir:          fmt.Sprintf("/tmp/consensus-test-%s", name),
-		BindAddr:         "127.0.0.1:0",
-		BootstrapExpect:  bootstrapExpected,
-		HeartbeatTimeout: 500 * time.Millisecond,
-		ElectionTimeout:  2000 * time.Millisecond,
-		CommitTimeout:    100 * time.Millisecond,
-		MaxAppendEntries: 64,
-		SnapshotInterval: 1000,
+		NodeID:            fmt.Sprintf("%s-node", name),
+		DataDir:           fmt.Sprintf("/tmp/consensus-test-%s", name),
+		BindAddr:          "127.0.0.1:0",
+		BootstrapExpect:   bootstrapExpected,
+		HeartbeatTimeout:  500 * time.Millisecond,
+		ElectionTimeout:   2000 * time.Millisecond,
+		CommitTimeout:     100 * time.Millisecond,
+		MaxAppendEntries:  64,
+		SnapshotInterval:  1000,
 		SnapshotThreshold: 8192,
 	}
 
@@ -958,15 +957,15 @@ func createTestCluster(t *testing.T, size int) *TestCluster {
 	// Create all engines
 	for i := 0; i < size; i++ {
 		config := &consensus.Config{
-			NodeID:           fmt.Sprintf("test-node-%d", i),
-			DataDir:          fmt.Sprintf("/tmp/consensus-cluster-test-%d", i),
-			BindAddr:         "127.0.0.1:0",
-			BootstrapExpect:  size,
-			HeartbeatTimeout: 500 * time.Millisecond,
-			ElectionTimeout:  2000 * time.Millisecond,
-			CommitTimeout:    100 * time.Millisecond,
-			MaxAppendEntries: 64,
-			SnapshotInterval: 1000,
+			NodeID:            fmt.Sprintf("test-node-%d", i),
+			DataDir:           fmt.Sprintf("/tmp/consensus-cluster-test-%d", i),
+			BindAddr:          "127.0.0.1:0",
+			BootstrapExpect:   size,
+			HeartbeatTimeout:  500 * time.Millisecond,
+			ElectionTimeout:   2000 * time.Millisecond,
+			CommitTimeout:     100 * time.Millisecond,
+			MaxAppendEntries:  64,
+			SnapshotInterval:  1000,
 			SnapshotThreshold: 8192,
 		}
 
@@ -1179,7 +1178,7 @@ func BenchmarkConsensus(b *testing.B) {
 			for pb.Next() {
 				key := fmt.Sprintf("bench-key-%d", i)
 				value := fmt.Sprintf("bench-value-%d", i)
-				
+
 				err := engine.Set(key, value)
 				if err != nil {
 					b.Fatal(err)
@@ -1229,15 +1228,15 @@ func BenchmarkConsensus(b *testing.B) {
 // Helper function for benchmark that accepts testing.B
 func createTestEngine(t testing.TB, name string, bootstrapExpected int) *consensus.Engine {
 	config := &consensus.Config{
-		NodeID:           fmt.Sprintf("%s-node", name),
-		DataDir:          fmt.Sprintf("/tmp/consensus-test-%s", name),
-		BindAddr:         "127.0.0.1:0",
-		BootstrapExpect:  bootstrapExpected,
-		HeartbeatTimeout: 500 * time.Millisecond,
-		ElectionTimeout:  2000 * time.Millisecond,
-		CommitTimeout:    100 * time.Millisecond,
-		MaxAppendEntries: 64,
-		SnapshotInterval: 1000,
+		NodeID:            fmt.Sprintf("%s-node", name),
+		DataDir:           fmt.Sprintf("/tmp/consensus-test-%s", name),
+		BindAddr:          "127.0.0.1:0",
+		BootstrapExpect:   bootstrapExpected,
+		HeartbeatTimeout:  500 * time.Millisecond,
+		ElectionTimeout:   2000 * time.Millisecond,
+		CommitTimeout:     100 * time.Millisecond,
+		MaxAppendEntries:  64,
+		SnapshotInterval:  1000,
 		SnapshotThreshold: 8192,
 	}
 

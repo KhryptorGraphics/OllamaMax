@@ -13,24 +13,24 @@ import (
 // ReplicationEngine manages data replication across storage nodes
 type ReplicationEngine struct {
 	logger *slog.Logger
-	
+
 	// Storage and node management
 	localStorage Storage
 	nodeManager  *NodeManager
-	
+
 	// Replication coordination
 	coordinator *ReplicationCoordinator
-	
+
 	// Replication strategies
 	strategies map[string]ReplicationStrategy
-	
+
 	// Configuration
 	config *ReplicationConfig
-	
+
 	// Monitoring and health
 	health      *ReplicationHealth
 	healthMutex sync.RWMutex
-	
+
 	// Background tasks
 	ctx     context.Context
 	cancel  context.CancelFunc
@@ -40,7 +40,7 @@ type ReplicationEngine struct {
 
 // ReplicationConfig contains configuration for replication
 type ReplicationConfig struct {
-	DefaultStrategy      string        `json:"default_strategy"`
+	DefaultStrategy     string        `json:"default_strategy"`
 	MinReplicas         int           `json:"min_replicas"`
 	MaxReplicas         int           `json:"max_replicas"`
 	ReplicationFactor   int           `json:"replication_factor"`
@@ -59,17 +59,17 @@ type ReplicationConfig struct {
 // NodeManager manages storage nodes in the cluster
 type NodeManager struct {
 	logger *slog.Logger
-	
+
 	// Node registry
 	nodes      map[string]*StorageNode
 	nodesMutex sync.RWMutex
-	
+
 	// Node selection and ranking
 	selector *NodeSelector
-	
+
 	// Health monitoring
 	healthChecker *NodeHealthChecker
-	
+
 	// Configuration
 	config *NodeManagerConfig
 }
@@ -95,22 +95,22 @@ type StorageNode struct {
 	Capacity     *NodeCapacity          `json:"capacity"`
 	Health       *NodeHealthStatus      `json:"health"`
 	Metadata     map[string]interface{} `json:"metadata"`
-	
+
 	// Runtime state
 	Status       string    `json:"status"`
 	LastSeen     time.Time `json:"last_seen"`
 	JoinedAt     time.Time `json:"joined_at"`
 	FailureCount int       `json:"failure_count"`
-	
+
 	// Performance metrics
-	Latency      time.Duration `json:"latency"`
-	Bandwidth    int64         `json:"bandwidth"`
-	LoadFactor   float64       `json:"load_factor"`
-	
+	Latency    time.Duration `json:"latency"`
+	Bandwidth  int64         `json:"bandwidth"`
+	LoadFactor float64       `json:"load_factor"`
+
 	// Connection state
-	Connected    bool      `json:"connected"`
-	LastPing     time.Time `json:"last_ping"`
-	
+	Connected bool      `json:"connected"`
+	LastPing  time.Time `json:"last_ping"`
+
 	mutex sync.RWMutex
 }
 
@@ -125,75 +125,75 @@ type NodeCapacity struct {
 
 // NodeHealthStatus represents node health information
 type NodeHealthStatus struct {
-	Status         string            `json:"status"` // healthy, degraded, unhealthy, down
-	LastCheck      time.Time         `json:"last_check"`
-	Checks         map[string]bool   `json:"checks"`
-	Errors         []string          `json:"errors"`
-	Warnings       []string          `json:"warnings"`
-	ResponseTime   time.Duration     `json:"response_time"`
-	SuccessRate    float64           `json:"success_rate"`
-	TotalRequests  int64             `json:"total_requests"`
-	FailedRequests int64             `json:"failed_requests"`
+	Status         string          `json:"status"` // healthy, degraded, unhealthy, down
+	LastCheck      time.Time       `json:"last_check"`
+	Checks         map[string]bool `json:"checks"`
+	Errors         []string        `json:"errors"`
+	Warnings       []string        `json:"warnings"`
+	ResponseTime   time.Duration   `json:"response_time"`
+	SuccessRate    float64         `json:"success_rate"`
+	TotalRequests  int64           `json:"total_requests"`
+	FailedRequests int64           `json:"failed_requests"`
 }
 
 // ReplicationCoordinator coordinates replication operations
 type ReplicationCoordinator struct {
 	engine *ReplicationEngine
 	logger *slog.Logger
-	
+
 	// Operation queues
 	replicationQueue chan *ReplicationOperation
 	syncQueue        chan *SyncOperation
-	
+
 	// Worker pools
 	replWorkers []*ReplicationEngineWorker
 	syncWorkers []*SyncWorker
-	
+
 	// Operation tracking
 	operations      map[string]*ReplicationOperation
 	operationsMutex sync.RWMutex
-	
+
 	ctx    context.Context
 	cancel context.CancelFunc
 }
 
 // ReplicationOperation represents a replication operation
 type ReplicationOperation struct {
-	ID            string              `json:"id"`
-	Type          string              `json:"type"` // replicate, sync, remove, verify
-	Key           string              `json:"key"`
-	SourceNode    string              `json:"source_node"`
-	TargetNodes   []string            `json:"target_nodes"`
-	Strategy      string              `json:"strategy"`
-	Priority      int                 `json:"priority"`
-	Status        string              `json:"status"`
-	Progress      float64             `json:"progress"`
-	BytesTotal    int64               `json:"bytes_total"`
-	BytesReplicated int64             `json:"bytes_replicated"`
-	StartTime     time.Time           `json:"start_time"`
-	EndTime       time.Time           `json:"end_time"`
-	Error         string              `json:"error,omitempty"`
-	RetryCount    int                 `json:"retry_count"`
-	Metadata      map[string]interface{} `json:"metadata"`
-	
+	ID              string                 `json:"id"`
+	Type            string                 `json:"type"` // replicate, sync, remove, verify
+	Key             string                 `json:"key"`
+	SourceNode      string                 `json:"source_node"`
+	TargetNodes     []string               `json:"target_nodes"`
+	Strategy        string                 `json:"strategy"`
+	Priority        int                    `json:"priority"`
+	Status          string                 `json:"status"`
+	Progress        float64                `json:"progress"`
+	BytesTotal      int64                  `json:"bytes_total"`
+	BytesReplicated int64                  `json:"bytes_replicated"`
+	StartTime       time.Time              `json:"start_time"`
+	EndTime         time.Time              `json:"end_time"`
+	Error           string                 `json:"error,omitempty"`
+	RetryCount      int                    `json:"retry_count"`
+	Metadata        map[string]interface{} `json:"metadata"`
+
 	// Channels for coordination
-	ResultChan chan error `json:"-"`
+	ResultChan chan error    `json:"-"`
 	CancelChan chan struct{} `json:"-"`
 }
 
 // SyncOperation represents a data synchronization operation
 type SyncOperation struct {
-	ID          string    `json:"id"`
-	Key         string    `json:"key"`
-	SourceNode  string    `json:"source_node"`
-	TargetNode  string    `json:"target_node"`
-	SyncType    string    `json:"sync_type"` // full, incremental, checksum
-	Status      string    `json:"status"`
-	StartTime   time.Time `json:"start_time"`
-	EndTime     time.Time `json:"end_time"`
-	Error       string    `json:"error,omitempty"`
-	Checksum    string    `json:"checksum"`
-	BytesTransferred int64 `json:"bytes_transferred"`
+	ID               string    `json:"id"`
+	Key              string    `json:"key"`
+	SourceNode       string    `json:"source_node"`
+	TargetNode       string    `json:"target_node"`
+	SyncType         string    `json:"sync_type"` // full, incremental, checksum
+	Status           string    `json:"status"`
+	StartTime        time.Time `json:"start_time"`
+	EndTime          time.Time `json:"end_time"`
+	Error            string    `json:"error,omitempty"`
+	Checksum         string    `json:"checksum"`
+	BytesTransferred int64     `json:"bytes_transferred"`
 }
 
 // ReplicationStrategy defines how data should be replicated
@@ -226,7 +226,7 @@ type ReplicationEngineWorker struct {
 	id          int
 	coordinator *ReplicationCoordinator
 	logger      *slog.Logger
-	
+
 	ctx    context.Context
 	cancel context.CancelFunc
 }
@@ -236,7 +236,7 @@ type SyncWorker struct {
 	id          int
 	coordinator *ReplicationCoordinator
 	logger      *slog.Logger
-	
+
 	ctx    context.Context
 	cancel context.CancelFunc
 }
@@ -245,7 +245,7 @@ type SyncWorker struct {
 type NodeSelector struct {
 	manager *NodeManager
 	logger  *slog.Logger
-	
+
 	// Selection strategies
 	strategies map[string]SelectionStrategy
 }
@@ -270,37 +270,37 @@ type CapacityBasedSelection struct{}
 type NodeHealthChecker struct {
 	manager *NodeManager
 	logger  *slog.Logger
-	
+
 	// Health check configuration
 	interval time.Duration
 	timeout  time.Duration
-	
+
 	ctx    context.Context
 	cancel context.CancelFunc
 }
 
 // ReplicationHealth tracks overall replication health
 type ReplicationHealth struct {
-	OverallStatus     string                 `json:"overall_status"`
-	HealthyNodes      int                    `json:"healthy_nodes"`
-	TotalNodes        int                    `json:"total_nodes"`
-	ActiveOperations  int                    `json:"active_operations"`
-	FailedOperations  int                    `json:"failed_operations"`
-	ReplicationLag    time.Duration          `json:"replication_lag"`
-	ConsistencyScore  float64                `json:"consistency_score"`
-	ThroughputBPS     int64                  `json:"throughput_bps"`
-	ErrorRate         float64                `json:"error_rate"`
-	LastHealthCheck   time.Time              `json:"last_health_check"`
-	RegionHealth      map[string]RegionHealth `json:"region_health"`
+	OverallStatus    string                  `json:"overall_status"`
+	HealthyNodes     int                     `json:"healthy_nodes"`
+	TotalNodes       int                     `json:"total_nodes"`
+	ActiveOperations int                     `json:"active_operations"`
+	FailedOperations int                     `json:"failed_operations"`
+	ReplicationLag   time.Duration           `json:"replication_lag"`
+	ConsistencyScore float64                 `json:"consistency_score"`
+	ThroughputBPS    int64                   `json:"throughput_bps"`
+	ErrorRate        float64                 `json:"error_rate"`
+	LastHealthCheck  time.Time               `json:"last_health_check"`
+	RegionHealth     map[string]RegionHealth `json:"region_health"`
 }
 
 // RegionHealth tracks health per region
 type RegionHealth struct {
-	Region        string  `json:"region"`
-	HealthyNodes  int     `json:"healthy_nodes"`
-	TotalNodes    int     `json:"total_nodes"`
+	Region         string        `json:"region"`
+	HealthyNodes   int           `json:"healthy_nodes"`
+	TotalNodes     int           `json:"total_nodes"`
 	AverageLatency time.Duration `json:"average_latency"`
-	Status        string  `json:"status"`
+	Status         string        `json:"status"`
 }
 
 // NewReplicationEngine creates a new replication engine
@@ -310,7 +310,7 @@ func NewReplicationEngine(
 	logger *slog.Logger,
 ) (*ReplicationEngine, error) {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	// Create node manager
 	nodeManager, err := NewNodeManager(&NodeManagerConfig{
 		HeartbeatInterval:   30 * time.Second,
@@ -323,20 +323,20 @@ func NewReplicationEngine(
 		cancel()
 		return nil, fmt.Errorf("failed to create node manager: %w", err)
 	}
-	
+
 	re := &ReplicationEngine{
-		logger:      logger,
+		logger:       logger,
 		localStorage: localStorage,
-		nodeManager: nodeManager,
-		strategies:  make(map[string]ReplicationStrategy),
-		config:      config,
+		nodeManager:  nodeManager,
+		strategies:   make(map[string]ReplicationStrategy),
+		config:       config,
 		health: &ReplicationHealth{
 			RegionHealth: make(map[string]RegionHealth),
 		},
 		ctx:    ctx,
 		cancel: cancel,
 	}
-	
+
 	// Create coordinator
 	re.coordinator = &ReplicationCoordinator{
 		engine:           re,
@@ -347,10 +347,10 @@ func NewReplicationEngine(
 		ctx:              ctx,
 		cancel:           cancel,
 	}
-	
+
 	// Register default strategies
 	re.registerDefaultStrategies()
-	
+
 	return re, nil
 }
 
@@ -358,28 +358,28 @@ func NewReplicationEngine(
 func (re *ReplicationEngine) Start(ctx context.Context) error {
 	re.mu.Lock()
 	defer re.mu.Unlock()
-	
+
 	if re.started {
 		return fmt.Errorf("replication engine already started")
 	}
-	
+
 	// Start node manager
 	if err := re.nodeManager.Start(ctx); err != nil {
 		return fmt.Errorf("failed to start node manager: %w", err)
 	}
-	
+
 	// Start coordinator
 	if err := re.coordinator.Start(ctx); err != nil {
 		return fmt.Errorf("failed to start coordinator: %w", err)
 	}
-	
+
 	// Start background routines
 	go re.healthMonitorRoutine()
 	go re.maintenanceRoutine()
-	
+
 	re.started = true
 	re.logger.Info("replication engine started")
-	
+
 	return nil
 }
 
@@ -387,26 +387,26 @@ func (re *ReplicationEngine) Start(ctx context.Context) error {
 func (re *ReplicationEngine) Stop(ctx context.Context) error {
 	re.mu.Lock()
 	defer re.mu.Unlock()
-	
+
 	if !re.started {
 		return nil
 	}
-	
+
 	re.cancel()
-	
+
 	// Stop coordinator
 	if err := re.coordinator.Stop(ctx); err != nil {
 		re.logger.Error("failed to stop coordinator", "error", err)
 	}
-	
+
 	// Stop node manager
 	if err := re.nodeManager.Stop(ctx); err != nil {
 		re.logger.Error("failed to stop node manager", "error", err)
 	}
-	
+
 	re.started = false
 	re.logger.Info("replication engine stopped")
-	
+
 	return nil
 }
 
@@ -416,31 +416,31 @@ func (re *ReplicationEngine) Replicate(ctx context.Context, key string, policy *
 	if err != nil {
 		return fmt.Errorf("failed to get metadata: %w", err)
 	}
-	
+
 	// Get replication strategy
 	strategy, exists := re.strategies[policy.Strategy]
 	if !exists {
 		strategy = re.strategies[re.config.DefaultStrategy]
 	}
-	
+
 	// Check if replication is needed
 	if !strategy.ShouldReplicate(key, metadata, policy) {
 		return nil
 	}
-	
+
 	// Get available nodes
 	nodes := re.nodeManager.GetHealthyNodes()
-	
+
 	// Select target nodes
 	targetNodes, err := strategy.SelectTargetNodes("local", nodes, policy)
 	if err != nil {
 		return fmt.Errorf("failed to select target nodes: %w", err)
 	}
-	
+
 	if len(targetNodes) == 0 {
 		return fmt.Errorf("no suitable target nodes available")
 	}
-	
+
 	// Create replication operation
 	operation := &ReplicationOperation{
 		ID:          generateOperationID(),
@@ -458,7 +458,7 @@ func (re *ReplicationEngine) Replicate(ctx context.Context, key string, policy *
 		CancelChan:  make(chan struct{}),
 		Metadata:    make(map[string]interface{}),
 	}
-	
+
 	// Submit operation
 	select {
 	case re.coordinator.replicationQueue <- operation:
@@ -467,7 +467,7 @@ func (re *ReplicationEngine) Replicate(ctx context.Context, key string, policy *
 	case <-time.After(5 * time.Second):
 		return fmt.Errorf("replication queue full")
 	}
-	
+
 	// Wait for result based on consistency level
 	if policy.ConsistencyLevel == "strong" {
 		select {
@@ -477,7 +477,7 @@ func (re *ReplicationEngine) Replicate(ctx context.Context, key string, policy *
 			return ctx.Err()
 		}
 	}
-	
+
 	return nil
 }
 
@@ -485,7 +485,7 @@ func (re *ReplicationEngine) Replicate(ctx context.Context, key string, policy *
 func (re *ReplicationEngine) GetReplicationStatus(ctx context.Context, key string) (*ReplicationStatus, error) {
 	// Query all nodes for replica information
 	nodes := re.nodeManager.GetHealthyNodes()
-	
+
 	status := &ReplicationStatus{
 		Key:             key,
 		CurrentReplicas: 0,
@@ -494,7 +494,7 @@ func (re *ReplicationEngine) GetReplicationStatus(ctx context.Context, key strin
 		SyncStatus:      make(map[string]string),
 		LastSync:        time.Now(),
 	}
-	
+
 	// Check local copy
 	if exists, err := re.localStorage.Exists(ctx, key); err == nil && exists {
 		status.CurrentReplicas++
@@ -502,13 +502,13 @@ func (re *ReplicationEngine) GetReplicationStatus(ctx context.Context, key strin
 		status.ReplicaNodes = append(status.ReplicaNodes, "local")
 		status.SyncStatus["local"] = "healthy"
 	}
-	
+
 	// Check remote replicas
 	for _, node := range nodes {
 		// TODO: Implement remote existence check
 		re.logger.Debug("checking replica on node", "key", key, "node", node.ID)
 	}
-	
+
 	return status, nil
 }
 
@@ -518,14 +518,14 @@ func (re *ReplicationEngine) SynchronizeReplicas(ctx context.Context, key string
 	if err != nil {
 		return err
 	}
-	
+
 	if len(status.ReplicaNodes) <= 1 {
 		return nil // No replicas to sync
 	}
-	
+
 	// Create sync operations
 	sourceNode := status.ReplicaNodes[0] // Use first healthy replica as source
-	
+
 	for _, targetNode := range status.ReplicaNodes[1:] {
 		syncOp := &SyncOperation{
 			ID:         generateOperationID(),
@@ -536,7 +536,7 @@ func (re *ReplicationEngine) SynchronizeReplicas(ctx context.Context, key string
 			Status:     "pending",
 			StartTime:  time.Now(),
 		}
-		
+
 		select {
 		case re.coordinator.syncQueue <- syncOp:
 		case <-ctx.Done():
@@ -545,7 +545,7 @@ func (re *ReplicationEngine) SynchronizeReplicas(ctx context.Context, key string
 			re.logger.Warn("sync queue full", "key", key)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -553,14 +553,14 @@ func (re *ReplicationEngine) SynchronizeReplicas(ctx context.Context, key string
 func (re *ReplicationEngine) GetHealth(ctx context.Context) (*ReplicationHealth, error) {
 	re.healthMutex.RLock()
 	defer re.healthMutex.RUnlock()
-	
+
 	// Create a copy
 	health := *re.health
 	health.RegionHealth = make(map[string]RegionHealth)
 	for k, v := range re.health.RegionHealth {
 		health.RegionHealth[k] = v
 	}
-	
+
 	return &health, nil
 }
 
@@ -595,7 +595,7 @@ func (re *ReplicationEngine) registerDefaultStrategies() {
 func (re *ReplicationEngine) healthMonitorRoutine() {
 	ticker := time.NewTicker(re.config.HealthCheckInterval)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-re.ctx.Done():
@@ -609,7 +609,7 @@ func (re *ReplicationEngine) healthMonitorRoutine() {
 func (re *ReplicationEngine) maintenanceRoutine() {
 	ticker := time.NewTicker(1 * time.Hour)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-re.ctx.Done():
@@ -623,42 +623,42 @@ func (re *ReplicationEngine) maintenanceRoutine() {
 func (re *ReplicationEngine) updateHealth() {
 	re.healthMutex.Lock()
 	defer re.healthMutex.Unlock()
-	
+
 	nodes := re.nodeManager.GetAllNodes()
 	healthyNodes := 0
 	totalNodes := len(nodes)
-	
+
 	regionStats := make(map[string]*RegionHealth)
-	
+
 	for _, node := range nodes {
 		if node.Health.Status == "healthy" {
 			healthyNodes++
 		}
-		
+
 		// Update region stats
 		region := node.Region
 		if region == "" {
 			region = "default"
 		}
-		
+
 		if regionStats[region] == nil {
 			regionStats[region] = &RegionHealth{
 				Region: region,
 				Status: "healthy",
 			}
 		}
-		
+
 		regionStats[region].TotalNodes++
 		if node.Health.Status == "healthy" {
 			regionStats[region].HealthyNodes++
 		}
 	}
-	
+
 	// Update overall health
 	re.health.HealthyNodes = healthyNodes
 	re.health.TotalNodes = totalNodes
 	re.health.LastHealthCheck = time.Now()
-	
+
 	if float64(healthyNodes)/float64(totalNodes) >= 0.8 {
 		re.health.OverallStatus = "healthy"
 	} else if float64(healthyNodes)/float64(totalNodes) >= 0.5 {
@@ -666,7 +666,7 @@ func (re *ReplicationEngine) updateHealth() {
 	} else {
 		re.health.OverallStatus = "unhealthy"
 	}
-	
+
 	// Update region health
 	for region, stats := range regionStats {
 		if float64(stats.HealthyNodes)/float64(stats.TotalNodes) >= 0.8 {
@@ -680,13 +680,13 @@ func (re *ReplicationEngine) updateHealth() {
 
 func (re *ReplicationEngine) performMaintenance() {
 	re.logger.Info("performing replication maintenance")
-	
+
 	// Clean up completed operations
 	re.coordinator.cleanupOperations()
-	
+
 	// Check for under-replicated objects
 	re.checkUnderReplicatedObjects()
-	
+
 	// Rebalance replicas if needed
 	re.rebalanceReplicas()
 }
@@ -709,19 +709,19 @@ func NewNodeManager(config *NodeManagerConfig, logger *slog.Logger) (*NodeManage
 		nodes:  make(map[string]*StorageNode),
 		config: config,
 	}
-	
+
 	// Create node selector
 	nm.selector = &NodeSelector{
 		manager:    nm,
 		logger:     logger,
 		strategies: make(map[string]SelectionStrategy),
 	}
-	
+
 	// Register selection strategies
 	nm.selector.strategies["load_balanced"] = &LoadBalancedSelection{}
 	nm.selector.strategies["geographic"] = &GeographicSelection{}
 	nm.selector.strategies["capacity_based"] = &CapacityBasedSelection{}
-	
+
 	// Create health checker
 	nm.healthChecker = &NodeHealthChecker{
 		manager:  nm,
@@ -729,7 +729,7 @@ func NewNodeManager(config *NodeManagerConfig, logger *slog.Logger) (*NodeManage
 		interval: config.HeartbeatInterval,
 		timeout:  config.FailureTimeout,
 	}
-	
+
 	return nm, nil
 }
 
@@ -746,58 +746,58 @@ func (nm *NodeManager) Stop(ctx context.Context) error {
 func (nm *NodeManager) AddNode(ctx context.Context, node *StorageNode) error {
 	nm.nodesMutex.Lock()
 	defer nm.nodesMutex.Unlock()
-	
+
 	node.JoinedAt = time.Now()
 	node.LastSeen = time.Now()
 	node.Status = "joining"
 	node.Connected = true
-	
+
 	nm.nodes[node.ID] = node
-	
+
 	nm.logger.Info("node added", "node_id", node.ID, "address", node.Address)
-	
+
 	return nil
 }
 
 func (nm *NodeManager) RemoveNode(ctx context.Context, nodeID string) error {
 	nm.nodesMutex.Lock()
 	defer nm.nodesMutex.Unlock()
-	
+
 	if node, exists := nm.nodes[nodeID]; exists {
 		node.Status = "leaving"
 		node.Connected = false
 		delete(nm.nodes, nodeID)
-		
+
 		nm.logger.Info("node removed", "node_id", nodeID)
 	}
-	
+
 	return nil
 }
 
 func (nm *NodeManager) GetAllNodes() []*StorageNode {
 	nm.nodesMutex.RLock()
 	defer nm.nodesMutex.RUnlock()
-	
+
 	nodes := make([]*StorageNode, 0, len(nm.nodes))
 	for _, node := range nm.nodes {
 		// Create a copy
 		nodeCopy := *node
 		nodes = append(nodes, &nodeCopy)
 	}
-	
+
 	return nodes
 }
 
 func (nm *NodeManager) GetHealthyNodes() []*StorageNode {
 	allNodes := nm.GetAllNodes()
 	var healthyNodes []*StorageNode
-	
+
 	for _, node := range allNodes {
 		if node.Health.Status == "healthy" && node.Connected {
 			healthyNodes = append(healthyNodes, node)
 		}
 	}
-	
+
 	return healthyNodes
 }
 
@@ -809,16 +809,16 @@ func (nm *NodeManager) SelectNodes(strategy string, count int, constraints map[s
 
 func (ns *NodeSelector) SelectNodes(strategy string, count int, constraints map[string]interface{}) ([]*StorageNode, error) {
 	availableNodes := ns.manager.GetHealthyNodes()
-	
+
 	if len(availableNodes) == 0 {
 		return nil, fmt.Errorf("no healthy nodes available")
 	}
-	
+
 	selectionStrategy, exists := ns.strategies[strategy]
 	if !exists {
 		selectionStrategy = ns.strategies["load_balanced"]
 	}
-	
+
 	return selectionStrategy.SelectNodes(availableNodes, count, constraints)
 }
 
@@ -830,7 +830,7 @@ func (rc *ReplicationCoordinator) Start(ctx context.Context) error {
 	if workerCount <= 0 {
 		workerCount = 10
 	}
-	
+
 	rc.replWorkers = make([]*ReplicationEngineWorker, workerCount)
 	for i := 0; i < workerCount; i++ {
 		worker := &ReplicationEngineWorker{
@@ -842,7 +842,7 @@ func (rc *ReplicationCoordinator) Start(ctx context.Context) error {
 		rc.replWorkers[i] = worker
 		go worker.start()
 	}
-	
+
 	// Start sync workers
 	rc.syncWorkers = make([]*SyncWorker, workerCount/2)
 	for i := 0; i < workerCount/2; i++ {
@@ -855,7 +855,7 @@ func (rc *ReplicationCoordinator) Start(ctx context.Context) error {
 		rc.syncWorkers[i] = worker
 		go worker.start()
 	}
-	
+
 	return nil
 }
 
@@ -867,7 +867,7 @@ func (rc *ReplicationCoordinator) Stop(ctx context.Context) error {
 func (rc *ReplicationCoordinator) cleanupOperations() {
 	rc.operationsMutex.Lock()
 	defer rc.operationsMutex.Unlock()
-	
+
 	cutoff := time.Now().Add(-1 * time.Hour)
 	for id, op := range rc.operations {
 		if op.EndTime.Before(cutoff) && (op.Status == "completed" || op.Status == "failed") {
@@ -880,7 +880,7 @@ func (rc *ReplicationCoordinator) cleanupOperations() {
 
 func (rw *ReplicationEngineWorker) start() {
 	rw.logger.Info("replication worker started", "worker_id", rw.id)
-	
+
 	for {
 		select {
 		case <-rw.ctx.Done():
@@ -894,17 +894,17 @@ func (rw *ReplicationEngineWorker) start() {
 
 func (rw *ReplicationEngineWorker) processReplication(operation *ReplicationOperation) {
 	rw.logger.Info("processing replication", "worker_id", rw.id, "operation_id", operation.ID, "key", operation.Key)
-	
+
 	operation.Status = "in_progress"
-	
+
 	// Track operation
 	rw.coordinator.operationsMutex.Lock()
 	rw.coordinator.operations[operation.ID] = operation
 	rw.coordinator.operationsMutex.Unlock()
-	
+
 	// Simulate replication work
 	err := rw.performReplication(operation)
-	
+
 	// Update operation status
 	if err != nil {
 		operation.Status = "failed"
@@ -915,9 +915,9 @@ func (rw *ReplicationEngineWorker) processReplication(operation *ReplicationOper
 		operation.Progress = 100.0
 		rw.logger.Info("replication completed", "worker_id", rw.id, "operation_id", operation.ID)
 	}
-	
+
 	operation.EndTime = time.Now()
-	
+
 	// Send result
 	select {
 	case operation.ResultChan <- err:
@@ -932,10 +932,10 @@ func (rw *ReplicationEngineWorker) performReplication(operation *ReplicationOper
 	// 2. Transferring to target nodes
 	// 3. Verifying transfer integrity
 	// 4. Updating progress
-	
+
 	// Simulate work
 	time.Sleep(100 * time.Millisecond)
-	
+
 	return nil
 }
 
@@ -943,7 +943,7 @@ func (rw *ReplicationEngineWorker) performReplication(operation *ReplicationOper
 
 func (sw *SyncWorker) start() {
 	sw.logger.Info("sync worker started", "worker_id", sw.id)
-	
+
 	for {
 		select {
 		case <-sw.ctx.Done():
@@ -957,12 +957,12 @@ func (sw *SyncWorker) start() {
 
 func (sw *SyncWorker) processSync(operation *SyncOperation) {
 	sw.logger.Info("processing sync", "worker_id", sw.id, "operation_id", operation.ID, "key", operation.Key)
-	
+
 	operation.Status = "in_progress"
-	
+
 	// TODO: Implement actual sync logic
 	time.Sleep(50 * time.Millisecond)
-	
+
 	operation.Status = "completed"
 	operation.EndTime = time.Now()
 }
@@ -977,23 +977,23 @@ func (ers *EagerReplicationStrategy) SelectTargetNodes(sourceNode string, nodes 
 	if len(nodes) == 0 {
 		return nil, fmt.Errorf("no nodes available")
 	}
-	
+
 	// Sort nodes by health and capacity
 	sortedNodes := make([]*StorageNode, len(nodes))
 	copy(sortedNodes, nodes)
-	
+
 	sort.Slice(sortedNodes, func(i, j int) bool {
 		scoreI := ers.calculateNodeScore(sortedNodes[i])
 		scoreJ := ers.calculateNodeScore(sortedNodes[j])
 		return scoreI > scoreJ
 	})
-	
+
 	// Select top nodes up to MinReplicas
 	count := policy.MinReplicas
 	if count > len(sortedNodes) {
 		count = len(sortedNodes)
 	}
-	
+
 	return sortedNodes[:count], nil
 }
 
@@ -1013,23 +1013,23 @@ func (ers *EagerReplicationStrategy) GetConsistencyLevel() string {
 
 func (ers *EagerReplicationStrategy) calculateNodeScore(node *StorageNode) float64 {
 	score := 0.0
-	
+
 	// Health score
 	if node.Health.Status == "healthy" {
 		score += 100.0
 	} else if node.Health.Status == "degraded" {
 		score += 50.0
 	}
-	
+
 	// Capacity score
 	if node.Capacity != nil {
 		availableRatio := float64(node.Capacity.AvailableBytes) / float64(node.Capacity.TotalBytes)
 		score += availableRatio * 50.0
 	}
-	
+
 	// Load factor score
 	score += (1.0 - node.LoadFactor) * 30.0
-	
+
 	return score
 }
 
@@ -1049,16 +1049,16 @@ func (grs *GeographicReplicationStrategy) SelectTargetNodes(sourceNode string, n
 		}
 		regionNodes[region] = append(regionNodes[region], node)
 	}
-	
+
 	var selectedNodes []*StorageNode
 	targetCount := policy.MinReplicas
-	
+
 	// Select nodes from different regions for geographic distribution
 	for _, regionNodeList := range regionNodes {
 		if len(selectedNodes) >= targetCount {
 			break
 		}
-		
+
 		// Select best node from this region
 		if len(regionNodeList) > 0 {
 			// Sort by health and capacity
@@ -1067,11 +1067,11 @@ func (grs *GeographicReplicationStrategy) SelectTargetNodes(sourceNode string, n
 				scoreJ := grs.calculateNodeScore(regionNodeList[j])
 				return scoreI > scoreJ
 			})
-			
+
 			selectedNodes = append(selectedNodes, regionNodeList[0])
 		}
 	}
-	
+
 	return selectedNodes, nil
 }
 
@@ -1089,19 +1089,19 @@ func (grs *GeographicReplicationStrategy) GetConsistencyLevel() string {
 
 func (grs *GeographicReplicationStrategy) calculateNodeScore(node *StorageNode) float64 {
 	score := 0.0
-	
+
 	// Health score
 	if node.Health.Status == "healthy" {
 		score += 100.0
 	} else if node.Health.Status == "degraded" {
 		score += 50.0
 	}
-	
+
 	// Regional priority
 	if priority, exists := grs.regionPriority[node.Region]; exists {
 		score += float64(priority * 10)
 	}
-	
+
 	return score
 }
 
@@ -1117,17 +1117,17 @@ func (lrs *LazyReplicationStrategy) SelectTargetNodes(sourceNode string, nodes [
 	if count == 0 {
 		count = 1
 	}
-	
+
 	if len(nodes) < count {
 		count = len(nodes)
 	}
-	
+
 	// Simple random selection for demonstration
 	selectedNodes := make([]*StorageNode, count)
 	for i := 0; i < count; i++ {
 		selectedNodes[i] = nodes[rand.Intn(len(nodes))]
 	}
-	
+
 	return selectedNodes, nil
 }
 
@@ -1150,19 +1150,19 @@ func (lbs *LoadBalancedSelection) SelectNodes(availableNodes []*StorageNode, cou
 	if len(availableNodes) == 0 {
 		return nil, fmt.Errorf("no nodes available")
 	}
-	
+
 	// Sort by load factor (ascending)
 	sortedNodes := make([]*StorageNode, len(availableNodes))
 	copy(sortedNodes, availableNodes)
-	
+
 	sort.Slice(sortedNodes, func(i, j int) bool {
 		return sortedNodes[i].LoadFactor < sortedNodes[j].LoadFactor
 	})
-	
+
 	if count > len(sortedNodes) {
 		count = len(sortedNodes)
 	}
-	
+
 	return sortedNodes[:count], nil
 }
 
@@ -1175,18 +1175,18 @@ func (cbs *CapacityBasedSelection) SelectNodes(availableNodes []*StorageNode, co
 	// Sort by available capacity (descending)
 	sortedNodes := make([]*StorageNode, len(availableNodes))
 	copy(sortedNodes, availableNodes)
-	
+
 	sort.Slice(sortedNodes, func(i, j int) bool {
 		if sortedNodes[i].Capacity == nil || sortedNodes[j].Capacity == nil {
 			return false
 		}
 		return sortedNodes[i].Capacity.AvailableBytes > sortedNodes[j].Capacity.AvailableBytes
 	})
-	
+
 	if count > len(sortedNodes) {
 		count = len(sortedNodes)
 	}
-	
+
 	return sortedNodes[:count], nil
 }
 
@@ -1194,9 +1194,9 @@ func (cbs *CapacityBasedSelection) SelectNodes(availableNodes []*StorageNode, co
 
 func (nhc *NodeHealthChecker) Start(ctx context.Context) error {
 	nhc.ctx, nhc.cancel = context.WithCancel(ctx)
-	
+
 	go nhc.healthCheckRoutine()
-	
+
 	nhc.logger.Info("node health checker started")
 	return nil
 }
@@ -1205,7 +1205,7 @@ func (nhc *NodeHealthChecker) Stop(ctx context.Context) error {
 	if nhc.cancel != nil {
 		nhc.cancel()
 	}
-	
+
 	nhc.logger.Info("node health checker stopped")
 	return nil
 }
@@ -1213,7 +1213,7 @@ func (nhc *NodeHealthChecker) Stop(ctx context.Context) error {
 func (nhc *NodeHealthChecker) healthCheckRoutine() {
 	ticker := time.NewTicker(nhc.interval)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-nhc.ctx.Done():
@@ -1226,7 +1226,7 @@ func (nhc *NodeHealthChecker) healthCheckRoutine() {
 
 func (nhc *NodeHealthChecker) checkAllNodes() {
 	nodes := nhc.manager.GetAllNodes()
-	
+
 	for _, node := range nodes {
 		go nhc.checkNode(node)
 	}
@@ -1234,22 +1234,22 @@ func (nhc *NodeHealthChecker) checkAllNodes() {
 
 func (nhc *NodeHealthChecker) checkNode(node *StorageNode) {
 	start := time.Now()
-	
+
 	// TODO: Implement actual health checks
 	// This would involve network calls to the node
-	
+
 	// Simulate health check
 	healthy := true
 	if time.Since(node.LastSeen) > nhc.timeout {
 		healthy = false
 	}
-	
+
 	node.mutex.Lock()
 	defer node.mutex.Unlock()
-	
+
 	node.Health.LastCheck = time.Now()
 	node.Health.ResponseTime = time.Since(start)
-	
+
 	if healthy {
 		node.Health.Status = "healthy"
 		node.Connected = true

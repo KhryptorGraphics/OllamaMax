@@ -6,10 +6,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/internal/config"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/consensus"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p"
+	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 // Engine represents the distributed scheduling engine
@@ -102,12 +102,12 @@ type NodeUsage struct {
 
 // Request represents a request for model inference
 type Request struct {
-	ID        string            `json:"id"`
-	ModelName string            `json:"model_name"`
-	Type      string            `json:"type"`
-	Priority  int               `json:"priority"`
-	Timeout   time.Duration     `json:"timeout"`
-	Metadata  map[string]string `json:"metadata"`
+	ID        string                 `json:"id"`
+	ModelName string                 `json:"model_name"`
+	Type      string                 `json:"type"`
+	Priority  int                    `json:"priority"`
+	Timeout   time.Duration          `json:"timeout"`
+	Metadata  map[string]string      `json:"metadata"`
 	Payload   map[string]interface{} `json:"payload"`
 
 	// Response channel
@@ -292,8 +292,8 @@ func (e *Engine) updateNodeRegistry() {
 
 			// Get node capabilities from P2P metadata
 			capacity := NodeCapacity{
-				CPU:    4,  // Default values
-				Memory: 8 * 1024 * 1024 * 1024, // 8GB
+				CPU:    4,                        // Default values
+				Memory: 8 * 1024 * 1024 * 1024,   // 8GB
 				Disk:   100 * 1024 * 1024 * 1024, // 100GB
 				GPU:    0,
 			}
@@ -472,6 +472,17 @@ func (e *Engine) GetNodes() map[string]*NodeInfo {
 	}
 
 	return nodes
+}
+
+// AddTestNode adds a node for testing purposes
+func (e *Engine) AddTestNode(node *NodeInfo) {
+	e.nodesMu.Lock()
+	defer e.nodesMu.Unlock()
+
+	if e.nodes == nil {
+		e.nodes = make(map[string]*NodeInfo)
+	}
+	e.nodes[node.ID] = node
 }
 
 // GetAvailableNodes returns nodes that are online and available
@@ -679,7 +690,7 @@ func (w *Worker) executeRequest(req *Request, node *NodeInfo) *Response {
 				}
 			}
 		}
-		
+
 		if errorMsg, exists := responseMap["error"]; exists {
 			return &Response{
 				RequestID: req.ID,
@@ -771,7 +782,7 @@ func (h *HealthChecker) checkNodeHealth(node *NodeInfo) {
 
 	// Attempt to send ping via P2P
 	response, err := h.sendHealthPing(ctx, node, ping)
-	
+
 	h.engine.nodesMu.Lock()
 	defer h.engine.nodesMu.Unlock()
 
@@ -793,13 +804,13 @@ func (h *HealthChecker) checkNodeHealth(node *NodeInfo) {
 				h.updateNodeCapacity(node, capacityMap)
 			}
 		}
-		
+
 		if usage, exists := healthData["usage"]; exists {
 			if usageMap, ok := usage.(map[string]interface{}); ok {
 				h.updateNodeUsage(node, usageMap)
 			}
 		}
-		
+
 		if models, exists := healthData["models"]; exists {
 			if modelSlice, ok := models.([]interface{}); ok {
 				node.Models = make([]string, len(modelSlice))
@@ -861,14 +872,14 @@ func (lb *LoadBalancer) roundRobin(nodes []*NodeInfo) (*NodeInfo, error) {
 
 	// Get or create round-robin state
 	state := lb.getRoundRobinState()
-	
+
 	// Select next node in rotation
 	currentIndex := state.currentIndex
 	selectedNode := nodes[currentIndex]
-	
+
 	// Update state for next request
 	state.currentIndex = (currentIndex + 1) % len(nodes)
-	
+
 	return selectedNode, nil
 }
 
@@ -885,7 +896,7 @@ func (lb *LoadBalancer) leastConnections(nodes []*NodeInfo) (*NodeInfo, error) {
 	for _, node := range nodes {
 		// Calculate current load based on CPU and memory usage
 		currentLoad := (node.Usage.CPU + node.Usage.Memory) / 2
-		
+
 		// Prefer nodes with lower load
 		if currentLoad < lowestLoad {
 			lowestLoad = currentLoad
@@ -910,7 +921,7 @@ func (lb *LoadBalancer) random(nodes []*NodeInfo) (*NodeInfo, error) {
 	// Use current time as seed for randomness
 	seed := time.Now().UnixNano()
 	randomIndex := int(seed % int64(len(nodes)))
-	
+
 	// Ensure index is within bounds
 	if randomIndex < 0 {
 		randomIndex = 0
@@ -970,7 +981,7 @@ func (w *Worker) sendP2PRequest(ctx context.Context, node *NodeInfo, payload map
 	// Send request via P2P stream
 	// This is a simplified implementation
 	// In practice, you'd use libp2p streams for communication
-	
+
 	// For now, simulate successful communication
 	response := map[string]interface{}{
 		"success": true,
@@ -996,13 +1007,13 @@ func (h *HealthChecker) sendHealthPing(ctx context.Context, node *NodeInfo, ping
 
 	// Send health ping via P2P
 	// This is a simplified implementation
-	
+
 	// Simulate health response
 	response := map[string]interface{}{
 		"status": "healthy",
 		"capacity": map[string]interface{}{
 			"cpu":    8,
-			"memory": 16 * 1024 * 1024 * 1024, // 16GB
+			"memory": 16 * 1024 * 1024 * 1024,   // 16GB
 			"disk":   1024 * 1024 * 1024 * 1024, // 1TB
 			"gpu":    1,
 		},

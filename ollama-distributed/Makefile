@@ -250,6 +250,11 @@ clean-test-env: ## Clean test environment
 fmt: ## Format code
 	@echo "$(BLUE)Formatting code...$(NC)"
 	gofmt -s -w .
+	@if ! command -v goimports >/dev/null 2>&1; then \
+		echo "Installing goimports..."; \
+		GOPROXY=direct go install golang.org/x/tools/cmd/goimports@v0.21.0; \
+	fi
+	$(shell go env GOPATH)/bin/goimports -w .
 
 vet: ## Run go vet
 	@echo "$(BLUE)Running go vet...$(NC)"
@@ -257,21 +262,37 @@ vet: ## Run go vet
 
 lint: ## Run golangci-lint
 	@echo "$(BLUE)Running golangci-lint...$(NC)"
-	@which golangci-lint > /dev/null || go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-	golangci-lint run --timeout=10m
+	@if ! command -v golangci-lint >/dev/null 2>&1; then \
+		echo "Installing golangci-lint..."; \
+		go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.55.2; \
+	fi
+	$(shell go env GOPATH)/bin/golangci-lint run --timeout=10m
+
+security: ## Run security scan
+	@echo "$(BLUE)Running security scan...$(NC)"
+	@if ! command -v gosec >/dev/null 2>&1; then \
+		echo "Installing gosec..."; \
+		go install github.com/securecodewarrior/gosec/v2/cmd/gosec@v2.18.2; \
+	fi
+	$(shell go env GOPATH)/bin/gosec ./...
 
 staticcheck: ## Run staticcheck
 	@echo "$(BLUE)Running staticcheck...$(NC)"
-	@which staticcheck > /dev/null || go install honnef.co/go/tools/cmd/staticcheck@latest
-	staticcheck ./...
+	@if ! command -v staticcheck >/dev/null 2>&1; then \
+		echo "Installing staticcheck..."; \
+		go install honnef.co/go/tools/cmd/staticcheck@2023.1.6; \
+	fi
+	$(shell go env GOPATH)/bin/staticcheck ./...
+
+check: fmt vet lint security staticcheck ## Run all code quality checks
+	@echo "$(GREEN)✅ All quality checks passed!$(NC)"
+
+pre-commit: check test-unit ## Run pre-commit checks
+	@echo "$(GREEN)✅ Pre-commit checks passed!$(NC)"
 
 check: fmt vet lint staticcheck ## Run all code quality checks
 
-# Run security scanner
-security:
-	@echo "Running security scanner..."
-	@which gosec > /dev/null || (echo "gosec not found. Install with: go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest" && exit 1)
-	gosec ./...
+
 
 # Generate mocks
 mocks:

@@ -7,9 +7,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/internal/config"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p"
+	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 // DistributedModelManager extends Ollama's model management with distributed capabilities
@@ -20,26 +20,26 @@ type DistributedModelManager struct {
 	replicationManager *ReplicationManager
 	casStore           *ContentAddressedStore
 	deltaTracker       *DeltaTracker
-	
+
 	// Configuration
 	config *config.DistributedConfig
 	p2p    *p2p.Node
 	logger *slog.Logger
-	
+
 	// Ollama integration
 	// ollamaServer removed - using distributed architecture
-	
+
 	// Distributed model registry
-	registry       *DistributedRegistry
-	registryMutex  sync.RWMutex
-	
+	registry      *DistributedRegistry
+	registryMutex sync.RWMutex
+
 	// Model lifecycle management
 	lifecycle      *ModelLifecycle
 	lifecycleMutex sync.RWMutex
-	
+
 	// Performance monitoring
 	monitor *PerformanceMonitor
-	
+
 	// Context management
 	ctx     context.Context
 	cancel  context.CancelFunc
@@ -49,69 +49,69 @@ type DistributedModelManager struct {
 
 // DistributedRegistry maintains a registry of all models across the network
 type DistributedRegistry struct {
-	models       map[string]*DistributedModel
-	modelsMutex  sync.RWMutex
-	
+	models      map[string]*DistributedModel
+	modelsMutex sync.RWMutex
+
 	// Peer model tracking
-	peerModels   map[string]map[string]*DistributedModel // peerID -> modelName -> model
-	peerMutex    sync.RWMutex
-	
+	peerModels map[string]map[string]*DistributedModel // peerID -> modelName -> model
+	peerMutex  sync.RWMutex
+
 	// Network topology
-	topology     *NetworkTopology
-	
+	topology *NetworkTopology
+
 	// Discovery service
-	discovery    *ModelDiscovery
+	discovery *ModelDiscovery
 }
 
 // DistributedModel represents a model in the distributed network
 type DistributedModel struct {
 	// Base model information
-	Name        string                 `json:"name"`
-	Version     string                 `json:"version"`
-	Hash        string                 `json:"hash"`
-	Size        int64                  `json:"size"`
-	Type        string                 `json:"type"`
-	
+	Name    string `json:"name"`
+	Version string `json:"version"`
+	Hash    string `json:"hash"`
+	Size    int64  `json:"size"`
+	Type    string `json:"type"`
+
 	// Distributed information
-	Replicas    []*ReplicaInfo         `json:"replicas"`
-	Availability float64               `json:"availability"`
-	
+	Replicas     []*ReplicaInfo `json:"replicas"`
+	Availability float64        `json:"availability"`
+
 	// Version tracking
-	Versions    []*ModelVersion        `json:"versions"`
-	CurrentVersion string              `json:"current_version"`
-	
+	Versions       []*ModelVersion `json:"versions"`
+	CurrentVersion string          `json:"current_version"`
+
 	// Metadata
-	Metadata    map[string]interface{} `json:"metadata"`
-	Tags        []string               `json:"tags"`
-	
+	Metadata map[string]interface{} `json:"metadata"`
+	Tags     []string               `json:"tags"`
+
 	// Lifecycle
-	CreatedAt   time.Time              `json:"created_at"`
-	UpdatedAt   time.Time              `json:"updated_at"`
-	AccessedAt  time.Time              `json:"accessed_at"`
-	
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
+	AccessedAt time.Time `json:"accessed_at"`
+
 	// Performance metrics
-	AccessCount int64                  `json:"access_count"`
-	DownloadCount int64                `json:"download_count"`
-	
+	AccessCount   int64 `json:"access_count"`
+	DownloadCount int64 `json:"download_count"`
+
 	// Replication policy
-	Policy      *ReplicationPolicy     `json:"policy"`
-	
+	Policy *ReplicationPolicy `json:"policy"`
+
 	// Sync state
-	SyncState   *SyncState             `json:"sync_state"`
+	SyncState *SyncState `json:"sync_state"`
 }
 
 // ModelLifecycle manages the lifecycle of distributed models
 type ModelLifecycle struct {
 	events      chan *LifecycleEvent
 	eventsMutex sync.RWMutex
-	
+
 	// Lifecycle stages
 	stages      map[string]*LifecycleStage
 	stagesMutex sync.RWMutex
-	
+
 	// Hooks
-	hooks       map[LifecycleEventType][]LifecycleHook
-	hooksMutex  sync.RWMutex
+	hooks      map[LifecycleEventType][]LifecycleHook
+	hooksMutex sync.RWMutex
 }
 
 // LifecycleEvent represents a model lifecycle event
@@ -127,26 +127,26 @@ type LifecycleEvent struct {
 type LifecycleEventType string
 
 const (
-	EventModelCreated     LifecycleEventType = "model_created"
-	EventModelUpdated     LifecycleEventType = "model_updated"
-	EventModelDeleted     LifecycleEventType = "model_deleted"
-	EventModelAccessed    LifecycleEventType = "model_accessed"
-	EventModelReplicated  LifecycleEventType = "model_replicated"
-	EventModelSynced      LifecycleEventType = "model_synced"
-	EventModelCorrupted   LifecycleEventType = "model_corrupted"
-	EventModelHealed      LifecycleEventType = "model_healed"
+	EventModelCreated    LifecycleEventType = "model_created"
+	EventModelUpdated    LifecycleEventType = "model_updated"
+	EventModelDeleted    LifecycleEventType = "model_deleted"
+	EventModelAccessed   LifecycleEventType = "model_accessed"
+	EventModelReplicated LifecycleEventType = "model_replicated"
+	EventModelSynced     LifecycleEventType = "model_synced"
+	EventModelCorrupted  LifecycleEventType = "model_corrupted"
+	EventModelHealed     LifecycleEventType = "model_healed"
 )
 
 // LifecycleStage represents a stage in the model lifecycle
 type LifecycleStage struct {
-	Name        string                 `json:"name"`
-	ModelName   string                 `json:"model_name"`
-	Status      StageStatus            `json:"status"`
-	StartTime   time.Time              `json:"start_time"`
-	EndTime     time.Time              `json:"end_time"`
-	Progress    float64                `json:"progress"`
-	Metadata    map[string]interface{} `json:"metadata"`
-	Error       string                 `json:"error,omitempty"`
+	Name      string                 `json:"name"`
+	ModelName string                 `json:"model_name"`
+	Status    StageStatus            `json:"status"`
+	StartTime time.Time              `json:"start_time"`
+	EndTime   time.Time              `json:"end_time"`
+	Progress  float64                `json:"progress"`
+	Metadata  map[string]interface{} `json:"metadata"`
+	Error     string                 `json:"error,omitempty"`
 }
 
 // StageStatus represents the status of a lifecycle stage
@@ -164,41 +164,41 @@ type LifecycleHook func(event *LifecycleEvent) error
 
 // NetworkTopology represents the network topology for model distribution
 type NetworkTopology struct {
-	nodes       map[string]*TopologyNode
-	nodesMutex  sync.RWMutex
-	
+	nodes      map[string]*TopologyNode
+	nodesMutex sync.RWMutex
+
 	// Topology metadata
-	Type        TopologyType           `json:"type"`
-	Depth       int                    `json:"depth"`
-	Diameter    int                    `json:"diameter"`
-	Connectivity float64               `json:"connectivity"`
-	
+	Type         TopologyType `json:"type"`
+	Depth        int          `json:"depth"`
+	Diameter     int          `json:"diameter"`
+	Connectivity float64      `json:"connectivity"`
+
 	// Performance metrics
-	avgLatency  time.Duration
+	avgLatency   time.Duration
 	avgBandwidth int64
 }
 
 // TopologyNode represents a node in the network topology
 type TopologyNode struct {
-	ID          string                 `json:"id"`
-	Address     string                 `json:"address"`
-	Capabilities []string              `json:"capabilities"`
-	Connections []*TopologyConnection  `json:"connections"`
-	Metadata    map[string]interface{} `json:"metadata"`
-	
+	ID           string                 `json:"id"`
+	Address      string                 `json:"address"`
+	Capabilities []string               `json:"capabilities"`
+	Connections  []*TopologyConnection  `json:"connections"`
+	Metadata     map[string]interface{} `json:"metadata"`
+
 	// Performance metrics
-	Latency     time.Duration          `json:"latency"`
-	Bandwidth   int64                  `json:"bandwidth"`
-	Reliability float64                `json:"reliability"`
+	Latency     time.Duration `json:"latency"`
+	Bandwidth   int64         `json:"bandwidth"`
+	Reliability float64       `json:"reliability"`
 }
 
 // TopologyConnection represents a connection between nodes
 type TopologyConnection struct {
-	TargetID    string        `json:"target_id"`
-	Weight      float64       `json:"weight"`
-	Latency     time.Duration `json:"latency"`
-	Bandwidth   int64         `json:"bandwidth"`
-	Quality     float64       `json:"quality"`
+	TargetID  string        `json:"target_id"`
+	Weight    float64       `json:"weight"`
+	Latency   time.Duration `json:"latency"`
+	Bandwidth int64         `json:"bandwidth"`
+	Quality   float64       `json:"quality"`
 }
 
 // TopologyType represents the type of network topology
@@ -214,16 +214,16 @@ const (
 
 // ModelDiscovery handles model discovery across the network
 type ModelDiscovery struct {
-	manager     *DistributedModelManager
-	
+	manager *DistributedModelManager
+
 	// Discovery cache
-	cache       map[string]*DiscoveryEntry
-	cacheMutex  sync.RWMutex
-	
+	cache      map[string]*DiscoveryEntry
+	cacheMutex sync.RWMutex
+
 	// Discovery workers
-	workers     []*DiscoveryWorker
-	workQueue   chan *DiscoveryRequest
-	
+	workers   []*DiscoveryWorker
+	workQueue chan *DiscoveryRequest
+
 	// Broadcast settings
 	broadcastInterval time.Duration
 	discoveryTimeout  time.Duration
@@ -231,45 +231,45 @@ type ModelDiscovery struct {
 
 // DiscoveryEntry represents a discovered model
 type DiscoveryEntry struct {
-	ModelName   string                 `json:"model_name"`
-	PeerID      string                 `json:"peer_id"`
-	Metadata    map[string]interface{} `json:"metadata"`
-	Timestamp   time.Time              `json:"timestamp"`
-	TTL         time.Duration          `json:"ttl"`
+	ModelName string                 `json:"model_name"`
+	PeerID    string                 `json:"peer_id"`
+	Metadata  map[string]interface{} `json:"metadata"`
+	Timestamp time.Time              `json:"timestamp"`
+	TTL       time.Duration          `json:"ttl"`
 }
 
 // DiscoveryRequest represents a model discovery request
 type DiscoveryRequest struct {
-	ModelName    string                 `json:"model_name"`
-	Criteria     map[string]interface{} `json:"criteria"`
-	Timeout      time.Duration          `json:"timeout"`
+	ModelName    string                  `json:"model_name"`
+	Criteria     map[string]interface{}  `json:"criteria"`
+	Timeout      time.Duration           `json:"timeout"`
 	ResponseChan chan *DiscoveryResponse `json:"-"`
 }
 
 // DiscoveryResponse represents a model discovery response
 type DiscoveryResponse struct {
-	Models    []*DistributedModel `json:"models"`
-	Peers     []string            `json:"peers"`
-	Error     string              `json:"error,omitempty"`
-	Duration  time.Duration       `json:"duration"`
+	Models   []*DistributedModel `json:"models"`
+	Peers    []string            `json:"peers"`
+	Error    string              `json:"error,omitempty"`
+	Duration time.Duration       `json:"duration"`
 }
 
 // DiscoveryWorker handles model discovery tasks
 type DiscoveryWorker struct {
-	ID         int
-	discovery  *ModelDiscovery
-	stopChan   chan struct{}
+	ID        int
+	discovery *ModelDiscovery
+	stopChan  chan struct{}
 }
 
 // PerformanceMonitor monitors the performance of the distributed system
 type PerformanceMonitor struct {
-	metrics     map[string]*PerformanceMetric
+	metrics      map[string]*PerformanceMetric
 	metricsMutex sync.RWMutex
-	
+
 	// Monitoring settings
-	interval    time.Duration
-	retention   time.Duration
-	
+	interval  time.Duration
+	retention time.Duration
+
 	// Alerting
 	alerts      []*PerformanceAlert
 	alertsMutex sync.RWMutex
@@ -277,12 +277,12 @@ type PerformanceMonitor struct {
 
 // PerformanceMetric represents a performance metric
 type PerformanceMetric struct {
-	Name        string                 `json:"name"`
-	Value       float64                `json:"value"`
-	Unit        string                 `json:"unit"`
-	Timestamp   time.Time              `json:"timestamp"`
-	Labels      map[string]string      `json:"labels"`
-	History     []MetricPoint          `json:"history"`
+	Name      string            `json:"name"`
+	Value     float64           `json:"value"`
+	Unit      string            `json:"unit"`
+	Timestamp time.Time         `json:"timestamp"`
+	Labels    map[string]string `json:"labels"`
+	History   []MetricPoint     `json:"history"`
 }
 
 // MetricPoint represents a point in a metric's history
@@ -293,26 +293,26 @@ type MetricPoint struct {
 
 // PerformanceAlert represents a performance alert
 type PerformanceAlert struct {
-	ID          string                 `json:"id"`
-	Type        AlertType              `json:"type"`
-	Severity    AlertSeverity          `json:"severity"`
-	Message     string                 `json:"message"`
-	Metadata    map[string]interface{} `json:"metadata"`
-	Timestamp   time.Time              `json:"timestamp"`
-	Resolved    bool                   `json:"resolved"`
-	ResolvedAt  time.Time              `json:"resolved_at"`
+	ID         string                 `json:"id"`
+	Type       AlertType              `json:"type"`
+	Severity   AlertSeverity          `json:"severity"`
+	Message    string                 `json:"message"`
+	Metadata   map[string]interface{} `json:"metadata"`
+	Timestamp  time.Time              `json:"timestamp"`
+	Resolved   bool                   `json:"resolved"`
+	ResolvedAt time.Time              `json:"resolved_at"`
 }
 
 // AlertType represents the type of alert
 type AlertType string
 
 const (
-	AlertTypeLatency      AlertType = "latency"
-	AlertTypeBandwidth    AlertType = "bandwidth"
-	AlertTypeReplication  AlertType = "replication"
-	AlertTypeSync         AlertType = "sync"
-	AlertTypeStorage      AlertType = "storage"
-	AlertTypeHealth       AlertType = "health"
+	AlertTypeLatency     AlertType = "latency"
+	AlertTypeBandwidth   AlertType = "bandwidth"
+	AlertTypeReplication AlertType = "replication"
+	AlertTypeSync        AlertType = "sync"
+	AlertTypeStorage     AlertType = "storage"
+	AlertTypeHealth      AlertType = "health"
 )
 
 // AlertSeverity represents the severity of an alert
@@ -332,37 +332,37 @@ func NewDistributedModelManager(
 	logger *slog.Logger,
 ) (*DistributedModelManager, error) {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	// Create local manager
 	localManager, err := NewManager(config.Storage, p2pNode)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create local manager: %w", err)
 	}
-	
+
 	// Create sync manager
 	syncManager, err := NewSyncManager(config.Sync, p2pNode, localManager, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create sync manager: %w", err)
 	}
-	
+
 	// Create replication manager
 	replicationManager, err := NewReplicationManager(config.Replication, p2pNode, localManager, syncManager, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create replication manager: %w", err)
 	}
-	
+
 	// Create content-addressed store
 	casStore, err := NewContentAddressedStore(config.CASDir, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create CAS store: %w", err)
 	}
-	
+
 	// Create delta tracker
 	deltaTracker, err := NewDeltaTracker(config.DeltaDir, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create delta tracker: %w", err)
 	}
-	
+
 	dmm := &DistributedModelManager{
 		localManager:       localManager,
 		syncManager:        syncManager,
@@ -375,30 +375,30 @@ func NewDistributedModelManager(
 		ctx:                ctx,
 		cancel:             cancel,
 	}
-	
+
 	// Initialize registry
 	dmm.registry = &DistributedRegistry{
 		models:     make(map[string]*DistributedModel),
 		peerModels: make(map[string]map[string]*DistributedModel),
-		topology:   &NetworkTopology{
+		topology: &NetworkTopology{
 			nodes: make(map[string]*TopologyNode),
 		},
 	}
-	
+
 	// Initialize lifecycle manager
 	dmm.lifecycle = &ModelLifecycle{
 		events: make(chan *LifecycleEvent, 100),
 		stages: make(map[string]*LifecycleStage),
 		hooks:  make(map[LifecycleEventType][]LifecycleHook),
 	}
-	
+
 	// Initialize performance monitor
 	dmm.monitor = &PerformanceMonitor{
-		metrics:  make(map[string]*PerformanceMetric),
-		interval: time.Minute,
+		metrics:   make(map[string]*PerformanceMetric),
+		interval:  time.Minute,
 		retention: 24 * time.Hour,
 	}
-	
+
 	// Initialize model discovery
 	dmm.registry.discovery = &ModelDiscovery{
 		manager:           dmm,
@@ -407,49 +407,87 @@ func NewDistributedModelManager(
 		broadcastInterval: 30 * time.Second,
 		discoveryTimeout:  10 * time.Second,
 	}
-	
+
 	return dmm, nil
+}
+
+// RemoveModel removes a model from the distributed system if present
+func (dmm *DistributedModelManager) RemoveModel(modelName string) error {
+	// Remove from registry
+	dmm.registryMutex.Lock()
+	model, exists := dmm.registry.models[modelName]
+	if exists {
+		delete(dmm.registry.models, modelName)
+	}
+	dmm.registryMutex.Unlock()
+
+	if !exists {
+		return fmt.Errorf("model not found: %s", modelName)
+	}
+
+	// Decrement CAS reference for the model hash
+	if model != nil && dmm.casStore != nil && model.Hash != "" {
+		_ = dmm.casStore.DecrementReference(model.Hash)
+	}
+
+	// Clear replication policy if set
+	if dmm.replicationManager != nil {
+		if _, exists := dmm.replicationManager.GetReplicationPolicy(modelName); exists {
+			_ = dmm.replicationManager.SetReplicationPolicy(modelName, &ReplicationPolicy{
+				ModelName:         modelName,
+				MinReplicas:       0,
+				MaxReplicas:       0,
+				ReplicationFactor: 0,
+				SyncInterval:      time.Hour,
+				Priority:          0,
+			})
+		}
+	}
+
+	// Emit lifecycle event
+	dmm.emitLifecycleEvent(EventModelDeleted, modelName, dmm.p2p.ID().String(), map[string]interface{}{})
+	return nil
 }
 
 // Start starts the distributed model manager
 func (dmm *DistributedModelManager) Start() error {
 	dmm.mu.Lock()
 	defer dmm.mu.Unlock()
-	
+
 	if dmm.started {
 		return fmt.Errorf("distributed model manager already started")
 	}
-	
+
 	// Start local manager
 	if err := dmm.localManager.Start(); err != nil {
 		return fmt.Errorf("failed to start local manager: %w", err)
 	}
-	
+
 	// Start sync manager
 	if err := dmm.syncManager.Start(); err != nil {
 		return fmt.Errorf("failed to start sync manager: %w", err)
 	}
-	
+
 	// Start replication manager
 	if err := dmm.replicationManager.Start(); err != nil {
 		return fmt.Errorf("failed to start replication manager: %w", err)
 	}
-	
+
 	// Start lifecycle manager
 	go dmm.lifecycle.start()
-	
+
 	// Start performance monitor
 	go dmm.monitor.start()
-	
+
 	// Start model discovery
 	go dmm.registry.discovery.start()
-	
+
 	// Start registry synchronization
 	go dmm.registrySyncRoutine()
-	
+
 	dmm.started = true
 	dmm.logger.Info("distributed model manager started")
-	
+
 	return nil
 }
 
@@ -459,20 +497,20 @@ func (dmm *DistributedModelManager) GetModel(modelName string) (*DistributedMode
 	dmm.registryMutex.RLock()
 	if model, exists := dmm.registry.models[modelName]; exists {
 		dmm.registryMutex.RUnlock()
-		
+
 		// Update access statistics
 		model.AccessedAt = time.Now()
 		model.AccessCount++
-		
+
 		// Emit lifecycle event
 		dmm.emitLifecycleEvent(EventModelAccessed, modelName, dmm.p2p.ID().String(), map[string]interface{}{
 			"access_count": model.AccessCount,
 		})
-		
+
 		return model, nil
 	}
 	dmm.registryMutex.RUnlock()
-	
+
 	// Discover model on network
 	return dmm.discoverAndFetchModel(modelName)
 }
@@ -484,7 +522,7 @@ func (dmm *DistributedModelManager) AddModel(modelName, modelPath string) (*Dist
 	if err != nil {
 		return nil, fmt.Errorf("failed to create model version: %w", err)
 	}
-	
+
 	// Create distributed model
 	model := &DistributedModel{
 		Name:           modelName,
@@ -504,12 +542,12 @@ func (dmm *DistributedModelManager) AddModel(modelName, modelPath string) (*Dist
 		AccessCount:    0,
 		DownloadCount:  0,
 	}
-	
+
 	// Add to registry
 	dmm.registryMutex.Lock()
 	dmm.registry.models[modelName] = model
 	dmm.registryMutex.Unlock()
-	
+
 	// Set default replication policy
 	policy := &ReplicationPolicy{
 		ModelName:         modelName,
@@ -522,19 +560,19 @@ func (dmm *DistributedModelManager) AddModel(modelName, modelPath string) (*Dist
 		CreatedAt:         time.Now(),
 		UpdatedAt:         time.Now(),
 	}
-	
+
 	model.Policy = policy
 	dmm.replicationManager.SetReplicationPolicy(modelName, policy)
-	
+
 	// Emit lifecycle event
 	dmm.emitLifecycleEvent(EventModelCreated, modelName, dmm.p2p.ID().String(), map[string]interface{}{
 		"version": version.Version,
 		"hash":    version.Hash,
 		"size":    version.Size,
 	})
-	
+
 	dmm.logger.Info("model added to distributed system", "model", modelName, "version", version.Version)
-	
+
 	return model, nil
 }
 
@@ -547,42 +585,42 @@ func (dmm *DistributedModelManager) discoverAndFetchModel(modelName string) (*Di
 		Timeout:      dmm.registry.discovery.discoveryTimeout,
 		ResponseChan: make(chan *DiscoveryResponse, 1),
 	}
-	
+
 	// Submit discovery request
 	select {
 	case dmm.registry.discovery.workQueue <- req:
 	case <-time.After(5 * time.Second):
 		return nil, fmt.Errorf("discovery queue full")
 	}
-	
+
 	// Wait for response
 	select {
 	case resp := <-req.ResponseChan:
 		if resp.Error != "" {
 			return nil, fmt.Errorf("discovery failed: %s", resp.Error)
 		}
-		
+
 		if len(resp.Models) == 0 {
 			return nil, fmt.Errorf("model not found: %s", modelName)
 		}
-		
+
 		// Use the first available model
 		model := resp.Models[0]
-		
+
 		// Download model from a peer
 		if len(resp.Peers) > 0 {
 			if err := dmm.downloadModelFromPeer(modelName, resp.Peers[0]); err != nil {
 				return nil, fmt.Errorf("failed to download model: %w", err)
 			}
 		}
-		
+
 		// Add to local registry
 		dmm.registryMutex.Lock()
 		dmm.registry.models[modelName] = model
 		dmm.registryMutex.Unlock()
-		
+
 		return model, nil
-		
+
 	case <-time.After(dmm.registry.discovery.discoveryTimeout):
 		return nil, fmt.Errorf("discovery timeout")
 	}
@@ -604,7 +642,7 @@ func (dmm *DistributedModelManager) emitLifecycleEvent(eventType LifecycleEventT
 		Timestamp: time.Now(),
 		Data:      data,
 	}
-	
+
 	select {
 	case dmm.lifecycle.events <- event:
 	default:
@@ -613,11 +651,39 @@ func (dmm *DistributedModelManager) emitLifecycleEvent(eventType LifecycleEventT
 	}
 }
 
+// ReplicateModelToPeers triggers replication of a model to specific peers
+func (dmm *DistributedModelManager) ReplicateModelToPeers(modelName string, targetPeers []string) error {
+	if dmm.replicationManager == nil {
+		return fmt.Errorf("replication manager not initialized")
+	}
+	var firstErr error
+	for _, peerID := range targetPeers {
+		if err := dmm.replicationManager.ReplicateModel(modelName, peerID); err != nil && firstErr == nil {
+			firstErr = err
+		}
+	}
+	return firstErr
+}
+
+// GetReplicas returns current replicas for a model
+func (dmm *DistributedModelManager) GetReplicas(modelName string) []*ReplicaInfo {
+	if dmm.replicationManager == nil {
+		return nil
+	}
+	return dmm.replicationManager.GetReplicas(modelName)
+}
+
+// GetReplicaCount returns the number of replicas known for a model
+func (dmm *DistributedModelManager) GetReplicaCount(modelName string) int {
+	replicas := dmm.GetReplicas(modelName)
+	return len(replicas)
+}
+
 // registrySyncRoutine periodically synchronizes the registry
 func (dmm *DistributedModelManager) registrySyncRoutine() {
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-dmm.ctx.Done():
@@ -628,14 +694,14 @@ func (dmm *DistributedModelManager) registrySyncRoutine() {
 	}
 }
 
-// syncRegistry synchronizes the registry with peers  
+// syncRegistry synchronizes the registry with peers
 func (dmm *DistributedModelManager) syncRegistry() {
 	// Get connected peers
 	peerIDs := dmm.p2p.GetConnectedPeers()
 	if len(peerIDs) == 0 {
 		return // No peers to sync with
 	}
-	
+
 	var peers []string
 	for _, peerID := range peerIDs {
 		peers = append(peers, peerID.String())
@@ -663,16 +729,24 @@ func (dmm *DistributedModelManager) syncRegistry() {
 	dmm.cleanupStalePeers()
 }
 
+// GetReplicationSummary exposes replication manager summary
+func (dmm *DistributedModelManager) GetReplicationSummary() *ReplicationSummary {
+	if dmm.replicationManager == nil {
+		return &ReplicationSummary{QueueLength: 0, WorkerCount: 0, Models: map[string]int{}}
+	}
+	return dmm.replicationManager.GetSummary()
+}
+
 // GetDistributedModels returns all distributed models
 func (dmm *DistributedModelManager) GetDistributedModels() []*DistributedModel {
 	dmm.registryMutex.RLock()
 	defer dmm.registryMutex.RUnlock()
-	
+
 	models := make([]*DistributedModel, 0, len(dmm.registry.models))
 	for _, model := range dmm.registry.models {
 		models = append(models, model)
 	}
-	
+
 	return models
 }
 
@@ -680,12 +754,12 @@ func (dmm *DistributedModelManager) GetDistributedModels() []*DistributedModel {
 func (dmm *DistributedModelManager) GetPerformanceMetrics() []*PerformanceMetric {
 	dmm.monitor.metricsMutex.RLock()
 	defer dmm.monitor.metricsMutex.RUnlock()
-	
+
 	metrics := make([]*PerformanceMetric, 0, len(dmm.monitor.metrics))
 	for _, metric := range dmm.monitor.metrics {
 		metrics = append(metrics, metric)
 	}
-	
+
 	return metrics
 }
 
@@ -693,35 +767,35 @@ func (dmm *DistributedModelManager) GetPerformanceMetrics() []*PerformanceMetric
 func (dmm *DistributedModelManager) Shutdown(ctx context.Context) error {
 	dmm.mu.Lock()
 	defer dmm.mu.Unlock()
-	
+
 	if !dmm.started {
 		return nil
 	}
-	
+
 	// Shutdown components
 	if err := dmm.replicationManager.Shutdown(ctx); err != nil {
 		dmm.logger.Error("failed to shutdown replication manager", "error", err)
 	}
-	
+
 	if err := dmm.syncManager.Shutdown(ctx); err != nil {
 		dmm.logger.Error("failed to shutdown sync manager", "error", err)
 	}
-	
+
 	if err := dmm.localManager.Shutdown(ctx); err != nil {
 		dmm.logger.Error("failed to shutdown local manager", "error", err)
 	}
-	
+
 	if err := dmm.casStore.Close(); err != nil {
 		dmm.logger.Error("failed to close CAS store", "error", err)
 	}
-	
+
 	if err := dmm.deltaTracker.Close(); err != nil {
 		dmm.logger.Error("failed to close delta tracker", "error", err)
 	}
-	
+
 	dmm.cancel()
 	dmm.started = false
-	
+
 	dmm.logger.Info("distributed model manager shutdown complete")
 	return nil
 }
@@ -741,7 +815,7 @@ func (ml *ModelLifecycle) processEvent(event *LifecycleEvent) {
 	ml.hooksMutex.RLock()
 	hooks := ml.hooks[event.Type]
 	ml.hooksMutex.RUnlock()
-	
+
 	for _, hook := range hooks {
 		if err := hook(event); err != nil {
 			// Log hook error but continue
@@ -756,7 +830,7 @@ func (ml *ModelLifecycle) processEvent(event *LifecycleEvent) {
 func (pm *PerformanceMonitor) start() {
 	ticker := time.NewTicker(pm.interval)
 	defer ticker.Stop()
-	
+
 	for range ticker.C {
 		pm.collectMetrics()
 	}
@@ -799,7 +873,7 @@ func (md *ModelDiscovery) start() {
 		}
 		go md.workers[i].start()
 	}
-	
+
 	// Start broadcast routine
 	go md.broadcastRoutine()
 }
@@ -808,7 +882,7 @@ func (md *ModelDiscovery) start() {
 func (md *ModelDiscovery) broadcastRoutine() {
 	ticker := time.NewTicker(md.broadcastInterval)
 	defer ticker.Stop()
-	
+
 	for range ticker.C {
 		md.broadcastModels()
 	}

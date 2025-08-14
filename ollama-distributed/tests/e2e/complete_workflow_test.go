@@ -1,7 +1,6 @@
 package e2e
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -14,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/internal/config"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/tests/integration"
 )
 
@@ -73,11 +73,11 @@ func testCompleteInferenceWorkflow(t *testing.T, cluster *integration.TestCluste
 	resp, err = http.Get(modelsEndpoint)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
-	
+
 	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 	resp.Body.Close()
-	
+
 	assert.Contains(t, string(body), "models")
 
 	// Step 4: Test simple inference
@@ -247,7 +247,7 @@ func testModelManagementWorkflow(t *testing.T, cluster *integration.TestCluster)
 
 	// Step 9: Verify usage statistics are updated
 	time.Sleep(5 * time.Second)
-	
+
 	for _, node := range cluster.GetActiveNodes() {
 		if node.HasModel(modelInfo.Name) {
 			model := node.GetModel(modelInfo.Name)
@@ -393,7 +393,7 @@ func testScalingWorkflow(t *testing.T, cluster *integration.TestCluster) {
 	// Send multiple requests to establish baseline
 	baselineRequests := 10
 	baselineStart := time.Now()
-	
+
 	for i := 0; i < baselineRequests; i++ {
 		requestBody := fmt.Sprintf(`{
 			"model": "llama3.2:1b",
@@ -415,13 +415,13 @@ func testScalingWorkflow(t *testing.T, cluster *integration.TestCluster) {
 	baselineDuration := time.Since(baselineStart)
 	baselineThroughput := float64(baselineRequests) / baselineDuration.Seconds()
 
-	t.Logf("Baseline performance: %d requests in %v (%.2f req/s)", 
+	t.Logf("Baseline performance: %d requests in %v (%.2f req/s)",
 		baselineRequests, baselineDuration, baselineThroughput)
 
 	// Step 2: Test high load scenario
 	highLoadRequests := 50
 	concurrency := 10
-	
+
 	requests := make(chan int, highLoadRequests)
 	responses := make(chan bool, highLoadRequests)
 	errors := make(chan error, highLoadRequests)
@@ -450,7 +450,7 @@ func testScalingWorkflow(t *testing.T, cluster *integration.TestCluster) {
 
 				inferenceEndpoint := fmt.Sprintf("http://%s/api/generate", leader.GetAPIAddress())
 				resp, err := http.Post(inferenceEndpoint, "application/json", strings.NewReader(requestBody))
-				
+
 				if err != nil {
 					errors <- err
 				} else {
@@ -485,7 +485,7 @@ func testScalingWorkflow(t *testing.T, cluster *integration.TestCluster) {
 	highLoadDuration := time.Since(highLoadStart)
 	highLoadThroughput := float64(successCount) / highLoadDuration.Seconds()
 
-	t.Logf("High load performance: %d/%d requests succeeded in %v (%.2f req/s)", 
+	t.Logf("High load performance: %d/%d requests succeeded in %v (%.2f req/s)",
 		successCount, highLoadRequests, highLoadDuration, highLoadThroughput)
 
 	// Step 3: Verify performance characteristics

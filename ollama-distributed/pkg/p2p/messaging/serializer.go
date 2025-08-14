@@ -57,18 +57,18 @@ func (js *JSONSerializer) Serialize(msg *Message) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal message: %w", err)
 	}
-	
+
 	// Compress if enabled and beneficial
 	if js.enableCompression && len(data) > 1024 {
 		compressed, err := js.compress(data)
 		if err != nil {
 			return nil, fmt.Errorf("failed to compress message: %w", err)
 		}
-		
+
 		// Use compressed data if it's smaller
 		if len(compressed) < len(data) {
 			data = compressed
-			
+
 			// Create frame with compression flag
 			frame := &MessageFrame{
 				Version:     FrameVersion1,
@@ -78,11 +78,11 @@ func (js *JSONSerializer) Serialize(msg *Message) ([]byte, error) {
 				Checksum:    calculateChecksum(data),
 				Data:        data,
 			}
-			
+
 			return js.serializeFrame(frame)
 		}
 	}
-	
+
 	// Create uncompressed frame
 	frame := &MessageFrame{
 		Version:     FrameVersion1,
@@ -92,7 +92,7 @@ func (js *JSONSerializer) Serialize(msg *Message) ([]byte, error) {
 		Checksum:    calculateChecksum(data),
 		Data:        data,
 	}
-	
+
 	return js.serializeFrame(frame)
 }
 
@@ -103,12 +103,12 @@ func (js *JSONSerializer) Deserialize(data []byte) (*Message, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to deserialize frame: %w", err)
 	}
-	
+
 	// Verify checksum
 	if frame.Checksum != calculateChecksum(frame.Data) {
 		return nil, fmt.Errorf("checksum mismatch")
 	}
-	
+
 	// Decompress if needed
 	messageData := frame.Data
 	if frame.Flags&FlagCompressed != 0 {
@@ -118,13 +118,13 @@ func (js *JSONSerializer) Deserialize(data []byte) (*Message, error) {
 		}
 		messageData = decompressed
 	}
-	
+
 	// Unmarshal message
 	var msg Message
 	if err := json.Unmarshal(messageData, &msg); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal message: %w", err)
 	}
-	
+
 	return &msg, nil
 }
 
@@ -135,15 +135,15 @@ func (js *JSONSerializer) compress(data []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if _, err := writer.Write(data); err != nil {
 		return nil, err
 	}
-	
+
 	if err := writer.Close(); err != nil {
 		return nil, err
 	}
-	
+
 	return buf.Bytes(), nil
 }
 
@@ -154,7 +154,7 @@ func (js *JSONSerializer) decompress(data []byte) ([]byte, error) {
 		return nil, err
 	}
 	defer reader.Close()
-	
+
 	return io.ReadAll(reader)
 }
 
@@ -185,25 +185,25 @@ func (bs *BinarySerializer) Serialize(msg *Message) ([]byte, error) {
 	// For now, use JSON serialization as binary format is more complex
 	// In a production system, this would use a more efficient binary format
 	// like Protocol Buffers, MessagePack, or custom binary encoding
-	
+
 	data, err := json.Marshal(msg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal message: %w", err)
 	}
-	
+
 	// Compress if enabled and beneficial
 	if bs.enableCompression && len(data) > 512 {
 		compressed, err := bs.compress(data)
 		if err != nil {
 			return nil, fmt.Errorf("failed to compress message: %w", err)
 		}
-		
+
 		// Use compressed data if it's smaller
 		if len(compressed) < len(data) {
 			return bs.createBinaryFrame(compressed, FlagCompressed)
 		}
 	}
-	
+
 	return bs.createBinaryFrame(data, 0)
 }
 
@@ -213,28 +213,28 @@ func (bs *BinarySerializer) Deserialize(data []byte) (*Message, error) {
 	if len(data) < 10 { // Minimum frame size
 		return nil, fmt.Errorf("data too short for binary frame")
 	}
-	
+
 	// Extract frame header (simplified binary format)
 	version := data[0]
 	if version != FrameVersion1 {
 		return nil, fmt.Errorf("unsupported frame version: %d", version)
 	}
-	
+
 	flags := data[2]
 	length := uint32(data[3])<<24 | uint32(data[4])<<16 | uint32(data[5])<<8 | uint32(data[6])
 	checksum := uint32(data[7])<<24 | uint32(data[8])<<16 | uint32(data[9])<<8 | uint32(data[10])
-	
+
 	if len(data) < int(11+length) {
 		return nil, fmt.Errorf("data too short for frame length")
 	}
-	
+
 	frameData := data[11 : 11+length]
-	
+
 	// Verify checksum
 	if checksum != calculateChecksum(frameData) {
 		return nil, fmt.Errorf("checksum mismatch")
 	}
-	
+
 	// Decompress if needed
 	messageData := frameData
 	if flags&FlagCompressed != 0 {
@@ -244,13 +244,13 @@ func (bs *BinarySerializer) Deserialize(data []byte) (*Message, error) {
 		}
 		messageData = decompressed
 	}
-	
+
 	// Unmarshal message
 	var msg Message
 	if err := json.Unmarshal(messageData, &msg); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal message: %w", err)
 	}
-	
+
 	return &msg, nil
 }
 
@@ -258,10 +258,10 @@ func (bs *BinarySerializer) Deserialize(data []byte) (*Message, error) {
 func (bs *BinarySerializer) createBinaryFrame(data []byte, flags uint8) ([]byte, error) {
 	checksum := calculateChecksum(data)
 	length := uint32(len(data))
-	
+
 	// Create binary frame (simplified format)
 	frame := make([]byte, 11+len(data))
-	frame[0] = FrameVersion1  // Version
+	frame[0] = FrameVersion1 // Version
 	frame[1] = 0             // Message type (simplified)
 	frame[2] = flags         // Flags
 	frame[3] = byte(length >> 24)
@@ -272,9 +272,9 @@ func (bs *BinarySerializer) createBinaryFrame(data []byte, flags uint8) ([]byte,
 	frame[8] = byte(checksum >> 16)
 	frame[9] = byte(checksum >> 8)
 	frame[10] = byte(checksum)
-	
+
 	copy(frame[11:], data)
-	
+
 	return frame, nil
 }
 
@@ -285,15 +285,15 @@ func (bs *BinarySerializer) compress(data []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if _, err := writer.Write(data); err != nil {
 		return nil, err
 	}
-	
+
 	if err := writer.Close(); err != nil {
 		return nil, err
 	}
-	
+
 	return buf.Bytes(), nil
 }
 
@@ -304,7 +304,7 @@ func (bs *BinarySerializer) decompress(data []byte) ([]byte, error) {
 		return nil, err
 	}
 	defer reader.Close()
-	
+
 	return io.ReadAll(reader)
 }
 

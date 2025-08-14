@@ -27,7 +27,7 @@ type DependencyManagerConfig struct {
 
 // DependencyGraph represents a dependency graph
 type DependencyGraph struct {
-	Nodes map[string]*DependencyNode `json:"nodes"`
+	Nodes map[string]*DependencyNode   `json:"nodes"`
 	Edges map[string][]*DependencyEdge `json:"edges"`
 }
 
@@ -530,10 +530,10 @@ func (dm *DependencyManager) hasServiceDependency(service1, service2 string) boo
 	// Simplified dependency check - in real implementation, this would
 	// consult a service dependency registry or configuration
 	dependencyMap := map[string][]string{
-		"api_gateway":  {"scheduler", "p2p_network"},
-		"scheduler":    {"consensus", "storage"},
-		"p2p_network":  {"consensus"},
-		"consensus":    {"storage"},
+		"api_gateway": {"scheduler", "p2p_network"},
+		"scheduler":   {"consensus", "storage"},
+		"p2p_network": {"consensus"},
+		"consensus":   {"storage"},
 	}
 
 	deps, exists := dependencyMap[service1]

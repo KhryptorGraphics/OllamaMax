@@ -55,6 +55,10 @@ type DistributedIntegrationConfig struct {
 	EnableCaching     bool `json:"enable_caching"`
 	CacheSize         int  `json:"cache_size"`
 	EnablePrefetching bool `json:"enable_prefetching"`
+
+	// Ensure/replication behavior
+	EnsureReplicaTimeoutSec   int64 `json:"ensure_replica_timeout_sec"`
+	BlockPullUntilMinReplicas bool  `json:"block_pull_until_min_replicas"`
 }
 
 // DistributedRequest represents a distributed inference request
@@ -170,11 +174,18 @@ func (doi *DistributedOllamaIntegration) Stop() error {
 		if request.CancelFunc != nil {
 			request.CancelFunc()
 		}
+
 	}
 	doi.requestsMutex.Unlock()
 
 	doi.started = false
+
 	return nil
+}
+
+// GetConfig returns the integration config (read-only)
+func (doi *DistributedOllamaIntegration) GetConfig() *DistributedIntegrationConfig {
+	return doi.config
 }
 
 // HandleGenerateRequest handles a generate request, deciding whether to distribute it
@@ -275,6 +286,17 @@ func (doi *DistributedOllamaIntegration) handleDistributedRequest(
 		doi.requestsMutex.Unlock()
 	}()
 
+	// Ensure model is present on enough peers before executing
+	ensureTimeout := 20 * time.Second
+	if doi.config.EnsureReplicaTimeoutSec > 0 {
+		ensureTimeout = time.Duration(doi.config.EnsureReplicaTimeoutSec) * time.Second
+	} else if doi.config.RequestTimeout > 0 && doi.config.RequestTimeout < ensureTimeout {
+		ensureTimeout = doi.config.RequestTimeout
+	}
+	if err := doi.ensureModelReplicas(distributedReq.Context, req.Model, doi.config.MinNodesForDistribution, ensureTimeout); err != nil {
+		doi.logger.Warn("model replication ensure timed out or failed", "model", req.Model, "error", err)
+	}
+
 	// Execute distributed inference
 	distributedReq.Status = RequestStatusExecuting
 
@@ -329,6 +351,45 @@ func (doi *DistributedOllamaIntegration) handleDistributedRequest(
 		"latency", time.Since(startTime))
 
 	return response, nil
+}
+
+// ensureModelReplicas makes sure at least minReplicas peers (including local) have the model
+func (doi *DistributedOllamaIntegration) ensureModelReplicas(ctx context.Context, modelName string, minReplicas int, timeout time.Duration) error {
+	if minReplicas <= 1 { // assume local already has it
+		return nil
+	}
+	deadline := time.Now().Add(timeout)
+	// quick attempt to fan-out to missing peers
+	peerIDs := doi.p2pNode.GetConnectedPeers()
+	peers := make([]string, 0, len(peerIDs))
+	replicaSet := make(map[string]struct{})
+	for _, r := range doi.modelManager.GetReplicas(modelName) {
+		replicaSet[r.PeerID] = struct{}{}
+	}
+	for _, id := range peerIDs {
+		pid := id.String()
+		if _, ok := replicaSet[pid]; !ok {
+			peers = append(peers, pid)
+		}
+	}
+	if len(peers) > 0 {
+		_ = doi.modelManager.ReplicateModelToPeers(modelName, peers)
+	}
+	// wait loop
+	for time.Now().Before(deadline) {
+		if doi.modelManager.GetReplicaCount(modelName) >= minReplicas {
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(500 * time.Millisecond):
+		}
+	}
+	if doi.modelManager.GetReplicaCount(modelName) >= minReplicas {
+		return nil
+	}
+	return fmt.Errorf("replica ensure timeout for model %s", modelName)
 }
 
 // handleLocalRequest handles a request locally (fallback)

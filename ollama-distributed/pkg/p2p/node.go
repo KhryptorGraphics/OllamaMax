@@ -147,6 +147,18 @@ func NewNode(ctx context.Context, p2pConfig *internalconfig.P2PConfig) (*P2PNode
 		} else {
 			nodeConfig.ConnMgrGrace = time.Minute // Default fallback
 		}
+		// Copy discovery configuration
+		nodeConfig.AutoDiscovery = p2pConfig.AutoDiscovery
+		if p2pConfig.RendezvousString != "" {
+			nodeConfig.RendezvousString = p2pConfig.RendezvousString
+		}
+		// Enable mDNS if configured
+		if p2pConfig.EnableMDNS {
+			nodeConfig.EnableMDNS = true
+			if p2pConfig.MDNSService != "" {
+				nodeConfig.MDNSService = p2pConfig.MDNSService
+			}
+		}
 	}
 
 	return NewP2PNode(ctx, nodeConfig)

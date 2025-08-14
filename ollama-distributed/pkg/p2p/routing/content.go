@@ -8,12 +8,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ipfs/go-cid"
+	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
-	dht "github.com/libp2p/go-libp2p-kad-dht"
-	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
 )
 
@@ -22,7 +22,7 @@ const (
 	ContentRoutingProtocol = protocol.ID("/ollamacron/content-routing/1.0.0")
 	ContentRequestProtocol = protocol.ID("/ollamacron/content-request/1.0.0")
 	ContentProvideProtocol = protocol.ID("/ollamacron/content-provide/1.0.0")
-	
+
 	// DHT content keys
 	ContentKeyPrefix = "/ollamacron/content/"
 	ModelKeyPrefix   = "/ollamacron/models/"
@@ -31,114 +31,114 @@ const (
 
 // ContentRouter manages content routing and discovery
 type ContentRouter struct {
-	host           host.Host
-	dht            *dht.IpfsDHT
-	
+	host host.Host
+	dht  *dht.IpfsDHT
+
 	// Content storage
-	contentStore   *ContentStore
-	
+	contentStore *ContentStore
+
 	// Routing table
-	routingTable   *RoutingTable
-	
+	routingTable *RoutingTable
+
 	// Provider management
-	providers      map[string][]peer.ID
-	providersMux   sync.RWMutex
-	
+	providers    map[string][]peer.ID
+	providersMux sync.RWMutex
+
 	// Content discovery
-	discovery      *ContentDiscovery
-	
+	discovery *ContentDiscovery
+
 	// Request tracking
 	activeRequests map[string]*ContentRequest
 	requestsMux    sync.RWMutex
-	
+
 	// Configuration
-	config         *ContentRouterConfig
-	
+	config *ContentRouterConfig
+
 	// Metrics
-	metrics        *ContentRouterMetrics
-	
+	metrics *ContentRouterMetrics
+
 	// Lifecycle
-	ctx            context.Context
-	cancel         context.CancelFunc
-	wg             sync.WaitGroup
+	ctx    context.Context
+	cancel context.CancelFunc
+	wg     sync.WaitGroup
 }
 
 // ContentStore manages local and remote content references
 type ContentStore struct {
 	// Local content
-	localContent   map[string]*ContentMetadata
-	localMux       sync.RWMutex
-	
+	localContent map[string]*ContentMetadata
+	localMux     sync.RWMutex
+
 	// Remote references
-	remoteContent  map[string]*RemoteContent
-	remoteMux      sync.RWMutex
-	
+	remoteContent map[string]*RemoteContent
+	remoteMux     sync.RWMutex
+
 	// Cache management
-	cache          *ContentCache
-	
+	cache *ContentCache
+
 	// Storage backend
-	storage        Storage
-	
+	storage Storage
+
 	// Indexing
-	index          *ContentIndex
+	index *ContentIndex
 }
 
 // ContentMetadata represents content metadata
 type ContentMetadata struct {
-	ID             string            `json:"id"`
-	Name           string            `json:"name"`
-	Type           string            `json:"type"`
-	Size           int64             `json:"size"`
-	Checksum       string            `json:"checksum"`
-	
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Type     string `json:"type"`
+	Size     int64  `json:"size"`
+	Checksum string `json:"checksum"`
+
 	// Model-specific metadata
-	ModelType      string            `json:"model_type"`
-	Architecture   string            `json:"architecture"`
-	Parameters     int64             `json:"parameters"`
-	Quantization   string            `json:"quantization"`
-	
+	ModelType    string `json:"model_type"`
+	Architecture string `json:"architecture"`
+	Parameters   int64  `json:"parameters"`
+	Quantization string `json:"quantization"`
+
 	// Availability
-	Providers      []peer.ID         `json:"providers"`
-	Replicas       int               `json:"replicas"`
-	
+	Providers []peer.ID `json:"providers"`
+	Replicas  int       `json:"replicas"`
+
 	// Access control
-	AccessLevel    string            `json:"access_level"`
-	RequiredAuth   bool              `json:"required_auth"`
-	
+	AccessLevel  string `json:"access_level"`
+	RequiredAuth bool   `json:"required_auth"`
+
 	// Versioning
-	Version        string            `json:"version"`
-	ParentID       string            `json:"parent_id,omitempty"`
-	
+	Version  string `json:"version"`
+	ParentID string `json:"parent_id,omitempty"`
+
 	// Timestamps
-	CreatedAt      time.Time         `json:"created_at"`
-	UpdatedAt      time.Time         `json:"updated_at"`
-	LastAccessed   time.Time         `json:"last_accessed"`
-	
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+	LastAccessed time.Time `json:"last_accessed"`
+
 	// Tags and labels
-	Tags           map[string]string `json:"tags"`
-	Labels         []string          `json:"labels"`
+	Tags   map[string]string `json:"tags"`
+	Labels []string          `json:"labels"`
 }
 
 // RemoteContent represents remote content reference
 type RemoteContent struct {
-	Metadata       *ContentMetadata
-	Providers      []peer.ID
-	LastUpdated    time.Time
-	RetrievalCost  int64
-	Availability   float64
+	Metadata      *ContentMetadata
+	Providers     []peer.ID
+	LastUpdated   time.Time
+	RetrievalCost int64
+	Availability  float64
 }
 
 // ContentRequest represents a content request
 type ContentRequest struct {
-	ID             string
-	ContentID      string
-	RequestorID    peer.ID
-	Priority       int
-	Timeout        time.Duration
-	CreatedAt      time.Time
-	Status         RequestStatus
-	Progress       float64
-	Providers      []peer.ID
+	ID              string
+	ContentID       string
+	RequestorID     peer.ID
+	Priority        int
+	Timeout         time.Duration
+	CreatedAt       time.Time
+	Status          RequestStatus
+	Progress        float64
+	Providers       []peer.ID
 	FailedProviders []peer.ID
 }
 
@@ -155,28 +155,28 @@ const (
 
 // ContentRouterConfig holds configuration
 type ContentRouterConfig struct {
-	MaxProviders       int           `json:"max_providers"`
-	ProviderTimeout    time.Duration `json:"provider_timeout"`
-	RequestTimeout     time.Duration `json:"request_timeout"`
-	CacheSize          int           `json:"cache_size"`
-	CacheTTL           time.Duration `json:"cache_ttl"`
-	ReplicationFactor  int           `json:"replication_factor"`
-	EnableCaching      bool          `json:"enable_caching"`
-	EnableIndexing     bool          `json:"enable_indexing"`
+	MaxProviders      int           `json:"max_providers"`
+	ProviderTimeout   time.Duration `json:"provider_timeout"`
+	RequestTimeout    time.Duration `json:"request_timeout"`
+	CacheSize         int           `json:"cache_size"`
+	CacheTTL          time.Duration `json:"cache_ttl"`
+	ReplicationFactor int           `json:"replication_factor"`
+	EnableCaching     bool          `json:"enable_caching"`
+	EnableIndexing    bool          `json:"enable_indexing"`
 }
 
 // ContentRouterMetrics tracks routing metrics
 type ContentRouterMetrics struct {
-	ContentPublished   int
-	ContentRequests    int
-	ContentProvided    int
-	CacheHits          int
-	CacheMisses        int
-	ProviderQueries    int
-	SuccessfulRoutes   int
-	FailedRoutes       int
-	AverageLatency     time.Duration
-	StartTime          time.Time
+	ContentPublished int
+	ContentRequests  int
+	ContentProvided  int
+	CacheHits        int
+	CacheMisses      int
+	ProviderQueries  int
+	SuccessfulRoutes int
+	FailedRoutes     int
+	AverageLatency   time.Duration
+	StartTime        time.Time
 }
 
 // NewContentRouter creates a new content router
@@ -184,9 +184,9 @@ func NewContentRouter(ctx context.Context, host host.Host, dht *dht.IpfsDHT, con
 	if config == nil {
 		config = DefaultContentRouterConfig()
 	}
-	
+
 	ctx, cancel := context.WithCancel(ctx)
-	
+
 	cr := &ContentRouter{
 		host:           host,
 		dht:            dht,
@@ -199,23 +199,23 @@ func NewContentRouter(ctx context.Context, host host.Host, dht *dht.IpfsDHT, con
 		ctx:    ctx,
 		cancel: cancel,
 	}
-	
+
 	// Initialize content store
 	contentStore, err := NewContentStore(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize content store: %w", err)
 	}
 	cr.contentStore = contentStore
-	
+
 	// Initialize routing table
 	cr.routingTable = NewRoutingTable(host.ID())
-	
+
 	// Initialize content discovery
 	cr.discovery = NewContentDiscovery(host, dht, config)
-	
+
 	// Setup protocol handlers
 	cr.setupProtocolHandlers()
-	
+
 	return cr, nil
 }
 
@@ -229,63 +229,63 @@ func (cr *ContentRouter) setupProtocolHandlers() {
 // Start starts the content router
 func (cr *ContentRouter) Start() {
 	log.Printf("Starting content router")
-	
+
 	// Start discovery
 	cr.discovery.Start()
-	
+
 	// Start provider management
 	cr.wg.Add(1)
 	go cr.providerManagementTask()
-	
+
 	// Start request processing
 	cr.wg.Add(1)
 	go cr.requestProcessingTask()
-	
+
 	// Start metrics collection
 	cr.wg.Add(1)
 	go cr.metricsTask()
-	
+
 	// Start cache cleanup
 	cr.wg.Add(1)
 	go cr.cacheCleanupTask()
-	
+
 	log.Printf("Content router started")
 }
 
 // PublishContent publishes content to the network
 func (cr *ContentRouter) PublishContent(ctx context.Context, content *ContentMetadata) error {
 	log.Printf("Publishing content: %s", content.ID)
-	
+
 	// Store content locally
 	cr.contentStore.StoreLocal(content)
-	
+
 	// Announce to DHT
 	key := fmt.Sprintf("%s%s", ContentKeyPrefix, content.ID)
 	data, err := json.Marshal(content)
 	if err != nil {
 		return fmt.Errorf("failed to marshal content: %w", err)
 	}
-	
+
 	if err := cr.dht.PutValue(ctx, key, data); err != nil {
 		return fmt.Errorf("failed to publish to DHT: %w", err)
 	}
-	
+
 	// Become provider
 	contentHash, err := cr.calculateContentHash(content.ID)
 	if err != nil {
 		return fmt.Errorf("failed to calculate content hash: %w", err)
 	}
-	
+
 	if err := cr.dht.Provide(ctx, contentHash, true); err != nil {
 		return fmt.Errorf("failed to announce as provider: %w", err)
 	}
-	
+
 	// Update routing table
 	cr.routingTable.AddRoute(content.ID, cr.host.ID())
-	
+
 	// Update metrics
 	cr.metrics.ContentPublished++
-	
+
 	log.Printf("Published content: %s", content.ID)
 	return nil
 }
@@ -293,12 +293,12 @@ func (cr *ContentRouter) PublishContent(ctx context.Context, content *ContentMet
 // FindContent finds content in the network
 func (cr *ContentRouter) FindContent(ctx context.Context, contentID string) (*ContentMetadata, []peer.ID, error) {
 	log.Printf("Finding content: %s", contentID)
-	
+
 	// Check local store first
 	if content, exists := cr.contentStore.GetLocal(contentID); exists {
 		return content, []peer.ID{cr.host.ID()}, nil
 	}
-	
+
 	// Check cache
 	if cr.config.EnableCaching {
 		if cached, exists := cr.contentStore.GetCached(contentID); exists {
@@ -307,30 +307,30 @@ func (cr *ContentRouter) FindContent(ctx context.Context, contentID string) (*Co
 		}
 		cr.metrics.CacheMisses++
 	}
-	
+
 	// Query DHT
 	key := fmt.Sprintf("%s%s", ContentKeyPrefix, contentID)
 	val, err := cr.dht.GetValue(ctx, key)
 	if err != nil {
 		return nil, nil, fmt.Errorf("content not found in DHT: %w", err)
 	}
-	
+
 	var content ContentMetadata
 	if err := json.Unmarshal(val, &content); err != nil {
 		return nil, nil, fmt.Errorf("failed to unmarshal content: %w", err)
 	}
-	
+
 	// Find providers
 	providers, err := cr.findProviders(ctx, contentID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to find providers: %w", err)
 	}
-	
+
 	// Cache the result
 	if cr.config.EnableCaching {
 		cr.contentStore.CacheRemote(contentID, &content, providers)
 	}
-	
+
 	log.Printf("Found content: %s with %d providers", contentID, len(providers))
 	return &content, providers, nil
 }
@@ -341,14 +341,14 @@ func (cr *ContentRouter) findProviders(ctx context.Context, contentID string) ([
 	if err != nil {
 		return nil, fmt.Errorf("failed to calculate content hash: %w", err)
 	}
-	
+
 	providersChan := cr.dht.FindProvidersAsync(ctx, contentHash, cr.config.MaxProviders)
-	
+
 	var providerIDs []peer.ID
 	for provider := range providersChan {
 		providerIDs = append(providerIDs, provider.ID)
 	}
-	
+
 	cr.metrics.ProviderQueries++
 	return providerIDs, nil
 }
@@ -356,7 +356,7 @@ func (cr *ContentRouter) findProviders(ctx context.Context, contentID string) ([
 // RequestContent requests content from the network
 func (cr *ContentRouter) RequestContent(ctx context.Context, contentID string, priority int) (*ContentRequest, error) {
 	log.Printf("Requesting content: %s with priority %d", contentID, priority)
-	
+
 	// Create request
 	requestID := fmt.Sprintf("req-%d", time.Now().UnixNano())
 	request := &ContentRequest{
@@ -369,25 +369,25 @@ func (cr *ContentRouter) RequestContent(ctx context.Context, contentID string, p
 		Status:      RequestStatusPending,
 		Progress:    0,
 	}
-	
+
 	// Store request
 	cr.requestsMux.Lock()
 	cr.activeRequests[requestID] = request
 	cr.requestsMux.Unlock()
-	
+
 	// Find providers
 	providers, err := cr.findProviders(ctx, contentID)
 	if err != nil {
 		request.Status = RequestStatusFailed
 		return request, fmt.Errorf("failed to find providers: %w", err)
 	}
-	
+
 	request.Providers = providers
 	request.Status = RequestStatusActive
-	
+
 	// Start request processing
 	go cr.processContentRequest(request)
-	
+
 	cr.metrics.ContentRequests++
 	return request, nil
 }
@@ -395,29 +395,29 @@ func (cr *ContentRouter) RequestContent(ctx context.Context, contentID string, p
 // processContentRequest processes a content request
 func (cr *ContentRouter) processContentRequest(request *ContentRequest) {
 	log.Printf("Processing content request: %s", request.ID)
-	
+
 	ctx, cancel := context.WithTimeout(cr.ctx, request.Timeout)
 	defer cancel()
-	
+
 	// Try providers in order
 	for _, providerID := range request.Providers {
 		if cr.ctx.Err() != nil {
 			request.Status = RequestStatusCancelled
 			return
 		}
-		
+
 		// Skip failed providers
 		if cr.isFailedProvider(request, providerID) {
 			continue
 		}
-		
+
 		// Request from provider
 		if err := cr.requestFromProvider(ctx, request, providerID); err != nil {
 			log.Printf("Failed to request from provider %s: %v", providerID, err)
 			request.FailedProviders = append(request.FailedProviders, providerID)
 			continue
 		}
-		
+
 		// Success
 		request.Status = RequestStatusCompleted
 		request.Progress = 1.0
@@ -425,7 +425,7 @@ func (cr *ContentRouter) processContentRequest(request *ContentRequest) {
 		log.Printf("Completed content request: %s", request.ID)
 		return
 	}
-	
+
 	// All providers failed
 	request.Status = RequestStatusFailed
 	cr.metrics.FailedRoutes++
@@ -440,7 +440,7 @@ func (cr *ContentRouter) requestFromProvider(ctx context.Context, request *Conte
 		return fmt.Errorf("failed to create stream: %w", err)
 	}
 	defer stream.Close()
-	
+
 	// Send request
 	requestMsg := &ContentRequestMessage{
 		RequestID: request.ID,
@@ -448,42 +448,42 @@ func (cr *ContentRouter) requestFromProvider(ctx context.Context, request *Conte
 		Priority:  request.Priority,
 		Timestamp: time.Now(),
 	}
-	
+
 	data, err := json.Marshal(requestMsg)
 	if err != nil {
 		return fmt.Errorf("failed to marshal request: %w", err)
 	}
-	
+
 	if _, err := stream.Write(data); err != nil {
 		return fmt.Errorf("failed to send request: %w", err)
 	}
-	
+
 	// Read response
 	buf := make([]byte, 4096)
 	n, err := stream.Read(buf)
 	if err != nil {
 		return fmt.Errorf("failed to read response: %w", err)
 	}
-	
+
 	var response ContentResponseMessage
 	if err := json.Unmarshal(buf[:n], &response); err != nil {
 		return fmt.Errorf("failed to unmarshal response: %w", err)
 	}
-	
+
 	if !response.Success {
 		return fmt.Errorf("provider rejected request: %s", response.Message)
 	}
-	
+
 	// Update progress
 	request.Progress = 0.5
-	
+
 	// Handle content transfer (simplified)
 	// In a real implementation, this would involve chunked transfers
 	if response.ContentData != nil {
 		// Process content data
 		request.Progress = 1.0
 	}
-	
+
 	return nil
 }
 
@@ -492,7 +492,7 @@ func (cr *ContentRouter) requestFromProvider(ctx context.Context, request *Conte
 // handleContentRouting handles content routing requests
 func (cr *ContentRouter) handleContentRouting(stream network.Stream) {
 	defer stream.Close()
-	
+
 	// Read routing request
 	buf := make([]byte, 4096)
 	n, err := stream.Read(buf)
@@ -500,23 +500,23 @@ func (cr *ContentRouter) handleContentRouting(stream network.Stream) {
 		log.Printf("Failed to read routing request: %v", err)
 		return
 	}
-	
+
 	var routingMsg RoutingMessage
 	if err := json.Unmarshal(buf[:n], &routingMsg); err != nil {
 		log.Printf("Failed to unmarshal routing request: %v", err)
 		return
 	}
-	
+
 	// Process routing request
 	response := cr.processRoutingRequest(&routingMsg)
-	
+
 	// Send response
 	data, err := json.Marshal(response)
 	if err != nil {
 		log.Printf("Failed to marshal routing response: %v", err)
 		return
 	}
-	
+
 	if _, err := stream.Write(data); err != nil {
 		log.Printf("Failed to send routing response: %v", err)
 		return
@@ -526,9 +526,9 @@ func (cr *ContentRouter) handleContentRouting(stream network.Stream) {
 // handleContentRequest handles incoming content requests
 func (cr *ContentRouter) handleContentRequest(stream network.Stream) {
 	defer stream.Close()
-	
+
 	peerID := stream.Conn().RemotePeer()
-	
+
 	// Read request
 	buf := make([]byte, 4096)
 	n, err := stream.Read(buf)
@@ -536,37 +536,37 @@ func (cr *ContentRouter) handleContentRequest(stream network.Stream) {
 		log.Printf("Failed to read content request: %v", err)
 		return
 	}
-	
+
 	var request ContentRequestMessage
 	if err := json.Unmarshal(buf[:n], &request); err != nil {
 		log.Printf("Failed to unmarshal content request: %v", err)
 		return
 	}
-	
+
 	// Process request
 	response := cr.processIncomingContentRequest(&request, peerID)
-	
+
 	// Send response
 	data, err := json.Marshal(response)
 	if err != nil {
 		log.Printf("Failed to marshal content response: %v", err)
 		return
 	}
-	
+
 	if _, err := stream.Write(data); err != nil {
 		log.Printf("Failed to send content response: %v", err)
 		return
 	}
-	
+
 	cr.metrics.ContentProvided++
 }
 
 // handleContentProvide handles content provision announcements
 func (cr *ContentRouter) handleContentProvide(stream network.Stream) {
 	defer stream.Close()
-	
+
 	peerID := stream.Conn().RemotePeer()
-	
+
 	// Read provision announcement
 	buf := make([]byte, 4096)
 	n, err := stream.Read(buf)
@@ -574,13 +574,13 @@ func (cr *ContentRouter) handleContentProvide(stream network.Stream) {
 		log.Printf("Failed to read provision announcement: %v", err)
 		return
 	}
-	
+
 	var announcement ProvisionAnnouncement
 	if err := json.Unmarshal(buf[:n], &announcement); err != nil {
 		log.Printf("Failed to unmarshal provision announcement: %v", err)
 		return
 	}
-	
+
 	// Process announcement
 	cr.processProvisionAnnouncement(&announcement, peerID)
 }
@@ -589,7 +589,7 @@ func (cr *ContentRouter) handleContentProvide(stream network.Stream) {
 func (cr *ContentRouter) processRoutingRequest(msg *RoutingMessage) *RoutingResponse {
 	// Find routes for the requested content
 	routes := cr.routingTable.FindRoutes(msg.ContentID)
-	
+
 	return &RoutingResponse{
 		MessageID: msg.MessageID,
 		Success:   len(routes) > 0,
@@ -610,7 +610,7 @@ func (cr *ContentRouter) processIncomingContentRequest(request *ContentRequestMe
 			Timestamp: time.Now(),
 		}
 	}
-	
+
 	// TODO: Implement actual content transfer
 	// For now, just return metadata
 	return &ContentResponseMessage{
@@ -625,7 +625,7 @@ func (cr *ContentRouter) processIncomingContentRequest(request *ContentRequestMe
 func (cr *ContentRouter) processProvisionAnnouncement(announcement *ProvisionAnnouncement, providerID peer.ID) {
 	cr.providersMux.Lock()
 	defer cr.providersMux.Unlock()
-	
+
 	// Add provider to the list
 	providers := cr.providers[announcement.ContentID]
 	for _, p := range providers {
@@ -633,7 +633,7 @@ func (cr *ContentRouter) processProvisionAnnouncement(announcement *ProvisionAnn
 			return // Already in list
 		}
 	}
-	
+
 	cr.providers[announcement.ContentID] = append(providers, providerID)
 	log.Printf("Added provider %s for content %s", providerID, announcement.ContentID)
 }
@@ -643,10 +643,10 @@ func (cr *ContentRouter) processProvisionAnnouncement(announcement *ProvisionAnn
 // providerManagementTask manages provider information
 func (cr *ContentRouter) providerManagementTask() {
 	defer cr.wg.Done()
-	
+
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-cr.ctx.Done():
@@ -660,10 +660,10 @@ func (cr *ContentRouter) providerManagementTask() {
 // requestProcessingTask processes pending requests
 func (cr *ContentRouter) requestProcessingTask() {
 	defer cr.wg.Done()
-	
+
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-cr.ctx.Done():
@@ -677,10 +677,10 @@ func (cr *ContentRouter) requestProcessingTask() {
 // metricsTask collects metrics
 func (cr *ContentRouter) metricsTask() {
 	defer cr.wg.Done()
-	
+
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-cr.ctx.Done():
@@ -694,10 +694,10 @@ func (cr *ContentRouter) metricsTask() {
 // cacheCleanupTask cleans up expired cache entries
 func (cr *ContentRouter) cacheCleanupTask() {
 	defer cr.wg.Done()
-	
+
 	ticker := time.NewTicker(5 * time.Minute)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-cr.ctx.Done():
@@ -739,7 +739,7 @@ func (cr *ContentRouter) updateProviderInfo() {
 func (cr *ContentRouter) processTimeouts() {
 	cr.requestsMux.Lock()
 	defer cr.requestsMux.Unlock()
-	
+
 	now := time.Now()
 	for id, request := range cr.activeRequests {
 		if now.Sub(request.CreatedAt) > request.Timeout {
@@ -764,7 +764,7 @@ func (cr *ContentRouter) GetMetrics() *ContentRouterMetrics {
 func (cr *ContentRouter) GetActiveRequests() map[string]*ContentRequest {
 	cr.requestsMux.RLock()
 	defer cr.requestsMux.RUnlock()
-	
+
 	requests := make(map[string]*ContentRequest)
 	for k, v := range cr.activeRequests {
 		requests[k] = v
@@ -777,11 +777,11 @@ func (cr *ContentRouter) Stop() {
 	log.Printf("Stopping content router")
 	cr.cancel()
 	cr.wg.Wait()
-	
+
 	if cr.discovery != nil {
 		cr.discovery.Stop()
 	}
-	
+
 	log.Printf("Content router stopped")
 }
 
@@ -811,11 +811,11 @@ type RoutingMessage struct {
 
 // RoutingResponse represents a routing response
 type RoutingResponse struct {
-	MessageID string     `json:"message_id"`
-	Success   bool       `json:"success"`
-	Routes    []peer.ID  `json:"routes"`
-	Message   string     `json:"message,omitempty"`
-	Timestamp time.Time  `json:"timestamp"`
+	MessageID string    `json:"message_id"`
+	Success   bool      `json:"success"`
+	Routes    []peer.ID `json:"routes"`
+	Message   string    `json:"message,omitempty"`
+	Timestamp time.Time `json:"timestamp"`
 }
 
 // ContentRequestMessage represents a content request
@@ -838,10 +838,10 @@ type ContentResponseMessage struct {
 
 // ProvisionAnnouncement represents a provision announcement
 type ProvisionAnnouncement struct {
-	ContentID string    `json:"content_id"`
-	Provider  peer.ID   `json:"provider"`
+	ContentID string        `json:"content_id"`
+	Provider  peer.ID       `json:"provider"`
 	TTL       time.Duration `json:"ttl"`
-	Timestamp time.Time `json:"timestamp"`
+	Timestamp time.Time     `json:"timestamp"`
 }
 
 // RoutingTable manages peer routing information
@@ -863,7 +863,7 @@ func NewRoutingTable(localPeerID peer.ID) *RoutingTable {
 func (rt *RoutingTable) AddRoute(contentID string, peerID peer.ID) {
 	rt.mu.Lock()
 	defer rt.mu.Unlock()
-	
+
 	routes := rt.routes[contentID]
 	for _, p := range routes {
 		if p == peerID {
@@ -877,7 +877,7 @@ func (rt *RoutingTable) AddRoute(contentID string, peerID peer.ID) {
 func (rt *RoutingTable) FindRoutes(contentID string) []peer.ID {
 	rt.mu.RLock()
 	defer rt.mu.RUnlock()
-	
+
 	routes := rt.routes[contentID]
 	result := make([]peer.ID, len(routes))
 	copy(result, routes)
@@ -917,10 +917,10 @@ func (cd *ContentDiscovery) Stop() {
 
 // ContentCache manages cached content
 type ContentCache struct {
-	cache    map[string]*CacheEntry
-	maxSize  int
-	ttl      time.Duration
-	mu       sync.RWMutex
+	cache   map[string]*CacheEntry
+	maxSize int
+	ttl     time.Duration
+	mu      sync.RWMutex
 }
 
 // CacheEntry represents a cache entry
@@ -942,7 +942,7 @@ func NewContentCache(maxSize int, ttl time.Duration) *ContentCache {
 func (cc *ContentCache) Get(contentID string) (*RemoteContent, bool) {
 	cc.mu.RLock()
 	defer cc.mu.RUnlock()
-	
+
 	entry, exists := cc.cache[contentID]
 	if !exists || time.Now().After(entry.ExpiresAt) {
 		return nil, false
@@ -954,12 +954,12 @@ func (cc *ContentCache) Get(contentID string) (*RemoteContent, bool) {
 func (cc *ContentCache) Put(contentID string, content *RemoteContent) {
 	cc.mu.Lock()
 	defer cc.mu.Unlock()
-	
+
 	cc.cache[contentID] = &CacheEntry{
 		Content:   content,
 		ExpiresAt: time.Now().Add(cc.ttl),
 	}
-	
+
 	// Simple eviction if cache is full
 	if len(cc.cache) > cc.maxSize {
 		// Remove oldest entry
@@ -979,7 +979,7 @@ func (cc *ContentCache) Put(contentID string, content *RemoteContent) {
 func (cc *ContentCache) Cleanup() {
 	cc.mu.Lock()
 	defer cc.mu.Unlock()
-	
+
 	now := time.Now()
 	for id, entry := range cc.cache {
 		if now.After(entry.ExpiresAt) {
@@ -1013,7 +1013,7 @@ func NewMemoryStorage() *MemoryStorage {
 func (ms *MemoryStorage) Get(key string) ([]byte, error) {
 	ms.mu.RLock()
 	defer ms.mu.RUnlock()
-	
+
 	data, exists := ms.data[key]
 	if !exists {
 		return nil, fmt.Errorf("key not found: %s", key)
@@ -1025,7 +1025,7 @@ func (ms *MemoryStorage) Get(key string) ([]byte, error) {
 func (ms *MemoryStorage) Put(key string, value []byte) error {
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
-	
+
 	ms.data[key] = value
 	return nil
 }
@@ -1034,7 +1034,7 @@ func (ms *MemoryStorage) Put(key string, value []byte) error {
 func (ms *MemoryStorage) Delete(key string) error {
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
-	
+
 	delete(ms.data, key)
 	return nil
 }
@@ -1043,7 +1043,7 @@ func (ms *MemoryStorage) Delete(key string) error {
 func (ms *MemoryStorage) Has(key string) bool {
 	ms.mu.RLock()
 	defer ms.mu.RUnlock()
-	
+
 	_, exists := ms.data[key]
 	return exists
 }
@@ -1073,7 +1073,7 @@ func NewContentIndex() *ContentIndex {
 func (ci *ContentIndex) Add(contentID string, metadata *ContentMetadata) {
 	ci.mu.Lock()
 	defer ci.mu.Unlock()
-	
+
 	ci.index[contentID] = &IndexEntry{
 		ContentID: contentID,
 		Metadata:  metadata,
@@ -1086,7 +1086,7 @@ func (ci *ContentIndex) Add(contentID string, metadata *ContentMetadata) {
 func (ci *ContentIndex) Search(query string) []*IndexEntry {
 	ci.mu.RLock()
 	defer ci.mu.RUnlock()
-	
+
 	var results []*IndexEntry
 	for _, entry := range ci.index {
 		if matchesQuery(entry, query) {
@@ -1119,7 +1119,7 @@ func NewContentStore(config *ContentRouterConfig) (*ContentStore, error) {
 	cache := NewContentCache(config.CacheSize, config.CacheTTL)
 	storage := NewMemoryStorage()
 	index := NewContentIndex()
-	
+
 	return &ContentStore{
 		localContent:  make(map[string]*ContentMetadata),
 		remoteContent: make(map[string]*RemoteContent),
@@ -1133,7 +1133,7 @@ func NewContentStore(config *ContentRouterConfig) (*ContentStore, error) {
 func (cs *ContentStore) StoreLocal(content *ContentMetadata) {
 	cs.localMux.Lock()
 	defer cs.localMux.Unlock()
-	
+
 	cs.localContent[content.ID] = content
 	if cs.index != nil {
 		cs.index.Add(content.ID, content)
@@ -1144,7 +1144,7 @@ func (cs *ContentStore) StoreLocal(content *ContentMetadata) {
 func (cs *ContentStore) GetLocal(contentID string) (*ContentMetadata, bool) {
 	cs.localMux.RLock()
 	defer cs.localMux.RUnlock()
-	
+
 	content, exists := cs.localContent[contentID]
 	return content, exists
 }
@@ -1153,14 +1153,14 @@ func (cs *ContentStore) GetLocal(contentID string) (*ContentMetadata, bool) {
 func (cs *ContentStore) CacheRemote(contentID string, metadata *ContentMetadata, providers []peer.ID) {
 	cs.remoteMux.Lock()
 	defer cs.remoteMux.Unlock()
-	
+
 	remote := &RemoteContent{
 		Metadata:     metadata,
 		Providers:    providers,
 		LastUpdated:  time.Now(),
 		Availability: float64(len(providers)) / 10.0, // Simple availability metric
 	}
-	
+
 	cs.remoteContent[contentID] = remote
 	if cs.cache != nil {
 		cs.cache.Put(contentID, remote)
@@ -1172,10 +1172,10 @@ func (cs *ContentStore) GetCached(contentID string) (*RemoteContent, bool) {
 	if cs.cache != nil {
 		return cs.cache.Get(contentID)
 	}
-	
+
 	cs.remoteMux.RLock()
 	defer cs.remoteMux.RUnlock()
-	
+
 	content, exists := cs.remoteContent[contentID]
 	return content, exists
 }

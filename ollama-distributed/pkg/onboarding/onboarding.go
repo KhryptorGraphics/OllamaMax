@@ -25,14 +25,14 @@ func NewOnboardingManager() *OnboardingManager {
 
 // OnboardingConfig holds onboarding configuration
 type OnboardingConfig struct {
-	NodeName        string
-	ListenPort      int
-	EnableWebUI     bool
-	EnableSecurity  bool
-	JoinExisting    bool
-	BootstrapPeers  []string
-	ModelDirectory  string
-	LogLevel        string
+	NodeName       string
+	ListenPort     int
+	EnableWebUI    bool
+	EnableSecurity bool
+	JoinExisting   bool
+	BootstrapPeers []string
+	ModelDirectory string
+	LogLevel       string
 }
 
 // RunOnboarding runs the interactive onboarding process
@@ -74,7 +74,7 @@ func (om *OnboardingManager) RunOnboarding() (*OnboardingConfig, error) {
 func (om *OnboardingManager) printWelcome() {
 	cyan := color.New(color.FgCyan, color.Bold)
 	green := color.New(color.FgGreen)
-	
+
 	fmt.Println()
 	cyan.Println("🚀 Welcome to OllamaMax Distributed System!")
 	fmt.Println("==========================================")
@@ -82,14 +82,14 @@ func (om *OnboardingManager) printWelcome() {
 	green.Println("This setup wizard will help you configure your OllamaMax node.")
 	green.Println("You can press Ctrl+C at any time to exit.")
 	fmt.Println()
-	
+
 	om.waitForEnter("Press Enter to continue...")
 }
 
 // configureBasics configures basic settings
 func (om *OnboardingManager) configureBasics(config *OnboardingConfig) error {
 	blue := color.New(color.FgBlue, color.Bold)
-	
+
 	blue.Println("📝 Basic Configuration")
 	blue.Println("=====================")
 	fmt.Println()
@@ -136,7 +136,7 @@ func (om *OnboardingManager) configureBasics(config *OnboardingConfig) error {
 // configureNetwork configures network settings
 func (om *OnboardingManager) configureNetwork(config *OnboardingConfig) error {
 	blue := color.New(color.FgBlue, color.Bold)
-	
+
 	blue.Println("🌐 Network Configuration")
 	blue.Println("=======================")
 	fmt.Println()
@@ -172,7 +172,7 @@ func (om *OnboardingManager) configureNetwork(config *OnboardingConfig) error {
 // configureSecurity configures security settings
 func (om *OnboardingManager) configureSecurity(config *OnboardingConfig) error {
 	blue := color.New(color.FgBlue, color.Bold)
-	
+
 	blue.Println("🔒 Security Configuration")
 	blue.Println("========================")
 	fmt.Println()
@@ -197,7 +197,7 @@ func (om *OnboardingManager) configureSecurity(config *OnboardingConfig) error {
 // configureAdvanced configures advanced settings
 func (om *OnboardingManager) configureAdvanced(config *OnboardingConfig) error {
 	blue := color.New(color.FgBlue, color.Bold)
-	
+
 	blue.Println("⚙️  Advanced Configuration")
 	blue.Println("=========================")
 	fmt.Println()
@@ -224,7 +224,7 @@ func (om *OnboardingManager) configureAdvanced(config *OnboardingConfig) error {
 func (om *OnboardingManager) confirmConfiguration(config *OnboardingConfig) error {
 	green := color.New(color.FgGreen, color.Bold)
 	cyan := color.New(color.FgCyan)
-	
+
 	green.Println("📋 Configuration Summary")
 	green.Println("=======================")
 	fmt.Println()

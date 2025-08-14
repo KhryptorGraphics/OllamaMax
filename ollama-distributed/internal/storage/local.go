@@ -19,49 +19,49 @@ import (
 
 // LocalStorage implements Storage interface for local filesystem storage
 type LocalStorage struct {
-	basePath    string
-	metaPath    string
-	logger      *slog.Logger
-	
+	basePath string
+	metaPath string
+	logger   *slog.Logger
+
 	// Configuration
 	maxSize     int64
 	compression bool
 	encryption  bool
-	
+
 	// Caching and performance
 	metadataCache map[string]*ObjectMetadata
 	cacheMutex    sync.RWMutex
 	cacheSize     int
 	maxCacheSize  int
-	
+
 	// Statistics
-	stats       *StorageStats
-	statsMutex  sync.RWMutex
-	
+	stats      *StorageStats
+	statsMutex sync.RWMutex
+
 	// File locks for concurrent access
-	fileLocks   map[string]*sync.RWMutex
-	locksMutex  sync.RWMutex
-	
+	fileLocks  map[string]*sync.RWMutex
+	locksMutex sync.RWMutex
+
 	// Health monitoring
 	lastHealthCheck time.Time
 	healthy         bool
-	
+
 	// Background tasks
-	ctx         context.Context
-	cancel      context.CancelFunc
-	started     bool
-	mu          sync.RWMutex
+	ctx     context.Context
+	cancel  context.CancelFunc
+	started bool
+	mu      sync.RWMutex
 }
 
 // LocalStorageConfig contains configuration for local storage
 type LocalStorageConfig struct {
-	BasePath      string `json:"base_path"`
-	MaxSize       int64  `json:"max_size"`
-	Compression   bool   `json:"compression"`
-	Encryption    bool   `json:"encryption"`
-	MaxCacheSize  int    `json:"max_cache_size"`
-	CleanupAge    time.Duration `json:"cleanup_age"`
-	SyncWrites    bool   `json:"sync_writes"`
+	BasePath     string        `json:"base_path"`
+	MaxSize      int64         `json:"max_size"`
+	Compression  bool          `json:"compression"`
+	Encryption   bool          `json:"encryption"`
+	MaxCacheSize int           `json:"max_cache_size"`
+	CleanupAge   time.Duration `json:"cleanup_age"`
+	SyncWrites   bool          `json:"sync_writes"`
 }
 
 // NewLocalStorage creates a new local storage instance
@@ -72,7 +72,7 @@ func NewLocalStorage(config *LocalStorageConfig, logger *slog.Logger) (*LocalSto
 			Message: "base path cannot be empty",
 		}
 	}
-	
+
 	// Create base directories
 	if err := os.MkdirAll(config.BasePath, 0755); err != nil {
 		return nil, &StorageError{
@@ -81,7 +81,7 @@ func NewLocalStorage(config *LocalStorageConfig, logger *slog.Logger) (*LocalSto
 			Cause:   err,
 		}
 	}
-	
+
 	metaPath := filepath.Join(config.BasePath, "metadata")
 	if err := os.MkdirAll(metaPath, 0755); err != nil {
 		return nil, &StorageError{
@@ -90,9 +90,9 @@ func NewLocalStorage(config *LocalStorageConfig, logger *slog.Logger) (*LocalSto
 			Cause:   err,
 		}
 	}
-	
+
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	ls := &LocalStorage{
 		basePath:      config.BasePath,
 		metaPath:      metaPath,
@@ -116,12 +116,12 @@ func NewLocalStorage(config *LocalStorageConfig, logger *slog.Logger) (*LocalSto
 		cancel:  cancel,
 		healthy: true,
 	}
-	
+
 	// Load existing metadata into cache
 	if err := ls.loadMetadataCache(); err != nil {
 		logger.Warn("failed to load metadata cache", "error", err)
 	}
-	
+
 	return ls, nil
 }
 
@@ -129,26 +129,26 @@ func NewLocalStorage(config *LocalStorageConfig, logger *slog.Logger) (*LocalSto
 func (ls *LocalStorage) Start(ctx context.Context) error {
 	ls.mu.Lock()
 	defer ls.mu.Unlock()
-	
+
 	if ls.started {
 		return &StorageError{
 			Code:    ErrCodeInternal,
 			Message: "storage already started",
 		}
 	}
-	
+
 	// Start background cleanup routine
 	go ls.cleanupRoutine()
-	
+
 	// Start health monitoring
 	go ls.healthMonitorRoutine()
-	
+
 	// Start statistics collection
 	go ls.statsCollectionRoutine()
-	
+
 	ls.started = true
 	ls.logger.Info("local storage started", "base_path", ls.basePath)
-	
+
 	return nil
 }
 
@@ -156,19 +156,19 @@ func (ls *LocalStorage) Start(ctx context.Context) error {
 func (ls *LocalStorage) Stop(ctx context.Context) error {
 	ls.mu.Lock()
 	defer ls.mu.Unlock()
-	
+
 	if !ls.started {
 		return nil
 	}
-	
+
 	ls.cancel()
 	ls.started = false
-	
+
 	// Save metadata cache
 	if err := ls.saveMetadataCache(); err != nil {
 		ls.logger.Error("failed to save metadata cache", "error", err)
 	}
-	
+
 	ls.logger.Info("local storage stopped")
 	return nil
 }
@@ -185,16 +185,16 @@ func (ls *LocalStorage) Store(ctx context.Context, key string, data io.Reader, m
 		ls.updateLatencyStats("write", time.Since(start))
 		ls.incrementOperationCount("store")
 	}()
-	
+
 	if err := ls.validateKey(key); err != nil {
 		return err
 	}
-	
+
 	// Get file lock
 	lock := ls.getFileLock(key)
 	lock.Lock()
 	defer lock.Unlock()
-	
+
 	// Create object path
 	objPath := ls.getObjectPath(key)
 	if err := os.MkdirAll(filepath.Dir(objPath), 0755); err != nil {
@@ -206,7 +206,7 @@ func (ls *LocalStorage) Store(ctx context.Context, key string, data io.Reader, m
 			Cause:     err,
 		}
 	}
-	
+
 	// Create temporary file for atomic write
 	tempPath := objPath + ".tmp"
 	tempFile, err := os.Create(tempPath)
@@ -220,7 +220,7 @@ func (ls *LocalStorage) Store(ctx context.Context, key string, data io.Reader, m
 		}
 	}
 	defer os.Remove(tempPath) // Cleanup on error
-	
+
 	// Copy data and calculate hash
 	hash := sha256.New()
 	size, err := io.Copy(io.MultiWriter(tempFile, hash), data)
@@ -234,7 +234,7 @@ func (ls *LocalStorage) Store(ctx context.Context, key string, data io.Reader, m
 			Cause:     err,
 		}
 	}
-	
+
 	if err := tempFile.Sync(); err != nil {
 		tempFile.Close()
 		return &StorageError{
@@ -246,7 +246,7 @@ func (ls *LocalStorage) Store(ctx context.Context, key string, data io.Reader, m
 		}
 	}
 	tempFile.Close()
-	
+
 	// Check size limits
 	if ls.maxSize > 0 && size > ls.maxSize {
 		return &StorageError{
@@ -256,7 +256,7 @@ func (ls *LocalStorage) Store(ctx context.Context, key string, data io.Reader, m
 			Key:       key,
 		}
 	}
-	
+
 	// Prepare metadata
 	now := time.Now()
 	if metadata == nil {
@@ -268,7 +268,7 @@ func (ls *LocalStorage) Store(ctx context.Context, key string, data io.Reader, m
 	metadata.CreatedAt = now
 	metadata.UpdatedAt = now
 	metadata.AccessedAt = now
-	
+
 	// Atomic move
 	if err := os.Rename(tempPath, objPath); err != nil {
 		return &StorageError{
@@ -279,24 +279,24 @@ func (ls *LocalStorage) Store(ctx context.Context, key string, data io.Reader, m
 			Cause:     err,
 		}
 	}
-	
+
 	// Store metadata
 	if err := ls.storeMetadata(key, metadata); err != nil {
 		// Try to cleanup object file
 		os.Remove(objPath)
 		return err
 	}
-	
+
 	// Update cache
 	ls.updateMetadataCache(key, metadata)
-	
+
 	// Update statistics
 	ls.statsMutex.Lock()
 	ls.stats.TotalObjects++
 	ls.stats.TotalSize += size
 	ls.stats.UsedSpace += size
 	ls.statsMutex.Unlock()
-	
+
 	ls.logger.Debug("object stored", "key", key, "size", size, "hash", metadata.Hash)
 	return nil
 }
@@ -308,17 +308,17 @@ func (ls *LocalStorage) Retrieve(ctx context.Context, key string) (io.ReadCloser
 		ls.updateLatencyStats("read", time.Since(start))
 		ls.incrementOperationCount("retrieve")
 	}()
-	
+
 	if err := ls.validateKey(key); err != nil {
 		return nil, nil, err
 	}
-	
+
 	// Get metadata first
 	metadata, err := ls.GetMetadata(ctx, key)
 	if err != nil {
 		return nil, nil, err
 	}
-	
+
 	// Open object file
 	objPath := ls.getObjectPath(key)
 	file, err := os.Open(objPath)
@@ -339,12 +339,12 @@ func (ls *LocalStorage) Retrieve(ctx context.Context, key string) (io.ReadCloser
 			Cause:     err,
 		}
 	}
-	
+
 	// Update access time
 	metadata.AccessedAt = time.Now()
 	ls.updateMetadataCache(key, metadata)
 	go ls.storeMetadata(key, metadata) // Async update
-	
+
 	return file, metadata, nil
 }
 
@@ -355,16 +355,16 @@ func (ls *LocalStorage) Delete(ctx context.Context, key string) error {
 		ls.updateLatencyStats("delete", time.Since(start))
 		ls.incrementOperationCount("delete")
 	}()
-	
+
 	if err := ls.validateKey(key); err != nil {
 		return err
 	}
-	
+
 	// Get file lock
 	lock := ls.getFileLock(key)
 	lock.Lock()
 	defer lock.Unlock()
-	
+
 	// Get metadata for size accounting
 	metadata, err := ls.GetMetadata(ctx, key)
 	if err != nil {
@@ -373,7 +373,7 @@ func (ls *LocalStorage) Delete(ctx context.Context, key string) error {
 		}
 		return err
 	}
-	
+
 	// Delete object file
 	objPath := ls.getObjectPath(key)
 	if err := os.Remove(objPath); err != nil && !os.IsNotExist(err) {
@@ -385,23 +385,23 @@ func (ls *LocalStorage) Delete(ctx context.Context, key string) error {
 			Cause:     err,
 		}
 	}
-	
+
 	// Delete metadata
 	metaPath := ls.getMetadataPath(key)
 	if err := os.Remove(metaPath); err != nil && !os.IsNotExist(err) {
 		ls.logger.Warn("failed to delete metadata file", "key", key, "error", err)
 	}
-	
+
 	// Remove from cache
 	ls.removeFromMetadataCache(key)
-	
+
 	// Update statistics
 	ls.statsMutex.Lock()
 	ls.stats.TotalObjects--
 	ls.stats.TotalSize -= metadata.Size
 	ls.stats.UsedSpace -= metadata.Size
 	ls.statsMutex.Unlock()
-	
+
 	ls.logger.Debug("object deleted", "key", key, "size", metadata.Size)
 	return nil
 }
@@ -411,7 +411,7 @@ func (ls *LocalStorage) Exists(ctx context.Context, key string) (bool, error) {
 	if err := ls.validateKey(key); err != nil {
 		return false, err
 	}
-	
+
 	objPath := ls.getObjectPath(key)
 	_, err := os.Stat(objPath)
 	if err != nil {
@@ -426,7 +426,7 @@ func (ls *LocalStorage) Exists(ctx context.Context, key string) (bool, error) {
 			Cause:     err,
 		}
 	}
-	
+
 	return true, nil
 }
 
@@ -435,12 +435,12 @@ func (ls *LocalStorage) GetMetadata(ctx context.Context, key string) (*ObjectMet
 	if err := ls.validateKey(key); err != nil {
 		return nil, err
 	}
-	
+
 	// Check cache first
 	if metadata := ls.getFromMetadataCache(key); metadata != nil {
 		return metadata, nil
 	}
-	
+
 	// Load from disk
 	metaPath := ls.getMetadataPath(key)
 	data, err := os.ReadFile(metaPath)
@@ -461,7 +461,7 @@ func (ls *LocalStorage) GetMetadata(ctx context.Context, key string) (*ObjectMet
 			Cause:     err,
 		}
 	}
-	
+
 	var metadata ObjectMetadata
 	if err := json.Unmarshal(data, &metadata); err != nil {
 		return nil, &StorageError{
@@ -472,10 +472,10 @@ func (ls *LocalStorage) GetMetadata(ctx context.Context, key string) (*ObjectMet
 			Cause:     err,
 		}
 	}
-	
+
 	// Update cache
 	ls.updateMetadataCache(key, &metadata)
-	
+
 	return &metadata, nil
 }
 
@@ -484,14 +484,14 @@ func (ls *LocalStorage) SetMetadata(ctx context.Context, key string, metadata *O
 	if err := ls.validateKey(key); err != nil {
 		return err
 	}
-	
+
 	metadata.Key = key
 	metadata.UpdatedAt = time.Now()
-	
+
 	if err := ls.storeMetadata(key, metadata); err != nil {
 		return err
 	}
-	
+
 	ls.updateMetadataCache(key, metadata)
 	return nil
 }
@@ -502,12 +502,12 @@ func (ls *LocalStorage) UpdateMetadata(ctx context.Context, key string, updates 
 	if err != nil {
 		return err
 	}
-	
+
 	// Apply updates
 	if metadata.Attributes == nil {
 		metadata.Attributes = make(map[string]interface{})
 	}
-	
+
 	for field, value := range updates {
 		switch field {
 		case "content_type":
@@ -522,47 +522,47 @@ func (ls *LocalStorage) UpdateMetadata(ctx context.Context, key string, updates 
 			metadata.Attributes[field] = value
 		}
 	}
-	
+
 	return ls.SetMetadata(ctx, key, metadata)
 }
 
 // BatchStore performs batch store operations
 func (ls *LocalStorage) BatchStore(ctx context.Context, operations []BatchStoreOperation) error {
 	var errors []error
-	
+
 	for _, op := range operations {
 		if err := ls.Store(ctx, op.Key, op.Data, op.Metadata); err != nil {
 			errors = append(errors, fmt.Errorf("failed to store %s: %w", op.Key, err))
 		}
 	}
-	
+
 	if len(errors) > 0 {
 		return &StorageError{
 			Code:    ErrCodeInternal,
 			Message: fmt.Sprintf("batch store failed with %d errors", len(errors)),
 		}
 	}
-	
+
 	return nil
 }
 
 // BatchDelete performs batch delete operations
 func (ls *LocalStorage) BatchDelete(ctx context.Context, keys []string) error {
 	var errors []error
-	
+
 	for _, key := range keys {
 		if err := ls.Delete(ctx, key); err != nil {
 			errors = append(errors, fmt.Errorf("failed to delete %s: %w", key, err))
 		}
 	}
-	
+
 	if len(errors) > 0 {
 		return &StorageError{
 			Code:    ErrCodeInternal,
 			Message: fmt.Sprintf("batch delete failed with %d errors", len(errors)),
 		}
 	}
-	
+
 	return nil
 }
 
@@ -571,50 +571,50 @@ func (ls *LocalStorage) List(ctx context.Context, prefix string, options *ListOp
 	if options == nil {
 		options = &ListOptions{Limit: 1000}
 	}
-	
+
 	var items []*ObjectMetadata
-	
+
 	// Walk the metadata directory
 	err := filepath.Walk(ls.metaPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-		
+
 		if info.IsDir() {
 			return nil
 		}
-		
+
 		// Extract key from path
 		relPath, err := filepath.Rel(ls.metaPath, path)
 		if err != nil {
 			return err
 		}
-		
+
 		key := strings.ReplaceAll(relPath, string(filepath.Separator), "/")
 		key = strings.TrimSuffix(key, ".meta")
-		
+
 		// Check prefix filter
 		if prefix != "" && !strings.HasPrefix(key, prefix) {
 			return nil
 		}
-		
+
 		// Load metadata
 		metadata, err := ls.GetMetadata(ctx, key)
 		if err != nil {
 			ls.logger.Warn("failed to load metadata during list", "key", key, "error", err)
 			return nil
 		}
-		
+
 		items = append(items, metadata)
-		
+
 		// Check limit
 		if options.Limit > 0 && len(items) >= options.Limit {
 			return filepath.SkipDir
 		}
-		
+
 		return nil
 	})
-	
+
 	if err != nil {
 		return nil, &StorageError{
 			Code:      ErrCodeInternal,
@@ -623,7 +623,7 @@ func (ls *LocalStorage) List(ctx context.Context, prefix string, options *ListOp
 			Cause:     err,
 		}
 	}
-	
+
 	// Sort results
 	if options.SortBy == "name" {
 		sort.Slice(items, func(i, j int) bool {
@@ -647,7 +647,7 @@ func (ls *LocalStorage) List(ctx context.Context, prefix string, options *ListOp
 			return items[i].UpdatedAt.Before(items[j].UpdatedAt)
 		})
 	}
-	
+
 	return &ListResult{
 		Items:   items,
 		Total:   int64(len(items)),
@@ -661,12 +661,12 @@ func (ls *LocalStorage) ListKeys(ctx context.Context, prefix string) ([]string, 
 	if err != nil {
 		return nil, err
 	}
-	
+
 	keys := make([]string, len(result.Items))
 	for i, item := range result.Items {
 		keys[i] = item.Key
 	}
-	
+
 	return keys, nil
 }
 
@@ -674,7 +674,7 @@ func (ls *LocalStorage) ListKeys(ctx context.Context, prefix string) ([]string, 
 func (ls *LocalStorage) HealthCheck(ctx context.Context) (*HealthStatus, error) {
 	checks := make(map[string]CheckResult)
 	healthy := true
-	
+
 	// Check disk space
 	start := time.Now()
 	stat, err := ls.getDiskUsage()
@@ -689,31 +689,31 @@ func (ls *LocalStorage) HealthCheck(ctx context.Context) (*HealthStatus, error) 
 	} else {
 		status := "ok"
 		message := fmt.Sprintf("%.1f%% used", float64(stat.Used)/float64(stat.Total)*100)
-		
+
 		if float64(stat.Used)/float64(stat.Total) > 0.9 {
 			status = "warning"
 			message = "disk space running low"
 		}
-		
+
 		checks["disk_space"] = CheckResult{
 			Status:  status,
 			Message: message,
 			Latency: time.Since(start).Milliseconds(),
 			Time:    time.Now(),
 		}
-		
+
 		if status != "ok" {
 			healthy = false
 		}
 	}
-	
+
 	// Check write performance
 	start = time.Now()
 	testKey := "health_check_test"
 	testData := strings.NewReader("health check test data")
 	err = ls.Store(ctx, testKey, testData, nil)
 	writeLatency := time.Since(start).Milliseconds()
-	
+
 	if err != nil {
 		checks["write_test"] = CheckResult{
 			Status:  "error",
@@ -725,14 +725,14 @@ func (ls *LocalStorage) HealthCheck(ctx context.Context) (*HealthStatus, error) 
 	} else {
 		// Cleanup test object
 		ls.Delete(ctx, testKey)
-		
+
 		status := "ok"
 		message := "write test passed"
 		if writeLatency > 1000 {
 			status = "warning"
 			message = "slow write performance"
 		}
-		
+
 		checks["write_test"] = CheckResult{
 			Status:  status,
 			Message: message,
@@ -740,15 +740,15 @@ func (ls *LocalStorage) HealthCheck(ctx context.Context) (*HealthStatus, error) 
 			Time:    time.Now(),
 		}
 	}
-	
+
 	ls.lastHealthCheck = time.Now()
 	ls.healthy = healthy
-	
+
 	status := "healthy"
 	if !healthy {
 		status = "unhealthy"
 	}
-	
+
 	return &HealthStatus{
 		Status:    status,
 		Healthy:   healthy,
@@ -761,7 +761,7 @@ func (ls *LocalStorage) HealthCheck(ctx context.Context) (*HealthStatus, error) 
 func (ls *LocalStorage) GetStats(ctx context.Context) (*StorageStats, error) {
 	ls.statsMutex.RLock()
 	defer ls.statsMutex.RUnlock()
-	
+
 	// Update disk usage
 	diskStat, err := ls.getDiskUsage()
 	if err != nil {
@@ -769,14 +769,14 @@ func (ls *LocalStorage) GetStats(ctx context.Context) (*StorageStats, error) {
 	} else {
 		ls.stats.AvailableSpace = diskStat.Available
 	}
-	
+
 	// Create a copy of stats
 	stats := *ls.stats
 	stats.OperationCounts = make(map[string]int64)
 	for k, v := range ls.stats.OperationCounts {
 		stats.OperationCounts[k] = v
 	}
-	
+
 	// Copy performance stats
 	if ls.stats.Performance != nil {
 		perf := *ls.stats.Performance
@@ -798,7 +798,7 @@ func (ls *LocalStorage) GetStats(ctx context.Context) (*StorageStats, error) {
 		}
 		stats.Performance = &perf
 	}
-	
+
 	return &stats, nil
 }
 
@@ -811,14 +811,14 @@ func (ls *LocalStorage) validateKey(key string) error {
 			Message: "key cannot be empty",
 		}
 	}
-	
+
 	if strings.Contains(key, "..") {
 		return &StorageError{
 			Code:    ErrCodeInvalidArgument,
 			Message: "key cannot contain '..'",
 		}
 	}
-	
+
 	return nil
 }
 
@@ -836,11 +836,11 @@ func (ls *LocalStorage) getMetadataPath(key string) string {
 func (ls *LocalStorage) getFileLock(key string) *sync.RWMutex {
 	ls.locksMutex.Lock()
 	defer ls.locksMutex.Unlock()
-	
+
 	if lock, exists := ls.fileLocks[key]; exists {
 		return lock
 	}
-	
+
 	lock := &sync.RWMutex{}
 	ls.fileLocks[key] = lock
 	return lock
@@ -857,7 +857,7 @@ func (ls *LocalStorage) storeMetadata(key string, metadata *ObjectMetadata) erro
 			Cause:     err,
 		}
 	}
-	
+
 	data, err := json.MarshalIndent(metadata, "", "  ")
 	if err != nil {
 		return &StorageError{
@@ -868,7 +868,7 @@ func (ls *LocalStorage) storeMetadata(key string, metadata *ObjectMetadata) erro
 			Cause:     err,
 		}
 	}
-	
+
 	tempPath := metaPath + ".tmp"
 	if err := os.WriteFile(tempPath, data, 0644); err != nil {
 		return &StorageError{
@@ -879,7 +879,7 @@ func (ls *LocalStorage) storeMetadata(key string, metadata *ObjectMetadata) erro
 			Cause:     err,
 		}
 	}
-	
+
 	if err := os.Rename(tempPath, metaPath); err != nil {
 		os.Remove(tempPath)
 		return &StorageError{
@@ -890,7 +890,7 @@ func (ls *LocalStorage) storeMetadata(key string, metadata *ObjectMetadata) erro
 			Cause:     err,
 		}
 	}
-	
+
 	return nil
 }
 
@@ -899,25 +899,25 @@ func (ls *LocalStorage) storeMetadata(key string, metadata *ObjectMetadata) erro
 func (ls *LocalStorage) getFromMetadataCache(key string) *ObjectMetadata {
 	ls.cacheMutex.RLock()
 	defer ls.cacheMutex.RUnlock()
-	
+
 	if metadata, exists := ls.metadataCache[key]; exists {
 		// Create a copy to avoid race conditions
 		copy := *metadata
 		return &copy
 	}
-	
+
 	return nil
 }
 
 func (ls *LocalStorage) updateMetadataCache(key string, metadata *ObjectMetadata) {
 	ls.cacheMutex.Lock()
 	defer ls.cacheMutex.Unlock()
-	
+
 	// Check cache size and evict if necessary
 	if len(ls.metadataCache) >= ls.maxCacheSize {
 		ls.evictFromCache()
 	}
-	
+
 	// Create a copy to store in cache
 	copy := *metadata
 	ls.metadataCache[key] = &copy
@@ -927,7 +927,7 @@ func (ls *LocalStorage) updateMetadataCache(key string, metadata *ObjectMetadata
 func (ls *LocalStorage) removeFromMetadataCache(key string) {
 	ls.cacheMutex.Lock()
 	defer ls.cacheMutex.Unlock()
-	
+
 	if _, exists := ls.metadataCache[key]; exists {
 		delete(ls.metadataCache, key)
 		ls.cacheSize--
@@ -938,14 +938,14 @@ func (ls *LocalStorage) evictFromCache() {
 	// Simple LRU eviction - remove oldest accessed
 	var oldestKey string
 	var oldestTime time.Time = time.Now()
-	
+
 	for key, metadata := range ls.metadataCache {
 		if metadata.AccessedAt.Before(oldestTime) {
 			oldestTime = metadata.AccessedAt
 			oldestKey = key
 		}
 	}
-	
+
 	if oldestKey != "" {
 		delete(ls.metadataCache, oldestKey)
 		ls.cacheSize--
@@ -958,11 +958,11 @@ func (ls *LocalStorage) loadMetadataCache() error {
 		if err != nil || info.IsDir() {
 			return err
 		}
-		
+
 		if !strings.HasSuffix(path, ".meta") {
 			return nil
 		}
-		
+
 		// Extract key
 		relPath, err := filepath.Rel(ls.metaPath, path)
 		if err != nil {
@@ -970,18 +970,18 @@ func (ls *LocalStorage) loadMetadataCache() error {
 		}
 		key := strings.TrimSuffix(relPath, ".meta")
 		key = strings.ReplaceAll(key, string(filepath.Separator), "/")
-		
+
 		// Load metadata
 		data, err := os.ReadFile(path)
 		if err != nil {
 			return err
 		}
-		
+
 		var metadata ObjectMetadata
 		if err := json.Unmarshal(data, &metadata); err != nil {
 			return err
 		}
-		
+
 		// Add to cache if recently accessed
 		if time.Since(metadata.AccessedAt) < 24*time.Hour {
 			ls.cacheMutex.Lock()
@@ -991,7 +991,7 @@ func (ls *LocalStorage) loadMetadataCache() error {
 			}
 			ls.cacheMutex.Unlock()
 		}
-		
+
 		return nil
 	})
 }
@@ -1006,9 +1006,9 @@ func (ls *LocalStorage) saveMetadataCache() error {
 func (ls *LocalStorage) updateLatencyStats(operation string, latency time.Duration) {
 	ls.statsMutex.Lock()
 	defer ls.statsMutex.Unlock()
-	
+
 	latencyMs := latency.Milliseconds()
-	
+
 	var stats *LatencyStats
 	switch operation {
 	case "read":
@@ -1020,7 +1020,7 @@ func (ls *LocalStorage) updateLatencyStats(operation string, latency time.Durati
 	default:
 		return
 	}
-	
+
 	// Update statistics
 	if stats.Samples == 0 {
 		stats.Min = latencyMs
@@ -1034,18 +1034,18 @@ func (ls *LocalStorage) updateLatencyStats(operation string, latency time.Durati
 		if latencyMs > stats.Max {
 			stats.Max = latencyMs
 		}
-		
+
 		// Update mean
 		stats.Mean = (stats.Mean*float64(stats.Samples) + float64(latencyMs)) / float64(stats.Samples+1)
 	}
-	
+
 	stats.Samples++
 }
 
 func (ls *LocalStorage) incrementOperationCount(operation string) {
 	ls.statsMutex.Lock()
 	defer ls.statsMutex.Unlock()
-	
+
 	ls.stats.OperationCounts[operation]++
 }
 
@@ -1054,7 +1054,7 @@ func (ls *LocalStorage) incrementOperationCount(operation string) {
 func (ls *LocalStorage) cleanupRoutine() {
 	ticker := time.NewTicker(1 * time.Hour)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-ls.ctx.Done():
@@ -1068,7 +1068,7 @@ func (ls *LocalStorage) cleanupRoutine() {
 func (ls *LocalStorage) healthMonitorRoutine() {
 	ticker := time.NewTicker(5 * time.Minute)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-ls.ctx.Done():
@@ -1082,7 +1082,7 @@ func (ls *LocalStorage) healthMonitorRoutine() {
 func (ls *LocalStorage) statsCollectionRoutine() {
 	ticker := time.NewTicker(1 * time.Minute)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-ls.ctx.Done():
@@ -1099,14 +1099,14 @@ func (ls *LocalStorage) performCleanup() {
 		if err != nil {
 			return err
 		}
-		
+
 		if strings.HasSuffix(path, ".tmp") && time.Since(info.ModTime()) > time.Hour {
 			os.Remove(path)
 		}
-		
+
 		return nil
 	})
-	
+
 	if err != nil {
 		ls.logger.Error("cleanup failed", "error", err)
 	}
@@ -1117,14 +1117,14 @@ func (ls *LocalStorage) collectStats() {
 	// This is a simplified implementation
 	ls.statsMutex.Lock()
 	defer ls.statsMutex.Unlock()
-	
+
 	// Calculate ops per second (simplified)
 	if ls.stats.Performance != nil && ls.stats.Performance.Throughput != nil {
 		totalOps := int64(0)
 		for _, count := range ls.stats.OperationCounts {
 			totalOps += count
 		}
-		
+
 		// Simple calculation - in practice this would be more sophisticated
 		ls.stats.Performance.Throughput.ReadOpsPerSec = float64(ls.stats.OperationCounts["retrieve"]) / 60.0
 		ls.stats.Performance.Throughput.WriteOpsPerSec = float64(ls.stats.OperationCounts["store"]) / 60.0

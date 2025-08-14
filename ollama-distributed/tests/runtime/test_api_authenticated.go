@@ -1,4 +1,6 @@
-package main
+//go:build ignore
+
+package runtime_tests
 
 import (
 	"bytes"
@@ -34,7 +36,7 @@ func main() {
 
 	// Test endpoints without authentication
 	fmt.Println("\n=== Testing API Endpoints (No Auth Required) ===")
-	
+
 	// Test 1: Health endpoint (should work)
 	fmt.Println("1. Testing Health Endpoint...")
 	testHealthEndpoint(baseURL)
@@ -77,7 +79,7 @@ func setupIntegratedSystemNoAuth() (*api.Server, string) {
 	p2pConfig := &pkgConfig.NodeConfig{
 		Listen: []string{"/ip4/127.0.0.1/tcp/0"},
 	}
-	
+
 	p2pNode, err := p2p.NewP2PNode(ctx, p2pConfig)
 	if err != nil {
 		log.Printf("Failed to create P2P node: %v", err)
@@ -94,7 +96,7 @@ func setupIntegratedSystemNoAuth() (*api.Server, string) {
 		DataDir:   "./test_data/consensus",
 		Bootstrap: true,
 	}
-	
+
 	consensusEngine, err := consensus.NewEngine(consensusConfig, p2pNode, messageRouter, networkMonitor)
 	if err != nil {
 		fmt.Printf("Consensus engine creation failed: %v\n", err)
@@ -111,13 +113,13 @@ func setupIntegratedSystemNoAuth() (*api.Server, string) {
 		QueueSize:           1000,
 		WorkerCount:         2,
 	}
-	
+
 	schedulerEngine, err := scheduler.NewEngine(schedulerConfig, p2pNode, consensusEngine)
 	if err != nil {
 		log.Printf("Failed to create scheduler engine: %v", err)
 		return nil, ""
 	}
-	
+
 	if err := schedulerEngine.Start(); err != nil {
 		log.Printf("Failed to start scheduler engine: %v", err)
 		return nil, ""
@@ -131,7 +133,7 @@ func setupIntegratedSystemNoAuth() (*api.Server, string) {
 		// Note: In a real implementation, we'd have an AuthEnabled field
 		// For now, we'll test with the current authentication system
 	}
-	
+
 	server, err := api.NewServer(apiConfig, p2pNode, consensusEngine, schedulerEngine)
 	if err != nil {
 		log.Printf("Failed to create API server: %v", err)
@@ -244,7 +246,7 @@ func testGenerateEndpoint(baseURL string) {
 		"prompt": "Hello, world!",
 		"stream": false,
 	}
-	
+
 	jsonData, _ := json.Marshal(payload)
 	resp, err := http.Post(baseURL+"/api/v1/generate", "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
@@ -270,7 +272,7 @@ func testChatEndpoint(baseURL string) {
 		},
 		"stream": false,
 	}
-	
+
 	jsonData, _ := json.Marshal(payload)
 	resp, err := http.Post(baseURL+"/api/v1/chat", "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {

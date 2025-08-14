@@ -1,11 +1,15 @@
 package web
 
 import (
+	"bytes"
 	"context"
 	"embed"
+	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
 	"net/http"
+	"net/url"
 	"path/filepath"
 	"strings"
 	"time"
@@ -13,7 +17,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/api"
-	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/observability"
 )
 
 //go:embed static/*
@@ -23,6 +26,7 @@ var staticFiles embed.FS
 type WebServer struct {
 	config     *Config
 	apiServer  *api.Server
+	apiBaseURL string
 	router     *gin.Engine
 	server     *http.Server
 	upgrader   websocket.Upgrader
@@ -30,6 +34,7 @@ type WebServer struct {
 	broadcast  chan []byte
 	register   chan *websocket.Conn
 	unregister chan *websocket.Conn
+	httpClient *http.Client
 }
 
 // Config holds web server configuration
@@ -40,15 +45,17 @@ type Config struct {
 	TLSKeyFile    string `yaml:"tls_key_file" json:"tls_key_file"`
 	StaticPath    string `yaml:"static_path" json:"static_path"`
 	EnableAuth    bool   `yaml:"enable_auth" json:"enable_auth"`
+	APIBaseURL    string `yaml:"api_base_url" json:"api_base_url"`
 }
 
 // DefaultConfig returns default web server configuration
 func DefaultConfig() *Config {
 	return &Config{
-		ListenAddress: ":8080",
+		ListenAddress: ":8081",
 		EnableTLS:     false,
 		StaticPath:    "./web",
 		EnableAuth:    true,
+		APIBaseURL:    "http://localhost:8080",
 	}
 }
 
@@ -71,11 +78,15 @@ func NewWebServer(config *Config, apiServer *api.Server) *WebServer {
 	ws := &WebServer{
 		config:     config,
 		apiServer:  apiServer,
+		apiBaseURL: config.APIBaseURL,
 		upgrader:   upgrader,
 		clients:    make(map[*websocket.Conn]bool),
 		broadcast:  make(chan []byte),
 		register:   make(chan *websocket.Conn),
 		unregister: make(chan *websocket.Conn),
+		httpClient: &http.Client{
+			Timeout: 30 * time.Second,
+		},
 	}
 
 	ws.setupRouter()
@@ -86,19 +97,19 @@ func NewWebServer(config *Config, apiServer *api.Server) *WebServer {
 func (ws *WebServer) setupRouter() {
 	// Set Gin mode based on environment
 	gin.SetMode(gin.ReleaseMode)
-	
+
 	ws.router = gin.New()
-	
+
 	// Add middleware
 	ws.router.Use(gin.Logger())
 	ws.router.Use(gin.Recovery())
 	ws.router.Use(ws.corsMiddleware())
-	
+
 	// Add security headers
 	ws.router.Use(ws.securityHeadersMiddleware())
-	
+
 	// Add metrics middleware
-	ws.router.Use(observability.GinMetricsMiddleware())
+	// ws.router.Use(observability.GinMetricsMiddleware()) // Temporarily disabled
 
 	// WebSocket endpoint
 	ws.router.GET("/ws", ws.handleWebSocket)
@@ -106,16 +117,52 @@ func (ws *WebServer) setupRouter() {
 	// API proxy endpoints
 	api := ws.router.Group("/api")
 	{
-		api.GET("/v1/proxy/status", ws.proxyToAPI)
-		api.GET("/v1/proxy/instances", ws.proxyToAPI)
-		api.GET("/v1/proxy/metrics", ws.proxyToAPI)
-		api.GET("/v1/nodes", ws.proxyToAPI)
-		api.GET("/v1/models", ws.proxyToAPI)
-		api.POST("/v1/models/pull", ws.proxyToAPI)
-		api.DELETE("/v1/models/:name", ws.proxyToAPI)
-		api.GET("/v1/cluster/status", ws.proxyToAPI)
-		api.GET("/v1/analytics/performance", ws.proxyToAPI)
-		api.GET("/v1/security/status", ws.proxyToAPI)
+		// Debug route to test API group
+		api.GET("/debug", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{
+				"message": "API group is working",
+				"path":    c.Request.URL.Path,
+			})
+		})
+
+		// Core API endpoints
+		api.GET("v1/health", ws.proxyToAPI)
+		api.GET("v1/version", ws.proxyToAPI)
+		api.GET("v1/nodes", ws.proxyToAPI)
+		api.GET("v1/models", ws.proxyToAPI)
+		api.POST("v1/models/pull", ws.proxyToAPI)
+		api.DELETE("v1/models/:name", ws.proxyToAPI)
+		api.GET("v1/cluster/status", ws.proxyToAPI)
+		api.GET("v1/cluster/leader", ws.proxyToAPI)
+		api.GET("v1/tasks", ws.proxyToAPI)
+		api.GET("v1/tasks/queue", ws.proxyToAPI)
+		api.POST("v1/inference", ws.proxyToAPI)
+
+		// Metrics endpoints
+		api.GET("v1/metrics", ws.proxyToAPI)
+		api.GET("v1/metrics/resources", ws.proxyToAPI)
+		api.GET("v1/metrics/performance", ws.proxyToAPI)
+
+		// Security endpoints
+		api.GET("v1/security/status", ws.proxyToAPI)
+		api.GET("v1/security/threats", ws.proxyToAPI)
+		api.GET("v1/security/alerts", ws.proxyToAPI)
+		api.GET("v1/security/audit", ws.proxyToAPI)
+
+		// Performance endpoints
+		api.GET("v1/performance/metrics", ws.proxyToAPI)
+		api.GET("v1/performance/optimizations", ws.proxyToAPI)
+		api.GET("v1/performance/bottlenecks", ws.proxyToAPI)
+		api.GET("v1/performance/report", ws.proxyToAPI)
+
+		// Model sync endpoints
+		api.GET("v1/models/sync/status", ws.proxyToAPI)
+		api.POST("v1/models/sync/start", ws.proxyToAPI)
+
+		// Transfer endpoints
+		api.GET("v1/transfers", ws.proxyToAPI)
+		api.POST("v1/transfers", ws.proxyToAPI)
+		api.DELETE("v1/transfers/:id", ws.proxyToAPI)
 	}
 
 	// Health check endpoint
@@ -124,6 +171,42 @@ func (ws *WebServer) setupRouter() {
 			"status":    "healthy",
 			"timestamp": time.Now().UTC(),
 			"service":   "ollama-distributed-web",
+		})
+	})
+
+	// Diagnostic endpoint for troubleshooting
+	ws.router.GET("/diagnostic", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"web_server": gin.H{
+				"status":      "running",
+				"listen_addr": ws.config.ListenAddress,
+				"api_base":    ws.config.APIBaseURL,
+			},
+			"static_files": gin.H{
+				"embed_available": true,
+				"static_path":     ws.config.StaticPath,
+			},
+			"routes": gin.H{
+				"health":     "/health",
+				"diagnostic": "/diagnostic",
+				"main":       "/",
+				"api_proxy":  "/api/v1/*",
+			},
+			"troubleshooting": gin.H{
+				"common_issues": []string{
+					"CDN resources not loading (React, Bootstrap, etc.)",
+					"JavaScript errors in browser console",
+					"API proxy not working",
+					"CORS issues",
+					"Missing static files",
+				},
+				"next_steps": []string{
+					"Check browser console for errors (F12)",
+					"Test API connectivity: curl http://localhost:8081/api/v1/health",
+					"Verify CDN access: check network tab in browser",
+					"Test basic HTML: curl http://localhost:8081/",
+				},
+			},
 		})
 	})
 
@@ -142,9 +225,25 @@ func (ws *WebServer) setupStaticFiles() {
 	// Serve main web application
 	ws.router.GET("/", ws.serveIndex)
 	ws.router.GET("/index.html", ws.serveIndex)
-	
+
+	// Serve test page for diagnostics
+	ws.router.GET("/test", ws.serveTest)
+	ws.router.GET("/test.html", ws.serveTest)
+
 	// Serve web application for all other routes (SPA routing)
-	ws.router.NoRoute(ws.serveIndex)
+	// Only serve index for non-API routes
+	ws.router.NoRoute(func(c *gin.Context) {
+		// Don't serve index for API routes
+		if strings.HasPrefix(c.Request.URL.Path, "/api/") {
+			c.JSON(http.StatusNotFound, gin.H{
+				"error": "API endpoint not found",
+				"path":  c.Request.URL.Path,
+			})
+			return
+		}
+		// Serve index for all other routes (SPA routing)
+		ws.serveIndex(c)
+	})
 }
 
 // serveIndex serves the main web application
@@ -166,18 +265,37 @@ func (ws *WebServer) serveIndex(c *gin.Context) {
 	c.Data(http.StatusOK, "text/html; charset=utf-8", indexContent)
 }
 
+// serveTest serves the diagnostic test page
+func (ws *WebServer) serveTest(c *gin.Context) {
+	// Try to serve from custom static path first
+	if ws.config.StaticPath != "" {
+		testPath := filepath.Join(ws.config.StaticPath, "test.html")
+		c.File(testPath)
+		return
+	}
+
+	// Serve from embedded files
+	testContent, err := staticFiles.ReadFile("static/test.html")
+	if err != nil {
+		c.String(http.StatusNotFound, "Test page not found")
+		return
+	}
+
+	c.Data(http.StatusOK, "text/html; charset=utf-8", testContent)
+}
+
 // corsMiddleware adds CORS headers
 func (ws *WebServer) corsMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Header("Access-Control-Allow-Origin", "*")
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization")
-		
+
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(http.StatusNoContent)
 			return
 		}
-		
+
 		c.Next()
 	}
 }
@@ -189,23 +307,86 @@ func (ws *WebServer) securityHeadersMiddleware() gin.HandlerFunc {
 		c.Header("X-Frame-Options", "DENY")
 		c.Header("X-XSS-Protection", "1; mode=block")
 		c.Header("Referrer-Policy", "strict-origin-when-cross-origin")
-		
+
 		c.Next()
 	}
 }
 
 // proxyToAPI proxies requests to the API server
 func (ws *WebServer) proxyToAPI(c *gin.Context) {
-	// Extract the API path
-	apiPath := strings.TrimPrefix(c.Request.URL.Path, "/api")
-	
-	// Forward the request to the API server
-	// This is a simplified proxy - in production, you might want to use a proper reverse proxy
-	c.JSON(http.StatusOK, gin.H{
-		"message": "API proxy not fully implemented",
-		"path":    apiPath,
-		"method":  c.Request.Method,
-	})
+	// Keep the full path including /api prefix for the API server
+	apiPath := c.Request.URL.Path
+
+	// Build target URL
+	targetURL, err := url.Parse(ws.apiBaseURL + apiPath)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Invalid API URL",
+		})
+		return
+	}
+
+	// Add query parameters
+	if c.Request.URL.RawQuery != "" {
+		targetURL.RawQuery = c.Request.URL.RawQuery
+	}
+
+	// Create request
+	var reqBody io.Reader
+	if c.Request.Body != nil {
+		bodyBytes, err := io.ReadAll(c.Request.Body)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "Failed to read request body",
+			})
+			return
+		}
+		reqBody = bytes.NewReader(bodyBytes)
+	}
+
+	req, err := http.NewRequest(c.Request.Method, targetURL.String(), reqBody)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to create request",
+		})
+		return
+	}
+
+	// Copy headers
+	for key, values := range c.Request.Header {
+		for _, value := range values {
+			req.Header.Add(key, value)
+		}
+	}
+
+	// Make request
+	resp, err := ws.httpClient.Do(req)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{
+			"error":   "Failed to reach API server",
+			"details": err.Error(),
+		})
+		return
+	}
+	defer resp.Body.Close()
+
+	// Copy response headers
+	for key, values := range resp.Header {
+		for _, value := range values {
+			c.Header(key, value)
+		}
+	}
+
+	// Copy response body
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to read response",
+		})
+		return
+	}
+
+	c.Data(resp.StatusCode, resp.Header.Get("Content-Type"), respBody)
 }
 
 // handleWebSocket handles WebSocket connections
@@ -220,6 +401,9 @@ func (ws *WebServer) handleWebSocket(c *gin.Context) {
 	// Register client
 	ws.register <- conn
 
+	// Send initial data
+	ws.sendInitialData(conn)
+
 	// Handle messages
 	for {
 		_, message, err := conn.ReadMessage()
@@ -230,15 +414,68 @@ func (ws *WebServer) handleWebSocket(c *gin.Context) {
 			break
 		}
 
-		// Echo message back (simple implementation)
-		if err := conn.WriteMessage(websocket.TextMessage, message); err != nil {
-			fmt.Printf("WebSocket write error: %v\n", err)
-			break
-		}
+		// Handle incoming messages
+		ws.handleWebSocketMessage(conn, message)
 	}
 
 	// Unregister client
 	ws.unregister <- conn
+}
+
+// sendInitialData sends initial data to a new WebSocket client
+func (ws *WebServer) sendInitialData(conn *websocket.Conn) {
+	// Send welcome message
+	welcomeMsg := map[string]interface{}{
+		"type":      "welcome",
+		"message":   "Connected to OllamaMax Distributed",
+		"timestamp": time.Now().UTC(),
+	}
+
+	if data, err := json.Marshal(welcomeMsg); err == nil {
+		conn.WriteMessage(websocket.TextMessage, data)
+	}
+}
+
+// handleWebSocketMessage handles incoming WebSocket messages
+func (ws *WebServer) handleWebSocketMessage(conn *websocket.Conn, message []byte) {
+	var msg map[string]interface{}
+	if err := json.Unmarshal(message, &msg); err != nil {
+		return
+	}
+
+	msgType, ok := msg["type"].(string)
+	if !ok {
+		return
+	}
+
+	switch msgType {
+	case "ping":
+		// Respond to ping with pong
+		pongMsg := map[string]interface{}{
+			"type":      "pong",
+			"timestamp": msg["timestamp"],
+		}
+		if data, err := json.Marshal(pongMsg); err == nil {
+			conn.WriteMessage(websocket.TextMessage, data)
+		}
+	case "subscribe":
+		// Handle subscription requests
+		ws.handleSubscription(conn, msg)
+	case "unsubscribe":
+		// Handle unsubscription requests
+		ws.handleUnsubscription(conn, msg)
+	}
+}
+
+// handleSubscription handles subscription requests
+func (ws *WebServer) handleSubscription(conn *websocket.Conn, msg map[string]interface{}) {
+	// Implementation for handling subscriptions to specific data streams
+	// This could include metrics, logs, node status, etc.
+}
+
+// handleUnsubscription handles unsubscription requests
+func (ws *WebServer) handleUnsubscription(conn *websocket.Conn, msg map[string]interface{}) {
+	// Implementation for handling unsubscriptions
 }
 
 // handleWebSocketHub manages WebSocket connections

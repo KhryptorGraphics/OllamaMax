@@ -40,8 +40,43 @@ type DistributedOllamaServer struct {
 	logger *slog.Logger
 
 	// Lifecycle
-	ctx    context.Context
-	cancel context.CancelFunc
+	ctx       context.Context
+	cancel    context.CancelFunc
+	startedAt time.Time
+}
+
+// helper accessors to avoid leaking internals
+func (s *DistributedOllamaServer) integrationConfigBlockPull() bool {
+	if s.integration == nil {
+		return false
+	}
+	cfg := s.integrationConfig()
+	return cfg.BlockPullUntilMinReplicas
+}
+
+func (s *DistributedOllamaServer) integrationConfigMinNodes() int {
+	if s.integration == nil {
+		return 1
+	}
+	cfg := s.integrationConfig()
+	if cfg.MinNodesForDistribution <= 0 {
+		return 1
+	}
+	return cfg.MinNodesForDistribution
+}
+
+func (s *DistributedOllamaServer) integrationConfig() *api.DistributedIntegrationConfig {
+	// safe accessor
+	// NewDistributedOllamaIntegration stores config internally; expose via method or field
+	return s.integrationConfigUnsafe()
+}
+
+// integrationConfigUnsafe is a temporary helper; replace with proper getter on integration later
+func (s *DistributedOllamaServer) integrationConfigUnsafe() *api.DistributedIntegrationConfig {
+	// We know the config was passed to NewDistributedOllamaIntegration at startup
+	// The struct keeps a pointer to config; use reflection-free access
+	// Warning: this relies on integration having an exported method in future
+	return (*api.DistributedIntegrationConfig)(s.integration.GetConfig())
 }
 
 func main() {
@@ -130,9 +165,8 @@ func NewDistributedOllamaServer(
 ) (*DistributedOllamaServer, error) {
 	serverCtx, cancel := context.WithCancel(ctx)
 
-	// Initialize P2P node with default config for now
-	// In a real implementation, this would use the proper config conversion
-	p2pNode, err := p2p.NewNode(serverCtx, nil)
+	// Initialize P2P node with configuration from loaded config
+	p2pNode, err := p2p.NewNode(serverCtx, &cfg.P2P)
 	if err != nil {
 		cancel()
 		return nil, fmt.Errorf("failed to create P2P node: %w", err)
@@ -197,6 +231,8 @@ func NewDistributedOllamaServer(
 		EnableCaching:               true,
 		CacheSize:                   100,
 		EnablePrefetching:           false,
+		EnsureReplicaTimeoutSec:     20,
+		BlockPullUntilMinReplicas:   false,
 	}
 
 	integration := api.NewDistributedOllamaIntegration(
@@ -223,6 +259,7 @@ func NewDistributedOllamaServer(
 		logger:          logger,
 		ctx:             serverCtx,
 		cancel:          cancel,
+		startedAt:       time.Now(),
 	}
 
 	// Setup HTTP routes
@@ -316,6 +353,19 @@ func (s *DistributedOllamaServer) Stop(ctx context.Context) error {
 
 // setupRoutes sets up HTTP routes
 func (s *DistributedOllamaServer) setupRoutes() {
+	// Health check endpoints (both root and v1 for compatibility)
+	s.router.GET("/health", s.handleHealth)
+
+	// API v1 routes for compatibility with tests and external tools
+	v1 := s.router.Group("/api/v1")
+	{
+		v1.GET("/health", s.handleHealth)
+		v1.GET("/version", s.handleVersion)
+		v1.GET("/models", s.handleListModels)
+		v1.GET("/nodes", s.handleListNodes)
+		v1.GET("/cluster/status", s.handleDistributedStatus)
+	}
+
 	// Ollama-compatible API routes
 	api := s.router.Group("/api")
 	{
@@ -337,12 +387,11 @@ func (s *DistributedOllamaServer) setupRoutes() {
 		distributed.GET("/status", s.handleDistributedStatus)
 		distributed.GET("/nodes", s.handleListNodes)
 		distributed.GET("/models", s.handleDistributedModels)
+		distributed.GET("/models/:name/replicas", s.handleModelReplicas)
 		distributed.GET("/metrics", s.handleMetrics)
 		distributed.GET("/requests", s.handleActiveRequests)
+		distributed.GET("/replication/status", s.handleReplicationStatus)
 	}
-
-	// Health check
-	s.router.GET("/health", s.handleHealth)
 }
 
 // setupLogging sets up structured logging

@@ -1,4 +1,6 @@
-package main
+//go:build ignore
+
+package web_tests
 
 import (
 	"fmt"
@@ -6,7 +8,7 @@ import (
 	"strings"
 )
 
-func main() {
+func TestDashboardCycles() {
 	fmt.Println("Testing Dashboard Iterative Improvements - 4 Cycles...")
 
 	// Test all 4 improvement cycles

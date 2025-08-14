@@ -19,53 +19,53 @@ type MLPredictorConfig struct {
 
 // EnsembleModel represents an ensemble of ML models
 type EnsembleModel struct {
-	Name         string                 `json:"name"`
-	Models       []string               `json:"models"`
-	Weights      []float64              `json:"weights"`
-	Performance  map[string]float64     `json:"performance"`
-	LastTrained  time.Time              `json:"last_trained"`
+	Name        string             `json:"name"`
+	Models      []string           `json:"models"`
+	Weights     []float64          `json:"weights"`
+	Performance map[string]float64 `json:"performance"`
+	LastTrained time.Time          `json:"last_trained"`
 }
 
 // NeuralNetwork represents a simple neural network
 type NeuralNetwork struct {
-	Name         string      `json:"name"`
-	InputSize    int         `json:"input_size"`
-	HiddenSize   int         `json:"hidden_size"`
-	OutputSize   int         `json:"output_size"`
-	Weights1     [][]float64 `json:"weights1"`
-	Weights2     [][]float64 `json:"weights2"`
-	Bias1        []float64   `json:"bias1"`
-	Bias2        []float64   `json:"bias2"`
-	LastTrained  time.Time   `json:"last_trained"`
+	Name        string      `json:"name"`
+	InputSize   int         `json:"input_size"`
+	HiddenSize  int         `json:"hidden_size"`
+	OutputSize  int         `json:"output_size"`
+	Weights1    [][]float64 `json:"weights1"`
+	Weights2    [][]float64 `json:"weights2"`
+	Bias1       []float64   `json:"bias1"`
+	Bias2       []float64   `json:"bias2"`
+	LastTrained time.Time   `json:"last_trained"`
 }
 
 // RandomForest represents a random forest model
 type RandomForest struct {
-	Name         string                 `json:"name"`
-	Trees        []*DecisionTree        `json:"trees"`
-	Features     []string               `json:"features"`
-	Performance  float64                `json:"performance"`
-	LastTrained  time.Time              `json:"last_trained"`
+	Name        string          `json:"name"`
+	Trees       []*DecisionTree `json:"trees"`
+	Features    []string        `json:"features"`
+	Performance float64         `json:"performance"`
+	LastTrained time.Time       `json:"last_trained"`
 }
 
 // DecisionTree represents a decision tree
 type DecisionTree struct {
-	Feature    string      `json:"feature"`
-	Threshold  float64     `json:"threshold"`
+	Feature    string        `json:"feature"`
+	Threshold  float64       `json:"threshold"`
 	Left       *DecisionTree `json:"left,omitempty"`
 	Right      *DecisionTree `json:"right,omitempty"`
-	Prediction string      `json:"prediction,omitempty"`
-	IsLeaf     bool        `json:"is_leaf"`
+	Prediction string        `json:"prediction,omitempty"`
+	IsLeaf     bool          `json:"is_leaf"`
 }
 
 // SVMModel represents a Support Vector Machine model
 type SVMModel struct {
-	Name         string      `json:"name"`
+	Name           string      `json:"name"`
 	SupportVectors [][]float64 `json:"support_vectors"`
-	Weights      []float64   `json:"weights"`
-	Bias         float64     `json:"bias"`
-	Kernel       string      `json:"kernel"`
-	LastTrained  time.Time   `json:"last_trained"`
+	Weights        []float64   `json:"weights"`
+	Bias           float64     `json:"bias"`
+	Kernel         string      `json:"kernel"`
+	LastTrained    time.Time   `json:"last_trained"`
 }
 
 // FeatureExtractor extracts features from raw metrics
@@ -122,7 +122,7 @@ func (mlp *MLPredictor) initializeComponents() {
 			Name:        "fault_prediction_nn",
 			InputSize:   10, // Number of input features
 			HiddenSize:  20,
-			OutputSize:  4,  // Number of fault types
+			OutputSize:  4, // Number of fault types
 			LastTrained: time.Now(),
 		}
 		mlp.initializeNeuralNetwork()
@@ -301,7 +301,7 @@ func (mlp *MLPredictor) predictWithSVM(features map[string]float64) []*FaultPred
 // initializeNeuralNetwork initializes neural network weights
 func (mlp *MLPredictor) initializeNeuralNetwork() {
 	nn := mlp.neuralNetwork
-	
+
 	// Initialize weights with small random values
 	nn.Weights1 = make([][]float64, nn.InputSize)
 	for i := range nn.Weights1 {

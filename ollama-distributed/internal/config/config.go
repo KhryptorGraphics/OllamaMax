@@ -59,6 +59,11 @@ type P2PConfig struct {
 	ConnMgrGrace string        `yaml:"conn_mgr_grace"`
 	DialTimeout  time.Duration `yaml:"dial_timeout"`
 	MaxStreams   int           `yaml:"max_streams"`
+	// Discovery configuration
+	AutoDiscovery    bool   `yaml:"auto_discovery" mapstructure:"auto_discovery"`
+	RendezvousString string `yaml:"rendezvous_string" mapstructure:"rendezvous_string"`
+	EnableMDNS       bool   `yaml:"enable_mdns" mapstructure:"enable_mdns"`
+	MDNSService      string `yaml:"mdns_service" mapstructure:"mdns_service"`
 }
 
 // ConsensusConfig holds consensus engine configuration
@@ -315,7 +320,7 @@ func DefaultConfig() *Config {
 			},
 		},
 		P2P: P2PConfig{
-			Listen:       "/ip4/0.0.0.0/tcp/4001",
+			Listen:       "/ip4/0.0.0.0/tcp/9999",
 			Bootstrap:    []string{},
 			EnableDHT:    true,
 			EnablePubSub: true,
@@ -548,10 +553,15 @@ func (c *Config) Validate() error {
 		}
 	}
 
-	// Validate TLS certificates if enabled
+	// Validate TLS certificates if enabled (check both API and Security TLS configs)
+	if c.API.TLS.Enabled {
+		if c.API.TLS.CertFile == "" || c.API.TLS.KeyFile == "" {
+			return fmt.Errorf("API TLS enabled but cert_file or key_file not specified")
+		}
+	}
 	if c.Security.TLS.Enabled {
 		if c.Security.TLS.CertFile == "" || c.Security.TLS.KeyFile == "" {
-			return fmt.Errorf("TLS enabled but cert_file or key_file not specified")
+			return fmt.Errorf("Security TLS enabled but cert_file or key_file not specified")
 		}
 	}
 

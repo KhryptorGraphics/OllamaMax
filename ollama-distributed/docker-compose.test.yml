@@ -1,0 +1,135 @@
+version: '3.8'
+
+services:
+  # Node 1 - Bootstrap node
+  ollama-node1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ollama-node1
+    hostname: ollama-node1
+    ports:
+      - "8080:8080"   # API port
+      - "9090:9090"   # P2P port
+      - "7070:7070"   # Consensus port
+    environment:
+      - NODE_ID=node-1
+      - CLUSTER_ID=test-cluster
+      - BOOTSTRAP=true
+      - BOOTSTRAP_EXPECT=3
+      - API_LISTEN=0.0.0.0:8080
+      - P2P_LISTEN=/ip4/0.0.0.0/tcp/9090
+      - CONSENSUS_BIND=0.0.0.0:7070
+      - CONSENSUS_ADVERTISE=ollama-node1:7070
+      - LOG_LEVEL=INFO
+      - DATA_DIR=/data
+    volumes:
+      - node1_data:/data
+      - ./models:/models
+    networks:
+      - ollama-cluster
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Node 2 - Follower node
+  ollama-node2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ollama-node2
+    hostname: ollama-node2
+    ports:
+      - "8081:8080"   # API port
+      - "9091:9090"   # P2P port
+      - "7071:7070"   # Consensus port
+    environment:
+      - NODE_ID=node-2
+      - CLUSTER_ID=test-cluster
+      - BOOTSTRAP=false
+      - BOOTSTRAP_PEERS=ollama-node1:7070
+      - API_LISTEN=0.0.0.0:8080
+      - P2P_LISTEN=/ip4/0.0.0.0/tcp/9090
+      - P2P_BOOTSTRAP_PEERS=/ip4/ollama-node1/tcp/9090
+      - CONSENSUS_BIND=0.0.0.0:7070
+      - CONSENSUS_ADVERTISE=ollama-node2:7070
+      - LOG_LEVEL=INFO
+      - DATA_DIR=/data
+    volumes:
+      - node2_data:/data
+      - ./models:/models
+    networks:
+      - ollama-cluster
+    depends_on:
+      - ollama-node1
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Node 3 - Follower node
+  ollama-node3:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ollama-node3
+    hostname: ollama-node3
+    ports:
+      - "8082:8080"   # API port
+      - "9092:9090"   # P2P port
+      - "7072:7070"   # Consensus port
+    environment:
+      - NODE_ID=node-3
+      - CLUSTER_ID=test-cluster
+      - BOOTSTRAP=false
+      - BOOTSTRAP_PEERS=ollama-node1:7070,ollama-node2:7070
+      - API_LISTEN=0.0.0.0:8080
+      - P2P_LISTEN=/ip4/0.0.0.0/tcp/9090
+      - P2P_BOOTSTRAP_PEERS=/ip4/ollama-node1/tcp/9090,/ip4/ollama-node2/tcp/9090
+      - CONSENSUS_BIND=0.0.0.0:7070
+      - CONSENSUS_ADVERTISE=ollama-node3:7070
+      - LOG_LEVEL=INFO
+      - DATA_DIR=/data
+    volumes:
+      - node3_data:/data
+      - ./models:/models
+    networks:
+      - ollama-cluster
+    depends_on:
+      - ollama-node1
+      - ollama-node2
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Load balancer for testing
+  nginx:
+    image: nginx:alpine
+    container_name: ollama-lb
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - ollama-cluster
+    depends_on:
+      - ollama-node1
+      - ollama-node2
+      - ollama-node3
+
+volumes:
+  node1_data:
+  node2_data:
+  node3_data:
+
+networks:
+  ollama-cluster:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
