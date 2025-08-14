@@ -1,0 +1,77 @@
+
+services:
+  # Ingress/load balancer
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: ollamamax-e2e-nginx
+    ports:
+      - "18088:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - node1
+      - node2
+      - node3
+    networks:
+      - e2e
+
+  node1:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+      network: host
+    image: ollamamax-e2e:latest
+    container_name: ollamamax-node1
+    hostname: node1
+    environment:
+      - OLLAMA_CONFIG_FILE=/app/config/config.yaml
+    volumes:
+      - ./config/node1.yaml:/app/config/config.yaml:ro
+      - node1-data:/app/data
+    networks:
+      e2e:
+        aliases: [node1]
+
+  node2:
+    image: ollamamax-e2e:latest
+    container_name: ollamamax-node2
+    hostname: node2
+    environment:
+      - OLLAMA_CONFIG_FILE=/app/config/config.yaml
+    volumes:
+      - ./config/node2.yaml:/app/config/config.yaml:ro
+      - node2-data:/app/data
+    depends_on:
+      - node1
+    networks:
+      e2e:
+        aliases: [node2]
+
+  node3:
+    image: ollamamax-e2e:latest
+    container_name: ollamamax-node3
+    hostname: node3
+    environment:
+      - OLLAMA_CONFIG_FILE=/app/config/config.yaml
+    volumes:
+      - ./config/node3.yaml:/app/config/config.yaml:ro
+      - node3-data:/app/data
+    depends_on:
+      - node1
+      - node2
+    networks:
+      e2e:
+        aliases: [node3]
+
+volumes:
+  node1-data:
+  node2-data:
+  node3-data:
+
+networks:
+  e2e:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/16
+

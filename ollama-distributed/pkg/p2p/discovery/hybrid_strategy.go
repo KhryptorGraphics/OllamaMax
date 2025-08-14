@@ -90,7 +90,7 @@ func (hds *HybridDiscoveryStrategy) initializeStrategies() error {
 	notifee := &mdnsNotifee{
 		peerFound: make(chan peer.AddrInfo, 100), // Buffered channel
 	}
-	mdnsService := mdns.NewMdnsService(hds.host, "ollamacron", notifee)
+	mdnsService := mdns.NewMdnsService(hds.host, hds.config.GetRendezvousString(), notifee)
 	hds.mdnsStrategy = &MDNSStrategy{
 		service: mdnsService,
 	}

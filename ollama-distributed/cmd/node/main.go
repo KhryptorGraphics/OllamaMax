@@ -16,7 +16,6 @@ import (
 
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/internal/config"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/api"
-	pkgConfig "github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/config"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/consensus"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/integration"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/observability"
@@ -205,28 +204,33 @@ func runStart(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	// Override config with CLI flags
-	if listen, _ := cmd.Flags().GetString("listen"); listen != "" {
+	// Override config with CLI flags (only if explicitly set by user)
+	if cmd.Flags().Changed("listen") {
+		listen, _ := cmd.Flags().GetString("listen")
+		log.Printf("🔧 Overriding API listen with CLI flag: %s", listen)
 		cfg.API.Listen = listen
 	}
-	if p2pListen, _ := cmd.Flags().GetString("p2p-listen"); p2pListen != "" {
+	if cmd.Flags().Changed("p2p-listen") {
+		p2pListen, _ := cmd.Flags().GetString("p2p-listen")
+		log.Printf("🔧 Overriding P2P listen with CLI flag: %s", p2pListen)
 		cfg.P2P.Listen = p2pListen
 	}
-	if bootstrap, _ := cmd.Flags().GetStringSlice("bootstrap"); len(bootstrap) > 0 {
+	if cmd.Flags().Changed("bootstrap") {
+		bootstrap, _ := cmd.Flags().GetStringSlice("bootstrap")
+		log.Printf("🔧 Overriding P2P bootstrap with CLI flag: %v", bootstrap)
 		cfg.P2P.Bootstrap = bootstrap
 	}
-	if dataDir, _ := cmd.Flags().GetString("data-dir"); dataDir != "" {
+	if cmd.Flags().Changed("data-dir") {
+		dataDir, _ := cmd.Flags().GetString("data-dir")
+		log.Printf("🔧 Overriding data dir with CLI flag: %s", dataDir)
 		cfg.Storage.DataDir = dataDir
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Initialize P2P networking
-	p2pConfig := &pkgConfig.NodeConfig{
-		Listen: []string{cfg.P2P.Listen},
-	}
-	p2pNode, err := p2p.NewP2PNode(ctx, p2pConfig)
+	// Initialize P2P networking with full configuration
+	p2pNode, err := p2p.NewNode(ctx, &cfg.P2P)
 	if err != nil {
 		return fmt.Errorf("failed to create P2P node: %w", err)
 	}
@@ -273,8 +277,26 @@ func runStart(cmd *cobra.Command, args []string) error {
 	// Initialize web server
 	log.Printf("🌐 Initializing web server...")
 	webConfig := web.DefaultConfig()
-	webConfig.ListenAddress = ":8081" // Use different port from API
-	webConfig.EnableAuth = true       // Enable authentication by default
+
+	// Use configuration from YAML file
+	if cfg.Web.Listen != "" {
+		webConfig.ListenAddress = cfg.Web.Listen
+	} else {
+		webConfig.ListenAddress = ":8081" // Use different port from API
+	}
+
+	// Only use custom static path if the directory actually exists
+	if cfg.Web.StaticDir != "" {
+		if _, err := os.Stat(cfg.Web.StaticDir); err == nil {
+			webConfig.StaticPath = cfg.Web.StaticDir
+			log.Printf("📁 Using custom static files from: %s", cfg.Web.StaticDir)
+		} else {
+			log.Printf("📁 Custom static directory not found (%s), using embedded files", cfg.Web.StaticDir)
+			webConfig.StaticPath = "" // Use embedded files
+		}
+	}
+
+	webConfig.EnableAuth = true // Enable authentication by default
 	webServer := web.NewWebServer(webConfig, apiServer)
 	log.Printf("✅ Web server initialized on %s", webConfig.ListenAddress)
 
@@ -307,9 +329,14 @@ func runStart(cmd *cobra.Command, args []string) error {
 		log.Printf("✅ Prometheus metrics exporter started on :9090")
 	}
 
-	if err := apiServer.Start(); err != nil {
-		return fmt.Errorf("failed to start API server: %w", err)
-	}
+	// Start API server
+	log.Printf("🚀 Starting API server...")
+	go func() {
+		if err := apiServer.Start(); err != nil && err != http.ErrServerClosed {
+			log.Printf("⚠️  API server error: %v", err)
+		}
+	}()
+	log.Printf("✅ API server started on %s", cfg.API.Listen)
 
 	// Start web server
 	log.Printf("🌐 Starting web server...")

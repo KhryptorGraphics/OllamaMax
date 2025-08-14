@@ -64,6 +64,8 @@ type NodeConfig struct {
 	// Discovery Settings
 	RendezvousString string `yaml:"rendezvous_string"`
 	AutoDiscovery    bool   `yaml:"auto_discovery"`
+	EnableMDNS       bool   `yaml:"enable_mdns"`
+	MDNSService      string `yaml:"mdns_service"`
 }
 
 // DefaultConfig returns a default configuration for a P2P node

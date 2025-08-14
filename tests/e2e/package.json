@@ -1,0 +1,22 @@
+{
+  "name": "ollamamax-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "postinstall": "playwright install --with-deps chromium firefox || true",
+    "test:chrome": "jest --config=jest.config.js --runInBand --detectOpenHandles",
+    "test:firefox": "node ./run-playwright-firefox.js",
+    "test": "npm run test:chrome && npm run test:firefox"
+  },
+  "devDependencies": {
+    "expect-puppeteer": "^9.0.0",
+    "jest": "^29.7.0",
+    "jest-environment-puppeteer": "^9.0.0",
+    "jest-html-reporter": "^3.10.2",
+    "jest-junit": "^16.0.0",
+    "jest-puppeteer": "^9.0.0",
+    "puppeteer": "^22.15.0",
+    "playwright": "^1.46.0"
+  }
+}
+

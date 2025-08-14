@@ -273,7 +273,7 @@ func (d *DiscoveryEngine) initializeMDNS() error {
 		peerFound: d.peerFound,
 	}
 
-	mdnsService := mdns.NewMdnsService(d.host, "ollamacron", notifee)
+	mdnsService := mdns.NewMdnsService(d.host, d.config.GetRendezvousString(), notifee)
 	d.mdns = mdnsService
 
 	// Add mDNS strategy
@@ -453,14 +453,14 @@ func (d *DiscoveryEngine) runDiscovery(strategy DiscoveryStrategy) {
 	start := time.Now()
 
 	// Advertise our presence
-	if _, err := strategy.Advertise(d.ctx, "ollamacron"); err != nil {
+	if _, err := strategy.Advertise(d.ctx, d.config.GetRendezvousString()); err != nil {
 		log.Printf("Failed to advertise on %s: %v", strategy.Name(), err)
 		d.metrics.StrategyMetrics[strategy.Name()].Errors++
 		return
 	}
 
 	// Find peers
-	peerChan, err := strategy.FindPeers(d.ctx, "ollamacron", discovery.Limit(50))
+	peerChan, err := strategy.FindPeers(d.ctx, d.config.GetRendezvousString(), discovery.Limit(50))
 	if err != nil {
 		log.Printf("Failed to find peers on %s: %v", strategy.Name(), err)
 		d.metrics.StrategyMetrics[strategy.Name()].Errors++

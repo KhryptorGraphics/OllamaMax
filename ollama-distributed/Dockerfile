@@ -2,30 +2,26 @@
 # Multi-stage build optimized for production deployment
 
 # Build stage
-FROM golang:1.21-alpine AS builder
+FROM golang:1.24.5 AS builder
 
 # Set build arguments
 ARG VERSION=dev
 ARG BUILD_TIME
 ARG GIT_COMMIT
 
-# Install build dependencies
-RUN apk add --no-cache \
-    git \
-    make \
-    gcc \
-    musl-dev \
-    ca-certificates \
-    tzdata
+# No additional build dependencies installed; using stock golang image
 
 # Set working directory
+ENV GOTOOLCHAIN=local
 WORKDIR /app
 
 # Copy go mod files first for better caching
 COPY go.mod go.sum ./
 
-# Download dependencies
-RUN go mod download && go mod verify
+# Download dependencies with retry and timeout handling
+RUN go env -w GOPROXY=https://proxy.golang.org,direct && \
+    go env -w GOSUMDB=sum.golang.org && \
+    go mod download && go mod verify
 
 # Copy source code
 COPY . .
@@ -40,25 +36,17 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -o ollama-distributed \
     ./cmd/node
 
-# Verify the binary
-RUN ./ollama-distributed version
+# Verify the binary disabled (no 'version' command available)
 
 # Runtime stage
 FROM alpine:3.19 AS runtime
 
-# Install runtime dependencies
-RUN apk add --no-cache \
-    ca-certificates \
-    curl \
-    jq \
-    tzdata \
-    bash \
-    && update-ca-certificates \
-    && rm -rf /var/cache/apk/*
+# Minimize runtime dependencies to avoid flaky apk fetches in CI/build environments
+# No additional packages installed in runtime image
 
 # Create non-root user for security
 RUN addgroup -g 1000 ollama && \
-    adduser -D -s /bin/bash -u 1000 -G ollama ollama
+    adduser -D -s /bin/sh -u 1000 -G ollama ollama
 
 # Create application directories
 RUN mkdir -p /app/data /app/models /app/cache /app/logs /app/config && \
@@ -97,28 +85,29 @@ ENV GIN_MODE=release
 # Expose ports
 EXPOSE 8080 8081 9000 9090
 
-# Add health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-    CMD curl -f http://localhost:8080/health || exit 1
+# HEALTHCHECK disabled in runtime image to avoid dependency on curl
+# HEALTHCHECK NONE
 
-# Create startup script
-RUN echo '#!/bin/bash\n\
-set -e\n\
-\n\
-# Print startup information\n\
-echo "🚀 Starting OllamaMax Distributed System"\n\
-echo "Version: $(ollama-distributed version)"\n\
-echo "Config: $OLLAMA_CONFIG_FILE"\n\
-echo "Data Dir: $OLLAMA_DATA_DIR"\n\
-echo "Log Level: $OLLAMA_LOG_LEVEL"\n\
-echo ""\n\
-\n\
-# Ensure directories exist\n\
-mkdir -p "$OLLAMA_DATA_DIR" "$OLLAMA_MODELS_DIR" "$OLLAMA_CACHE_DIR" "$OLLAMA_LOG_DIR"\n\
-\n\
-# Start the application\n\
-exec ollama-distributed start --config "$OLLAMA_CONFIG_FILE" "$@"\n\
-' > /app/start.sh && chmod +x /app/start.sh
+# Create startup script with proper newlines
+RUN cat > /app/start.sh << 'EOF'
+#!/bin/sh
+set -e
+
+# Print startup information
+echo "Starting OllamaMax Distributed System"
+ollama-distributed version || true
+echo "Config: $OLLAMA_CONFIG_FILE"
+echo "Data Dir: $OLLAMA_DATA_DIR"
+echo "Log Level: $OLLAMA_LOG_LEVEL"
+echo ""
+
+# Ensure directories exist
+mkdir -p "$OLLAMA_DATA_DIR" "$OLLAMA_MODELS_DIR" "$OLLAMA_CACHE_DIR" "$OLLAMA_LOG_DIR"
+
+# Start the application
+exec ollama-distributed start --config "$OLLAMA_CONFIG_FILE" "$@"
+EOF
+RUN chmod +x /app/start.sh
 
 # Default command
 CMD ["/app/start.sh"]

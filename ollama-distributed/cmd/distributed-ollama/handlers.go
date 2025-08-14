@@ -443,3 +443,14 @@ func (s *DistributedOllamaServer) handleHealth(c *gin.Context) {
 
 	c.JSON(http.StatusOK, health)
 }
+
+// handleVersion handles the /api/v1/version endpoint
+func (s *DistributedOllamaServer) handleVersion(c *gin.Context) {
+	version := gin.H{
+		"version":    "1.0.0",
+		"build_time": time.Now().Format(time.RFC3339),
+		"go_version": "go1.21+",
+		"platform":   "distributed",
+	}
+	c.JSON(http.StatusOK, version)
+}
