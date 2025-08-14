@@ -295,6 +295,20 @@ type DistributedConfig struct {
 			Enabled       bool   `yaml:"enabled"`
 			RetryAttempts int    `yaml:"retry_attempts"`
 			RetryDelay    string `yaml:"retry_delay"`
+			// Enhanced fault tolerance features
+			PredictiveDetection struct {
+				Enabled             bool    `yaml:"enabled"`
+				ConfidenceThreshold float64 `yaml:"confidence_threshold"`
+				PredictionInterval  string  `yaml:"prediction_interval"`
+			} `yaml:"predictive_detection"`
+			SelfHealing struct {
+				Enabled              bool    `yaml:"enabled"`
+				HealingThreshold     float64 `yaml:"healing_threshold"`
+				HealingInterval      string  `yaml:"healing_interval"`
+				ServiceRestart       bool    `yaml:"service_restart"`
+				ResourceReallocation bool    `yaml:"resource_reallocation"`
+				LoadRedistribution   bool    `yaml:"load_redistribution"`
+			} `yaml:"self_healing"`
 		} `yaml:"fault_tolerance"`
 	} `yaml:"inference"`
 
