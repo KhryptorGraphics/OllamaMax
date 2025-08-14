@@ -38,6 +38,9 @@ type EnhancedFaultToleranceManager struct {
 	// Metrics
 	enhancedMetrics *EnhancedFaultToleranceMetrics
 
+	// Node provider callback for accessing cluster nodes without import cycles
+	getNodesFn func() []interface{}
+
 	// Lifecycle
 	mu      sync.RWMutex
 	started bool
@@ -375,6 +378,18 @@ func (eftm *EnhancedFaultToleranceManager) initializeComponents(config *Enhanced
 	if config.EnableSelfHealing {
 		// Self-healer is already configured in constructor
 		slog.Info("Self-healing engine initialized")
+		// Also register adapter as a recovery strategy to integrate with RecoveryEngine
+		if eftm.selfHealer != nil && eftm.FaultToleranceManager != nil && eftm.FaultToleranceManager.recoveryEngine != nil {
+			adapter := NewSelfHealingRecoveryAdapter(eftm.selfHealer)
+			// Add adapter to multiple fault types to be considered during recovery
+			re := eftm.FaultToleranceManager.recoveryEngine
+			re.strategies[FaultTypePerformanceAnomaly] = append(re.strategies[FaultTypePerformanceAnomaly], adapter)
+			re.strategies[FaultTypeResourceExhaustion] = append(re.strategies[FaultTypeResourceExhaustion], adapter)
+			re.strategies[FaultTypeServiceUnavailable] = append(re.strategies[FaultTypeServiceUnavailable], adapter)
+			re.strategies[FaultTypeNetworkPartition] = append(re.strategies[FaultTypeNetworkPartition], adapter)
+			// As a low-priority fallback for node failures
+			re.strategies[FaultTypeNodeFailure] = append(re.strategies[FaultTypeNodeFailure], adapter)
+		}
 	}
 
 	// Initialize redundancy manager if enabled
@@ -816,13 +831,32 @@ func (rm *RedundancyManager) getFailedReplicaCount() int {
 	return 0
 }
 
-// Additional missing methods for EnhancedFaultToleranceManager
-func (eftm *EnhancedFaultToleranceManager) GetAvailableNodes() []interface{} {
-	return nil
+// SetNodeProvider sets a callback used to retrieve available nodes from the scheduler/cluster manager
+func (eftm *EnhancedFaultToleranceManager) SetNodeProvider(getNodes func() []interface{}) {
+	eftm.mu.Lock()
+	defer eftm.mu.Unlock()
+	eftm.getNodesFn = getNodes
 }
 
+// GetAvailableNodes returns available nodes using the configured provider; falls back to empty slice
+func (eftm *EnhancedFaultToleranceManager) GetAvailableNodes() []interface{} {
+	eftm.mu.RLock()
+	provider := eftm.getNodesFn
+	eftm.mu.RUnlock()
+	if provider != nil {
+		if nodes := provider(); nodes != nil {
+			return nodes
+		}
+	}
+	return []interface{}{}
+}
+
+// GetFaultDetections returns current detected faults from the base manager
 func (eftm *EnhancedFaultToleranceManager) GetFaultDetections() []*FaultDetection {
-	return nil
+	if eftm.FaultToleranceManager == nil {
+		return nil
+	}
+	return eftm.FaultToleranceManager.GetFaultDetections()
 }
 
 // Recover method for FaultToleranceManager (stub implementation)

@@ -181,19 +181,33 @@ func (fp *FaultPredictorImpl) predictFaults() {
 	var predictions []*PredictionSampleImpl
 
 	for _, node := range nodes {
-		// Type assert node to get ID
+		// Type assert node to get ID and metrics map if available
 		var nodeID string
-		if nodeInfo, ok := node.(*NodeInfo); ok {
-			nodeID = nodeInfo.ID
-		} else {
+		var baseMetrics map[string]float64
+		switch n := node.(type) {
+		case *NodeInfo:
+			nodeID = n.ID
+			baseMetrics = fp.extractNodeMetrics(n)
+		case map[string]interface{}:
+			if idVal, ok := n["id"].(string); ok {
+				nodeID = idVal
+			}
+			baseMetrics = make(map[string]float64)
+			for k, v := range n {
+				if fv, ok := v.(float64); ok {
+					baseMetrics[k] = fv
+				}
+			}
+		default:
 			nodeID = fmt.Sprintf("unknown_%d", time.Now().UnixNano())
+			baseMetrics = fp.extractNodeMetrics(n)
 		}
 
 		// Create prediction sample
 		sample := &PredictionSampleImpl{
 			Timestamp: time.Now(),
 			NodeID:    nodeID,
-			Metrics:   fp.extractNodeMetrics(node),
+			Metrics:   baseMetrics,
 			Metadata:  make(map[string]interface{}),
 		}
 

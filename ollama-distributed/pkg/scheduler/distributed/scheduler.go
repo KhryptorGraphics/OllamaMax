@@ -443,8 +443,14 @@ func (ds *DistributedScheduler) initializeComponents() error {
 	// Create base fault tolerance manager first
 	baseFT := fault_tolerance.NewFaultToleranceManager(ftConfig)
 
-	// Create enhanced configuration
+	// Create enhanced configuration with settings from distributed config
 	enhancedConfig := fault_tolerance.NewEnhancedFaultToleranceConfig(ftConfig)
+
+	// Apply distributed config settings if available
+	// Note: For now, use defaults since DistributedConfig doesn't have these fields yet
+	// TODO: Add these fields to DistributedConfig when needed
+	enhancedConfig.EnablePrediction = true
+	enhancedConfig.EnableSelfHealing = true
 
 	// Create enhanced fault tolerance manager with all advanced features
 	enhancedFT := fault_tolerance.NewEnhancedFaultToleranceManager(enhancedConfig, baseFT)
@@ -459,6 +465,19 @@ func (ds *DistributedScheduler) initializeComponents() error {
 		FaultTolerance: ds.faultTolerance,
 	}
 	ds.orchestrator = orchestration.NewOrchestrationEngine(orchConfig)
+
+	// Provide node list provider to enhanced fault tolerance for predictive detection
+	if ds.enhancedFaultTolerance != nil {
+		ds.enhancedFaultTolerance.SetNodeProvider(func() []interface{} {
+			// Adapt distributed.NodeInfo to []interface{} to avoid import cycles
+			nodes := ds.clusterManager.GetAvailableNodes()
+			result := make([]interface{}, 0, len(nodes))
+			for _, n := range nodes {
+				result = append(result, n)
+			}
+			return result
+		})
+	}
 
 	// Initialize distributed engine
 	ds.engine = &DistributedEngine{

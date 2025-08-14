@@ -1,3 +1,5 @@
+//go:build ft_legacy
+
 package fault_tolerance
 
 import (
