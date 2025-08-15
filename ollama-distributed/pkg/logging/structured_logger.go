@@ -291,8 +291,30 @@ func (sl *StructuredLogger) Error(msg string, err error, fields ...slog.Attr) {
 	sl.log(LevelError, msg, attrs...)
 }
 
-// Fatal logs a fatal message and exits
-func (sl *StructuredLogger) Fatal(msg string, err error, fields ...slog.Attr) {
+// Fatal logs a fatal message and returns a fatal error
+// Note: This no longer calls os.Exit() - callers should handle the error appropriately
+func (sl *StructuredLogger) Fatal(msg string, err error, fields ...slog.Attr) error {
+	attrs := fields
+	if err != nil {
+		attrs = append(attrs, slog.String("error", err.Error()))
+		attrs = append(attrs, slog.String("error_type", fmt.Sprintf("%T", err)))
+		attrs = append(attrs, slog.String("stack_trace", getStackTrace()))
+	}
+	sl.log(LevelFatal, msg, attrs...)
+
+	// Flush all buffers
+	sl.Flush()
+
+	// Return error instead of calling os.Exit()
+	if err != nil {
+		return fmt.Errorf("fatal error: %s: %w", msg, err)
+	}
+	return fmt.Errorf("fatal error: %s", msg)
+}
+
+// FatalAndExit logs a fatal message and exits the program
+// This should only be used in main functions where immediate exit is required
+func (sl *StructuredLogger) FatalAndExit(msg string, err error, fields ...slog.Attr) {
 	attrs := fields
 	if err != nil {
 		attrs = append(attrs, slog.String("error", err.Error()))

@@ -33,7 +33,7 @@ func TestNewP2PNode(t *testing.T) {
 				ConnMgrLow:   10,
 				ConnMgrHigh:  100,
 				ConnMgrGrace: time.Minute,
-				EnableDHT:    true,
+				// EnableDHT:    true, // Field not in NodeConfig
 			},
 			expectError: false,
 		},

@@ -24,14 +24,14 @@ type AuthManager struct {
 	publicKey  *rsa.PublicKey
 
 	// Certificate management
-	certManager *CertificateManager
+	certManager *AuthCertificateManager
 
 	// Token blacklist
 	blacklistedTokens map[string]time.Time
 }
 
-// CertificateManager handles X.509 certificate operations
-type CertificateManager struct {
+// AuthCertificateManager handles X.509 certificate operations for authentication
+type AuthCertificateManager struct {
 	caCert     *x509.Certificate
 	caKey      *rsa.PrivateKey
 	serverCert *x509.Certificate
@@ -87,7 +87,7 @@ func (am *AuthManager) initializeKeys() error {
 
 // initializeCertificates initializes X.509 certificates
 func (am *AuthManager) initializeCertificates() error {
-	certManager := &CertificateManager{}
+	certManager := &AuthCertificateManager{}
 
 	// Generate CA certificate
 	caTemplate := &x509.Certificate{
@@ -406,6 +406,30 @@ func generateTokenID() string {
 	bytes := make([]byte, 16)
 	rand.Read(bytes)
 	return fmt.Sprintf("%x", bytes)
+}
+
+// GenerateJWT is a convenience function for generating JWT tokens
+// This is a simple implementation for testing purposes
+func GenerateJWT(username, role string) (string, error) {
+	// Create JWT token with basic claims
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"sub":  "1",
+		"user": username,
+		"role": role,
+		"exp":  time.Now().Add(24 * time.Hour).Unix(),
+		"iat":  time.Now().Unix(),
+		"iss":  "ollama-distributed",
+		"aud":  "ollama-users",
+	})
+
+	// Sign token with secret
+	secret := []byte("default-secret-key-for-testing")
+	tokenString, err := token.SignedString(secret)
+	if err != nil {
+		return "", fmt.Errorf("failed to sign token: %w", err)
+	}
+
+	return tokenString, nil
 }
 
 func bigIntFromString(s string) *big.Int {

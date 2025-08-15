@@ -35,6 +35,19 @@ type WSMessage struct {
 	UserID    string      `json:"user_id,omitempty"`
 }
 
+// Dashboard update message types
+const (
+	MsgTypeClusterUpdate   = "cluster_update"
+	MsgTypeNodeUpdate      = "node_update"
+	MsgTypeMetricsUpdate   = "metrics_update"
+	MsgTypeModelUpdate     = "model_update"
+	MsgTypeInferenceUpdate = "inference_update"
+	MsgTypeNotification    = "notification"
+	MsgTypeHeartbeat       = "heartbeat"
+	MsgTypeSubscribe       = "subscribe"
+	MsgTypeUnsubscribe     = "unsubscribe"
+)
+
 // NewWSHub creates a new WebSocket hub
 func NewWSHub() *WSHub {
 	return &WSHub{
@@ -285,4 +298,79 @@ func (s *Server) BroadcastMetricsUpdate(metrics map[string]interface{}) {
 		"metrics":   metrics,
 		"timestamp": time.Now(),
 	})
+}
+
+// BroadcastDashboardUpdate broadcasts comprehensive dashboard updates
+func (s *Server) BroadcastDashboardUpdate(data map[string]interface{}) {
+	s.wsHub.Broadcast(MsgTypeClusterUpdate, map[string]interface{}{
+		"dashboard": data,
+		"timestamp": time.Now(),
+	})
+}
+
+// BroadcastNotification broadcasts notifications to users
+func (s *Server) BroadcastNotification(notification map[string]interface{}) {
+	s.wsHub.Broadcast(MsgTypeNotification, map[string]interface{}{
+		"notification": notification,
+		"timestamp":    time.Now(),
+	})
+}
+
+// BroadcastInferenceUpdate broadcasts inference request updates
+func (s *Server) BroadcastInferenceUpdate(requestID string, status string, progress float64, result interface{}) {
+	s.wsHub.Broadcast(MsgTypeInferenceUpdate, map[string]interface{}{
+		"request_id": requestID,
+		"status":     status,
+		"progress":   progress,
+		"result":     result,
+		"timestamp":  time.Now(),
+	})
+}
+
+// SendHeartbeat sends periodic heartbeat to maintain connections
+func (s *Server) SendHeartbeat() {
+	s.wsHub.Broadcast(MsgTypeHeartbeat, map[string]interface{}{
+		"timestamp":   time.Now(),
+		"server_time": time.Now().Unix(),
+	})
+}
+
+// StartDashboardUpdates starts periodic dashboard updates
+func (s *Server) StartDashboardUpdates() {
+	ticker := time.NewTicker(5 * time.Second) // Update every 5 seconds
+	go func() {
+		for range ticker.C {
+			// Get current dashboard data
+			clusterSize := 0
+			if s.scheduler != nil {
+				clusterSize = len(s.scheduler.GetAvailableNodes())
+			}
+
+			isLeader := false
+			if s.consensus != nil {
+				isLeader = s.consensus.IsLeader()
+			}
+
+			// Broadcast real-time updates
+			s.BroadcastDashboardUpdate(map[string]interface{}{
+				"clusterStatus": map[string]interface{}{
+					"healthy":   true,
+					"size":      clusterSize,
+					"leader":    isLeader,
+					"consensus": s.consensus != nil,
+				},
+				"nodeCount":    clusterSize,
+				"activeModels": 3, // TODO: Get from model manager
+				"timestamp":    time.Now().UTC(),
+			})
+		}
+	}()
+
+	// Send heartbeat every 30 seconds
+	heartbeatTicker := time.NewTicker(30 * time.Second)
+	go func() {
+		for range heartbeatTicker.C {
+			s.SendHeartbeat()
+		}
+	}()
 }

@@ -1,0 +1,290 @@
+# Default Ollamacron Configuration
+# This configuration is suitable for development and testing
+
+# Server configuration
+server:
+  # Address to bind the HTTP server
+  bind: "0.0.0.0:8080"
+  
+  # Read timeout for HTTP requests
+  read_timeout: "30s"
+  
+  # Write timeout for HTTP responses
+  write_timeout: "30s"
+  
+  # Idle timeout for HTTP connections
+  idle_timeout: "60s"
+  
+  # TLS configuration
+  tls:
+    enabled: false
+    cert_file: ""
+    key_file: ""
+    auto_cert: false
+    
+  # CORS configuration
+  cors:
+    enabled: true
+    allowed_origins: ["*"]
+    allowed_methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+    allowed_headers: ["*"]
+
+# P2P networking configuration
+p2p:
+  # Enable P2P networking
+  enabled: true
+  
+  # P2P listen address
+  listen_addr: "/ip4/0.0.0.0/tcp/9000"
+  
+  # Bootstrap peers (empty for standalone mode)
+  bootstrap_peers: []
+  
+  # Connection limits
+  connection_limits:
+    max_connections: 100
+    max_incoming: 50
+    max_outgoing: 50
+  
+  # Discovery configuration
+  discovery:
+    enabled: true
+    rendezvous: "ollamacron-v1"
+    advertise_interval: "5m"
+    
+  # NAT traversal
+  nat:
+    enabled: true
+    port_map_timeout: "10m"
+
+# Model management configuration
+models:
+  # Model cache directory
+  cache_dir: "/app/data/models"
+  
+  # Auto-pull models when requested
+  auto_pull: true
+  
+  # Model synchronization interval
+  sync_interval: "5m"
+  
+  # Model retention policy
+  retention:
+    max_size: "10GB"
+    max_age: "30d"
+    
+  # Model sources
+  sources:
+    - name: "ollama"
+      url: "https://ollama.ai/library"
+      priority: 1
+    - name: "huggingface"
+      url: "https://huggingface.co/models"
+      priority: 2
+
+# Distributed inference configuration
+inference:
+  # Load balancing strategy
+  load_balancing: "round_robin"  # options: round_robin, least_connections, weighted
+  
+  # Timeout for inference requests
+  timeout: "300s"
+  
+  # Maximum concurrent requests per node
+  max_concurrent_requests: 10
+  
+  # Partitioning strategy
+  partitioning:
+    strategy: "layer_wise"  # options: layer_wise, token_parallel, pipeline_parallel
+    chunk_size: 1000
+    overlap: 100
+    
+  # Fault tolerance
+  fault_tolerance:
+    enabled: true
+    retry_attempts: 3
+    retry_delay: "5s"
+    circuit_breaker:
+      enabled: true
+      failure_threshold: 5
+      recovery_timeout: "30s"
+
+# Logging configuration
+logging:
+  # Log level
+  level: "info"  # options: debug, info, warn, error
+  
+  # Log format
+  format: "json"  # options: json, text
+  
+  # Log output
+  output: "/app/logs/ollamacron.log"
+  
+  # Log rotation
+  rotation:
+    max_size: "100MB"
+    max_age: "7d"
+    max_backups: 5
+    compress: true
+
+# Metrics configuration
+metrics:
+  # Enable metrics collection
+  enabled: true
+  
+  # Metrics server bind address
+  bind: "0.0.0.0:9090"
+  
+  # Metrics endpoint path
+  path: "/metrics"
+  
+  # Metrics collection interval
+  interval: "30s"
+  
+  # Custom metrics
+  custom:
+    - name: "inference_requests_total"
+      help: "Total number of inference requests"
+      type: "counter"
+      
+    - name: "inference_duration_seconds"
+      help: "Duration of inference requests in seconds"
+      type: "histogram"
+      
+    - name: "model_cache_size_bytes"
+      help: "Size of model cache in bytes"
+      type: "gauge"
+
+# Health check configuration
+health:
+  # Enable health checks
+  enabled: true
+  
+  # Health check server bind address
+  bind: "0.0.0.0:8081"
+  
+  # Health check endpoint path
+  path: "/health"
+  
+  # Health check interval
+  interval: "30s"
+  
+  # Health check timeout
+  timeout: "5s"
+  
+  # Custom health checks
+  checks:
+    - name: "database"
+      type: "tcp"
+      target: "localhost:5432"
+      
+    - name: "redis"
+      type: "tcp"
+      target: "localhost:6379"
+
+# Authentication configuration
+auth:
+  # Enable authentication
+  enabled: false
+  
+  # Authentication type
+  type: "jwt"  # options: jwt, basic, oauth2
+  
+  # JWT configuration
+  jwt:
+    secret: "your-secret-key"
+    expiry: "24h"
+    
+  # Basic auth configuration
+  basic:
+    users:
+      - username: "admin"
+        password: "password"
+        
+  # OAuth2 configuration
+  oauth2:
+    provider: "google"
+    client_id: ""
+    client_secret: ""
+    redirect_url: ""
+
+# Storage configuration
+storage:
+  # Storage backend
+  backend: "local"  # options: local, s3, gcs, azure
+  
+  # Local storage configuration
+  local:
+    path: "/app/data/storage"
+    
+  # S3 configuration
+  s3:
+    bucket: ""
+    region: ""
+    endpoint: ""
+    access_key: ""
+    secret_key: ""
+    
+  # GCS configuration
+  gcs:
+    bucket: ""
+    project_id: ""
+    credentials_file: ""
+    
+  # Azure configuration
+  azure:
+    account_name: ""
+    account_key: ""
+    container_name: ""
+
+# Cache configuration
+cache:
+  # Cache backend
+  backend: "memory"  # options: memory, redis, memcached
+  
+  # Cache TTL
+  ttl: "1h"
+  
+  # Maximum cache size
+  max_size: "1GB"
+  
+  # Redis configuration
+  redis:
+    addr: "localhost:6379"
+    password: ""
+    db: 0
+    
+  # Memcached configuration
+  memcached:
+    servers: ["localhost:11211"]
+
+# Rate limiting configuration
+rate_limiting:
+  # Enable rate limiting
+  enabled: true
+  
+  # Rate limiting strategy
+  strategy: "token_bucket"  # options: token_bucket, fixed_window, sliding_window
+  
+  # Rate limit (requests per second)
+  rate: 100
+  
+  # Burst capacity
+  burst: 200
+  
+  # Rate limiting key
+  key: "ip"  # options: ip, user, api_key
+
+# Development configuration
+development:
+  # Enable development mode
+  enabled: false
+  
+  # Enable debug endpoints
+  debug_endpoints: false
+  
+  # Enable profiling
+  profiling: false
+  
+  # Enable hot reload
+  hot_reload: false

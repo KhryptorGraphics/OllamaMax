@@ -1,0 +1,168 @@
+# Prometheus configuration for OllamaMax distributed fault tolerance monitoring
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'ollama-distributed'
+    environment: 'production'
+
+rule_files:
+  - "rules/*.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+scrape_configs:
+  # OllamaMax main application metrics
+  - job_name: 'ollama-distributed'
+    static_configs:
+      - targets: 
+          - 'ollama-node-1:9090'
+          - 'ollama-node-2:9090'
+          - 'ollama-node-3:9090'
+    scrape_interval: 10s
+    metrics_path: /metrics
+    scheme: http
+    
+    # Relabeling for better organization
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 127.0.0.1:9090
+
+  # Kubernetes service discovery (if running on K8s)
+  - job_name: 'ollama-distributed-k8s'
+    kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names:
+            - ollama-distributed
+    
+    relabel_configs:
+      # Only scrape pods with the correct annotations
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+        action: replace
+        target_label: __metrics_path__
+        regex: (.+)
+      - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+        action: replace
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+        target_label: __address__
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_(.+)
+      - source_labels: [__meta_kubernetes_namespace]
+        action: replace
+        target_label: kubernetes_namespace
+      - source_labels: [__meta_kubernetes_pod_name]
+        action: replace
+        target_label: kubernetes_pod_name
+
+  # Fault tolerance specific metrics with higher frequency
+  - job_name: 'ollama-fault-tolerance'
+    static_configs:
+      - targets: 
+          - 'ollama-node-1:9090'
+          - 'ollama-node-2:9090'
+          - 'ollama-node-3:9090'
+    scrape_interval: 5s
+    metrics_path: /metrics
+    scheme: http
+    
+    # Only scrape fault tolerance metrics
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'ollama_fault_tolerance_.*|ollama_prediction_.*|ollama_healing_.*'
+        action: keep
+
+  # Node exporter for system metrics
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets:
+          - 'ollama-node-1:9100'
+          - 'ollama-node-2:9100'
+          - 'ollama-node-3:9100'
+    scrape_interval: 30s
+
+  # cAdvisor for container metrics (if using Docker)
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets:
+          - 'ollama-node-1:8080'
+          - 'ollama-node-2:8080'
+          - 'ollama-node-3:8080'
+    scrape_interval: 30s
+    metrics_path: /metrics
+
+  # Blackbox exporter for endpoint monitoring
+  - job_name: 'blackbox'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - http://ollama-node-1:8080/api/v1/health
+          - http://ollama-node-2:8080/api/v1/health
+          - http://ollama-node-3:8080/api/v1/health
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+  # Self-monitoring of Prometheus
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 30s
+
+  # Alertmanager monitoring
+  - job_name: 'alertmanager'
+    static_configs:
+      - targets: ['alertmanager:9093']
+    scrape_interval: 30s
+
+  # Grafana monitoring
+  - job_name: 'grafana'
+    static_configs:
+      - targets: ['grafana:3000']
+    scrape_interval: 30s
+    metrics_path: /metrics
+
+# Remote write configuration for long-term storage (optional)
+remote_write:
+  - url: "https://prometheus-remote-write-endpoint/api/v1/write"
+    queue_config:
+      max_samples_per_send: 1000
+      max_shards: 200
+      capacity: 2500
+    # Authentication if required
+    # basic_auth:
+    #   username: "username"
+    #   password: "password"
+
+# Remote read configuration (optional)
+remote_read:
+  - url: "https://prometheus-remote-read-endpoint/api/v1/read"
+    # basic_auth:
+    #   username: "username"
+    #   password: "password"
+
+# Storage configuration
+storage:
+  tsdb:
+    retention.time: 30d
+    retention.size: 50GB
+    wal-compression: true

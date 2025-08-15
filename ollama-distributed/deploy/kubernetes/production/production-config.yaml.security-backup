@@ -1,0 +1,257 @@
+# Production Configuration for OllamaMax
+# Optimized for enterprise production deployment
+
+# Node configuration
+node:
+  name: "${HOSTNAME}"
+  data_dir: "/app/data"
+  cluster_id: "ollama-production"
+  environment: "production"
+
+# API server configuration
+api:
+  listen_address: ":8080"
+  enable_cors: true
+  cors_origins: ["https://ollama.yourdomain.com", "https://api.yourdomain.com"]
+  request_timeout: "30s"
+  max_request_size: "100MB"
+  rate_limiting:
+    enabled: true
+    requests_per_minute: 1000
+    burst_size: 100
+  compression:
+    enabled: true
+    level: 6
+
+# Web UI configuration
+web:
+  enabled: true
+  listen_address: ":8081"
+  static_path: "/app/web"
+  enable_compression: true
+  cache_control: "public, max-age=3600"
+
+# P2P networking configuration
+p2p:
+  listen_address: "/ip4/0.0.0.0/tcp/9000"
+  bootstrap_peers: []
+  connection_timeout: "30s"
+  max_connections: 100
+  enable_nat_traversal: true
+  enable_relay: true
+
+# Consensus configuration
+consensus:
+  algorithm: "raft"
+  election_timeout: "5s"
+  heartbeat_interval: "1s"
+  snapshot_interval: "10m"
+  log_retention: "24h"
+  max_log_entries: 10000
+
+# Scheduler configuration
+scheduler:
+  algorithm: "weighted_round_robin"
+  health_check_interval: "30s"
+  max_retries: 3
+  retry_backoff: "exponential"
+  load_balancing:
+    strategy: "least_connections"
+    health_threshold: 0.8
+    enable_circuit_breaker: true
+
+# Model management configuration
+models:
+  storage_path: "/app/models"
+  cache_size: "10GB"
+  auto_pull: true
+  compression: true
+  verification: true
+  cleanup_interval: "1h"
+  max_concurrent_downloads: 3
+  download_timeout: "30m"
+
+# Logging configuration
+logging:
+  level: "info"
+  format: "json"
+  output: "stdout"
+  enable_structured_logging: true
+  log_rotation:
+    enabled: false  # Let Kubernetes handle log rotation
+  fields:
+    service: "ollama-distributed"
+    version: "${VERSION}"
+    environment: "production"
+
+# Security configuration
+security:
+  enabled: true
+  jwt_secret: "${JWT_SECRET}"
+  session_timeout: "24h"
+  password_policy:
+    min_length: 12
+    require_uppercase: true
+    require_lowercase: true
+    require_numbers: true
+    require_symbols: true
+  rate_limiting:
+    enabled: true
+    max_attempts: 5
+    lockout_duration: "15m"
+  tls:
+    enabled: true
+    cert_file: "/app/certs/tls.crt"
+    key_file: "/app/certs/tls.key"
+    min_version: "1.2"
+    cipher_suites:
+      - "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"
+      - "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305"
+      - "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"
+
+# Performance configuration
+performance:
+  optimization_enabled: true
+  monitoring_enabled: true
+  profiling_enabled: false  # Disable in production
+  gc_tuning:
+    target_percentage: 100
+    max_heap_size: "6GB"
+  connection_pooling:
+    max_idle_connections: 100
+    max_open_connections: 1000
+    connection_max_lifetime: "1h"
+  caching:
+    enabled: true
+    max_size: "2GB"
+    ttl: "1h"
+
+# Monitoring configuration
+monitoring:
+  enabled: true
+  metrics:
+    enabled: true
+    listen_address: ":9090"
+    path: "/metrics"
+    interval: "15s"
+  health_checks:
+    enabled: true
+    interval: "10s"
+    timeout: "5s"
+    endpoints:
+      - "/health"
+      - "/ready"
+  tracing:
+    enabled: true
+    sampling_rate: 0.1
+    jaeger_endpoint: "http://jaeger-collector:14268/api/traces"
+
+# Database configuration
+database:
+  type: "embedded"  # Use embedded database for simplicity
+  path: "/app/data/db"
+  max_connections: 100
+  connection_timeout: "30s"
+  backup:
+    enabled: true
+    interval: "6h"
+    retention: "7d"
+    compression: true
+
+# Cache configuration
+cache:
+  type: "memory"
+  max_size: "1GB"
+  ttl: "1h"
+  cleanup_interval: "10m"
+  compression: true
+
+# Backup and recovery configuration
+backup:
+  enabled: true
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  retention_days: 30
+  compression: true
+  encryption: true
+  storage:
+    type: "s3"
+    bucket: "ollama-backups"
+    region: "us-west-2"
+    prefix: "production/"
+
+# Alerting configuration
+alerting:
+  enabled: true
+  channels:
+    - type: "webhook"
+      url: "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK"
+      severity_threshold: "warning"
+    - type: "email"
+      smtp_server: "smtp.yourdomain.com"
+      smtp_port: 587
+      username: "alerts@yourdomain.com"
+      recipients: ["ops@yourdomain.com"]
+      severity_threshold: "critical"
+
+# Resource limits
+resources:
+  cpu:
+    request: "1"
+    limit: "4"
+  memory:
+    request: "2Gi"
+    limit: "8Gi"
+  storage:
+    request: "500Gi"
+    class: "fast-ssd"
+
+# Feature flags
+features:
+  experimental_features: false
+  beta_features: false
+  debug_mode: false
+  maintenance_mode: false
+
+# Compliance configuration
+compliance:
+  audit_logging: true
+  data_retention: "2y"
+  encryption_at_rest: true
+  encryption_in_transit: true
+  access_logging: true
+  gdpr_compliance: true
+
+# Integration configuration
+integrations:
+  prometheus:
+    enabled: true
+    scrape_interval: "15s"
+  grafana:
+    enabled: true
+    dashboard_refresh: "30s"
+  jaeger:
+    enabled: true
+    sampling_rate: 0.1
+  elasticsearch:
+    enabled: false
+    endpoint: "http://elasticsearch:9200"
+
+# Environment-specific overrides
+environment_overrides:
+  production:
+    logging:
+      level: "warn"
+    performance:
+      profiling_enabled: false
+    security:
+      debug_endpoints: false
+  staging:
+    logging:
+      level: "debug"
+    performance:
+      profiling_enabled: true
+  development:
+    logging:
+      level: "debug"
+    security:
+      debug_endpoints: true

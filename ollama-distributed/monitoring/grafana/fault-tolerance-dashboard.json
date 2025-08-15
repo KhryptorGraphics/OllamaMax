@@ -1,0 +1,381 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "OllamaMax Fault Tolerance Dashboard",
+    "tags": ["ollama", "fault-tolerance", "distributed"],
+    "style": "dark",
+    "timezone": "browser",
+    "refresh": "30s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Cluster Overview",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "ollama_cluster_size",
+            "legendFormat": "Cluster Size"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "yellow", "value": 2},
+                {"color": "green", "value": 3}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "Node Status",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "sum(ollama_node_status)",
+            "legendFormat": "Healthy Nodes"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "yellow", "value": 2},
+                {"color": "green", "value": 3}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 6, "y": 0}
+      },
+      {
+        "id": 3,
+        "title": "Healing Success Rate",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "ollama_fault_tolerance_healing_success_rate * 100",
+            "legendFormat": "Success Rate %"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "yellow", "value": 70},
+                {"color": "green", "value": 90}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 12, "y": 0}
+      },
+      {
+        "id": 4,
+        "title": "Prediction Accuracy",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "ollama_fault_tolerance_prediction_accuracy * 100",
+            "legendFormat": "Accuracy %"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "yellow", "value": 60},
+                {"color": "green", "value": 80}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 18, "y": 0}
+      },
+      {
+        "id": 5,
+        "title": "Healing Attempts Over Time",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(ollama_fault_tolerance_healing_attempts_total[5m])",
+            "legendFormat": "{{strategy}} - {{result}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Attempts/sec",
+            "min": 0
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+      },
+      {
+        "id": 6,
+        "title": "Recovery Time Distribution",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(ollama_fault_tolerance_recovery_time_seconds_bucket[5m]))",
+            "legendFormat": "50th percentile"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(ollama_fault_tolerance_recovery_time_seconds_bucket[5m]))",
+            "legendFormat": "95th percentile"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(ollama_fault_tolerance_recovery_time_seconds_bucket[5m]))",
+            "legendFormat": "99th percentile"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Seconds",
+            "min": 0
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+      },
+      {
+        "id": 7,
+        "title": "Node Failures by Type",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(ollama_fault_tolerance_node_failures_total[5m])",
+            "legendFormat": "{{failure_type}} - {{severity}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Failures/sec",
+            "min": 0
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}
+      },
+      {
+        "id": 8,
+        "title": "Request Latency",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(ollama_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "50th percentile"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(ollama_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "95th percentile"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(ollama_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "99th percentile"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Seconds",
+            "min": 0
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}
+      },
+      {
+        "id": 9,
+        "title": "Throughput and Error Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "ollama_throughput_requests_per_second",
+            "legendFormat": "Throughput (req/s)",
+            "yAxis": 1
+          },
+          {
+            "expr": "ollama_error_rate * 100",
+            "legendFormat": "Error Rate (%)",
+            "yAxis": 2
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Requests/sec",
+            "min": 0
+          },
+          {
+            "label": "Error Rate %",
+            "min": 0,
+            "max": 100
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24}
+      },
+      {
+        "id": 10,
+        "title": "Resource Usage by Node",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "ollama_cpu_usage_percent",
+            "legendFormat": "CPU - {{node_id}}"
+          },
+          {
+            "expr": "ollama_memory_usage_bytes / 1024 / 1024 / 1024",
+            "legendFormat": "Memory GB - {{node_id}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Usage",
+            "min": 0
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24}
+      },
+      {
+        "id": 11,
+        "title": "Prediction Performance",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(ollama_prediction_latency_seconds_bucket[5m]))",
+            "legendFormat": "Prediction Latency (95th)"
+          },
+          {
+            "expr": "rate(ollama_prediction_false_positives_total[5m])",
+            "legendFormat": "False Positives/sec"
+          },
+          {
+            "expr": "rate(ollama_prediction_false_negatives_total[5m])",
+            "legendFormat": "False Negatives/sec"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Latency (s) / Rate (/s)",
+            "min": 0
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 32}
+      },
+      {
+        "id": 12,
+        "title": "Healing Strategies",
+        "type": "piechart",
+        "targets": [
+          {
+            "expr": "sum by (strategy) (rate(ollama_healing_strategies_total[5m]))",
+            "legendFormat": "{{strategy}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 32}
+      },
+      {
+        "id": 13,
+        "title": "Configuration Management",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(ollama_config_reloads_total[5m])",
+            "legendFormat": "Config Reloads - {{result}}"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(ollama_config_hot_reload_latency_seconds_bucket[5m]))",
+            "legendFormat": "Hot Reload Latency (95th)"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Rate (/s) / Latency (s)",
+            "min": 0
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 40}
+      },
+      {
+        "id": 14,
+        "title": "Replication Status",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "ollama_replication_factor",
+            "legendFormat": "Replication Factor - {{component}}"
+          },
+          {
+            "expr": "sum by (component) (ollama_replica_health)",
+            "legendFormat": "Healthy Replicas - {{component}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Count",
+            "min": 0
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 40}
+      }
+    ],
+    "templating": {
+      "list": [
+        {
+          "name": "node",
+          "type": "query",
+          "query": "label_values(ollama_node_status, node_id)",
+          "refresh": 1,
+          "includeAll": true,
+          "allValue": ".*"
+        },
+        {
+          "name": "region",
+          "type": "query",
+          "query": "label_values(ollama_node_status, region)",
+          "refresh": 1,
+          "includeAll": true,
+          "allValue": ".*"
+        }
+      ]
+    },
+    "annotations": {
+      "list": [
+        {
+          "name": "Deployments",
+          "datasource": "Prometheus",
+          "expr": "changes(ollama_config_reloads_total[1m]) > 0",
+          "titleFormat": "Config Reload",
+          "textFormat": "Configuration reloaded"
+        },
+        {
+          "name": "Leader Elections",
+          "datasource": "Prometheus",
+          "expr": "changes(ollama_leader_election_total[1m]) > 0",
+          "titleFormat": "Leader Election",
+          "textFormat": "New leader elected"
+        }
+      ]
+    }
+  }
+}

@@ -51,9 +51,9 @@ func createMockP2PNode(t *testing.T) *p2p.P2PNode {
 
 	// Use the pkg/config NodeConfig which has the correct fields
 	pkgConfig := &config.NodeConfig{
-		Listen:         []string{"/ip4/127.0.0.1/tcp/0"},
-		BootstrapPeers: []string{},
-		EnableDHT:      false,
+		Listen:       []string{"/ip4/127.0.0.1/tcp/0"},
+		StaticRelays: []string{},
+		EnableNoise:  false,
 	}
 
 	node, err := p2p.NewP2PNode(ctx, pkgConfig)

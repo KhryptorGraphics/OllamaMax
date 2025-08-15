@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/config"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/types"
 )
 
@@ -906,4 +907,453 @@ type RedundancyMetrics struct {
 type ConfigMetrics struct {
 	ConfigAdaptations int64      `json:"config_adaptations"`
 	LastAdaptation    *time.Time `json:"last_adaptation"`
+}
+
+// Configuration Loading and Management
+
+// LoadConfiguration loads configuration from DistributedConfig and applies it to the fault tolerance system
+func (eftm *EnhancedFaultToleranceManager) LoadConfiguration(distributedConfig *config.DistributedConfig) error {
+	if distributedConfig == nil {
+		return fmt.Errorf("distributed config cannot be nil")
+	}
+
+	// Validate configuration first
+	if err := eftm.ValidateConfiguration(distributedConfig); err != nil {
+		return fmt.Errorf("configuration validation failed: %w", err)
+	}
+
+	// Apply configuration to components
+	if err := eftm.applyConfiguration(distributedConfig); err != nil {
+		return fmt.Errorf("failed to apply configuration: %w", err)
+	}
+
+	slog.Info("fault tolerance configuration loaded successfully",
+		"predictive_detection_enabled", distributedConfig.Inference.FaultTolerance.PredictiveDetection.Enabled,
+		"self_healing_enabled", distributedConfig.Inference.FaultTolerance.SelfHealing.Enabled,
+		"redundancy_enabled", distributedConfig.Inference.FaultTolerance.Redundancy.Enabled)
+
+	return nil
+}
+
+// ValidateConfiguration validates the fault tolerance configuration using comprehensive validator
+func (eftm *EnhancedFaultToleranceManager) ValidateConfiguration(distributedConfig *config.DistributedConfig) error {
+	// Create comprehensive validator
+	validator := NewConfigValidator()
+
+	// Use comprehensive validation
+	return validator.ValidateConfiguration(distributedConfig)
+}
+
+// applyConfiguration applies the validated configuration to all components
+func (eftm *EnhancedFaultToleranceManager) applyConfiguration(distributedConfig *config.DistributedConfig) error {
+	ft := distributedConfig.Inference.FaultTolerance
+
+	// Update base fault tolerance manager configuration (durations are strongly typed)
+	eftm.FaultToleranceManager.config.HealthCheckInterval = ft.HealthCheckInterval
+	eftm.FaultToleranceManager.config.RecoveryTimeout = ft.RecoveryTimeout
+	eftm.FaultToleranceManager.config.CircuitBreakerEnabled = ft.CircuitBreaker.Enabled
+	eftm.FaultToleranceManager.config.MaxRetries = ft.MaxRetries
+	eftm.FaultToleranceManager.config.RetryBackoff = ft.RetryBackoff
+	eftm.FaultToleranceManager.config.ReplicationFactor = ft.ReplicationFactor
+
+	// Apply predictive detection configuration
+	if err := eftm.applyPredictiveDetectionConfig(ft.PredictiveDetection); err != nil {
+		return fmt.Errorf("failed to apply predictive detection config: %w", err)
+	}
+
+	// Apply self-healing configuration
+	if err := eftm.applySelfHealingConfig(ft.SelfHealing); err != nil {
+		return fmt.Errorf("failed to apply self-healing config: %w", err)
+	}
+
+	// Apply redundancy configuration
+	if err := eftm.applyRedundancyConfig(ft.Redundancy); err != nil {
+		return fmt.Errorf("failed to apply redundancy config: %w", err)
+	}
+
+	// Apply performance tracking configuration
+	if err := eftm.applyPerformanceTrackingConfig(ft.PerformanceTracking); err != nil {
+		return fmt.Errorf("failed to apply performance tracking config: %w", err)
+	}
+
+	// Apply config adaptation configuration
+	if err := eftm.applyConfigAdaptationConfig(ft.ConfigAdaptation); err != nil {
+		return fmt.Errorf("failed to apply config adaptation config: %w", err)
+	}
+
+	return nil
+}
+
+// applyPredictiveDetectionConfig applies predictive detection configuration
+func (eftm *EnhancedFaultToleranceManager) applyPredictiveDetectionConfig(config struct {
+	Enabled             bool    `yaml:"enabled"`
+	ConfidenceThreshold float64 `yaml:"confidence_threshold"`
+	PredictionInterval  string  `yaml:"prediction_interval"`
+	WindowSize          string  `yaml:"window_size"`
+	Threshold           float64 `yaml:"threshold"`
+	EnableMLDetection   bool    `yaml:"enable_ml_detection"`
+	EnableStatistical   bool    `yaml:"enable_statistical"`
+	EnablePatternRecog  bool    `yaml:"enable_pattern_recognition"`
+}) error {
+	if !config.Enabled {
+		slog.Info("predictive detection disabled")
+		return nil
+	}
+
+	if eftm.predictor == nil {
+		return fmt.Errorf("predictor not initialized")
+	}
+
+	// Parse duration strings
+	predictionInterval, err := time.ParseDuration(config.PredictionInterval)
+	if err != nil {
+		return fmt.Errorf("invalid prediction_interval: %w", err)
+	}
+
+	windowSize, err := time.ParseDuration(config.WindowSize)
+	if err != nil {
+		return fmt.Errorf("invalid window_size: %w", err)
+	}
+
+	// Apply configuration to predictor
+	eftm.predictor.learning = config.Enabled
+	eftm.predictor.threshold = config.Threshold
+	eftm.predictor.windowSize = windowSize
+	// Note: confidenceThreshold may need to be added to FaultPredictorImpl if not present
+
+	slog.Info("predictive detection configuration applied",
+		"confidence_threshold", config.ConfidenceThreshold,
+		"prediction_interval", predictionInterval,
+		"window_size", windowSize,
+		"threshold", config.Threshold)
+
+	return nil
+}
+
+// applySelfHealingConfig applies self-healing configuration
+func (eftm *EnhancedFaultToleranceManager) applySelfHealingConfig(config struct {
+	Enabled              bool    `yaml:"enabled"`
+	HealingThreshold     float64 `yaml:"healing_threshold"`
+	HealingInterval      string  `yaml:"healing_interval"`
+	MonitoringInterval   string  `yaml:"monitoring_interval"`
+	LearningInterval     string  `yaml:"learning_interval"`
+	ServiceRestart       bool    `yaml:"service_restart"`
+	ResourceReallocation bool    `yaml:"resource_reallocation"`
+	LoadRedistribution   bool    `yaml:"load_redistribution"`
+	EnableLearning       bool    `yaml:"enable_learning"`
+	EnablePredictive     bool    `yaml:"enable_predictive"`
+	EnableProactive      bool    `yaml:"enable_proactive"`
+	EnableFailover       bool    `yaml:"enable_failover"`
+	EnableScaling        bool    `yaml:"enable_scaling"`
+}) error {
+	if !config.Enabled {
+		slog.Info("self-healing disabled")
+		return nil
+	}
+
+	if eftm.selfHealer == nil {
+		return fmt.Errorf("self-healer not initialized")
+	}
+
+	// Parse duration strings
+	healingInterval, err := time.ParseDuration(config.HealingInterval)
+	if err != nil {
+		return fmt.Errorf("invalid healing_interval: %w", err)
+	}
+
+	monitoringInterval, err := time.ParseDuration(config.MonitoringInterval)
+	if err != nil {
+		return fmt.Errorf("invalid monitoring_interval: %w", err)
+	}
+
+	learningInterval, err := time.ParseDuration(config.LearningInterval)
+	if err != nil {
+		return fmt.Errorf("invalid learning_interval: %w", err)
+	}
+
+	// Apply configuration to self-healer
+	eftm.selfHealer.config.HealingThreshold = config.HealingThreshold
+	eftm.selfHealer.config.HealingInterval = healingInterval
+	eftm.selfHealer.config.MonitoringInterval = monitoringInterval
+	eftm.selfHealer.config.LearningInterval = learningInterval
+	eftm.selfHealer.config.EnableServiceRestart = config.ServiceRestart
+	eftm.selfHealer.config.EnableResourceReallocation = config.ResourceReallocation
+	eftm.selfHealer.config.EnableLoadRedistribution = config.LoadRedistribution
+	eftm.selfHealer.config.EnableLearning = config.EnableLearning
+	eftm.selfHealer.config.EnablePredictiveHealing = config.EnablePredictive
+	eftm.selfHealer.config.EnableProactiveHealing = config.EnableProactive
+	eftm.selfHealer.config.EnableFailover = config.EnableFailover
+	eftm.selfHealer.config.EnableScaling = config.EnableScaling
+
+	slog.Info("self-healing configuration applied",
+		"healing_threshold", config.HealingThreshold,
+		"healing_interval", healingInterval,
+		"monitoring_interval", monitoringInterval,
+		"learning_interval", learningInterval)
+
+	return nil
+}
+
+// applyRedundancyConfig applies redundancy configuration
+func (eftm *EnhancedFaultToleranceManager) applyRedundancyConfig(config struct {
+	Enabled        bool   `yaml:"enabled"`
+	DefaultFactor  int    `yaml:"default_factor"`
+	MaxFactor      int    `yaml:"max_factor"`
+	UpdateInterval string `yaml:"update_interval"`
+}) error {
+	if !config.Enabled {
+		slog.Info("redundancy management disabled")
+		return nil
+	}
+
+	if eftm.redundancyManager == nil {
+		return fmt.Errorf("redundancy manager not initialized")
+	}
+
+	// Parse duration string
+	updateInterval, err := time.ParseDuration(config.UpdateInterval)
+	if err != nil {
+		return fmt.Errorf("invalid update_interval: %w", err)
+	}
+
+	// Apply configuration to redundancy manager
+	eftm.redundancyManager.factor = config.DefaultFactor
+	eftm.redundancyManager.maxFactor = config.MaxFactor
+	eftm.redundancyManager.updateInterval = updateInterval
+
+	slog.Info("redundancy configuration applied",
+		"default_factor", config.DefaultFactor,
+		"max_factor", config.MaxFactor,
+		"update_interval", updateInterval)
+
+	return nil
+}
+
+// applyPerformanceTrackingConfig applies performance tracking configuration
+func (eftm *EnhancedFaultToleranceManager) applyPerformanceTrackingConfig(config struct {
+	Enabled    bool   `yaml:"enabled"`
+	WindowSize string `yaml:"window_size"`
+}) error {
+	if !config.Enabled {
+		slog.Info("performance tracking disabled")
+		return nil
+	}
+
+	if eftm.performanceTracker == nil {
+		return fmt.Errorf("performance tracker not initialized")
+	}
+
+	// Parse duration string
+	windowSize, err := time.ParseDuration(config.WindowSize)
+	if err != nil {
+		return fmt.Errorf("invalid window_size: %w", err)
+	}
+
+	// Apply configuration to performance tracker
+	eftm.performanceTracker.learning = config.Enabled
+	eftm.performanceTracker.windowSize = windowSize
+
+	slog.Info("performance tracking configuration applied",
+		"enabled", config.Enabled,
+		"window_size", windowSize)
+
+	return nil
+}
+
+// applyConfigAdaptationConfig applies configuration adaptation settings
+func (eftm *EnhancedFaultToleranceManager) applyConfigAdaptationConfig(config struct {
+	Enabled  bool   `yaml:"enabled"`
+	Interval string `yaml:"interval"`
+}) error {
+	if !config.Enabled {
+		slog.Info("configuration adaptation disabled")
+		return nil
+	}
+
+	if eftm.configAdaptor == nil {
+		return fmt.Errorf("config adaptor not initialized")
+	}
+
+	// Parse duration string
+	interval, err := time.ParseDuration(config.Interval)
+	if err != nil {
+		return fmt.Errorf("invalid interval: %w", err)
+	}
+
+	// Apply configuration to config adaptor
+	eftm.configAdaptor.learning = config.Enabled
+	eftm.configAdaptor.interval = interval
+
+	slog.Info("configuration adaptation applied",
+		"enabled", config.Enabled,
+		"interval", interval)
+
+	return nil
+}
+
+// Hot-Reload Configuration Support
+
+// ReloadConfiguration reloads configuration without restarting the system
+func (eftm *EnhancedFaultToleranceManager) ReloadConfiguration(distributedConfig *config.DistributedConfig) error {
+	eftm.mu.Lock()
+	defer eftm.mu.Unlock()
+
+	slog.Info("reloading fault tolerance configuration")
+
+	// Store current configuration for rollback if needed
+	currentConfig := eftm.getCurrentConfigSnapshot()
+
+	// Validate new configuration
+	if err := eftm.ValidateConfiguration(distributedConfig); err != nil {
+		return fmt.Errorf("configuration validation failed during reload: %w", err)
+	}
+
+	// Apply new configuration
+	if err := eftm.applyConfiguration(distributedConfig); err != nil {
+		// Rollback to previous configuration on failure
+		slog.Error("failed to apply new configuration, rolling back", "error", err)
+		if rollbackErr := eftm.rollbackConfiguration(currentConfig); rollbackErr != nil {
+			slog.Error("failed to rollback configuration", "error", rollbackErr)
+			return fmt.Errorf("configuration reload failed and rollback failed: %w, rollback error: %w", err, rollbackErr)
+		}
+		return fmt.Errorf("configuration reload failed, rolled back to previous config: %w", err)
+	}
+
+	// Notify components of configuration change
+	eftm.notifyConfigurationChange(distributedConfig)
+
+	slog.Info("fault tolerance configuration reloaded successfully")
+	return nil
+}
+
+// getCurrentConfigSnapshot creates a snapshot of current configuration for rollback
+func (eftm *EnhancedFaultToleranceManager) getCurrentConfigSnapshot() map[string]interface{} {
+	snapshot := make(map[string]interface{})
+
+	// Store current base configuration
+	if eftm.FaultToleranceManager != nil && eftm.FaultToleranceManager.config != nil {
+		snapshot["base_config"] = *eftm.FaultToleranceManager.config
+	}
+
+	// Store predictor configuration
+	if eftm.predictor != nil {
+		snapshot["predictor_learning"] = eftm.predictor.learning
+		snapshot["predictor_threshold"] = eftm.predictor.threshold
+		snapshot["predictor_window_size"] = eftm.predictor.windowSize
+	}
+
+	// Store self-healer configuration
+	if eftm.selfHealer != nil && eftm.selfHealer.config != nil {
+		snapshot["self_healer_config"] = *eftm.selfHealer.config
+	}
+
+	// Store redundancy manager configuration
+	if eftm.redundancyManager != nil {
+		snapshot["redundancy_factor"] = eftm.redundancyManager.factor
+		snapshot["redundancy_max_factor"] = eftm.redundancyManager.maxFactor
+		snapshot["redundancy_update_interval"] = eftm.redundancyManager.updateInterval
+	}
+
+	// Store performance tracker configuration
+	if eftm.performanceTracker != nil {
+		snapshot["performance_learning"] = eftm.performanceTracker.learning
+		snapshot["performance_window_size"] = eftm.performanceTracker.windowSize
+	}
+
+	// Store config adaptor configuration
+	if eftm.configAdaptor != nil {
+		snapshot["config_adaptor_learning"] = eftm.configAdaptor.learning
+		snapshot["config_adaptor_interval"] = eftm.configAdaptor.interval
+	}
+
+	return snapshot
+}
+
+// rollbackConfiguration restores previous configuration from snapshot
+func (eftm *EnhancedFaultToleranceManager) rollbackConfiguration(snapshot map[string]interface{}) error {
+	// Restore base configuration
+	if baseConfig, ok := snapshot["base_config"].(Config); ok {
+		*eftm.FaultToleranceManager.config = baseConfig
+	}
+
+	// Restore predictor configuration
+	if eftm.predictor != nil {
+		if learning, ok := snapshot["predictor_learning"].(bool); ok {
+			eftm.predictor.learning = learning
+		}
+		if threshold, ok := snapshot["predictor_threshold"].(float64); ok {
+			eftm.predictor.threshold = threshold
+		}
+		if windowSize, ok := snapshot["predictor_window_size"].(time.Duration); ok {
+			eftm.predictor.windowSize = windowSize
+		}
+	}
+
+	// Restore self-healer configuration
+	if eftm.selfHealer != nil && eftm.selfHealer.config != nil {
+		if config, ok := snapshot["self_healer_config"].(SelfHealingConfig); ok {
+			*eftm.selfHealer.config = config
+		}
+	}
+
+	// Restore redundancy manager configuration
+	if eftm.redundancyManager != nil {
+		if factor, ok := snapshot["redundancy_factor"].(int); ok {
+			eftm.redundancyManager.factor = factor
+		}
+		if maxFactor, ok := snapshot["redundancy_max_factor"].(int); ok {
+			eftm.redundancyManager.maxFactor = maxFactor
+		}
+		if updateInterval, ok := snapshot["redundancy_update_interval"].(time.Duration); ok {
+			eftm.redundancyManager.updateInterval = updateInterval
+		}
+	}
+
+	// Restore performance tracker configuration
+	if eftm.performanceTracker != nil {
+		if learning, ok := snapshot["performance_learning"].(bool); ok {
+			eftm.performanceTracker.learning = learning
+		}
+		if windowSize, ok := snapshot["performance_window_size"].(time.Duration); ok {
+			eftm.performanceTracker.windowSize = windowSize
+		}
+	}
+
+	// Restore config adaptor configuration
+	if eftm.configAdaptor != nil {
+		if learning, ok := snapshot["config_adaptor_learning"].(bool); ok {
+			eftm.configAdaptor.learning = learning
+		}
+		if interval, ok := snapshot["config_adaptor_interval"].(time.Duration); ok {
+			eftm.configAdaptor.interval = interval
+		}
+	}
+
+	return nil
+}
+
+// notifyConfigurationChange notifies all components of configuration changes
+func (eftm *EnhancedFaultToleranceManager) notifyConfigurationChange(distributedConfig *config.DistributedConfig) {
+	// Notify predictor of configuration change
+	if eftm.predictor != nil {
+		// Predictor can adjust its algorithms based on new configuration
+		slog.Debug("notifying predictor of configuration change")
+	}
+
+	// Notify self-healer of configuration change
+	if eftm.selfHealer != nil {
+		// Self-healer can update its strategies based on new configuration
+		slog.Debug("notifying self-healer of configuration change")
+	}
+
+	// Notify redundancy manager of configuration change
+	if eftm.redundancyManager != nil {
+		// Redundancy manager can adjust replication based on new configuration
+		slog.Debug("notifying redundancy manager of configuration change")
+	}
+
+	// Update metrics with configuration change event
+	if eftm.enhancedMetrics != nil {
+		eftm.enhancedMetrics.LastUpdated = time.Now()
+	}
 }

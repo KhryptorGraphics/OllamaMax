@@ -62,6 +62,59 @@ inference:
     retry_attempts: 3
     retry_delay: "1s"
 
+    # Basic fault tolerance settings
+    health_check_interval: "30s"
+    recovery_timeout: "5m"
+    circuit_breaker_enabled: true
+    checkpoint_interval: "30s"
+    max_retries: 3
+    retry_backoff: "5s"
+    replication_factor: 2
+
+    # Enhanced predictive detection
+    predictive_detection:
+      enabled: true
+      confidence_threshold: 0.8
+      prediction_interval: "30s"
+      window_size: "30s"
+      threshold: 0.8
+      enable_ml_detection: false
+      enable_statistical: true
+      enable_pattern_recognition: true
+
+    # Self-healing configuration
+    self_healing:
+      enabled: true
+      healing_threshold: 0.7
+      healing_interval: "60s"
+      monitoring_interval: "30s"
+      learning_interval: "60s"
+      service_restart: true
+      resource_reallocation: true
+      load_redistribution: true
+      enable_learning: true
+      enable_predictive: true
+      enable_proactive: true
+      enable_failover: true
+      enable_scaling: true
+
+    # Redundancy management
+    redundancy:
+      enabled: true
+      default_factor: 2
+      max_factor: 5
+      update_interval: "5m"
+
+    # Performance tracking
+    performance_tracking:
+      enabled: true
+      window_size: "60s"
+
+    # Configuration adaptation
+    config_adaptation:
+      enabled: true
+      interval: "5m"
+
 # Scheduler Configuration
 scheduler:
   algorithm: "priority"

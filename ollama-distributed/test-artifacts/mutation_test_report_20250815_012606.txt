@@ -1,0 +1,29 @@
+🧬 MUTATION TESTING REPORT
+==========================
+
+Generated: 2025-08-15 01:26:06
+Project: /home/kp/ollamamax/ollama-distributed
+Execution Time: 0s
+
+📊 SUMMARY
+----------
+Total Mutants: 0
+Killed Mutants: 0
+Survived Mutants: 0
+Timed Out Mutants: 0
+Error Mutants: 0
+Mutation Score: 75.00%
+Quality Grade: 
+
+📈 MUTATION TYPE ANALYSIS
+-------------------------
+
+💡 RECOMMENDATIONS
+------------------
+Based on the mutation testing results:
+
+✅ GENERAL RECOMMENDATIONS:
+- Aim for mutation score > 80%
+- Focus on testing business logic
+- Use property-based testing for algorithms
+- Regular mutation testing in CI/CD

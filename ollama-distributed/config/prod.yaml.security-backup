@@ -1,0 +1,202 @@
+# Production Environment Configuration
+# Optimized for high-availability, security, and performance
+
+node:
+  id: ""
+  name: "ollama-prod-node"
+  region: "us-west-2"
+  zone: "us-west-2a"
+  environment: "production"
+  tags:
+    purpose: "production"
+    tier: "production"
+    team: "platform"
+    criticality: "high"
+
+api:
+  listen: "0.0.0.0:11434"
+  timeout: 60s # Longer timeout for production workloads
+  max_body_size: 134217728 # 128MB for larger models
+  tls:
+    enabled: true
+    cert_file: "/etc/tls/prod/server.crt"
+    key_file: "/etc/tls/prod/server.key"
+    ca_file: "/etc/tls/prod/ca.crt"
+    min_version: "1.3" # TLS 1.3 for production
+    cipher_suites:
+      - "TLS_AES_256_GCM_SHA384"
+      - "TLS_CHACHA20_POLY1305_SHA256"
+      - "TLS_AES_128_GCM_SHA256"
+  cors:
+    enabled: true
+    allowed_origins:
+      - "https://ollamamax.com"
+      - "https://api.ollamamax.com"
+      - "https://ui.ollamamax.com"
+    allowed_methods:
+      - "GET"
+      - "POST"
+      - "PUT"
+      - "DELETE"
+      - "OPTIONS"
+    allowed_headers:
+      - "Content-Type"
+      - "Authorization"
+      - "X-Requested-With"
+      - "X-API-Version"
+      - "X-Request-ID"
+    allow_credentials: true
+    max_age: 86400 # 24 hours
+  rate_limit:
+    enabled: true
+    rps: 1000 # Production rate limits
+    burst: 2000
+    window: 1m
+
+p2p:
+  listen: "/ip4/0.0.0.0/tcp/4001"
+  bootstrap:
+    - "/dns4/bootstrap-1.ollamamax.com/tcp/4001/p2p/QmProdBootstrap1"
+    - "/dns4/bootstrap-2.ollamamax.com/tcp/4001/p2p/QmProdBootstrap2"
+    - "/dns4/bootstrap-3.ollamamax.com/tcp/4001/p2p/QmProdBootstrap3"
+  enable_dht: true
+  enable_pubsub: true
+  conn_mgr_low: 200
+  conn_mgr_high: 500
+  conn_mgr_grace: "60s"
+  dial_timeout: 30s
+  max_streams: 1000
+
+consensus:
+  node_id: ""
+  data_dir: "/var/lib/ollama/prod/consensus"
+  bind_addr: "0.0.0.0:7000"
+  advertise_addr: ""
+  bootstrap: false
+  bootstrap_expect: 5 # 5-node cluster for production HA
+  peers:
+    - "ollama-prod-1.internal:7000" 
+    - "ollama-prod-2.internal:7000"
+    - "ollama-prod-3.internal:7000"
+    - "ollama-prod-4.internal:7000"
+    - "ollama-prod-5.internal:7000"
+  log_level: "WARN" # Reduced logging for production
+  heartbeat_timeout: 1s
+  election_timeout: 1s
+  commit_timeout: 50ms
+  max_append_entries: 64
+  snapshot_interval: 120s # Less frequent snapshots for performance
+  snapshot_threshold: 8192
+
+scheduler:
+  algorithm: "weighted_round_robin"
+  load_balancing: "least_connections"
+  health_check_interval: 30s
+  max_retries: 5 # More retries for production
+  retry_delay: 2s
+  queue_size: 50000 # Large queue for production
+  worker_count: 20 # More workers for production load
+
+storage:
+  data_dir: "/var/lib/ollama/prod"
+  model_dir: "/var/lib/ollama/prod/models"
+  cache_dir: "/var/cache/ollama/prod"
+  max_disk_size: 1099511627776 # 1TB for production
+  cleanup_age: 720h # 30 days retention
+
+security:
+  tls:
+    enabled: true
+    cert_file: "/etc/tls/prod/server.crt"
+    key_file: "/etc/tls/prod/server.key"
+    ca_file: "/etc/tls/prod/ca.crt"
+    min_version: "1.3" # TLS 1.3 only
+    cipher_suites:
+      - "TLS_AES_256_GCM_SHA384"
+      - "TLS_CHACHA20_POLY1305_SHA256"
+  auth:
+    enabled: true
+    method: "jwt"
+    token_expiry: 4h # Shorter expiry for production security
+    secret_key: "${JWT_SECRET_PROD}"
+    issuer: "ollamamax-production"
+    audience: "ollamamax-api"
+  encryption:
+    algorithm: "AES-256-GCM"
+    key_size: 256
+    key_file: "/etc/keys/prod/encryption.key"
+  firewall:
+    enabled: true
+    allowed_ips:
+      - "10.0.0.0/8"     # Internal VPC
+      - "172.16.0.0/12"  # Private networks
+    blocked_ips:
+      - "0.0.0.0/1"      # Block all by default, allow specific ranges
+    rules:
+      - protocol: "tcp"
+        port: 22
+        action: "allow"
+        source: "10.0.1.0/24" # Bastion subnet only
+      - protocol: "tcp"
+        port: 11434
+        action: "allow"
+        source: "10.0.0.0/8"
+      - protocol: "tcp"
+        port: 8080
+        action: "allow"
+        source: "10.0.2.0/24" # Load balancer subnet
+  audit:
+    enabled: true
+    log_file: "/var/log/ollama/prod/audit.log"
+    format: "json"
+
+web:
+  enabled: true
+  listen: "0.0.0.0:8080"
+  static_dir: "/opt/ollama/web/static"
+  template_dir: "/opt/ollama/web/templates"
+  tls:
+    enabled: true
+    cert_file: "/etc/tls/prod/web.crt"
+    key_file: "/etc/tls/prod/web.key"
+    min_version: "1.3"
+
+metrics:
+  enabled: true
+  listen: "0.0.0.0:9090"
+  path: "/metrics"
+  namespace: "ollama_prod"
+  subsystem: "distributed"
+
+logging:
+  level: "warn" # Reduced logging for production performance
+  format: "json"
+  output: "file"
+  file: "/var/log/ollama/prod/application.log"
+  max_size: 500 # Larger log files
+  max_age: 30    # Longer retention
+  max_backups: 20
+  compress: true
+
+sync:
+  delta_dir: "/var/lib/ollama/prod/deltas"
+  cas_dir: "/var/lib/ollama/prod/cas"
+  worker_count: 10 # More workers for production
+  sync_interval: 10m # Less frequent sync for performance
+  chunk_size: 4194304 # 4MB chunks for efficiency
+  max_retries: 5
+  retry_delay: 5s
+
+replication:
+  worker_count: 10
+  default_min_replicas: 3 # High replication for production
+  default_max_replicas: 5
+  default_replication_factor: 3
+  default_sync_interval: 15m
+  policy_enforcement_interval: 60s
+  health_check_interval: 30s
+  health_check_timeout: 15s
+
+distributed:
+  cas_dir: "/var/lib/ollama/prod/cas"
+  delta_dir: "/var/lib/ollama/prod/deltas"

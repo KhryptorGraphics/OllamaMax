@@ -1,0 +1,215 @@
+# Alertmanager configuration for OllamaMax fault tolerance monitoring
+
+global:
+  # SMTP configuration for email alerts
+  smtp_smarthost: 'smtp.company.com:587'
+  smtp_from: 'ollama-alerts@company.com'
+  smtp_auth_username: 'ollama-alerts@company.com'
+  smtp_auth_password: 'smtp-password'
+  smtp_require_tls: true
+
+  # Slack configuration
+  slack_api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+
+  # PagerDuty configuration
+  pagerduty_url: 'https://events.pagerduty.com/v2/enqueue'
+
+# Templates for alert notifications
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# Routing configuration
+route:
+  group_by: ['alertname', 'cluster', 'service']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 1h
+  receiver: 'default'
+  
+  routes:
+    # Critical alerts go to PagerDuty and Slack
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+      group_wait: 5s
+      repeat_interval: 30m
+      
+    # Warning alerts go to Slack only
+    - match:
+        severity: warning
+      receiver: 'warning-alerts'
+      group_wait: 30s
+      repeat_interval: 2h
+      
+    # Info alerts go to email
+    - match:
+        severity: info
+      receiver: 'info-alerts'
+      group_wait: 5m
+      repeat_interval: 24h
+      
+    # Fault tolerance specific alerts
+    - match:
+        component: fault-tolerance
+      receiver: 'fault-tolerance-team'
+      group_wait: 10s
+      repeat_interval: 1h
+      
+    # Configuration alerts
+    - match:
+        component: configuration
+      receiver: 'devops-team'
+      group_wait: 30s
+      repeat_interval: 4h
+
+# Alert receivers
+receivers:
+  # Default receiver
+  - name: 'default'
+    email_configs:
+      - to: 'ollama-team@company.com'
+        subject: 'OllamaMax Alert: {{ .GroupLabels.alertname }}'
+        body: |
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Severity: {{ .Labels.severity }}
+          Component: {{ .Labels.component }}
+          Runbook: {{ .Annotations.runbook_url }}
+          {{ end }}
+
+  # Critical alerts - PagerDuty + Slack
+  - name: 'critical-alerts'
+    pagerduty_configs:
+      - routing_key: 'YOUR_PAGERDUTY_INTEGRATION_KEY'
+        description: 'OllamaMax Critical Alert: {{ .GroupLabels.alertname }}'
+        details:
+          summary: '{{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
+          component: '{{ .GroupLabels.component }}'
+          severity: '{{ .GroupLabels.severity }}'
+          cluster: '{{ .GroupLabels.cluster }}'
+        links:
+          - href: '{{ range .Alerts }}{{ .Annotations.runbook_url }}{{ end }}'
+            text: 'Runbook'
+    
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/CRITICAL/WEBHOOK'
+        channel: '#ollama-critical'
+        title: 'CRITICAL: OllamaMax Alert'
+        text: |
+          {{ range .Alerts }}
+          *Alert:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          *Component:* {{ .Labels.component }}
+          *Severity:* {{ .Labels.severity }}
+          *Runbook:* {{ .Annotations.runbook_url }}
+          {{ end }}
+        color: 'danger'
+        send_resolved: true
+
+  # Warning alerts - Slack only
+  - name: 'warning-alerts'
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/WARNING/WEBHOOK'
+        channel: '#ollama-warnings'
+        title: 'WARNING: OllamaMax Alert'
+        text: |
+          {{ range .Alerts }}
+          *Alert:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          *Component:* {{ .Labels.component }}
+          {{ end }}
+        color: 'warning'
+        send_resolved: true
+
+  # Info alerts - Email only
+  - name: 'info-alerts'
+    email_configs:
+      - to: 'ollama-info@company.com'
+        subject: 'OllamaMax Info: {{ .GroupLabels.alertname }}'
+        body: |
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Component: {{ .Labels.component }}
+          {{ end }}
+
+  # Fault tolerance team alerts
+  - name: 'fault-tolerance-team'
+    email_configs:
+      - to: 'fault-tolerance-team@company.com'
+        subject: 'Fault Tolerance Alert: {{ .GroupLabels.alertname }}'
+        body: |
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Severity: {{ .Labels.severity }}
+          Runbook: {{ .Annotations.runbook_url }}
+          {{ end }}
+    
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/FT/WEBHOOK'
+        channel: '#fault-tolerance'
+        title: 'Fault Tolerance Alert'
+        text: |
+          {{ range .Alerts }}
+          *Alert:* {{ .Annotations.summary }}
+          *Component:* {{ .Labels.component }}
+          *Severity:* {{ .Labels.severity }}
+          {{ end }}
+
+  # DevOps team alerts
+  - name: 'devops-team'
+    email_configs:
+      - to: 'devops-team@company.com'
+        subject: 'DevOps Alert: {{ .GroupLabels.alertname }}'
+        body: |
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Component: {{ .Labels.component }}
+          {{ end }}
+
+# Inhibition rules to prevent alert spam
+inhibit_rules:
+  # Inhibit warning alerts if critical alert is firing
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'cluster', 'service']
+
+  # Inhibit node-specific alerts if cluster-wide alert is firing
+  - source_match:
+      alertname: 'OllamaClusterCritical'
+    target_match_re:
+      alertname: 'OllamaNode.*'
+    equal: ['cluster']
+
+  # Inhibit healing alerts if fault tolerance system is down
+  - source_match:
+      alertname: 'OllamaFaultToleranceDown'
+    target_match_re:
+      alertname: 'OllamaHealing.*'
+    equal: ['cluster']
+
+# Mute specific alerts during maintenance windows
+mute_time_intervals:
+  - name: 'maintenance-window'
+    time_intervals:
+      - times:
+          - start_time: '02:00'
+            end_time: '04:00'
+        weekdays: ['sunday']
+        months: ['1:12']
+
+# Global configuration
+global_config:
+  # Resolve timeout
+  resolve_timeout: 5m
+  
+  # HTTP configuration
+  http_config:
+    idle_conn_timeout: 90s
+    response_header_timeout: 10s
+    tls_handshake_timeout: 10s

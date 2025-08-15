@@ -282,52 +282,6 @@ type UserInfo struct {
 	Roles    []string `json:"roles"`
 }
 
-// login handles user authentication
-func (s *Server) login(c *gin.Context) {
-	var req LoginRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	// TODO: Implement actual user authentication
-	// For now, accept any username/password for demo
-	if req.Username == "" || req.Password == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
-		return
-	}
-
-	// Generate token
-	roles := []string{"user"}
-	if req.Username == "admin" {
-		roles = append(roles, "admin")
-	}
-
-	token, err := s.generateToken("user-123", req.Username, roles)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
-		return
-	}
-
-	response := LoginResponse{
-		Token:     token,
-		ExpiresAt: time.Now().Add(24 * time.Hour),
-		User: UserInfo{
-			ID:       "user-123",
-			Username: req.Username,
-			Roles:    roles,
-		},
-	}
-
-	c.JSON(http.StatusOK, response)
-}
-
-// logout handles user logout
-func (s *Server) logout(c *gin.Context) {
-	// TODO: Implement token blacklisting
-	c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
-}
-
 // profile returns user profile information
 func (s *Server) profile(c *gin.Context) {
 	userID := c.GetString("user_id")

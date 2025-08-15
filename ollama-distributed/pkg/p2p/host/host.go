@@ -2,6 +2,7 @@ package host
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
 	"log"
 	"sync"
@@ -154,11 +155,24 @@ func NewP2PHost(ctx context.Context, config *config.NodeConfig) (*P2PHost, error
 		natOptions = append(natOptions, libp2p.EnableHolePunching())
 	}
 	if config.EnableAutoRelay {
-		staticRelays, err := config.ParseStaticRelays()
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse static relays: %w", err)
+		// Parse StaticRelays []string into []peer.AddrInfo
+		var staticInfos []peer.AddrInfo
+		for _, addr := range config.StaticRelays {
+			maddr, err := multiaddr.NewMultiaddr(addr)
+			if err != nil {
+				log.Printf("Invalid static relay address %s: %v", addr, err)
+				continue
+			}
+			info, err := peer.AddrInfoFromP2pAddr(maddr)
+			if err != nil {
+				log.Printf("Failed to parse static relay %s: %v", addr, err)
+				continue
+			}
+			staticInfos = append(staticInfos, *info)
 		}
-		natOptions = append(natOptions, libp2p.EnableAutoRelayWithStaticRelays(staticRelays))
+		if len(staticInfos) > 0 {
+			natOptions = append(natOptions, libp2p.EnableAutoRelayWithStaticRelays(staticInfos))
+		}
 	}
 
 	// Create NAT traversal manager
@@ -698,17 +712,13 @@ func (h *P2PHost) RecordBandwidthUsage(peerID peer.ID, protocol string, bytesSen
 
 // loadOrGenerateKey loads existing key or generates new one
 func loadOrGenerateKey(config *config.NodeConfig) (crypto.PrivKey, error) {
-	// Try to load existing key
-	if config.PrivateKey != "" {
-		return config.GetPrivateKey()
-	}
-
-	// Generate new key
-	if err := config.GenerateKey(); err != nil {
+	// Try to load existing key material from config if present in future
+	// For now, always generate ephemeral key to avoid config dependency
+	priv, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	if err != nil {
 		return nil, fmt.Errorf("failed to generate key: %w", err)
 	}
-
-	return config.GetPrivateKey()
+	return priv, nil
 }
 
 // GetPeerCount returns number of connected peers

@@ -413,13 +413,13 @@ func TestSelectConnectionCandidates(t *testing.T) {
 func BenchmarkOptimizedBootstrapDiscovery_SelectOptimalPeers(b *testing.B) {
 	ctx := context.Background()
 
-	host := createTestHost(b, ctx)
+	host := createTestHost(&testing.T{}, ctx)
 	defer host.Close()
 
 	// Create many peers
 	peers := make([]peer.AddrInfo, 100)
 	for i := range peers {
-		peers[i] = peer.AddrInfo{ID: createTestPeerID(b)}
+		peers[i] = peer.AddrInfo{ID: createTestPeerID(&testing.T{})}
 	}
 
 	discovery := NewOptimizedBootstrapDiscovery(host, peers, 10, 50)
@@ -442,11 +442,11 @@ func BenchmarkOptimizedBootstrapDiscovery_SelectOptimalPeers(b *testing.B) {
 func BenchmarkOptimizedBootstrapDiscovery_UpdateConnectionMetrics(b *testing.B) {
 	ctx := context.Background()
 
-	host := createTestHost(b, ctx)
+	host := createTestHost(&testing.T{}, ctx)
 	defer host.Close()
 
 	discovery := NewOptimizedBootstrapDiscovery(host, nil, 1, 3)
-	peer := peer.AddrInfo{ID: createTestPeerID(b)}
+	peer := peer.AddrInfo{ID: createTestPeerID(&testing.T{})}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {

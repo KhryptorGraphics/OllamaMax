@@ -1,0 +1,20 @@
+=== RUN   TestPhase1BasicFunctionality
+=== RUN   TestPhase1BasicFunctionality/ConfigurationSystem
+=== RUN   TestPhase1BasicFunctionality/JWTTokenGeneration
+=== RUN   TestPhase1BasicFunctionality/ConfigurationValidation
+=== RUN   TestPhase1BasicFunctionality/ConfigurationDefaults
+--- PASS: TestPhase1BasicFunctionality (0.00s)
+    --- PASS: TestPhase1BasicFunctionality/ConfigurationSystem (0.00s)
+    --- PASS: TestPhase1BasicFunctionality/JWTTokenGeneration (0.00s)
+    --- PASS: TestPhase1BasicFunctionality/ConfigurationValidation (0.00s)
+    --- PASS: TestPhase1BasicFunctionality/ConfigurationDefaults (0.00s)
+=== RUN   TestConfigurationCloning
+--- PASS: TestConfigurationCloning (0.00s)
+=== RUN   TestConfigurationMerging
+--- PASS: TestConfigurationMerging (0.00s)
+=== RUN   TestNodeCapabilities
+--- PASS: TestNodeCapabilities (0.00s)
+=== RUN   TestStaticRelaysParsing
+--- PASS: TestStaticRelaysParsing (0.00s)
+PASS
+ok  	command-line-arguments	0.017s

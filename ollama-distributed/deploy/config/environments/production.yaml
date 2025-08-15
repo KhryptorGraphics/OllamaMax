@@ -123,7 +123,7 @@ health:
       target: "redis:6379"
     - name: "storage"
       type: "http"
-      target: "http://localhost:8080/api/v1/storage/health"
+      target: "https://localhost:8443/api/v1/storage/health"
 
 # Authentication configuration
 auth:

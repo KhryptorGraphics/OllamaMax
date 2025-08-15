@@ -85,8 +85,8 @@ Ollama Distributed extends the original Ollama project with:
 
 ```bash
 # Clone the repository
-git clone https://github.com/ollama/ollama-distributed.git
-cd ollama-distributed
+git clone https://github.com/KhryptorGraphics/OllamaMax.git
+cd OllamaMax/ollama-distributed
 
 # Build the distributed node
 go build -o bin/ollama-distributed cmd/node/main.go

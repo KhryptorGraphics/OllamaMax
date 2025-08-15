@@ -1,0 +1,110 @@
+# Development Configuration for OllamaMax Distributed
+# This configuration is optimized for local development and testing
+
+node:
+  id: "dev-node-1"
+  name: "Development Node"
+  region: "local"
+  zone: "dev"
+  environment: "development"
+  tags:
+    purpose: "development"
+    owner: "developer"
+
+api:
+  listen: "0.0.0.0:8080"
+  timeout: "30s"
+  max_body_size: 104857600  # 100MB
+  tls:
+    enabled: false
+  cors:
+    enabled: true
+    allowed_origins: ["*"]
+    allowed_methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+    allowed_headers: ["*"]
+  rate_limit:
+    enabled: false  # Disabled for development
+
+p2p:
+  enabled: true
+  listen: "0.0.0.0:9000"
+  bootstrap_peers: []  # Empty for standalone development
+  discovery:
+    enabled: true
+    mdns_enabled: true
+    dht_enabled: false  # Disabled for local development
+  nat:
+    enabled: false  # Not needed for local development
+
+consensus:
+  enabled: true
+  data_dir: "./data/consensus"
+  election_timeout: "1s"
+  heartbeat_timeout: "500ms"
+  snapshot_interval: 1000
+  snapshot_threshold: 10000
+
+scheduler:
+  enabled: true
+  algorithm: "round_robin"
+  max_concurrent_tasks: 10
+  task_timeout: "5m"
+  health_check_interval: "10s"
+
+storage:
+  data_dir: "./data"
+  model_dir: "./data/models"
+  cache_dir: "./data/cache"
+  max_cache_size: 1073741824  # 1GB
+
+security:
+  auth:
+    enabled: false  # Disabled for development
+    method: "jwt"
+    secret_key: "dev-secret-key-change-in-production"
+    token_expiry: "24h"
+  tls:
+    enabled: false
+  encryption:
+    enabled: false
+
+web:
+  enabled: true
+  listen: "0.0.0.0:8081"
+  static_dir: "./web/static"
+  template_dir: "./web/templates"
+
+metrics:
+  enabled: true
+  listen: "0.0.0.0:9090"
+  path: "/metrics"
+  interval: "15s"
+
+logging:
+  level: "debug"
+  format: "text"
+  output: "console"
+  file:
+    enabled: false
+    path: ""
+
+sync:
+  enabled: true
+  interval: "30s"
+  batch_size: 100
+  delta_dir: "./data/deltas"
+  cas_dir: "./data/cas"
+
+replication:
+  enabled: true
+  factor: 1  # Single replica for development
+  strategy: "simple"
+  health_check_interval: "30s"
+
+distributed:
+  enabled: true
+  cluster_id: "dev-cluster"
+  cas_dir: "./data/distributed/cas"
+  delta_dir: "./data/distributed/deltas"
+  sync_interval: "1m"
+  max_chunk_size: 1048576  # 1MB

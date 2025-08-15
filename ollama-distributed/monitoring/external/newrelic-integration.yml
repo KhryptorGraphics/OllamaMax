@@ -1,0 +1,274 @@
+# New Relic integration configuration for OllamaMax fault tolerance monitoring
+
+# New Relic Infrastructure Agent configuration
+newrelic-infra:
+  license_key: "${NEW_RELIC_LICENSE_KEY}"
+  display_name: "ollama-distributed-${NODE_ID}"
+  
+  # Custom attributes
+  custom_attributes:
+    service: "ollama-distributed"
+    environment: "${ENVIRONMENT}"
+    cluster: "${CLUSTER_NAME}"
+    version: "${VERSION}"
+    node_id: "${NODE_ID}"
+
+# Prometheus integration
+integrations:
+  - name: nri-prometheus
+    config:
+      # Prometheus endpoint
+      urls: ["http://localhost:9090/metrics"]
+      
+      # Scrape interval
+      scrape_duration: "30s"
+      
+      # Metric transformations
+      transformations:
+        - description: "OllamaMax fault tolerance metrics"
+          rename_attributes:
+            ollama_node_status: "ollama.node.status"
+            ollama_cluster_size: "ollama.cluster.size"
+            ollama_fault_tolerance_healing_success_rate: "ollama.fault_tolerance.healing.success_rate"
+            ollama_fault_tolerance_prediction_accuracy: "ollama.fault_tolerance.prediction.accuracy"
+            ollama_request_duration_seconds: "ollama.request.duration"
+            ollama_error_rate: "ollama.request.error_rate"
+            ollama_throughput_requests_per_second: "ollama.request.throughput"
+          
+          # Add custom attributes
+          add_attributes:
+            service: "ollama-distributed"
+            component: "fault-tolerance"
+
+# APM configuration
+apm:
+  app_name: "OllamaMax Distributed"
+  license_key: "${NEW_RELIC_LICENSE_KEY}"
+  
+  # Distributed tracing
+  distributed_tracing:
+    enabled: true
+  
+  # Custom attributes
+  attributes:
+    include:
+      - "correlation_id"
+      - "request_id"
+      - "trace_id"
+      - "node_id"
+      - "component"
+
+# Log forwarding configuration
+logging:
+  # Application logs
+  - name: "ollama-application"
+    file: "/var/log/ollama-distributed.log"
+    attributes:
+      service: "ollama-distributed"
+      component: "application"
+      logtype: "application"
+  
+  # Fault tolerance logs
+  - name: "ollama-fault-tolerance"
+    file: "/var/log/ollama-fault-tolerance.log"
+    attributes:
+      service: "ollama-distributed"
+      component: "fault-tolerance"
+      logtype: "fault-tolerance"
+
+# Alert policies
+alert_policies:
+  # Critical alerts
+  - name: "OllamaMax Critical Alerts"
+    incident_preference: "PER_POLICY"
+    conditions:
+      # Node down
+      - name: "Node Down"
+        type: "static"
+        nrql:
+          query: "SELECT average(ollama.node.status) FROM Metric WHERE service = 'ollama-distributed' FACET node_id"
+        critical_threshold:
+          value: 1
+          duration_minutes: 2
+          operator: "below"
+        
+      # Cluster size critical
+      - name: "Cluster Size Critical"
+        type: "static"
+        nrql:
+          query: "SELECT average(ollama.cluster.size) FROM Metric WHERE service = 'ollama-distributed'"
+        critical_threshold:
+          value: 2
+          duration_minutes: 1
+          operator: "below"
+      
+      # Fault tolerance failure
+      - name: "Fault Tolerance Failure"
+        type: "static"
+        nrql:
+          query: "SELECT average(ollama.fault_tolerance.healing.success_rate) FROM Metric WHERE service = 'ollama-distributed'"
+        critical_threshold:
+          value: 0.5
+          duration_minutes: 5
+          operator: "below"
+    
+    # Notification channels
+    notification_channels:
+      - type: "slack"
+        config:
+          url: "${SLACK_WEBHOOK_URL}"
+          channel: "#ollama-critical"
+      - type: "pagerduty"
+        config:
+          service_key: "${PAGERDUTY_SERVICE_KEY}"
+
+  # Warning alerts
+  - name: "OllamaMax Warning Alerts"
+    incident_preference: "PER_CONDITION"
+    conditions:
+      # High latency
+      - name: "High Request Latency"
+        type: "static"
+        nrql:
+          query: "SELECT percentile(ollama.request.duration, 95) FROM Metric WHERE service = 'ollama-distributed'"
+        warning_threshold:
+          value: 5
+          duration_minutes: 5
+          operator: "above"
+      
+      # High error rate
+      - name: "High Error Rate"
+        type: "static"
+        nrql:
+          query: "SELECT average(ollama.request.error_rate) FROM Metric WHERE service = 'ollama-distributed'"
+        warning_threshold:
+          value: 0.1
+          duration_minutes: 3
+          operator: "above"
+      
+      # Low prediction accuracy
+      - name: "Low Prediction Accuracy"
+        type: "static"
+        nrql:
+          query: "SELECT average(ollama.fault_tolerance.prediction.accuracy) FROM Metric WHERE service = 'ollama-distributed'"
+        warning_threshold:
+          value: 0.7
+          duration_minutes: 10
+          operator: "below"
+    
+    # Notification channels
+    notification_channels:
+      - type: "slack"
+        config:
+          url: "${SLACK_WEBHOOK_URL}"
+          channel: "#ollama-warnings"
+
+# Dashboards
+dashboards:
+  - name: "OllamaMax Fault Tolerance Dashboard"
+    description: "Comprehensive view of OllamaMax fault tolerance system"
+    pages:
+      - name: "Overview"
+        widgets:
+          # Cluster status
+          - title: "Cluster Status"
+            visualization: "line"
+            nrql: "SELECT average(ollama.cluster.size) FROM Metric WHERE service = 'ollama-distributed' TIMESERIES"
+            
+          - title: "Node Status"
+            visualization: "table"
+            nrql: "SELECT latest(ollama.node.status) FROM Metric WHERE service = 'ollama-distributed' FACET node_id"
+          
+          # Fault tolerance metrics
+          - title: "Healing Success Rate"
+            visualization: "line"
+            nrql: "SELECT average(ollama.fault_tolerance.healing.success_rate) * 100 FROM Metric WHERE service = 'ollama-distributed' TIMESERIES"
+          
+          - title: "Prediction Accuracy"
+            visualization: "line"
+            nrql: "SELECT average(ollama.fault_tolerance.prediction.accuracy) * 100 FROM Metric WHERE service = 'ollama-distributed' TIMESERIES"
+          
+          # Performance metrics
+          - title: "Request Latency Percentiles"
+            visualization: "line"
+            nrql: |
+              SELECT 
+                percentile(ollama.request.duration, 50) as '50th',
+                percentile(ollama.request.duration, 95) as '95th',
+                percentile(ollama.request.duration, 99) as '99th'
+              FROM Metric WHERE service = 'ollama-distributed' TIMESERIES
+          
+          - title: "Throughput and Error Rate"
+            visualization: "line"
+            nrql: |
+              SELECT 
+                average(ollama.request.throughput) as 'Throughput',
+                average(ollama.request.error_rate) * 100 as 'Error Rate %'
+              FROM Metric WHERE service = 'ollama-distributed' TIMESERIES
+
+      - name: "Fault Tolerance Details"
+        widgets:
+          # Healing attempts
+          - title: "Healing Attempts by Strategy"
+            visualization: "line"
+            nrql: "SELECT rate(sum(ollama.fault_tolerance.healing.attempts), 1 minute) FROM Metric WHERE service = 'ollama-distributed' FACET strategy TIMESERIES"
+          
+          # Recovery times
+          - title: "Recovery Time Distribution"
+            visualization: "histogram"
+            nrql: "SELECT histogram(ollama.fault_tolerance.recovery.time) FROM Metric WHERE service = 'ollama-distributed'"
+          
+          # Node failures
+          - title: "Node Failures by Type"
+            visualization: "pie"
+            nrql: "SELECT count(*) FROM Metric WHERE service = 'ollama-distributed' AND metricName = 'ollama.fault_tolerance.node.failures' FACET failure_type"
+
+# Synthetic monitoring
+synthetics:
+  # Health check monitor
+  - name: "OllamaMax Health Check"
+    type: "simple_browser"
+    frequency: 1  # minutes
+    locations: ["AWS_US_EAST_1", "AWS_US_WEST_2"]
+    uri: "http://${OLLAMA_ENDPOINT}/api/v1/health"
+    validation_string: "healthy"
+    
+    # Alert conditions
+    alert_conditions:
+      - name: "Health Check Failed"
+        threshold: 1
+        duration: 2
+
+  # API endpoint monitor
+  - name: "OllamaMax API Monitor"
+    type: "scripted_api"
+    frequency: 5  # minutes
+    locations: ["AWS_US_EAST_1"]
+    script: |
+      // Test basic API functionality
+      var response = $http.get("http://${OLLAMA_ENDPOINT}/api/v1/cluster/status");
+      assert.equal(response.statusCode, 200);
+      assert.ok(response.body.cluster_size > 0);
+
+# Workloads (service maps)
+workloads:
+  - name: "OllamaMax Distributed System"
+    entity_guids:
+      - "${OLLAMA_APPLICATION_GUID}"
+      - "${OLLAMA_INFRASTRUCTURE_GUID}"
+    
+    # SLI definitions
+    slis:
+      - name: "Availability"
+        query: |
+          SELECT 
+            filter(count(*), WHERE response.status != 'error') / count(*) * 100 
+          FROM Transaction 
+          WHERE appName = 'OllamaMax Distributed'
+        
+      - name: "Performance"
+        query: |
+          SELECT 
+            filter(count(*), WHERE duration < 5) / count(*) * 100 
+          FROM Transaction 
+          WHERE appName = 'OllamaMax Distributed'

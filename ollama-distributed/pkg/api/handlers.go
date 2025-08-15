@@ -614,3 +614,342 @@ func (s *Server) updateConfig(c *gin.Context) {
 		"config":  config,
 	})
 }
+
+// Authentication handlers for frontend integration
+
+// login handles user authentication
+func (s *Server) login(c *gin.Context) {
+	var req struct {
+		Email    string `json:"email" binding:"required"`
+		Password string `json:"password" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// TODO: Implement actual authentication with database
+	// For now, create a mock user and JWT token
+	if req.Email == "admin@ollamamax.com" && req.Password == "admin123" {
+		token, err := security.GenerateJWT(req.Email, "admin")
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+			return
+		}
+
+		user := gin.H{
+			"id":        "1",
+			"email":     req.Email,
+			"firstName": "Admin",
+			"lastName":  "User",
+			"role":      "admin",
+			"avatar":    "",
+			"createdAt": time.Now(),
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"user":  user,
+			"token": token,
+		})
+		return
+	}
+
+	c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+}
+
+// register handles user registration
+func (s *Server) register(c *gin.Context) {
+	var req struct {
+		Email     string `json:"email" binding:"required,email"`
+		Password  string `json:"password" binding:"required,min=6"`
+		FirstName string `json:"firstName" binding:"required"`
+		LastName  string `json:"lastName" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// TODO: Implement actual user registration with database
+	// For now, create a mock user
+	user := gin.H{
+		"id":        "2",
+		"email":     req.Email,
+		"firstName": req.FirstName,
+		"lastName":  req.LastName,
+		"role":      "user",
+		"avatar":    "",
+		"createdAt": time.Now(),
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "User registered successfully",
+		"user":    user,
+	})
+}
+
+// refreshToken handles JWT token refresh
+func (s *Server) refreshToken(c *gin.Context) {
+	var req struct {
+		RefreshToken string `json:"refresh_token" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// TODO: Implement actual token refresh logic
+	// For now, generate a new token
+	newToken, err := security.GenerateJWT("admin@ollamamax.com", "admin")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"token": newToken,
+	})
+}
+
+// logout handles user logout
+func (s *Server) logout(c *gin.Context) {
+	// TODO: Implement token blacklisting
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Logged out successfully",
+	})
+}
+
+// getUserProfile returns the current user's profile
+func (s *Server) getUserProfile(c *gin.Context) {
+	// TODO: Get user from JWT token
+	user := gin.H{
+		"id":        "1",
+		"email":     "admin@ollamamax.com",
+		"firstName": "Admin",
+		"lastName":  "User",
+		"role":      "admin",
+		"avatar":    "",
+		"createdAt": time.Now().AddDate(0, -1, 0), // 1 month ago
+		"lastLogin": time.Now().Add(-time.Hour),   // 1 hour ago
+	}
+
+	c.JSON(http.StatusOK, user)
+}
+
+// updateUserProfile updates the current user's profile
+func (s *Server) updateUserProfile(c *gin.Context) {
+	var req struct {
+		FirstName string `json:"firstName"`
+		LastName  string `json:"lastName"`
+		Avatar    string `json:"avatar"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// TODO: Update user in database
+	user := gin.H{
+		"id":        "1",
+		"email":     "admin@ollamamax.com",
+		"firstName": req.FirstName,
+		"lastName":  req.LastName,
+		"role":      "admin",
+		"avatar":    req.Avatar,
+		"updatedAt": time.Now(),
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Profile updated successfully",
+		"user":    user,
+	})
+}
+
+// Dashboard handlers for real-time data
+
+// getDashboardData returns comprehensive dashboard data
+func (s *Server) getDashboardData(c *gin.Context) {
+	// Get cluster status
+	clusterSize := 0
+	if s.scheduler != nil {
+		clusterSize = len(s.scheduler.GetAvailableNodes())
+	}
+
+	isLeader := false
+	if s.consensus != nil {
+		isLeader = s.consensus.IsLeader()
+	}
+
+	// Mock data for demonstration - replace with actual metrics
+	data := gin.H{
+		"clusterStatus": gin.H{
+			"healthy":   true,
+			"size":      clusterSize,
+			"leader":    isLeader,
+			"consensus": s.consensus != nil,
+		},
+		"nodeCount":       clusterSize,
+		"activeModels":    3, // TODO: Get from model manager
+		"totalRequests":   1250,
+		"avgResponseTime": 245.5,
+		"errorRate":       0.02,
+		"uptime":          time.Since(time.Now().Add(-24 * time.Hour)).Seconds(),
+		"nodes": []gin.H{
+			{
+				"id":       "node-1",
+				"status":   "healthy",
+				"cpu":      45.2,
+				"memory":   67.8,
+				"gpu":      23.1,
+				"requests": 423,
+			},
+			{
+				"id":       "node-2",
+				"status":   "healthy",
+				"cpu":      52.1,
+				"memory":   71.3,
+				"gpu":      34.7,
+				"requests": 387,
+			},
+			{
+				"id":       "node-3",
+				"status":   "healthy",
+				"cpu":      38.9,
+				"memory":   59.2,
+				"gpu":      18.5,
+				"requests": 440,
+			},
+		},
+		"recentActivity": []gin.H{
+			{
+				"timestamp": time.Now().Add(-5 * time.Minute),
+				"type":      "inference",
+				"message":   "Model llama2-7b completed inference request",
+				"node":      "node-1",
+			},
+			{
+				"timestamp": time.Now().Add(-8 * time.Minute),
+				"type":      "cluster",
+				"message":   "Node node-3 joined cluster",
+				"node":      "node-3",
+			},
+			{
+				"timestamp": time.Now().Add(-12 * time.Minute),
+				"type":      "model",
+				"message":   "Model codellama-13b loaded successfully",
+				"node":      "node-2",
+			},
+		},
+		"timestamp": time.Now().UTC(),
+	}
+
+	c.JSON(http.StatusOK, data)
+}
+
+// getDashboardMetrics returns performance metrics for charts
+func (s *Server) getDashboardMetrics(c *gin.Context) {
+	// Get time range from query parameters
+	timeRange := c.DefaultQuery("range", "1h")
+
+	// Mock metrics data - replace with actual metrics collection
+	metrics := gin.H{
+		"timeRange": timeRange,
+		"requestsPerSecond": []gin.H{
+			{"timestamp": time.Now().Add(-60 * time.Minute), "value": 12.3},
+			{"timestamp": time.Now().Add(-50 * time.Minute), "value": 15.7},
+			{"timestamp": time.Now().Add(-40 * time.Minute), "value": 18.2},
+			{"timestamp": time.Now().Add(-30 * time.Minute), "value": 14.9},
+			{"timestamp": time.Now().Add(-20 * time.Minute), "value": 21.1},
+			{"timestamp": time.Now().Add(-10 * time.Minute), "value": 19.8},
+			{"timestamp": time.Now(), "value": 16.5},
+		},
+		"responseTime": []gin.H{
+			{"timestamp": time.Now().Add(-60 * time.Minute), "value": 234.5},
+			{"timestamp": time.Now().Add(-50 * time.Minute), "value": 198.7},
+			{"timestamp": time.Now().Add(-40 * time.Minute), "value": 267.3},
+			{"timestamp": time.Now().Add(-30 * time.Minute), "value": 245.1},
+			{"timestamp": time.Now().Add(-20 * time.Minute), "value": 189.9},
+			{"timestamp": time.Now().Add(-10 * time.Minute), "value": 223.4},
+			{"timestamp": time.Now(), "value": 245.5},
+		},
+		"errorRate": []gin.H{
+			{"timestamp": time.Now().Add(-60 * time.Minute), "value": 0.01},
+			{"timestamp": time.Now().Add(-50 * time.Minute), "value": 0.02},
+			{"timestamp": time.Now().Add(-40 * time.Minute), "value": 0.015},
+			{"timestamp": time.Now().Add(-30 * time.Minute), "value": 0.025},
+			{"timestamp": time.Now().Add(-20 * time.Minute), "value": 0.018},
+			{"timestamp": time.Now().Add(-10 * time.Minute), "value": 0.012},
+			{"timestamp": time.Now(), "value": 0.02},
+		},
+		"resourceUsage": gin.H{
+			"cpu": []gin.H{
+				{"node": "node-1", "value": 45.2},
+				{"node": "node-2", "value": 52.1},
+				{"node": "node-3", "value": 38.9},
+			},
+			"memory": []gin.H{
+				{"node": "node-1", "value": 67.8},
+				{"node": "node-2", "value": 71.3},
+				{"node": "node-3", "value": 59.2},
+			},
+			"gpu": []gin.H{
+				{"node": "node-1", "value": 23.1},
+				{"node": "node-2", "value": 34.7},
+				{"node": "node-3", "value": 18.5},
+			},
+		},
+	}
+
+	c.JSON(http.StatusOK, metrics)
+}
+
+// getNotifications returns user notifications
+func (s *Server) getNotifications(c *gin.Context) {
+	// Mock notifications - replace with actual notification system
+	notifications := []gin.H{
+		{
+			"id":        "1",
+			"type":      "info",
+			"title":     "Cluster Status Update",
+			"message":   "All nodes are healthy and operational",
+			"timestamp": time.Now().Add(-10 * time.Minute),
+			"read":      false,
+		},
+		{
+			"id":        "2",
+			"type":      "warning",
+			"title":     "High Memory Usage",
+			"message":   "Node-2 memory usage is at 85%",
+			"timestamp": time.Now().Add(-30 * time.Minute),
+			"read":      false,
+		},
+		{
+			"id":        "3",
+			"type":      "success",
+			"title":     "Model Loaded",
+			"message":   "CodeLlama-13B model loaded successfully",
+			"timestamp": time.Now().Add(-1 * time.Hour),
+			"read":      true,
+		},
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"notifications": notifications,
+		"unreadCount":   2,
+	})
+}
+
+// markNotificationRead marks a notification as read
+func (s *Server) markNotificationRead(c *gin.Context) {
+	notificationID := c.Param("id")
+
+	// TODO: Update notification in database
+	c.JSON(http.StatusOK, gin.H{
+		"message":        "Notification marked as read",
+		"notificationId": notificationID,
+	})
+}

@@ -1,0 +1,230 @@
+# DataDog integration configuration for OllamaMax fault tolerance monitoring
+
+# DataDog Agent configuration
+datadog:
+  # API configuration
+  api_key: "${DATADOG_API_KEY}"
+  app_key: "${DATADOG_APP_KEY}"
+  site: "datadoghq.com"  # or datadoghq.eu for EU
+  
+  # Tags for all metrics
+  tags:
+    - "service:ollama-distributed"
+    - "environment:${ENVIRONMENT}"
+    - "cluster:${CLUSTER_NAME}"
+    - "version:${VERSION}"
+
+# Prometheus integration for DataDog
+prometheus:
+  # OpenMetrics check configuration
+  openmetrics_endpoint: "http://localhost:9090/metrics"
+  namespace: "ollama"
+  metrics:
+    # Node and cluster metrics
+    - ollama_node_status
+    - ollama_cluster_size
+    - ollama_leader_election_total
+    - ollama_consensus_latency_seconds
+    
+    # Fault tolerance metrics
+    - ollama_fault_tolerance_healing_attempts_total
+    - ollama_fault_tolerance_healing_success_rate
+    - ollama_fault_tolerance_prediction_accuracy
+    - ollama_fault_tolerance_recovery_time_seconds
+    - ollama_fault_tolerance_node_failures_total
+    
+    # Performance metrics
+    - ollama_request_duration_seconds
+    - ollama_request_total
+    - ollama_error_rate
+    - ollama_throughput_requests_per_second
+    
+    # Resource metrics
+    - ollama_cpu_usage_percent
+    - ollama_memory_usage_bytes
+    - ollama_disk_usage_bytes
+    - ollama_network_io_bytes_total
+
+# Custom DataDog checks
+checks:
+  # Health check
+  - name: "ollama_health_check"
+    init_config: {}
+    instances:
+      - url: "http://localhost:8080/api/v1/health"
+        timeout: 10
+        tags:
+          - "check_type:health"
+        
+  # Fault tolerance status check
+  - name: "ollama_fault_tolerance_check"
+    init_config: {}
+    instances:
+      - url: "http://localhost:8080/api/v1/metrics/fault-tolerance"
+        timeout: 10
+        tags:
+          - "check_type:fault_tolerance"
+
+# Log collection configuration
+logs:
+  - type: file
+    path: "/var/log/ollama-distributed.log"
+    service: "ollama-distributed"
+    source: "go"
+    tags:
+      - "component:application"
+    
+  - type: file
+    path: "/var/log/ollama-fault-tolerance.log"
+    service: "ollama-distributed"
+    source: "go"
+    tags:
+      - "component:fault_tolerance"
+
+# APM configuration
+apm:
+  enabled: true
+  service: "ollama-distributed"
+  env: "${ENVIRONMENT}"
+  version: "${VERSION}"
+
+# Monitors (alerts) configuration
+monitors:
+  # Critical: Node down
+  - name: "OllamaMax Node Down"
+    type: "metric alert"
+    query: "avg(last_5m):avg:ollama.node_status{*} by {node_id} < 1"
+    message: |
+      OllamaMax node {{node_id.name}} is down.
+      
+      This may impact cluster availability.
+      
+      @slack-ollama-critical
+      @pagerduty-ollama
+    tags:
+      - "severity:critical"
+      - "component:cluster"
+    options:
+      thresholds:
+        critical: 1
+      notify_no_data: true
+      no_data_timeframe: 10
+
+  # Critical: Cluster size low
+  - name: "OllamaMax Cluster Size Critical"
+    type: "metric alert"
+    query: "avg(last_1m):avg:ollama.cluster_size{*} < 2"
+    message: |
+      OllamaMax cluster size is critically low: {{value}} nodes.
+      
+      Minimum of 2 nodes required for basic operation.
+      
+      @slack-ollama-critical
+      @pagerduty-ollama
+    tags:
+      - "severity:critical"
+      - "component:cluster"
+
+  # Critical: Fault tolerance failure
+  - name: "OllamaMax Fault Tolerance Failure"
+    type: "metric alert"
+    query: "avg(last_5m):avg:ollama.fault_tolerance_healing_success_rate{*} < 0.5"
+    message: |
+      OllamaMax fault tolerance system is failing.
+      
+      Healing success rate: {{value}}%
+      
+      @slack-ollama-critical
+      @pagerduty-ollama
+    tags:
+      - "severity:critical"
+      - "component:fault_tolerance"
+
+  # Warning: High latency
+  - name: "OllamaMax High Latency"
+    type: "metric alert"
+    query: "avg(last_5m):avg:ollama.request_duration_seconds.95percentile{*} > 5"
+    message: |
+      OllamaMax request latency is high.
+      
+      95th percentile: {{value}}s
+      
+      @slack-ollama-warnings
+    tags:
+      - "severity:warning"
+      - "component:performance"
+
+  # Warning: High error rate
+  - name: "OllamaMax High Error Rate"
+    type: "metric alert"
+    query: "avg(last_5m):avg:ollama.error_rate{*} > 0.1"
+    message: |
+      OllamaMax error rate is high.
+      
+      Error rate: {{value}}%
+      
+      @slack-ollama-warnings
+    tags:
+      - "severity:warning"
+      - "component:performance"
+
+# Dashboards configuration
+dashboards:
+  - name: "OllamaMax Fault Tolerance Overview"
+    description: "Overview of OllamaMax fault tolerance system"
+    widgets:
+      - title: "Cluster Status"
+        type: "timeseries"
+        requests:
+          - q: "avg:ollama.cluster_size{*}"
+          - q: "sum:ollama.node_status{*} by {node_id}"
+      
+      - title: "Healing Success Rate"
+        type: "timeseries"
+        requests:
+          - q: "avg:ollama.fault_tolerance_healing_success_rate{*}"
+      
+      - title: "Request Latency"
+        type: "timeseries"
+        requests:
+          - q: "avg:ollama.request_duration_seconds.50percentile{*}"
+          - q: "avg:ollama.request_duration_seconds.95percentile{*}"
+          - q: "avg:ollama.request_duration_seconds.99percentile{*}"
+      
+      - title: "Error Rate"
+        type: "timeseries"
+        requests:
+          - q: "avg:ollama.error_rate{*}"
+      
+      - title: "Healing Attempts"
+        type: "timeseries"
+        requests:
+          - q: "sum:ollama.fault_tolerance_healing_attempts_total{*} by {strategy,result}.as_rate()"
+
+# SLO configuration
+slos:
+  - name: "OllamaMax Availability"
+    type: "metric"
+    description: "Overall system availability"
+    thresholds:
+      - timeframe: "7d"
+        target: 99.9
+        warning: 99.95
+    query:
+      numerator: "sum:ollama.request_total{status:success}.as_count()"
+      denominator: "sum:ollama.request_total{*}.as_count()"
+    tags:
+      - "slo:availability"
+
+  - name: "OllamaMax Performance"
+    type: "metric"
+    description: "Request latency performance"
+    thresholds:
+      - timeframe: "7d"
+        target: 95.0
+        warning: 97.0
+    query:
+      numerator: "sum:ollama.request_duration_seconds{*}.as_count() - sum:ollama.request_duration_seconds{*,upper_bound:5}.as_count()"
+      denominator: "sum:ollama.request_duration_seconds{*}.as_count()"
+    tags:
+      - "slo:performance"

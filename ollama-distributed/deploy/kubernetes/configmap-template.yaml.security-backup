@@ -1,0 +1,337 @@
+# Kubernetes ConfigMap Template for Ollama Distributed
+# Non-sensitive configuration data
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ollama-config
+  namespace: default
+  labels:
+    app.kubernetes.io/name: ollamacron
+    app.kubernetes.io/component: config
+data:
+  # CORS Configuration
+  cors-allowed-origins: "https://app.ollama-distributed.com,https://api.ollama-distributed.com,https://admin.ollama-distributed.com"
+  cors-allowed-methods: "GET,POST,PUT,DELETE,OPTIONS,HEAD"
+  cors-allowed-headers: "Authorization,Content-Type,X-Requested-With,X-Request-ID,X-Trace-ID"
+  cors-max-age: "3600"
+  
+  # Rate Limiting Configuration
+  rate-limit-rps: "100"
+  rate-limit-burst: "200"
+  rate-limit-window: "60s"
+  
+  # Logging Configuration
+  log-level: "info"
+  log-format: "json"
+  
+  # TLS Configuration
+  tls-min-version: "1.3"
+  tls-cipher-suites: "TLS_AES_256_GCM_SHA384,TLS_AES_128_GCM_SHA256,TLS_CHACHA20_POLY1305_SHA256"
+  
+  # S3 Configuration (non-sensitive)
+  s3-region: "us-west-2"
+  s3-endpoint: "https://s3.amazonaws.com"
+  
+  # Database Configuration (non-sensitive)
+  database-port: "5432"
+  database-ssl-mode: "require"
+  database-max-connections: "100"
+  database-connection-timeout: "30s"
+  
+  # Redis Configuration (non-sensitive)
+  redis-url: "redis://redis:6379/0"
+  redis-pool-size: "100"
+  redis-timeout: "5s"
+  
+  # Monitoring Configuration
+  metrics-enabled: "true"
+  metrics-port: "9090"
+  health-check-port: "8081"
+  tracing-enabled: "false"
+  
+  # External Service URLs
+  prometheus-url: "http://prometheus:9090"
+  grafana-url: "http://grafana:3000"
+  jaeger-endpoint: "http://jaeger:14268/api/traces"
+  
+  # Resource Limits
+  max-memory-gb: "8"
+  max-cpu-cores: "4"
+  max-disk-gb: "100"
+  
+  # Backup Configuration (non-sensitive)
+  backup-enabled: "true"
+  backup-schedule: "0 2 * * *"
+  backup-retention: "30d"
+  backup-compression: "true"
+  
+  # Feature Flags
+  enable-profiling: "false"
+  enable-debug: "false"
+  enable-audit-logging: "true"
+  
+  # Cluster Configuration
+  cluster-mode: "kubernetes"
+  p2p-discovery-enabled: "true"
+  p2p-rendezvous: "ollamacron-k8s-v1"
+  
+  # Model Configuration
+  model-cache-size: "10GB"
+  model-sync-interval: "10m"
+  model-retention: "90d"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ollama-security-headers
+  namespace: default
+  labels:
+    app.kubernetes.io/name: ollamacron
+    app.kubernetes.io/component: security
+data:
+  # Security Headers Configuration
+  x-frame-options: "DENY"
+  x-content-type-options: "nosniff"
+  x-xss-protection: "1; mode=block"
+  strict-transport-security: "max-age=31536000; includeSubDomains; preload"
+  referrer-policy: "strict-origin-when-cross-origin"
+  content-security-policy: |
+    default-src 'self';
+    script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net;
+    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+    img-src 'self' data: https:;
+    font-src 'self' https://fonts.gstatic.com;
+    connect-src 'self' wss: https:;
+    frame-ancestors 'none';
+    base-uri 'self';
+    form-action 'self';
+    upgrade-insecure-requests;
+  permissions-policy: |
+    accelerometer=(),
+    camera=(),
+    geolocation=(),
+    gyroscope=(),
+    magnetometer=(),
+    microphone=(),
+    payment=(),
+    usb=()
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ollama-nginx-config
+  namespace: default
+  labels:
+    app.kubernetes.io/name: ollamacron
+    app.kubernetes.io/component: nginx
+data:
+  nginx.conf: |
+    # Nginx configuration for Ollama Distributed
+    
+    upstream ollama_backend {
+        least_conn;
+        server ollama-0.ollama:8080 max_fails=3 fail_timeout=30s;
+        server ollama-1.ollama:8080 max_fails=3 fail_timeout=30s;
+        server ollama-2.ollama:8080 max_fails=3 fail_timeout=30s;
+        keepalive 32;
+    }
+    
+    # Rate limiting zones
+    limit_req_zone $binary_remote_addr zone=api:10m rate=100r/m;
+    limit_req_zone $binary_remote_addr zone=upload:10m rate=10r/m;
+    
+    # Connection limiting
+    limit_conn_zone $binary_remote_addr zone=conn:10m;
+    
+    server {
+        listen 80;
+        server_name ollama-distributed.com;
+        
+        # Redirect HTTP to HTTPS
+        return 301 https://$server_name$request_uri;
+    }
+    
+    server {
+        listen 443 ssl http2;
+        server_name ollama-distributed.com;
+        
+        # SSL Configuration
+        ssl_certificate /etc/ssl/certs/tls.crt;
+        ssl_certificate_key /etc/ssl/private/tls.key;
+        ssl_protocols TLSv1.3;
+        ssl_ciphers TLS_AES_256_GCM_SHA384:TLS_AES_128_GCM_SHA256:TLS_CHACHA20_POLY1305_SHA256;
+        ssl_prefer_server_ciphers off;
+        ssl_session_cache shared:SSL:10m;
+        ssl_session_timeout 1d;
+        ssl_session_tickets off;
+        
+        # OCSP Stapling
+        ssl_stapling on;
+        ssl_stapling_verify on;
+        
+        # Security Headers
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
+        add_header X-Frame-Options "DENY" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-XSS-Protection "1; mode=block" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        
+        # Client settings
+        client_max_body_size 100M;
+        client_body_timeout 60s;
+        client_header_timeout 60s;
+        
+        # Rate limiting
+        limit_req zone=api burst=200 nodelay;
+        limit_conn conn 50;
+        
+        # API endpoints
+        location /api/ {
+            limit_req zone=api burst=200 nodelay;
+            
+            proxy_pass http://ollama_backend;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection 'upgrade';
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_cache_bypass $http_upgrade;
+            
+            # Timeouts
+            proxy_connect_timeout 30s;
+            proxy_send_timeout 300s;
+            proxy_read_timeout 300s;
+        }
+        
+        # File upload endpoints
+        location /api/upload {
+            limit_req zone=upload burst=5 nodelay;
+            client_max_body_size 1G;
+            
+            proxy_pass http://ollama_backend;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            
+            # Extended timeouts for large uploads
+            proxy_connect_timeout 60s;
+            proxy_send_timeout 600s;
+            proxy_read_timeout 600s;
+        }
+        
+        # Health check endpoint
+        location /health {
+            proxy_pass http://ollama_backend;
+            access_log off;
+        }
+        
+        # Static files
+        location /static/ {
+            root /usr/share/nginx/html;
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+        }
+        
+        # Deny access to sensitive files
+        location ~ /\. {
+            deny all;
+        }
+        
+        location ~ \.(env|config|key|pem)$ {
+            deny all;
+        }
+    }
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ollama-monitoring-config
+  namespace: default
+  labels:
+    app.kubernetes.io/name: ollamacron
+    app.kubernetes.io/component: monitoring
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 30s
+      evaluation_interval: 30s
+      external_labels:
+        cluster: 'ollama-k8s'
+        environment: 'production'
+    
+    rule_files:
+      - "ollama_rules.yml"
+    
+    scrape_configs:
+      - job_name: 'ollama-distributed'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - default
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
+            action: keep
+            regex: ollamacron
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+            action: replace
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: $1:$2
+            target_label: __address__
+        scrape_interval: 30s
+        scrape_timeout: 10s
+  
+  ollama_rules.yml: |
+    groups:
+      - name: ollama.rules
+        rules:
+          - alert: OllamaHighErrorRate
+            expr: rate(ollama_http_requests_total{status=~"5.."}[5m]) > 0.05
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High error rate detected"
+              description: "Error rate is above 5% for 5 minutes"
+          
+          - alert: OllamaHighLatency
+            expr: histogram_quantile(0.95, rate(ollama_http_request_duration_seconds_bucket[5m])) > 10
+            for: 10m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High latency detected"
+              description: "95th percentile latency is above 10 seconds"
+          
+          - alert: OllamaHighMemoryUsage
+            expr: container_memory_usage_bytes{pod=~"ollama-.*"} / container_spec_memory_limit_bytes > 0.9
+            for: 5m
+            labels:
+              severity: critical
+            annotations:
+              summary: "High memory usage"
+              description: "Memory usage is above 90%"
+          
+          - alert: OllamaHighCPUUsage
+            expr: rate(container_cpu_usage_seconds_total{pod=~"ollama-.*"}[5m]) > 0.8
+            for: 10m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High CPU usage"
+              description: "CPU usage is above 80%"

@@ -1,0 +1,210 @@
+version: '3.8'
+
+services:
+  # Node 1 - Leader
+  ollama-node-1:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    container_name: ollama-node-1
+    hostname: ollama-node-1
+    ports:
+      - "8100:8080"  # Changed from 8080 to avoid conflicts
+      - "9100:9090"  # Changed from 9090 to avoid conflicts
+    environment:
+      - NODE_ID=node-1
+      - NODE_NAME=Primary Node 1
+      - NODE_REGION=us-west-2
+      - NODE_ZONE=us-west-2a
+      - CLUSTER_PEERS=172.20.0.11:8080,172.20.0.12:8080
+      - RAFT_BOOTSTRAP=true
+      - LOG_LEVEL=info
+      - METRICS_ENABLED=true
+      - PROMETHEUS_PORT=9090
+      - NODE_IP=172.20.0.10
+    volumes:
+      - node1_data:/app/data
+      - node1_models:/app/models
+    networks:
+      ollama-cluster:
+        ipv4_address: 172.20.0.10
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Node 2 - Follower
+  ollama-node-2:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    container_name: ollama-node-2
+    hostname: ollama-node-2
+    ports:
+      - "8101:8080"  # Changed to avoid conflicts
+      - "9101:9090"  # Changed to avoid conflicts
+    environment:
+      - NODE_ID=node-2
+      - NODE_NAME=Secondary Node 2
+      - NODE_REGION=us-west-2
+      - NODE_ZONE=us-west-2b
+      - CLUSTER_PEERS=172.20.0.10:8080,172.20.0.12:8080
+      - RAFT_BOOTSTRAP=false
+      - LOG_LEVEL=info
+      - METRICS_ENABLED=true
+      - PROMETHEUS_PORT=9090
+      - NODE_IP=172.20.0.11
+    volumes:
+      - node2_data:/app/data
+      - node2_models:/app/models
+    networks:
+      ollama-cluster:
+        ipv4_address: 172.20.0.11
+    depends_on:
+      - ollama-node-1
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Node 3 - Follower
+  ollama-node-3:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    container_name: ollama-node-3
+    hostname: ollama-node-3
+    ports:
+      - "8102:8080"  # Changed to avoid conflicts
+      - "9102:9090"  # Changed to avoid conflicts
+    environment:
+      - NODE_ID=node-3
+      - NODE_NAME=Tertiary Node 3
+      - NODE_REGION=us-east-1
+      - NODE_ZONE=us-east-1a
+      - CLUSTER_PEERS=172.20.0.10:8080,172.20.0.11:8080
+      - RAFT_BOOTSTRAP=false
+      - LOG_LEVEL=info
+      - METRICS_ENABLED=true
+      - PROMETHEUS_PORT=9090
+      - NODE_IP=172.20.0.12
+    volumes:
+      - node3_data:/app/data
+      - node3_models:/app/models
+    networks:
+      ollama-cluster:
+        ipv4_address: 172.20.0.12
+    depends_on:
+      - ollama-node-1
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Load Balancer
+  nginx-lb:
+    image: nginx:alpine
+    container_name: ollama-lb
+    ports:
+      - "8200:80"   # Changed from 80 to avoid conflicts
+      - "8443:443"  # Changed from 443 to avoid conflicts
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    networks:
+      ollama-cluster:
+        ipv4_address: 172.20.0.20
+    depends_on:
+      - ollama-node-1
+      - ollama-node-2
+      - ollama-node-3
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Prometheus for monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ollama-prometheus
+    ports:
+      - "9200:9090"  # Changed from 9093 to avoid conflicts
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      ollama-cluster:
+        ipv4_address: 172.20.0.30
+    depends_on:
+      - ollama-node-1
+      - ollama-node-2
+      - ollama-node-3
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ollama-grafana
+    ports:
+      - "3100:3000"  # Changed from 3000 to avoid conflicts
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    networks:
+      ollama-cluster:
+        ipv4_address: 172.20.0.40
+    depends_on:
+      - prometheus
+
+  # Redis for caching and session management
+  redis:
+    image: redis:alpine
+    container_name: ollama-redis
+    ports:
+      - "6400:6379"  # Changed from 6379 to avoid conflicts
+    volumes:
+      - redis_data:/data
+    networks:
+      ollama-cluster:
+        ipv4_address: 172.20.0.50
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  node1_data:
+  node1_models:
+  node2_data:
+  node2_models:
+  node3_data:
+  node3_models:
+  prometheus_data:
+  grafana_data:
+  redis_data:
+
+networks:
+  ollama-cluster:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

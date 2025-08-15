@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/proxy"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/scheduler"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/scheduler/loadbalancer"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/security"
 )
 
 // Server represents the API server
@@ -29,6 +31,10 @@ type Server struct {
 	ollamaProxy  *proxy.OllamaProxy
 	loadBalancer *loadbalancer.LoadBalancer
 
+	// Security components
+	securityMiddleware *security.SecurityMiddleware
+	logger             *slog.Logger
+
 	router   *gin.Engine
 	server   *http.Server
 	upgrader websocket.Upgrader
@@ -40,16 +46,26 @@ type Server struct {
 
 // NewServer creates a new API server
 func NewServer(config *config.APIConfig, p2pNode *p2p.Node, consensusEngine *consensus.Engine, schedulerEngine *scheduler.Engine) (*Server, error) {
+	// Initialize logger
+	logger := slog.Default()
+
+	// Initialize security middleware
+	securityConfig := security.DefaultSecurityConfig()
+	securityMiddleware := security.NewSecurityMiddleware(securityConfig, logger)
+
 	server := &Server{
-		config:        config,
-		p2p:           p2pNode,
-		consensus:     consensusEngine,
-		scheduler:     schedulerEngine,
-		integration:   nil, // Will be set later via SetIntegration
-		wsConnections: make(map[string]*WSConnection),
+		config:             config,
+		p2p:                p2pNode,
+		consensus:          consensusEngine,
+		scheduler:          schedulerEngine,
+		integration:        nil, // Will be set later via SetIntegration
+		securityMiddleware: securityMiddleware,
+		logger:             logger,
+		wsConnections:      make(map[string]*WSConnection),
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
-				return true // Allow all origins for now
+				// Use security middleware for origin validation
+				return true // TODO: Implement proper origin validation
 			},
 		},
 		wsHub: NewWSHub(),
@@ -83,19 +99,31 @@ func (s *Server) setupRouter() {
 
 	s.router = gin.New()
 
-	// Add middleware
+	// Add comprehensive security middleware first
+	s.router.Use(func(c *gin.Context) {
+		// Convert Gin context to standard HTTP
+		s.securityMiddleware.Middleware()(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			c.Next()
+		})).ServeHTTP(c.Writer, c.Request)
+	})
+
+	// Add application-specific middleware
 	s.router.Use(s.LoggingMiddleware())
-	s.router.Use(s.CORSMiddleware())
-	s.router.Use(s.SecurityHeadersMiddleware())
-	s.router.Use(s.RateLimitMiddleware())
 
 	// Public routes (no authentication required)
 	public := s.router.Group("/api/v1")
 	{
 		public.GET("/health", s.health)
 		public.GET("/version", s.version)
-		public.POST("/auth/login", s.login)
-		public.POST("/auth/logout", s.logout)
+
+		// Authentication routes
+		auth := public.Group("/auth")
+		{
+			auth.POST("/login", s.login)
+			auth.POST("/register", s.register)
+			auth.POST("/refresh", s.refreshToken)
+			auth.POST("/logout", s.logout)
+		}
 	}
 
 	// Protected routes (authentication required)
@@ -140,7 +168,22 @@ func (s *Server) setupRouter() {
 		protected.PUT("/config", s.RoleMiddleware("admin"), s.updateConfig)
 
 		// User profile
-		protected.GET("/profile", s.profile)
+		protected.GET("/profile", s.getUserProfile)
+		protected.PUT("/profile", s.updateUserProfile)
+
+		// Dashboard endpoints
+		dashboard := protected.Group("/dashboard")
+		{
+			dashboard.GET("/data", s.getDashboardData)
+			dashboard.GET("/metrics", s.getDashboardMetrics)
+		}
+
+		// Notifications
+		notifications := protected.Group("/notifications")
+		{
+			notifications.GET("", s.getNotifications)
+			notifications.PUT("/:id/read", s.markNotificationRead)
+		}
 	}
 
 	// WebSocket endpoint

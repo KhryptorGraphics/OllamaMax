@@ -1,0 +1,278 @@
+# OllamaMax Fault Tolerance Alerting Rules
+
+groups:
+  - name: ollama-fault-tolerance-critical
+    interval: 30s
+    rules:
+      # Critical: Node completely down
+      - alert: OllamaNodeDown
+        expr: up{job="ollama-distributed"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: cluster
+        annotations:
+          summary: "OllamaMax node {{ $labels.instance }} is down"
+          description: "Node {{ $labels.instance }} has been down for more than 1 minute. This may impact cluster availability."
+          runbook_url: "https://docs.ollamamax.com/runbooks/node-down"
+
+      # Critical: Cluster size too low
+      - alert: OllamaClusterCritical
+        expr: ollama_cluster_size < 2
+        for: 30s
+        labels:
+          severity: critical
+          component: cluster
+        annotations:
+          summary: "OllamaMax cluster size critically low"
+          description: "Cluster has only {{ $value }} nodes. Minimum of 2 required for basic operation."
+          runbook_url: "https://docs.ollamamax.com/runbooks/cluster-critical"
+
+      # Critical: Fault tolerance system failure
+      - alert: OllamaFaultToleranceDown
+        expr: ollama_fault_tolerance_healing_success_rate < 0.5
+        for: 5m
+        labels:
+          severity: critical
+          component: fault-tolerance
+        annotations:
+          summary: "OllamaMax fault tolerance system failing"
+          description: "Healing success rate is {{ $value | humanizePercentage }}. System may not recover from failures."
+          runbook_url: "https://docs.ollamamax.com/runbooks/fault-tolerance-down"
+
+      # Critical: Split-brain condition
+      - alert: OllamaSplitBrain
+        expr: count(ollama_leader_status == 1) > 1
+        for: 1m
+        labels:
+          severity: critical
+          component: consensus
+        annotations:
+          summary: "OllamaMax split-brain condition detected"
+          description: "Multiple leaders detected ({{ $value }}). This indicates a network partition or consensus failure."
+          runbook_url: "https://docs.ollamamax.com/runbooks/split-brain"
+
+      # Critical: No leader elected
+      - alert: OllamaNoLeader
+        expr: count(ollama_leader_status == 1) == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: consensus
+        annotations:
+          summary: "OllamaMax cluster has no leader"
+          description: "No leader has been elected for more than 2 minutes. Cluster cannot process requests."
+          runbook_url: "https://docs.ollamamax.com/runbooks/no-leader"
+
+      # Critical: High error rate
+      - alert: OllamaHighErrorRate
+        expr: ollama_error_rate > 0.5
+        for: 3m
+        labels:
+          severity: critical
+          component: performance
+        annotations:
+          summary: "OllamaMax error rate critically high"
+          description: "Error rate is {{ $value | humanizePercentage }}. More than half of requests are failing."
+          runbook_url: "https://docs.ollamamax.com/runbooks/high-error-rate"
+
+  - name: ollama-fault-tolerance-warning
+    interval: 60s
+    rules:
+      # Warning: High latency
+      - alert: OllamaHighLatency
+        expr: histogram_quantile(0.95, rate(ollama_request_duration_seconds_bucket[5m])) > 5
+        for: 5m
+        labels:
+          severity: warning
+          component: performance
+        annotations:
+          summary: "OllamaMax high request latency"
+          description: "95th percentile latency is {{ $value }}s. Performance may be degraded."
+          runbook_url: "https://docs.ollamamax.com/runbooks/high-latency"
+
+      # Warning: Reduced cluster size
+      - alert: OllamaClusterReduced
+        expr: ollama_cluster_size < 3
+        for: 2m
+        labels:
+          severity: warning
+          component: cluster
+        annotations:
+          summary: "OllamaMax cluster size reduced"
+          description: "Cluster has only {{ $value }} nodes. Recommended minimum is 3 for high availability."
+          runbook_url: "https://docs.ollamamax.com/runbooks/cluster-reduced"
+
+      # Warning: Frequent healing attempts
+      - alert: OllamaFrequentHealing
+        expr: rate(ollama_fault_tolerance_healing_attempts_total[10m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: fault-tolerance
+        annotations:
+          summary: "OllamaMax frequent healing attempts"
+          description: "Healing attempts rate is {{ $value }}/sec. System may be unstable."
+          runbook_url: "https://docs.ollamamax.com/runbooks/frequent-healing"
+
+      # Warning: Low prediction accuracy
+      - alert: OllamaPredictionAccuracyLow
+        expr: ollama_fault_tolerance_prediction_accuracy < 0.7
+        for: 10m
+        labels:
+          severity: warning
+          component: prediction
+        annotations:
+          summary: "OllamaMax prediction accuracy low"
+          description: "Prediction accuracy is {{ $value | humanizePercentage }}. Predictive detection may need tuning."
+          runbook_url: "https://docs.ollamamax.com/runbooks/prediction-accuracy"
+
+      # Warning: High false positive rate
+      - alert: OllamaHighFalsePositives
+        expr: rate(ollama_prediction_false_positives_total[10m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          component: prediction
+        annotations:
+          summary: "OllamaMax high false positive rate"
+          description: "False positive rate is {{ $value }}/sec. May cause unnecessary healing attempts."
+          runbook_url: "https://docs.ollamamax.com/runbooks/false-positives"
+
+      # Warning: Slow recovery times
+      - alert: OllamaSlowRecovery
+        expr: histogram_quantile(0.95, rate(ollama_fault_tolerance_recovery_time_seconds_bucket[10m])) > 300
+        for: 5m
+        labels:
+          severity: warning
+          component: recovery
+        annotations:
+          summary: "OllamaMax slow recovery times"
+          description: "95th percentile recovery time is {{ $value }}s. Recovery may be slower than expected."
+          runbook_url: "https://docs.ollamamax.com/runbooks/slow-recovery"
+
+      # Warning: Configuration reload failures
+      - alert: OllamaConfigReloadFailures
+        expr: rate(ollama_config_reloads_total{result="failure"}[10m]) > 0
+        for: 2m
+        labels:
+          severity: warning
+          component: configuration
+        annotations:
+          summary: "OllamaMax configuration reload failures"
+          description: "Configuration reloads are failing at {{ $value }}/sec rate."
+          runbook_url: "https://docs.ollamamax.com/runbooks/config-reload-failures"
+
+  - name: ollama-fault-tolerance-info
+    interval: 300s
+    rules:
+      # Info: Leader election occurred
+      - alert: OllamaLeaderElection
+        expr: increase(ollama_leader_election_total[5m]) > 0
+        for: 0s
+        labels:
+          severity: info
+          component: consensus
+        annotations:
+          summary: "OllamaMax leader election occurred"
+          description: "A new leader has been elected. This is normal during startup or network issues."
+
+      # Info: Healing attempt succeeded
+      - alert: OllamaHealingSuccess
+        expr: increase(ollama_fault_tolerance_healing_attempts_total{result="success"}[5m]) > 0
+        for: 0s
+        labels:
+          severity: info
+          component: fault-tolerance
+        annotations:
+          summary: "OllamaMax healing attempt succeeded"
+          description: "A healing attempt has successfully resolved an issue."
+
+      # Info: Configuration reloaded
+      - alert: OllamaConfigReloaded
+        expr: increase(ollama_config_reloads_total{result="success"}[5m]) > 0
+        for: 0s
+        labels:
+          severity: info
+          component: configuration
+        annotations:
+          summary: "OllamaMax configuration reloaded"
+          description: "Configuration has been successfully reloaded."
+
+  - name: ollama-resource-monitoring
+    interval: 60s
+    rules:
+      # Warning: High CPU usage
+      - alert: OllamaHighCPU
+        expr: ollama_cpu_usage_percent > 80
+        for: 5m
+        labels:
+          severity: warning
+          component: resources
+        annotations:
+          summary: "OllamaMax high CPU usage on {{ $labels.node_id }}"
+          description: "CPU usage is {{ $value }}% on node {{ $labels.node_id }}."
+          runbook_url: "https://docs.ollamamax.com/runbooks/high-cpu"
+
+      # Warning: High memory usage
+      - alert: OllamaHighMemory
+        expr: ollama_memory_usage_bytes / (1024^3) > 8
+        for: 5m
+        labels:
+          severity: warning
+          component: resources
+        annotations:
+          summary: "OllamaMax high memory usage on {{ $labels.node_id }}"
+          description: "Memory usage is {{ $value }}GB on node {{ $labels.node_id }}."
+          runbook_url: "https://docs.ollamamax.com/runbooks/high-memory"
+
+      # Warning: High disk usage
+      - alert: OllamaHighDisk
+        expr: ollama_disk_usage_bytes / (1024^3) > 50
+        for: 10m
+        labels:
+          severity: warning
+          component: resources
+        annotations:
+          summary: "OllamaMax high disk usage on {{ $labels.node_id }}"
+          description: "Disk usage is {{ $value }}GB on node {{ $labels.node_id }} at {{ $labels.mount_point }}."
+          runbook_url: "https://docs.ollamamax.com/runbooks/high-disk"
+
+  - name: ollama-performance-monitoring
+    interval: 60s
+    rules:
+      # Warning: Low throughput
+      - alert: OllamaLowThroughput
+        expr: ollama_throughput_requests_per_second < 10
+        for: 5m
+        labels:
+          severity: warning
+          component: performance
+        annotations:
+          summary: "OllamaMax low throughput"
+          description: "Throughput is {{ $value }} req/s. Expected minimum is 10 req/s."
+          runbook_url: "https://docs.ollamamax.com/runbooks/low-throughput"
+
+      # Warning: Prediction latency high
+      - alert: OllamaPredictionLatencyHigh
+        expr: histogram_quantile(0.95, rate(ollama_prediction_latency_seconds_bucket[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+          component: prediction
+        annotations:
+          summary: "OllamaMax prediction latency high"
+          description: "95th percentile prediction latency is {{ $value }}s. May impact responsiveness."
+          runbook_url: "https://docs.ollamamax.com/runbooks/prediction-latency"
+
+      # Warning: Healing latency high
+      - alert: OllamaHealingLatencyHigh
+        expr: histogram_quantile(0.95, rate(ollama_healing_latency_seconds_bucket[5m])) > 60
+        for: 5m
+        labels:
+          severity: warning
+          component: healing
+        annotations:
+          summary: "OllamaMax healing latency high"
+          description: "95th percentile healing latency is {{ $value }}s. Healing may be slow."
+          runbook_url: "https://docs.ollamamax.com/runbooks/healing-latency"
