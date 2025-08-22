@@ -2,10 +2,13 @@ package api
 
 import (
 	"context"
+	"crypto/subtle"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -28,6 +31,16 @@ type DistributedRoutes struct {
 	distributedMode bool
 	fallbackMode    bool
 	localAddr       string
+
+	// Security components
+	rateLimiter   map[string]*rateLimitEntry
+	rateLimitMutex sync.Mutex
+}
+
+// rateLimitEntry tracks rate limiting per IP
+type rateLimitEntry struct {
+	requests []time.Time
+	mutex    sync.Mutex
 }
 
 // NewDistributedRoutes creates a new distributed routes handler
@@ -49,6 +62,7 @@ func NewDistributedRoutes(scheduler *scheduler.Engine, modelDist *models.Manager
 		distributedMode:   true,
 		fallbackMode:      true,
 		localAddr:         localAddr,
+		rateLimiter:       make(map[string]*rateLimitEntry),
 	}, nil
 }
 
@@ -145,13 +159,50 @@ func (dr *DistributedRoutes) distributedMiddleware() gin.HandlerFunc {
 
 func (dr *DistributedRoutes) adminAuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Simple token-based auth for admin endpoints
-		token := c.GetHeader("Authorization")
-		if token == "" || token != "Bearer "+os.Getenv("OLLAMA_ADMIN_TOKEN") {
+		// Rate limiting for admin endpoints
+		if !dr.checkAdminRateLimit(c.ClientIP()) {
+			slog.Warn("Admin rate limit exceeded", "ip", c.ClientIP(), "user_agent", c.GetHeader("User-Agent"))
+			c.JSON(http.StatusTooManyRequests, gin.H{"error": "rate limit exceeded"})
+			c.Abort()
+			return
+		}
+
+		// Secure token-based auth for admin endpoints
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			slog.Warn("Missing authorization header for admin endpoint", "ip", c.ClientIP(), "path", c.Request.URL.Path)
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 			c.Abort()
 			return
 		}
+
+		if !strings.HasPrefix(authHeader, "Bearer ") {
+			slog.Warn("Invalid authorization header format for admin endpoint", "ip", c.ClientIP())
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			c.Abort()
+			return
+		}
+
+		token := authHeader[7:] // Remove "Bearer " prefix
+		expectedToken := os.Getenv("OLLAMA_ADMIN_TOKEN")
+		
+		if expectedToken == "" {
+			slog.Error("OLLAMA_ADMIN_TOKEN not configured")
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "server configuration error"})
+			c.Abort()
+			return
+		}
+
+		// Use constant-time comparison to prevent timing attacks
+		if subtle.ConstantTimeCompare([]byte(token), []byte(expectedToken)) != 1 {
+			slog.Warn("Invalid admin token", "ip", c.ClientIP(), "user_agent", c.GetHeader("User-Agent"))
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			c.Abort()
+			return
+		}
+
+		// Log successful admin access
+		slog.Info("Admin access granted", "ip", c.ClientIP(), "path", c.Request.URL.Path)
 		c.Next()
 	}
 }
@@ -500,6 +551,44 @@ func (dr *DistributedRoutes) IsDistributedMode() bool {
 // IsFallbackMode returns whether fallback mode is enabled
 func (dr *DistributedRoutes) IsFallbackMode() bool {
 	return dr.fallbackMode
+}
+
+// checkAdminRateLimit implements rate limiting for admin endpoints
+func (dr *DistributedRoutes) checkAdminRateLimit(clientIP string) bool {
+	dr.rateLimitMutex.Lock()
+	defer dr.rateLimitMutex.Unlock()
+
+	now := time.Now()
+	
+	// Get or create rate limit entry for this IP
+	entry, exists := dr.rateLimiter[clientIP]
+	if !exists {
+		entry = &rateLimitEntry{
+			requests: []time.Time{},
+		}
+		dr.rateLimiter[clientIP] = entry
+	}
+
+	entry.mutex.Lock()
+	defer entry.mutex.Unlock()
+
+	// Clean old requests (older than 1 minute)
+	validRequests := []time.Time{}
+	for _, reqTime := range entry.requests {
+		if now.Sub(reqTime) < time.Minute {
+			validRequests = append(validRequests, reqTime)
+		}
+	}
+	entry.requests = validRequests
+
+	// Check if limit exceeded (max 5 requests per minute for admin endpoints)
+	if len(entry.requests) >= 5 {
+		return false
+	}
+
+	// Add current request
+	entry.requests = append(entry.requests, now)
+	return true
 }
 
 // Shutdown gracefully shuts down the distributed routes

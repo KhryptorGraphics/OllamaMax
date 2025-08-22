@@ -1,0 +1,375 @@
+/* PWA-specific styles for mobile optimization */
+
+/* Offline mode styling */
+.offline {
+  --offline-color: #ef4444;
+  --offline-bg: #fef2f2;
+  --offline-border: #fecaca;
+}
+
+.offline .offline-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--offline-color);
+  color: white;
+  padding: 0.5rem;
+  font-size: 0.875rem;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  transition: transform 0.3s ease-in-out;
+}
+
+/* PWA Install prompt styling */
+.pwa-install-prompt {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.pwa-install-banner {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Touch feedback improvements */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* iOS-specific styling */
+@supports (-webkit-touch-callout: none) {
+  .ios-safe-area {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  
+  .ios-keyboard-adjust {
+    padding-bottom: env(keyboard-inset-height, 0);
+  }
+}
+
+/* Android-specific styling */
+@media (orientation: portrait) and (max-width: 768px) {
+  .android-status-bar {
+    padding-top: 24px;
+  }
+}
+
+/* PWA Display modes */
+@media (display-mode: standalone) {
+  .standalone-only {
+    display: block;
+  }
+  
+  .browser-only {
+    display: none;
+  }
+  
+  /* Hide browser UI elements when in standalone mode */
+  .install-prompt {
+    display: none;
+  }
+}
+
+@media not (display-mode: standalone) {
+  .standalone-only {
+    display: none;
+  }
+  
+  .browser-only {
+    display: block;
+  }
+}
+
+/* Enhanced touch interactions */
+.touch-card {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.touch-card:active {
+  transform: scale(0.98);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.swipe-indicator {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.swipe-left .swipe-indicator-left,
+.swipe-right .swipe-indicator-right {
+  opacity: 1;
+}
+
+/* Loading states optimized for mobile */
+.mobile-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  min-height: 200px;
+}
+
+.mobile-loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e5e7eb;
+  border-top: 3px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.mobile-loading-text {
+  margin-top: 1rem;
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Pull-to-refresh styling */
+.ptr-element {
+  pointer-events: none;
+  font-size: 0.875rem;
+  font-weight: bold;
+  top: 15px;
+  height: 0;
+  transition: height 0.3s, opacity 0.3s;
+  text-align: center;
+  width: 100%;
+  position: absolute;
+  z-index: 1;
+  color: #6b7280;
+}
+
+.ptr-element--pull {
+  opacity: 0.5;
+}
+
+.ptr-element--release {
+  opacity: 1;
+  color: #3b82f6;
+}
+
+/* Mobile-first responsive grid */
+.mobile-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .mobile-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .mobile-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1280px) {
+  .mobile-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Smooth scrolling for better UX */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Improved focus indicators for accessibility */
+.focus-visible:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Bottom sheet styling for mobile */
+.bottom-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  border-radius: 1rem 1rem 0 0;
+  transform: translateY(100%);
+  transition: transform 0.3s ease-out;
+  z-index: 50;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.bottom-sheet.open {
+  transform: translateY(0);
+}
+
+.bottom-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 40;
+  opacity: 0;
+  transition: opacity 0.3s ease-out;
+}
+
+.bottom-sheet-backdrop.open {
+  opacity: 1;
+}
+
+/* Haptic feedback simulation with CSS */
+@keyframes haptic-light {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+  100% { transform: scale(1); }
+}
+
+@keyframes haptic-medium {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.haptic-light {
+  animation: haptic-light 0.1s ease-out;
+}
+
+.haptic-medium {
+  animation: haptic-medium 0.15s ease-out;
+}
+
+/* Optimized animations for mobile */
+@media (prefers-reduced-motion: no-preference) {
+  .animate-fade-in {
+    animation: fade-in 0.3s ease-out;
+  }
+  
+  .animate-slide-up {
+    animation: slide-up 0.3s ease-out;
+  }
+  
+  .animate-scale-in {
+    animation: scale-in 0.2s ease-out;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes scale-in {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Dark mode support for PWA */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --pwa-bg: #1f2937;
+    --pwa-text: #f9fafb;
+    --pwa-border: #374151;
+    --pwa-accent: #60a5fa;
+  }
+  
+  .dark-mode-auto {
+    background-color: var(--pwa-bg);
+    color: var(--pwa-text);
+    border-color: var(--pwa-border);
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .high-contrast {
+    border: 2px solid currentColor;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Print styles for PWA */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  .print-break {
+    page-break-after: always;
+  }
+  
+  .print-avoid-break {
+    page-break-inside: avoid;
+  }
+}
+
+/* Performance optimization classes */
+.gpu-accelerated {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+.will-change-transform {
+  will-change: transform;
+}
+
+.will-change-opacity {
+  will-change: opacity;
+}
+
+/* Remove will-change after animation */
+.will-change-auto {
+  will-change: auto;
+}

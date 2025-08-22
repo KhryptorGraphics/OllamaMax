@@ -1,0 +1,528 @@
+# Ollama Frontend - Grafana Monitoring Dashboards
+# Production-ready Grafana with comprehensive dashboards
+
+# Grafana ConfigMap for datasources
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasources
+  namespace: monitoring
+  labels:
+    app: grafana
+    component: datasources
+data:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+    - name: Prometheus
+      type: prometheus
+      access: proxy
+      url: http://prometheus:9090
+      isDefault: true
+      editable: true
+      jsonData:
+        httpMethod: POST
+        queryTimeout: 30s
+        timeInterval: 15s
+    - name: Loki
+      type: loki
+      access: proxy
+      url: http://loki:3100
+      editable: true
+      jsonData:
+        maxLines: 1000
+        derivedFields:
+        - datasourceUid: jaeger
+          matcherRegex: "traceID=(\\w+)"
+          name: TraceID
+          url: "$${__value.raw}"
+    - name: Jaeger
+      type: jaeger
+      uid: jaeger
+      access: proxy
+      url: http://jaeger-query:16686
+      editable: true
+
+---
+# Grafana ConfigMap for dashboards provisioning
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-providers
+  namespace: monitoring
+  labels:
+    app: grafana
+    component: dashboard-providers
+data:
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+    - name: 'default'
+      orgId: 1
+      folder: ''
+      type: file
+      disableDeletion: false
+      editable: true
+      updateIntervalSeconds: 10
+      allowUiUpdates: true
+      options:
+        path: /var/lib/grafana/dashboards/default
+
+---
+# Grafana ConfigMap for main dashboard
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-ollama-frontend
+  namespace: monitoring
+  labels:
+    app: grafana
+    component: dashboard
+    dashboard: ollama-frontend
+data:
+  ollama-frontend.json: |
+    {
+      "dashboard": {
+        "id": null,
+        "title": "Ollama Frontend - Production Dashboard",
+        "tags": ["ollama", "frontend", "production"],
+        "style": "dark",
+        "timezone": "browser",
+        "refresh": "30s",
+        "time": {
+          "from": "now-1h",
+          "to": "now"
+        },
+        "panels": [
+          {
+            "id": 1,
+            "title": "Request Rate",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "sum(rate(http_requests_total{job=\"ollama-frontend\"}[5m]))",
+                "refId": "A"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "reqps",
+                "color": {"mode": "thresholds"},
+                "thresholds": {
+                  "steps": [
+                    {"color": "green", "value": null},
+                    {"color": "yellow", "value": 100},
+                    {"color": "red", "value": 1000}
+                  ]
+                }
+              }
+            },
+            "gridPos": {"h": 8, "w": 6, "x": 0, "y": 0}
+          },
+          {
+            "id": 2,
+            "title": "Error Rate",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "sum(rate(http_requests_total{job=\"ollama-frontend\",code=~\"5..\"}[5m])) / sum(rate(http_requests_total{job=\"ollama-frontend\"}[5m]))",
+                "refId": "A"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "percent",
+                "color": {"mode": "thresholds"},
+                "thresholds": {
+                  "steps": [
+                    {"color": "green", "value": null},
+                    {"color": "yellow", "value": 1},
+                    {"color": "red", "value": 5}
+                  ]
+                }
+              }
+            },
+            "gridPos": {"h": 8, "w": 6, "x": 6, "y": 0}
+          },
+          {
+            "id": 3,
+            "title": "Response Time (95th percentile)",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"ollama-frontend\"}[5m])) by (le))",
+                "refId": "A"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "s",
+                "color": {"mode": "thresholds"},
+                "thresholds": {
+                  "steps": [
+                    {"color": "green", "value": null},
+                    {"color": "yellow", "value": 1},
+                    {"color": "red", "value": 3}
+                  ]
+                }
+              }
+            },
+            "gridPos": {"h": 8, "w": 6, "x": 12, "y": 0}
+          },
+          {
+            "id": 4,
+            "title": "Active Pods",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "count(up{job=\"ollama-frontend\"} == 1)",
+                "refId": "A"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "short",
+                "color": {"mode": "thresholds"},
+                "thresholds": {
+                  "steps": [
+                    {"color": "red", "value": null},
+                    {"color": "yellow", "value": 2},
+                    {"color": "green", "value": 3}
+                  ]
+                }
+              }
+            },
+            "gridPos": {"h": 8, "w": 6, "x": 18, "y": 0}
+          },
+          {
+            "id": 5,
+            "title": "Request Rate by Status Code",
+            "type": "timeseries",
+            "targets": [
+              {
+                "expr": "sum(rate(http_requests_total{job=\"ollama-frontend\"}[5m])) by (code)",
+                "refId": "A",
+                "legendFormat": "{{code}}"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "reqps",
+                "custom": {
+                  "drawStyle": "line",
+                  "lineInterpolation": "linear",
+                  "lineWidth": 1,
+                  "fillOpacity": 10
+                }
+              }
+            },
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+          },
+          {
+            "id": 6,
+            "title": "Response Time Distribution",
+            "type": "heatmap",
+            "targets": [
+              {
+                "expr": "sum(rate(http_request_duration_seconds_bucket{job=\"ollama-frontend\"}[5m])) by (le)",
+                "refId": "A"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+          },
+          {
+            "id": 7,
+            "title": "CPU Usage",
+            "type": "timeseries",
+            "targets": [
+              {
+                "expr": "rate(container_cpu_usage_seconds_total{namespace=\"ollama-frontend\",container=\"ollama-frontend\"}[5m]) * 100",
+                "refId": "A",
+                "legendFormat": "{{pod}}"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "percent",
+                "custom": {
+                  "drawStyle": "line",
+                  "lineInterpolation": "linear"
+                }
+              }
+            },
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}
+          },
+          {
+            "id": 8,
+            "title": "Memory Usage",
+            "type": "timeseries",
+            "targets": [
+              {
+                "expr": "container_memory_usage_bytes{namespace=\"ollama-frontend\",container=\"ollama-frontend\"} / 1024 / 1024",
+                "refId": "A",
+                "legendFormat": "{{pod}}"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "MB",
+                "custom": {
+                  "drawStyle": "line",
+                  "lineInterpolation": "linear"
+                }
+              }
+            },
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}
+          },
+          {
+            "id": 9,
+            "title": "Network I/O",
+            "type": "timeseries",
+            "targets": [
+              {
+                "expr": "rate(container_network_receive_bytes_total{namespace=\"ollama-frontend\"}[5m])",
+                "refId": "A",
+                "legendFormat": "Received {{pod}}"
+              },
+              {
+                "expr": "rate(container_network_transmit_bytes_total{namespace=\"ollama-frontend\"}[5m])",
+                "refId": "B",
+                "legendFormat": "Transmitted {{pod}}"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "Bps",
+                "custom": {
+                  "drawStyle": "line",
+                  "lineInterpolation": "linear"
+                }
+              }
+            },
+            "gridPos": {"h": 8, "w": 24, "x": 0, "y": 24}
+          },
+          {
+            "id": 10,
+            "title": "Blue-Green Deployment Status",
+            "type": "table",
+            "targets": [
+              {
+                "expr": "kube_deployment_status_replicas_available{namespace=\"ollama-frontend\"}",
+                "refId": "A",
+                "format": "table",
+                "instant": true
+              }
+            ],
+            "transformations": [
+              {
+                "id": "organize",
+                "options": {
+                  "excludeByName": {
+                    "__name__": true,
+                    "job": true,
+                    "instance": true
+                  },
+                  "renameByName": {
+                    "deployment": "Deployment",
+                    "Value": "Available Replicas"
+                  }
+                }
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 32}
+          },
+          {
+            "id": 11,
+            "title": "Top Endpoints by Request Count",
+            "type": "table",
+            "targets": [
+              {
+                "expr": "topk(10, sum(rate(http_requests_total{job=\"ollama-frontend\"}[5m])) by (path))",
+                "refId": "A",
+                "format": "table",
+                "instant": true
+              }
+            ],
+            "transformations": [
+              {
+                "id": "organize",
+                "options": {
+                  "renameByName": {
+                    "path": "Endpoint",
+                    "Value": "Requests/sec"
+                  }
+                }
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 32}
+          }
+        ]
+      }
+    }
+
+---
+# Grafana Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: monitoring
+  labels:
+    app: grafana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "3000"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 472
+        fsGroup: 472
+      containers:
+      - name: grafana
+        image: grafana/grafana:10.2.0
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: GF_SECURITY_ADMIN_USER
+          valueFrom:
+            secretKeyRef:
+              name: grafana-credentials
+              key: admin-user
+        - name: GF_SECURITY_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: grafana-credentials
+              key: admin-password
+        - name: GF_INSTALL_PLUGINS
+          value: "grafana-piechart-panel,grafana-polystat-panel,redis-datasource"
+        - name: GF_SERVER_ROOT_URL
+          value: "https://grafana.ollama.example.com"
+        - name: GF_AUTH_ANONYMOUS_ENABLED
+          value: "false"
+        - name: GF_USERS_ALLOW_SIGN_UP
+          value: "false"
+        - name: GF_LOG_LEVEL
+          value: "info"
+        - name: GF_PATHS_PROVISIONING
+          value: "/etc/grafana/provisioning"
+        ports:
+        - containerPort: 3000
+          name: http
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: http
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 30
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        volumeMounts:
+        - name: storage
+          mountPath: /var/lib/grafana
+        - name: datasources
+          mountPath: /etc/grafana/provisioning/datasources
+          readOnly: true
+        - name: dashboard-providers
+          mountPath: /etc/grafana/provisioning/dashboards
+          readOnly: true
+        - name: dashboards
+          mountPath: /var/lib/grafana/dashboards/default
+          readOnly: true
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 472
+          capabilities:
+            drop:
+            - ALL
+      volumes:
+      - name: storage
+        persistentVolumeClaim:
+          claimName: grafana-storage
+      - name: datasources
+        configMap:
+          name: grafana-datasources
+      - name: dashboard-providers
+        configMap:
+          name: grafana-dashboard-providers
+      - name: dashboards
+        configMap:
+          name: grafana-dashboard-ollama-frontend
+
+---
+# Grafana Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: monitoring
+  labels:
+    app: grafana
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "3000"
+spec:
+  type: ClusterIP
+  ports:
+  - port: 3000
+    targetPort: http
+    protocol: TCP
+    name: http
+  selector:
+    app: grafana
+
+---
+# Grafana PVC
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grafana-storage
+  namespace: monitoring
+  labels:
+    app: grafana
+    component: storage
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: gp3
+
+---
+# Grafana Secret
+apiVersion: v1
+kind: Secret
+metadata:
+  name: grafana-credentials
+  namespace: monitoring
+  labels:
+    app: grafana
+type: Opaque
+stringData:
+  admin-user: admin
+  admin-password: "{{ .Values.grafanaAdminPassword }}"

@@ -1,0 +1,1161 @@
+<testsuites id="" name="" tests="33" failures="33" skipped="0" errors="0" time="70.931131">
+<testsuite name="accessibility/auth-accessibility.spec.ts" timestamp="2025-08-19T23:53:14.446Z" hostname="accessibility" tests="5" failures="5" skipped="0" time="16.566" errors="0">
+<testcase name="Auth pages accessibility › no critical a11y violations on /v2/auth/login" classname="accessibility/auth-accessibility.spec.ts" time="3.787">
+<failure message="auth-accessibility.spec.ts:6:5 no critical a11y violations on /v2/auth/login" type="FAILURE">
+<![CDATA[  [accessibility] › accessibility/auth-accessibility.spec.ts:6:5 › Auth pages accessibility › no critical a11y violations on /v2/auth/login 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2/auth/login
+    Call log:
+      - navigating to "http://localhost:5173/v2/auth/login", waiting until "load"
+
+
+       5 |   for (const route of routes) {
+       6 |     test(`no critical a11y violations on ${route}`, async ({ page }) => {
+    >  7 |       await page.goto(route)
+         |                  ^
+       8 |       let AxeBuilder: any
+       9 |       try {
+      10 |         AxeBuilder = (await import('@axe-core/playwright')).default
+        at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/auth-accessibility.spec.ts:7:18
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../test-results/accessibility-auth-accessi-cbe7b-violations-on-v2-auth-login-accessibility/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../test-results/accessibility-auth-accessi-cbe7b-violations-on-v2-auth-login-accessibility/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-auth-accessi-cbe7b-violations-on-v2-auth-login-accessibility/test-failed-1.png]]
+
+[[ATTACHMENT|accessibility-auth-accessi-cbe7b-violations-on-v2-auth-login-accessibility/video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Auth pages accessibility › no critical a11y violations on /v2/auth/register" classname="accessibility/auth-accessibility.spec.ts" time="3.083">
+<failure message="auth-accessibility.spec.ts:6:5 no critical a11y violations on /v2/auth/register" type="FAILURE">
+<![CDATA[  [accessibility] › accessibility/auth-accessibility.spec.ts:6:5 › Auth pages accessibility › no critical a11y violations on /v2/auth/register 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2/auth/register
+    Call log:
+      - navigating to "http://localhost:5173/v2/auth/register", waiting until "load"
+
+
+       5 |   for (const route of routes) {
+       6 |     test(`no critical a11y violations on ${route}`, async ({ page }) => {
+    >  7 |       await page.goto(route)
+         |                  ^
+       8 |       let AxeBuilder: any
+       9 |       try {
+      10 |         AxeBuilder = (await import('@axe-core/playwright')).default
+        at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/auth-accessibility.spec.ts:7:18
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../test-results/accessibility-auth-accessi-d9902-lations-on-v2-auth-register-accessibility/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../test-results/accessibility-auth-accessi-d9902-lations-on-v2-auth-register-accessibility/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-auth-accessi-d9902-lations-on-v2-auth-register-accessibility/test-failed-1.png]]
+
+[[ATTACHMENT|accessibility-auth-accessi-d9902-lations-on-v2-auth-register-accessibility/video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Auth pages accessibility › no critical a11y violations on /v2/auth/forgot-password" classname="accessibility/auth-accessibility.spec.ts" time="3.668">
+<failure message="auth-accessibility.spec.ts:6:5 no critical a11y violations on /v2/auth/forgot-password" type="FAILURE">
+<![CDATA[  [accessibility] › accessibility/auth-accessibility.spec.ts:6:5 › Auth pages accessibility › no critical a11y violations on /v2/auth/forgot-password 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2/auth/forgot-password
+    Call log:
+      - navigating to "http://localhost:5173/v2/auth/forgot-password", waiting until "load"
+
+
+       5 |   for (const route of routes) {
+       6 |     test(`no critical a11y violations on ${route}`, async ({ page }) => {
+    >  7 |       await page.goto(route)
+         |                  ^
+       8 |       let AxeBuilder: any
+       9 |       try {
+      10 |         AxeBuilder = (await import('@axe-core/playwright')).default
+        at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/auth-accessibility.spec.ts:7:18
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../test-results/accessibility-auth-accessi-edb2a--on-v2-auth-forgot-password-accessibility/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../test-results/accessibility-auth-accessi-edb2a--on-v2-auth-forgot-password-accessibility/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-auth-accessi-edb2a--on-v2-auth-forgot-password-accessibility/test-failed-1.png]]
+
+[[ATTACHMENT|accessibility-auth-accessi-edb2a--on-v2-auth-forgot-password-accessibility/video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Auth pages accessibility › no critical a11y violations on /v2/auth/reset-password?token=TEST" classname="accessibility/auth-accessibility.spec.ts" time="3.163">
+<failure message="auth-accessibility.spec.ts:6:5 no critical a11y violations on /v2/auth/reset-password?token=TEST" type="FAILURE">
+<![CDATA[  [accessibility] › accessibility/auth-accessibility.spec.ts:6:5 › Auth pages accessibility › no critical a11y violations on /v2/auth/reset-password?token=TEST 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2/auth/reset-password?token=TEST
+    Call log:
+      - navigating to "http://localhost:5173/v2/auth/reset-password?token=TEST", waiting until "load"
+
+
+       5 |   for (const route of routes) {
+       6 |     test(`no critical a11y violations on ${route}`, async ({ page }) => {
+    >  7 |       await page.goto(route)
+         |                  ^
+       8 |       let AxeBuilder: any
+       9 |       try {
+      10 |         AxeBuilder = (await import('@axe-core/playwright')).default
+        at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/auth-accessibility.spec.ts:7:18
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../test-results/accessibility-auth-accessi-d79e2-h-reset-password-token-TEST-accessibility/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../test-results/accessibility-auth-accessi-d79e2-h-reset-password-token-TEST-accessibility/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-auth-accessi-d79e2-h-reset-password-token-TEST-accessibility/test-failed-1.png]]
+
+[[ATTACHMENT|accessibility-auth-accessi-d79e2-h-reset-password-token-TEST-accessibility/video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Auth pages accessibility › no critical a11y violations on /v2/auth/verify-email?token=TEST" classname="accessibility/auth-accessibility.spec.ts" time="2.865">
+<failure message="auth-accessibility.spec.ts:6:5 no critical a11y violations on /v2/auth/verify-email?token=TEST" type="FAILURE">
+<![CDATA[  [accessibility] › accessibility/auth-accessibility.spec.ts:6:5 › Auth pages accessibility › no critical a11y violations on /v2/auth/verify-email?token=TEST 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2/auth/verify-email?token=TEST
+    Call log:
+      - navigating to "http://localhost:5173/v2/auth/verify-email?token=TEST", waiting until "load"
+
+
+       5 |   for (const route of routes) {
+       6 |     test(`no critical a11y violations on ${route}`, async ({ page }) => {
+    >  7 |       await page.goto(route)
+         |                  ^
+       8 |       let AxeBuilder: any
+       9 |       try {
+      10 |         AxeBuilder = (await import('@axe-core/playwright')).default
+        at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/auth-accessibility.spec.ts:7:18
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../test-results/accessibility-auth-accessi-49bfa-uth-verify-email-token-TEST-accessibility/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../test-results/accessibility-auth-accessi-49bfa-uth-verify-email-token-TEST-accessibility/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-auth-accessi-49bfa-uth-verify-email-token-TEST-accessibility/test-failed-1.png]]
+
+[[ATTACHMENT|accessibility-auth-accessi-49bfa-uth-verify-email-token-TEST-accessibility/video.webm]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="accessibility/comprehensive-a11y.spec.ts" timestamp="2025-08-19T23:53:14.446Z" hostname="accessibility" tests="28" failures="28" skipped="0" time="87.445" errors="0">
+<testcase name="Comprehensive Accessibility Testing › Application-wide Accessibility › Dashboard page should meet WCAG 2.1 AA standards" classname="accessibility/comprehensive-a11y.spec.ts" time="2.745">
+<failure message="comprehensive-a11y.spec.ts:66:7 Dashboard page should meet WCAG 2.1 AA standards" type="FAILURE">
+<![CDATA[  [accessibility] › accessibility/comprehensive-a11y.spec.ts:66:7 › Comprehensive Accessibility Testing › Application-wide Accessibility › Dashboard page should meet WCAG 2.1 AA standards 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2
+    Call log:
+      - navigating to "http://localhost:5173/v2", waiting until "load"
+
+
+      43 |   test.beforeEach(async ({ page }) => {
+      44 |     // Set up accessibility testing context
+    > 45 |     await page.goto('/v2')
+         |                ^
+      46 |     
+      47 |     // Wait for initial load
+      48 |     await page.waitForLoadState('networkidle')
+        at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-ca352--meet-WCAG-2-1-AA-standards-accessibility/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-ca352--meet-WCAG-2-1-AA-standards-accessibility/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-comprehensiv-ca352--meet-WCAG-2-1-AA-standards-accessibility/test-failed-1.png]]
+
+[[ATTACHMENT|accessibility-comprehensiv-ca352--meet-WCAG-2-1-AA-standards-accessibility/video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Accessibility Testing › Application-wide Accessibility › Models page should meet WCAG 2.1 AA standards" classname="accessibility/comprehensive-a11y.spec.ts" time="3.276">
+<failure message="comprehensive-a11y.spec.ts:66:7 Models page should meet WCAG 2.1 AA standards" type="FAILURE">
+<![CDATA[  [accessibility] › accessibility/comprehensive-a11y.spec.ts:66:7 › Comprehensive Accessibility Testing › Application-wide Accessibility › Models page should meet WCAG 2.1 AA standards 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2
+    Call log:
+      - navigating to "http://localhost:5173/v2", waiting until "load"
+
+
+      43 |   test.beforeEach(async ({ page }) => {
+      44 |     // Set up accessibility testing context
+    > 45 |     await page.goto('/v2')
+         |                ^
+      46 |     
+      47 |     // Wait for initial load
+      48 |     await page.waitForLoadState('networkidle')
+        at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-e4704--meet-WCAG-2-1-AA-standards-accessibility/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-e4704--meet-WCAG-2-1-AA-standards-accessibility/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-comprehensiv-e4704--meet-WCAG-2-1-AA-standards-accessibility/test-failed-1.png]]
+
+[[ATTACHMENT|accessibility-comprehensiv-e4704--meet-WCAG-2-1-AA-standards-accessibility/video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Accessibility Testing › Application-wide Accessibility › Cluster page should meet WCAG 2.1 AA standards" classname="accessibility/comprehensive-a11y.spec.ts" time="3.661">
+<failure message="comprehensive-a11y.spec.ts:66:7 Cluster page should meet WCAG 2.1 AA standards" type="FAILURE">
+<![CDATA[  [accessibility] › accessibility/comprehensive-a11y.spec.ts:66:7 › Comprehensive Accessibility Testing › Application-wide Accessibility › Cluster page should meet WCAG 2.1 AA standards 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2
+    Call log:
+      - navigating to "http://localhost:5173/v2", waiting until "load"
+
+
+      43 |   test.beforeEach(async ({ page }) => {
+      44 |     // Set up accessibility testing context
+    > 45 |     await page.goto('/v2')
+         |                ^
+      46 |     
+      47 |     // Wait for initial load
+      48 |     await page.waitForLoadState('networkidle')
+        at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-66156--meet-WCAG-2-1-AA-standards-accessibility/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-66156--meet-WCAG-2-1-AA-standards-accessibility/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-comprehensiv-66156--meet-WCAG-2-1-AA-standards-accessibility/test-failed-1.png]]
+
+[[ATTACHMENT|accessibility-comprehensiv-66156--meet-WCAG-2-1-AA-standards-accessibility/video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Accessibility Testing › Application-wide Accessibility › Analytics page should meet WCAG 2.1 AA standards" classname="accessibility/comprehensive-a11y.spec.ts" time="3.593">
+<failure message="comprehensive-a11y.spec.ts:66:7 Analytics page should meet WCAG 2.1 AA standards" type="FAILURE">
+<![CDATA[  [accessibility] › accessibility/comprehensive-a11y.spec.ts:66:7 › Comprehensive Accessibility Testing › Application-wide Accessibility › Analytics page should meet WCAG 2.1 AA standards 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2
+    Call log:
+      - navigating to "http://localhost:5173/v2", waiting until "load"
+
+
+      43 |   test.beforeEach(async ({ page }) => {
+      44 |     // Set up accessibility testing context
+    > 45 |     await page.goto('/v2')
+         |                ^
+      46 |     
+      47 |     // Wait for initial load
+      48 |     await page.waitForLoadState('networkidle')
+        at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-08747--meet-WCAG-2-1-AA-standards-accessibility/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-08747--meet-WCAG-2-1-AA-standards-accessibility/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-comprehensiv-08747--meet-WCAG-2-1-AA-standards-accessibility/test-failed-1.png]]
+
+[[ATTACHMENT|accessibility-comprehensiv-08747--meet-WCAG-2-1-AA-standards-accessibility/video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Accessibility Testing › Application-wide Accessibility › Login page should meet WCAG 2.1 AA standards" classname="accessibility/comprehensive-a11y.spec.ts" time="3.996">
+<failure message="comprehensive-a11y.spec.ts:66:7 Login page should meet WCAG 2.1 AA standards" type="FAILURE">
+<![CDATA[  [accessibility] › accessibility/comprehensive-a11y.spec.ts:66:7 › Comprehensive Accessibility Testing › Application-wide Accessibility › Login page should meet WCAG 2.1 AA standards 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2
+    Call log:
+      - navigating to "http://localhost:5173/v2", waiting until "load"
+
+
+      43 |   test.beforeEach(async ({ page }) => {
+      44 |     // Set up accessibility testing context
+    > 45 |     await page.goto('/v2')
+         |                ^
+      46 |     
+      47 |     // Wait for initial load
+      48 |     await page.waitForLoadState('networkidle')
+        at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-94048--meet-WCAG-2-1-AA-standards-accessibility/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-94048--meet-WCAG-2-1-AA-standards-accessibility/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-comprehensiv-94048--meet-WCAG-2-1-AA-standards-accessibility/test-failed-1.png]]
+
+[[ATTACHMENT|accessibility-comprehensiv-94048--meet-WCAG-2-1-AA-standards-accessibility/video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Accessibility Testing › Application-wide Accessibility › Register page should meet WCAG 2.1 AA standards" classname="accessibility/comprehensive-a11y.spec.ts" time="4.236">
+<failure message="comprehensive-a11y.spec.ts:66:7 Register page should meet WCAG 2.1 AA standards" type="FAILURE">
+<![CDATA[  [accessibility] › accessibility/comprehensive-a11y.spec.ts:66:7 › Comprehensive Accessibility Testing › Application-wide Accessibility › Register page should meet WCAG 2.1 AA standards 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2
+    Call log:
+      - navigating to "http://localhost:5173/v2", waiting until "load"
+
+
+      43 |   test.beforeEach(async ({ page }) => {
+      44 |     // Set up accessibility testing context
+    > 45 |     await page.goto('/v2')
+         |                ^
+      46 |     
+      47 |     // Wait for initial load
+      48 |     await page.waitForLoadState('networkidle')
+        at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-79c03--meet-WCAG-2-1-AA-standards-accessibility/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-79c03--meet-WCAG-2-1-AA-standards-accessibility/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-comprehensiv-79c03--meet-WCAG-2-1-AA-standards-accessibility/test-failed-1.png]]
+
+[[ATTACHMENT|accessibility-comprehensiv-79c03--meet-WCAG-2-1-AA-standards-accessibility/video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Accessibility Testing › Keyboard Navigation › should support complete keyboard navigation" classname="accessibility/comprehensive-a11y.spec.ts" time="3.256">
+<failure message="comprehensive-a11y.spec.ts:84:5 should support complete keyboard navigation" type="FAILURE">
+<![CDATA[  [accessibility] › accessibility/comprehensive-a11y.spec.ts:84:5 › Comprehensive Accessibility Testing › Keyboard Navigation › should support complete keyboard navigation 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2
+    Call log:
+      - navigating to "http://localhost:5173/v2", waiting until "load"
+
+
+      43 |   test.beforeEach(async ({ page }) => {
+      44 |     // Set up accessibility testing context
+    > 45 |     await page.goto('/v2')
+         |                ^
+      46 |     
+      47 |     // Wait for initial load
+      48 |     await page.waitForLoadState('networkidle')
+        at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-0b6b1-omplete-keyboard-navigation-accessibility/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-0b6b1-omplete-keyboard-navigation-accessibility/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-comprehensiv-0b6b1-omplete-keyboard-navigation-accessibility/test-failed-1.png]]
+
+[[ATTACHMENT|accessibility-comprehensiv-0b6b1-omplete-keyboard-navigation-accessibility/video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Accessibility Testing › Keyboard Navigation › should trap focus in modal dialogs" classname="accessibility/comprehensive-a11y.spec.ts" time="3.724">
+<failure message="comprehensive-a11y.spec.ts:112:5 should trap focus in modal dialogs" type="FAILURE">
+<![CDATA[  [accessibility] › accessibility/comprehensive-a11y.spec.ts:112:5 › Comprehensive Accessibility Testing › Keyboard Navigation › should trap focus in modal dialogs 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2
+    Call log:
+      - navigating to "http://localhost:5173/v2", waiting until "load"
+
+
+      43 |   test.beforeEach(async ({ page }) => {
+      44 |     // Set up accessibility testing context
+    > 45 |     await page.goto('/v2')
+         |                ^
+      46 |     
+      47 |     // Wait for initial load
+      48 |     await page.waitForLoadState('networkidle')
+        at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-e0eb8-trap-focus-in-modal-dialogs-accessibility/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-e0eb8-trap-focus-in-modal-dialogs-accessibility/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-comprehensiv-e0eb8-trap-focus-in-modal-dialogs-accessibility/test-failed-1.png]]
+
+[[ATTACHMENT|accessibility-comprehensiv-e0eb8-trap-focus-in-modal-dialogs-accessibility/video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Accessibility Testing › Keyboard Navigation › should support arrow key navigation in menus and lists" classname="accessibility/comprehensive-a11y.spec.ts" time="3.601">
+<failure message="comprehensive-a11y.spec.ts:153:5 should support arrow key navigation in menus and lists" type="FAILURE">
+<![CDATA[  [accessibility] › accessibility/comprehensive-a11y.spec.ts:153:5 › Comprehensive Accessibility Testing › Keyboard Navigation › should support arrow key navigation in menus and lists 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2
+    Call log:
+      - navigating to "http://localhost:5173/v2", waiting until "load"
+
+
+      43 |   test.beforeEach(async ({ page }) => {
+      44 |     // Set up accessibility testing context
+    > 45 |     await page.goto('/v2')
+         |                ^
+      46 |     
+      47 |     // Wait for initial load
+      48 |     await page.waitForLoadState('networkidle')
+        at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-ffe69-vigation-in-menus-and-lists-accessibility/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-ffe69-vigation-in-menus-and-lists-accessibility/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-comprehensiv-ffe69-vigation-in-menus-and-lists-accessibility/test-failed-1.png]]
+
+[[ATTACHMENT|accessibility-comprehensiv-ffe69-vigation-in-menus-and-lists-accessibility/video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Accessibility Testing › Keyboard Navigation › should handle Enter and Space key activation" classname="accessibility/comprehensive-a11y.spec.ts" time="3.04">
+<failure message="comprehensive-a11y.spec.ts:179:5 should handle Enter and Space key activation" type="FAILURE">
+<![CDATA[  [accessibility] › accessibility/comprehensive-a11y.spec.ts:179:5 › Comprehensive Accessibility Testing › Keyboard Navigation › should handle Enter and Space key activation 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2
+    Call log:
+      - navigating to "http://localhost:5173/v2", waiting until "load"
+
+
+      43 |   test.beforeEach(async ({ page }) => {
+      44 |     // Set up accessibility testing context
+    > 45 |     await page.goto('/v2')
+         |                ^
+      46 |     
+      47 |     // Wait for initial load
+      48 |     await page.waitForLoadState('networkidle')
+        at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-55762-er-and-Space-key-activation-accessibility/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-55762-er-and-Space-key-activation-accessibility/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-comprehensiv-55762-er-and-Space-key-activation-accessibility/test-failed-1.png]]
+
+[[ATTACHMENT|accessibility-comprehensiv-55762-er-and-Space-key-activation-accessibility/video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Accessibility Testing › Screen Reader Compatibility › should have proper heading structure" classname="accessibility/comprehensive-a11y.spec.ts" time="2.412">
+<failure message="comprehensive-a11y.spec.ts:206:5 should have proper heading structure" type="FAILURE">
+<![CDATA[  [accessibility] › accessibility/comprehensive-a11y.spec.ts:206:5 › Comprehensive Accessibility Testing › Screen Reader Compatibility › should have proper heading structure 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2
+    Call log:
+      - navigating to "http://localhost:5173/v2", waiting until "load"
+
+
+      43 |   test.beforeEach(async ({ page }) => {
+      44 |     // Set up accessibility testing context
+    > 45 |     await page.goto('/v2')
+         |                ^
+      46 |     
+      47 |     // Wait for initial load
+      48 |     await page.waitForLoadState('networkidle')
+        at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-c9efb-ve-proper-heading-structure-accessibility/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-c9efb-ve-proper-heading-structure-accessibility/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-comprehensiv-c9efb-ve-proper-heading-structure-accessibility/test-failed-1.png]]
+
+[[ATTACHMENT|accessibility-comprehensiv-c9efb-ve-proper-heading-structure-accessibility/video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Accessibility Testing › Screen Reader Compatibility › should have proper landmark structure" classname="accessibility/comprehensive-a11y.spec.ts" time="3.436">
+<failure message="comprehensive-a11y.spec.ts:235:5 should have proper landmark structure" type="FAILURE">
+<![CDATA[  [accessibility] › accessibility/comprehensive-a11y.spec.ts:235:5 › Comprehensive Accessibility Testing › Screen Reader Compatibility › should have proper landmark structure 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2
+    Call log:
+      - navigating to "http://localhost:5173/v2", waiting until "load"
+
+
+      43 |   test.beforeEach(async ({ page }) => {
+      44 |     // Set up accessibility testing context
+    > 45 |     await page.goto('/v2')
+         |                ^
+      46 |     
+      47 |     // Wait for initial load
+      48 |     await page.waitForLoadState('networkidle')
+        at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-f5153-e-proper-landmark-structure-accessibility/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-f5153-e-proper-landmark-structure-accessibility/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-comprehensiv-f5153-e-proper-landmark-structure-accessibility/test-failed-1.png]]
+
+[[ATTACHMENT|accessibility-comprehensiv-f5153-e-proper-landmark-structure-accessibility/video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Accessibility Testing › Screen Reader Compatibility › should have accessible form labels and descriptions" classname="accessibility/comprehensive-a11y.spec.ts" time="2.852">
+<failure message="comprehensive-a11y.spec.ts:256:5 should have accessible form labels and descriptions" type="FAILURE">
+<![CDATA[  [accessibility] › accessibility/comprehensive-a11y.spec.ts:256:5 › Comprehensive Accessibility Testing › Screen Reader Compatibility › should have accessible form labels and descriptions 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2
+    Call log:
+      - navigating to "http://localhost:5173/v2", waiting until "load"
+
+
+      43 |   test.beforeEach(async ({ page }) => {
+      44 |     // Set up accessibility testing context
+    > 45 |     await page.goto('/v2')
+         |                ^
+      46 |     
+      47 |     // Wait for initial load
+      48 |     await page.waitForLoadState('networkidle')
+        at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-c6b7f-orm-labels-and-descriptions-accessibility/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-c6b7f-orm-labels-and-descriptions-accessibility/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-comprehensiv-c6b7f-orm-labels-and-descriptions-accessibility/test-failed-1.png]]
+
+[[ATTACHMENT|accessibility-comprehensiv-c6b7f-orm-labels-and-descriptions-accessibility/video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Accessibility Testing › Screen Reader Compatibility › should announce dynamic content changes" classname="accessibility/comprehensive-a11y.spec.ts" time="2.844">
+<failure message="comprehensive-a11y.spec.ts:285:5 should announce dynamic content changes" type="FAILURE">
+<![CDATA[  [accessibility] › accessibility/comprehensive-a11y.spec.ts:285:5 › Comprehensive Accessibility Testing › Screen Reader Compatibility › should announce dynamic content changes 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2
+    Call log:
+      - navigating to "http://localhost:5173/v2", waiting until "load"
+
+
+      43 |   test.beforeEach(async ({ page }) => {
+      44 |     // Set up accessibility testing context
+    > 45 |     await page.goto('/v2')
+         |                ^
+      46 |     
+      47 |     // Wait for initial load
+      48 |     await page.waitForLoadState('networkidle')
+        at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-27baa-nce-dynamic-content-changes-accessibility/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-27baa-nce-dynamic-content-changes-accessibility/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-comprehensiv-27baa-nce-dynamic-content-changes-accessibility/test-failed-1.png]]
+
+[[ATTACHMENT|accessibility-comprehensiv-27baa-nce-dynamic-content-changes-accessibility/video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Accessibility Testing › Visual and Motor Accessibility › should have sufficient color contrast" classname="accessibility/comprehensive-a11y.spec.ts" time="3.353">
+<failure message="comprehensive-a11y.spec.ts:311:5 should have sufficient color contrast" type="FAILURE">
+<![CDATA[  [accessibility] › accessibility/comprehensive-a11y.spec.ts:311:5 › Comprehensive Accessibility Testing › Visual and Motor Accessibility › should have sufficient color contrast 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2
+    Call log:
+      - navigating to "http://localhost:5173/v2", waiting until "load"
+
+
+      43 |   test.beforeEach(async ({ page }) => {
+      44 |     // Set up accessibility testing context
+    > 45 |     await page.goto('/v2')
+         |                ^
+      46 |     
+      47 |     // Wait for initial load
+      48 |     await page.waitForLoadState('networkidle')
+        at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-8bf38-e-sufficient-color-contrast-accessibility/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-8bf38-e-sufficient-color-contrast-accessibility/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-comprehensiv-8bf38-e-sufficient-color-contrast-accessibility/test-failed-1.png]]
+
+[[ATTACHMENT|accessibility-comprehensiv-8bf38-e-sufficient-color-contrast-accessibility/video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Accessibility Testing › Visual and Motor Accessibility › should have adequate touch target sizes" classname="accessibility/comprehensive-a11y.spec.ts" time="2.799">
+<failure message="comprehensive-a11y.spec.ts:321:5 should have adequate touch target sizes" type="FAILURE">
+<![CDATA[  [accessibility] › accessibility/comprehensive-a11y.spec.ts:321:5 › Comprehensive Accessibility Testing › Visual and Motor Accessibility › should have adequate touch target sizes 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2
+    Call log:
+      - navigating to "http://localhost:5173/v2", waiting until "load"
+
+
+      43 |   test.beforeEach(async ({ page }) => {
+      44 |     // Set up accessibility testing context
+    > 45 |     await page.goto('/v2')
+         |                ^
+      46 |     
+      47 |     // Wait for initial load
+      48 |     await page.waitForLoadState('networkidle')
+        at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-c7a12-adequate-touch-target-sizes-accessibility/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-c7a12-adequate-touch-target-sizes-accessibility/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-comprehensiv-c7a12-adequate-touch-target-sizes-accessibility/test-failed-1.png]]
+
+[[ATTACHMENT|accessibility-comprehensiv-c7a12-adequate-touch-target-sizes-accessibility/video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Accessibility Testing › Visual and Motor Accessibility › should respect reduced motion preferences" classname="accessibility/comprehensive-a11y.spec.ts" time="2.498">
+<failure message="comprehensive-a11y.spec.ts:339:5 should respect reduced motion preferences" type="FAILURE">
+<![CDATA[  [accessibility] › accessibility/comprehensive-a11y.spec.ts:339:5 › Comprehensive Accessibility Testing › Visual and Motor Accessibility › should respect reduced motion preferences 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2
+    Call log:
+      - navigating to "http://localhost:5173/v2", waiting until "load"
+
+
+      43 |   test.beforeEach(async ({ page }) => {
+      44 |     // Set up accessibility testing context
+    > 45 |     await page.goto('/v2')
+         |                ^
+      46 |     
+      47 |     // Wait for initial load
+      48 |     await page.waitForLoadState('networkidle')
+        at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-a36ef--reduced-motion-preferences-accessibility/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-a36ef--reduced-motion-preferences-accessibility/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-comprehensiv-a36ef--reduced-motion-preferences-accessibility/test-failed-1.png]]
+
+[[ATTACHMENT|accessibility-comprehensiv-a36ef--reduced-motion-preferences-accessibility/video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Accessibility Testing › Visual and Motor Accessibility › should support high contrast mode" classname="accessibility/comprehensive-a11y.spec.ts" time="3.052">
+<failure message="comprehensive-a11y.spec.ts:363:5 should support high contrast mode" type="FAILURE">
+<![CDATA[  [accessibility] › accessibility/comprehensive-a11y.spec.ts:363:5 › Comprehensive Accessibility Testing › Visual and Motor Accessibility › should support high contrast mode 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2
+    Call log:
+      - navigating to "http://localhost:5173/v2", waiting until "load"
+
+
+      43 |   test.beforeEach(async ({ page }) => {
+      44 |     // Set up accessibility testing context
+    > 45 |     await page.goto('/v2')
+         |                ^
+      46 |     
+      47 |     // Wait for initial load
+      48 |     await page.waitForLoadState('networkidle')
+        at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-5ccae--support-high-contrast-mode-accessibility/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-5ccae--support-high-contrast-mode-accessibility/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-comprehensiv-5ccae--support-high-contrast-mode-accessibility/test-failed-1.png]]
+
+[[ATTACHMENT|accessibility-comprehensiv-5ccae--support-high-contrast-mode-accessibility/video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Accessibility Testing › Form Accessibility › should handle form validation accessibly" classname="accessibility/comprehensive-a11y.spec.ts" time="2.91">
+<failure message="comprehensive-a11y.spec.ts:379:5 should handle form validation accessibly" type="FAILURE">
+<![CDATA[  [accessibility] › accessibility/comprehensive-a11y.spec.ts:379:5 › Comprehensive Accessibility Testing › Form Accessibility › should handle form validation accessibly 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2
+    Call log:
+      - navigating to "http://localhost:5173/v2", waiting until "load"
+
+
+      43 |   test.beforeEach(async ({ page }) => {
+      44 |     // Set up accessibility testing context
+    > 45 |     await page.goto('/v2')
+         |                ^
+      46 |     
+      47 |     // Wait for initial load
+      48 |     await page.waitForLoadState('networkidle')
+        at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-51f23--form-validation-accessibly-accessibility/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-51f23--form-validation-accessibly-accessibility/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-comprehensiv-51f23--form-validation-accessibly-accessibility/test-failed-1.png]]
+
+[[ATTACHMENT|accessibility-comprehensiv-51f23--form-validation-accessibly-accessibility/video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Accessibility Testing › Form Accessibility › should associate errors with form fields" classname="accessibility/comprehensive-a11y.spec.ts" time="3.126">
+<failure message="comprehensive-a11y.spec.ts:406:5 should associate errors with form fields" type="FAILURE">
+<![CDATA[  [accessibility] › accessibility/comprehensive-a11y.spec.ts:406:5 › Comprehensive Accessibility Testing › Form Accessibility › should associate errors with form fields 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2
+    Call log:
+      - navigating to "http://localhost:5173/v2", waiting until "load"
+
+
+      43 |   test.beforeEach(async ({ page }) => {
+      44 |     // Set up accessibility testing context
+    > 45 |     await page.goto('/v2')
+         |                ^
+      46 |     
+      47 |     // Wait for initial load
+      48 |     await page.waitForLoadState('networkidle')
+        at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-d723b-ate-errors-with-form-fields-accessibility/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-d723b-ate-errors-with-form-fields-accessibility/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-comprehensiv-d723b-ate-errors-with-form-fields-accessibility/test-failed-1.png]]
+
+[[ATTACHMENT|accessibility-comprehensiv-d723b-ate-errors-with-form-fields-accessibility/video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Accessibility Testing › Component-Specific Tests › should have accessible data tables" classname="accessibility/comprehensive-a11y.spec.ts" time="2.7">
+<failure message="comprehensive-a11y.spec.ts:434:5 should have accessible data tables" type="FAILURE">
+<![CDATA[  [accessibility] › accessibility/comprehensive-a11y.spec.ts:434:5 › Comprehensive Accessibility Testing › Component-Specific Tests › should have accessible data tables 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2
+    Call log:
+      - navigating to "http://localhost:5173/v2", waiting until "load"
+
+
+      43 |   test.beforeEach(async ({ page }) => {
+      44 |     // Set up accessibility testing context
+    > 45 |     await page.goto('/v2')
+         |                ^
+      46 |     
+      47 |     // Wait for initial load
+      48 |     await page.waitForLoadState('networkidle')
+        at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-8dec5-have-accessible-data-tables-accessibility/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-8dec5-have-accessible-data-tables-accessibility/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-comprehensiv-8dec5-have-accessible-data-tables-accessibility/test-failed-1.png]]
+
+[[ATTACHMENT|accessibility-comprehensiv-8dec5-have-accessible-data-tables-accessibility/video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Accessibility Testing › Component-Specific Tests › should have accessible navigation menus" classname="accessibility/comprehensive-a11y.spec.ts" time="4.321">
+<failure message="comprehensive-a11y.spec.ts:464:5 should have accessible navigation menus" type="FAILURE">
+<![CDATA[  [accessibility] › accessibility/comprehensive-a11y.spec.ts:464:5 › Comprehensive Accessibility Testing › Component-Specific Tests › should have accessible navigation menus 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2
+    Call log:
+      - navigating to "http://localhost:5173/v2", waiting until "load"
+
+
+      43 |   test.beforeEach(async ({ page }) => {
+      44 |     // Set up accessibility testing context
+    > 45 |     await page.goto('/v2')
+         |                ^
+      46 |     
+      47 |     // Wait for initial load
+      48 |     await page.waitForLoadState('networkidle')
+        at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-ca6ba-accessible-navigation-menus-accessibility/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-ca6ba-accessible-navigation-menus-accessibility/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-comprehensiv-ca6ba-accessible-navigation-menus-accessibility/test-failed-1.png]]
+
+[[ATTACHMENT|accessibility-comprehensiv-ca6ba-accessible-navigation-menus-accessibility/video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Accessibility Testing › Performance and Accessibility › should maintain accessibility during loading states" classname="accessibility/comprehensive-a11y.spec.ts" time="2.979">
+<failure message="comprehensive-a11y.spec.ts:490:5 should maintain accessibility during loading states" type="FAILURE">
+<![CDATA[  [accessibility] › accessibility/comprehensive-a11y.spec.ts:490:5 › Comprehensive Accessibility Testing › Performance and Accessibility › should maintain accessibility during loading states 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2
+    Call log:
+      - navigating to "http://localhost:5173/v2", waiting until "load"
+
+
+      43 |   test.beforeEach(async ({ page }) => {
+      44 |     // Set up accessibility testing context
+    > 45 |     await page.goto('/v2')
+         |                ^
+      46 |     
+      47 |     // Wait for initial load
+      48 |     await page.waitForLoadState('networkidle')
+        at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-e3392-ility-during-loading-states-accessibility/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-e3392-ility-during-loading-states-accessibility/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-comprehensiv-e3392-ility-during-loading-states-accessibility/test-failed-1.png]]
+
+[[ATTACHMENT|accessibility-comprehensiv-e3392-ility-during-loading-states-accessibility/video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Accessibility Testing › Performance and Accessibility › should maintain accessibility with dynamic content" classname="accessibility/comprehensive-a11y.spec.ts" time="3.369">
+<failure message="comprehensive-a11y.spec.ts:512:5 should maintain accessibility with dynamic content" type="FAILURE">
+<![CDATA[  [accessibility] › accessibility/comprehensive-a11y.spec.ts:512:5 › Comprehensive Accessibility Testing › Performance and Accessibility › should maintain accessibility with dynamic content 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2
+    Call log:
+      - navigating to "http://localhost:5173/v2", waiting until "load"
+
+
+      43 |   test.beforeEach(async ({ page }) => {
+      44 |     // Set up accessibility testing context
+    > 45 |     await page.goto('/v2')
+         |                ^
+      46 |     
+      47 |     // Wait for initial load
+      48 |     await page.waitForLoadState('networkidle')
+        at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-08a45-bility-with-dynamic-content-accessibility/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-08a45-bility-with-dynamic-content-accessibility/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-comprehensiv-08a45-bility-with-dynamic-content-accessibility/test-failed-1.png]]
+
+[[ATTACHMENT|accessibility-comprehensiv-08a45-bility-with-dynamic-content-accessibility/video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Accessibility Testing › Multi-language Accessibility › should handle language attributes correctly" classname="accessibility/comprehensive-a11y.spec.ts" time="2.452">
+<failure message="comprehensive-a11y.spec.ts:532:5 should handle language attributes correctly" type="FAILURE">
+<![CDATA[  [accessibility] › accessibility/comprehensive-a11y.spec.ts:532:5 › Comprehensive Accessibility Testing › Multi-language Accessibility › should handle language attributes correctly 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2
+    Call log:
+      - navigating to "http://localhost:5173/v2", waiting until "load"
+
+
+      43 |   test.beforeEach(async ({ page }) => {
+      44 |     // Set up accessibility testing context
+    > 45 |     await page.goto('/v2')
+         |                ^
+      46 |     
+      47 |     // Wait for initial load
+      48 |     await page.waitForLoadState('networkidle')
+        at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-8bc62-nguage-attributes-correctly-accessibility/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-8bc62-nguage-attributes-correctly-accessibility/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-comprehensiv-8bc62-nguage-attributes-correctly-accessibility/test-failed-1.png]]
+
+[[ATTACHMENT|accessibility-comprehensiv-8bc62-nguage-attributes-correctly-accessibility/video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Accessibility Testing › Accessibility Regression Prevention › should maintain accessibility across browser zoom levels" classname="accessibility/comprehensive-a11y.spec.ts" time="3.113">
+<failure message="comprehensive-a11y.spec.ts:551:5 should maintain accessibility across browser zoom levels" type="FAILURE">
+<![CDATA[  [accessibility] › accessibility/comprehensive-a11y.spec.ts:551:5 › Comprehensive Accessibility Testing › Accessibility Regression Prevention › should maintain accessibility across browser zoom levels 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2
+    Call log:
+      - navigating to "http://localhost:5173/v2", waiting until "load"
+
+
+      43 |   test.beforeEach(async ({ page }) => {
+      44 |     // Set up accessibility testing context
+    > 45 |     await page.goto('/v2')
+         |                ^
+      46 |     
+      47 |     // Wait for initial load
+      48 |     await page.waitForLoadState('networkidle')
+        at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-d46e2--across-browser-zoom-levels-accessibility/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-d46e2--across-browser-zoom-levels-accessibility/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-comprehensiv-d46e2--across-browser-zoom-levels-accessibility/test-failed-1.png]]
+
+[[ATTACHMENT|accessibility-comprehensiv-d46e2--across-browser-zoom-levels-accessibility/video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Comprehensive Accessibility Testing › Accessibility Regression Prevention › should work with browser accessibility tools" classname="accessibility/comprehensive-a11y.spec.ts" time="1.717">
+<failure message="comprehensive-a11y.spec.ts:569:5 should work with browser accessibility tools" type="FAILURE">
+<![CDATA[  [accessibility] › accessibility/comprehensive-a11y.spec.ts:569:5 › Comprehensive Accessibility Testing › Accessibility Regression Prevention › should work with browser accessibility tools 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2
+    Call log:
+      - navigating to "http://localhost:5173/v2", waiting until "load"
+
+
+      43 |   test.beforeEach(async ({ page }) => {
+      44 |     // Set up accessibility testing context
+    > 45 |     await page.goto('/v2')
+         |                ^
+      46 |     
+      47 |     // Wait for initial load
+      48 |     await page.waitForLoadState('networkidle')
+        at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-aa34c-browser-accessibility-tools-accessibility/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-aa34c-browser-accessibility-tools-accessibility/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-comprehensiv-aa34c-browser-accessibility-tools-accessibility/test-failed-1.png]]
+
+[[ATTACHMENT|accessibility-comprehensiv-aa34c-browser-accessibility-tools-accessibility/video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Component Library Accessibility › should have accessible design system components" classname="accessibility/comprehensive-a11y.spec.ts" time="2.384">
+<failure message="comprehensive-a11y.spec.ts:604:3 should have accessible design system components" type="FAILURE">
+<![CDATA[  [accessibility] › accessibility/comprehensive-a11y.spec.ts:604:3 › Component Library Accessibility › should have accessible design system components 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2/styleguide
+    Call log:
+      - navigating to "http://localhost:5173/v2/styleguide", waiting until "load"
+
+
+      604 |   test('should have accessible design system components', async ({ page }) => {
+      605 |     // This would test a dedicated component showcase page
+    > 606 |     await page.goto('/v2/styleguide') // If you have one
+          |                ^
+      607 |     
+      608 |     if (await page.locator('body').textContent() !== null) {
+      609 |       const axeResults = await new AxeBuilder({ page })
+        at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:606:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-5ff71-le-design-system-components-accessibility/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../test-results/accessibility-comprehensiv-5ff71-le-design-system-components-accessibility/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-comprehensiv-5ff71-le-design-system-components-accessibility/test-failed-1.png]]
+
+[[ATTACHMENT|accessibility-comprehensiv-5ff71-le-design-system-components-accessibility/video.webm]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+</testsuites>

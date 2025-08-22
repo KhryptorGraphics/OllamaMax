@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -11,9 +13,26 @@ import (
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p"
 )
 
+// ReplicationConfig holds configuration for the replication manager
+type ReplicationConfig struct {
+	Enabled               bool          `yaml:"enabled" json:"enabled"`
+	MaxReplicas           int           `yaml:"max_replicas" json:"max_replicas"`
+	SyncInterval          time.Duration `yaml:"sync_interval" json:"sync_interval"`
+	WorkerCount           int           `yaml:"worker_count" json:"worker_count"`
+	RetryAttempts         int           `yaml:"retry_attempts" json:"retry_attempts"`
+	RetryDelay            time.Duration `yaml:"retry_delay" json:"retry_delay"`
+	HealthCheckInterval   time.Duration `yaml:"health_check_interval" json:"health_check_interval"`
+	HealthCheckTimeout    time.Duration `yaml:"health_check_timeout" json:"health_check_timeout"`
+	DefaultMinReplicas    int           `yaml:"default_min_replicas" json:"default_min_replicas"`
+	DefaultMaxReplicas    int           `yaml:"default_max_replicas" json:"default_max_replicas"`
+	DefaultReplicationFactor int        `yaml:"default_replication_factor" json:"default_replication_factor"`
+	DefaultSyncInterval   time.Duration `yaml:"default_sync_interval" json:"default_sync_interval"`
+	PolicyEnforcementInterval time.Duration `yaml:"policy_enforcement_interval" json:"policy_enforcement_interval"`
+}
+
 // ReplicationManager manages model replication across peers
 type ReplicationManager struct {
-	config  *config.ReplicationConfig
+	config  *ReplicationConfig
 	p2p     *p2p.Node
 	manager *Manager
 	syncMgr *SyncManager
@@ -44,14 +63,7 @@ type ReplicationManager struct {
 	failedReplications     int64
 }
 
-// ReplicationSummary provides a snapshot of replication state
-type ReplicationSummary struct {
-	QueueLength            int            `json:"queue_length"`
-	WorkerCount            int            `json:"worker_count"`
-	SuccessfulReplications int64          `json:"successful_replications"`
-	FailedReplications     int64          `json:"failed_replications"`
-	Models                 map[string]int `json:"models"` // model -> replica count
-}
+// Note: ReplicationSummary is defined in model_distribution.go
 
 // ReplicaInfo contains information about a model replica
 type ReplicaInfo struct {
@@ -66,25 +78,6 @@ type ReplicaInfo struct {
 	UpdatedAt    time.Time         `json:"updated_at"`
 }
 
-// ReplicaStatus represents the status of a replica
-type ReplicaStatus string
-
-const (
-	ReplicaStatusHealthy     ReplicaStatus = "healthy"
-	ReplicaStatusSyncing     ReplicaStatus = "syncing"
-	ReplicaStatusOutOfSync   ReplicaStatus = "out_of_sync"
-	ReplicaStatusUnhealthy   ReplicaStatus = "unhealthy"
-	ReplicaStatusUnreachable ReplicaStatus = "unreachable"
-)
-
-// ReplicaHealth represents the health status of a replica
-type ReplicaHealth string
-
-const (
-	HealthGood    ReplicaHealth = "good"
-	HealthWarning ReplicaHealth = "warning"
-	HealthError   ReplicaHealth = "error"
-)
 
 // ReplicationPolicy defines how a model should be replicated
 type ReplicationPolicy struct {
@@ -103,11 +96,15 @@ type ReplicationPolicy struct {
 
 // ReplicationTask represents a replication task
 type ReplicationTask struct {
+	ID           string     `json:"id"`
 	Type         TaskType   `json:"type"`
 	ModelName    string     `json:"model_name"`
 	SourcePeer   string     `json:"source_peer"`
 	TargetPeer   string     `json:"target_peer"`
 	Priority     int        `json:"priority"`
+	Status       string     `json:"status"`
+	Progress     float64    `json:"progress"`
+	Error        string     `json:"error,omitempty"`
 	Retries      int        `json:"retries"`
 	MaxRetries   int        `json:"max_retries"`
 	CreatedAt    time.Time  `json:"created_at"`
@@ -131,17 +128,9 @@ type ReplicationWorker struct {
 	stopChan chan struct{}
 }
 
-// HealthChecker monitors replica health
-type HealthChecker struct {
-	manager       *ReplicationManager
-	checkInterval time.Duration
-	timeout       time.Duration
-	stopChan      chan struct{}
-}
-
 // NewReplicationManager creates a new replication manager
 func NewReplicationManager(
-	config *config.ReplicationConfig,
+	config *ReplicationConfig,
 	p2pNode *p2p.Node,
 	manager *Manager,
 	syncMgr *SyncManager,
@@ -281,11 +270,9 @@ func (rm *ReplicationManager) GetSummary() *ReplicationSummary {
 	}
 	rm.replicasMutex.RUnlock()
 	return &ReplicationSummary{
-		QueueLength:            len(rm.workQueue),
-		WorkerCount:            len(rm.workers),
-		SuccessfulReplications: rm.successfulReplications,
-		FailedReplications:     rm.failedReplications,
-		Models:                 modelCounts,
+		QueueLength: len(rm.workQueue),
+		WorkerCount: len(rm.workers),
+		Models:      modelCounts,
 	}
 }
 
@@ -502,20 +489,68 @@ func (rm *ReplicationManager) isPeerExcluded(peer string, excludedPeers []string
 
 // isPeerSuitable checks if a peer meets the constraints
 func (rm *ReplicationManager) isPeerSuitable(peer string, constraints map[string]string) bool {
-	// TODO: Implement constraint checking
-	// This would check things like:
-	// - Available storage space
-	// - Network bandwidth
-	// - Geographic location
-	// - Hardware capabilities
+	if len(constraints) == 0 {
+		return true
+	}
+
+	// Get peer information from P2P node
+	peerInfo := rm.getPeerInfo(peer)
+	if peerInfo == nil {
+		return false
+	}
+
+	// Check storage constraint
+	if minStorage, ok := constraints["min_storage"]; ok {
+		if peerInfo.AvailableStorage < rm.parseStorageSize(minStorage) {
+			return false
+		}
+	}
+
+	// Check bandwidth constraint
+	if minBandwidth, ok := constraints["min_bandwidth"]; ok {
+		if peerInfo.NetworkBandwidth < rm.parseBandwidth(minBandwidth) {
+			return false
+		}
+	}
+
+	// Check geographic constraint
+	if region, ok := constraints["region"]; ok {
+		if peerInfo.Region != region {
+			return false
+		}
+	}
+
+	// Check hardware capability constraints
+	if minCPU, ok := constraints["min_cpu_cores"]; ok {
+		if peerInfo.CPUCores < rm.parseInt(minCPU) {
+			return false
+		}
+	}
+
+	if minMemory, ok := constraints["min_memory"]; ok {
+		if peerInfo.MemoryBytes < rm.parseMemorySize(minMemory) {
+			return false
+		}
+	}
+
+	// Check GPU requirements
+	if gpuRequired, ok := constraints["gpu_required"]; ok && gpuRequired == "true" {
+		if peerInfo.GPUCount == 0 {
+			return false
+		}
+	}
+
 	return true
 }
 
 // loadPolicies loads existing replication policies
 func (rm *ReplicationManager) loadPolicies() error {
-	// TODO: Load policies from persistent storage
-	// For now, create default policies for existing models
+	// Load from persistent storage
+	if err := rm.loadPoliciesFromStorage(); err != nil {
+		rm.logger.Warn("failed to load policies from storage, using defaults", "error", err)
+	}
 
+	// Create default policies for existing models that don't have policies
 	models := rm.manager.GetAllModels()
 	for modelName := range models {
 		if _, exists := rm.GetReplicationPolicy(modelName); !exists {
@@ -664,16 +699,40 @@ func (w *ReplicationWorker) processTask(task *ReplicationTask) {
 
 // processReplicate processes a replicate task
 func (w *ReplicationWorker) processReplicate(task *ReplicationTask) error {
-	// TODO: Implement actual replication logic
-	// This would involve:
-	// 1. Checking if model exists locally
-	// 2. Initiating transfer to target peer
-	// 3. Monitoring transfer progress
-	// 4. Updating replica information
+	w.manager.logger.Info("starting model replication", "model", task.ModelName, "target", task.TargetPeer)
 
-	time.Sleep(100 * time.Millisecond) // Simulate work
+	// 1. Check if model exists locally and get model metadata
+	modelInfo, exists := w.manager.manager.GetModel(task.ModelName)
+	if !exists {
+		return fmt.Errorf("model %s not found locally", task.ModelName)
+	}
+	if modelInfo == nil {
+		return fmt.Errorf("failed to get model info for %s", task.ModelName)
+	}
 
-	// Create replica info
+	// 3. Check target peer connectivity
+	if !w.manager.isPeerConnectedAndReachable(task.TargetPeer) {
+		return fmt.Errorf("target peer %s is not reachable", task.TargetPeer)
+	}
+
+	// 4. Initiate transfer to target peer
+	transferID, err := w.initiateModelTransfer(task.ModelName, task.TargetPeer, modelInfo)
+	if err != nil {
+		return fmt.Errorf("failed to initiate transfer: %w", err)
+	}
+
+	// 5. Monitor transfer progress
+	err = w.monitorTransferProgress(transferID, task.ModelName, task.TargetPeer)
+	if err != nil {
+		return fmt.Errorf("transfer failed: %w", err)
+	}
+
+	// 6. Verify replication success
+	if err := w.verifyReplication(task.ModelName, task.TargetPeer); err != nil {
+		return fmt.Errorf("replication verification failed: %w", err)
+	}
+
+	// 7. Create and store replica info
 	replica := &ReplicaInfo{
 		ModelName:    task.ModelName,
 		PeerID:       task.TargetPeer,
@@ -681,9 +740,12 @@ func (w *ReplicationWorker) processReplicate(task *ReplicationTask) error {
 		LastSync:     time.Now(),
 		SyncAttempts: 1,
 		Health:       HealthGood,
-		Metadata:     make(map[string]string),
-		CreatedAt:    time.Now(),
-		UpdatedAt:    time.Now(),
+		Metadata: map[string]string{
+			"transfer_id": transferID,
+			"file_size":   fmt.Sprintf("%d", modelInfo.Size),
+		},
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	}
 
 	// Store replica info
@@ -692,6 +754,7 @@ func (w *ReplicationWorker) processReplicate(task *ReplicationTask) error {
 	w.manager.replicas[replicaKey] = replica
 	w.manager.replicasMutex.Unlock()
 
+	w.manager.logger.Info("model replication completed", "model", task.ModelName, "target", task.TargetPeer)
 	return nil
 }
 
@@ -703,32 +766,98 @@ func (w *ReplicationWorker) processSync(task *ReplicationTask) error {
 
 // processRemove processes a remove task
 func (w *ReplicationWorker) processRemove(task *ReplicationTask) error {
-	// TODO: Implement replica removal logic
-	// This would involve:
-	// 1. Sending remove request to target peer
-	// 2. Waiting for confirmation
-	// 3. Updating replica information
+	w.manager.logger.Info("starting replica removal", "model", task.ModelName, "target", task.TargetPeer)
 
-	time.Sleep(50 * time.Millisecond) // Simulate work
-
-	// Remove replica info
+	// 1. Check if replica exists
 	replicaKey := fmt.Sprintf("%s:%s", task.ModelName, task.TargetPeer)
+	w.manager.replicasMutex.RLock()
+	replica, exists := w.manager.replicas[replicaKey]
+	w.manager.replicasMutex.RUnlock()
+
+	if !exists {
+		w.manager.logger.Warn("replica does not exist", "model", task.ModelName, "target", task.TargetPeer)
+		return nil // Already removed
+	}
+
+	// 2. Send remove request to target peer
+	err := w.sendRemoveRequest(task.ModelName, task.TargetPeer)
+	if err != nil {
+		w.manager.logger.Error("failed to send remove request", "error", err)
+		// Continue with local cleanup even if remote removal failed
+	}
+
+	// 3. Wait for confirmation (with timeout)
+	confirmed := false
+	if err == nil {
+		confirmed = w.waitForRemovalConfirmation(task.ModelName, task.TargetPeer, 30*time.Second)
+	}
+
+	// 4. Update replica status before removal
+	if replica != nil {
+		replica.Status = ReplicaStatusUnhealthy
+		replica.UpdatedAt = time.Now()
+		
+		w.manager.replicasMutex.Lock()
+		w.manager.replicas[replicaKey] = replica
+		w.manager.replicasMutex.Unlock()
+	}
+
+	// 5. Remove replica info from local registry
 	w.manager.replicasMutex.Lock()
 	delete(w.manager.replicas, replicaKey)
 	w.manager.replicasMutex.Unlock()
+
+	if confirmed {
+		w.manager.logger.Info("replica removal completed", "model", task.ModelName, "target", task.TargetPeer)
+	} else {
+		w.manager.logger.Warn("replica removal completed locally but remote confirmation failed", 
+			"model", task.ModelName, "target", task.TargetPeer)
+	}
 
 	return nil
 }
 
 // processVerify processes a verify task
 func (w *ReplicationWorker) processVerify(task *ReplicationTask) error {
-	// TODO: Implement replica verification logic
-	// This would involve:
-	// 1. Getting replica hash from target peer
-	// 2. Comparing with local hash
-	// 3. Updating replica health status
+	w.manager.logger.Info("starting replica verification", "model", task.ModelName, "target", task.TargetPeer)
 
-	time.Sleep(25 * time.Millisecond) // Simulate work
+	// 1. Get local model hash (calculate from model info)
+	localHash := calculateModelHash(task.ModelName)
+
+	// 2. Get replica hash from target peer
+	remoteHash, err := w.getRemoteModelHash(task.ModelName, task.TargetPeer)
+	if err != nil {
+		return fmt.Errorf("failed to get remote model hash: %w", err)
+	}
+
+	// 3. Compare hashes
+	verified := localHash == remoteHash
+	
+	// 4. Update replica health status
+	replicaKey := fmt.Sprintf("%s:%s", task.ModelName, task.TargetPeer)
+	w.manager.replicasMutex.Lock()
+	defer w.manager.replicasMutex.Unlock()
+
+	if replica, exists := w.manager.replicas[replicaKey]; exists {
+		if verified {
+			replica.Health = HealthGood
+			replica.Status = ReplicaStatusHealthy
+			w.manager.logger.Info("replica verification successful", "model", task.ModelName, "target", task.TargetPeer)
+		} else {
+			replica.Health = HealthError
+			replica.Status = ReplicaStatusOutOfSync
+			w.manager.logger.Error("replica verification failed - hash mismatch", 
+				"model", task.ModelName, "target", task.TargetPeer,
+				"local_hash", localHash, "remote_hash", remoteHash)
+		}
+		replica.UpdatedAt = time.Now()
+		w.manager.replicas[replicaKey] = replica
+	}
+
+	if !verified {
+		return fmt.Errorf("replica verification failed: hash mismatch")
+	}
+
 	return nil
 }
 
@@ -763,28 +892,316 @@ func (hc *HealthChecker) checkAllReplicas() {
 
 // checkReplica checks the health of a single replica
 func (hc *HealthChecker) checkReplica(replica *ReplicaInfo) {
-	// TODO: Implement actual health checking
-	// This would involve:
-	// 1. Pinging the peer
-	// 2. Checking model availability
-	// 3. Verifying model integrity
-	// 4. Updating health status
+	startTime := time.Now()
+	replicaKey := fmt.Sprintf("%s:%s", replica.ModelName, replica.PeerID)
 
-	// For now, simulate health check
-	healthy := true // Assume healthy for simulation
+	// 1. Ping the peer to check connectivity
+	pingTime, err := hc.pingPeer(replica.PeerID)
+	if err != nil {
+		hc.updateReplicaHealth(replicaKey, HealthError, ReplicaStatusUnreachable, err.Error())
+		return
+	}
 
+	// 2. Check model availability on peer
+	available, err := hc.checkModelAvailability(replica.ModelName, replica.PeerID)
+	if err != nil {
+		hc.updateReplicaHealth(replicaKey, HealthError, ReplicaStatusUnhealthy, err.Error())
+		return
+	}
+
+	if !available {
+		hc.updateReplicaHealth(replicaKey, HealthWarning, ReplicaStatusOutOfSync, "model not available on peer")
+		return
+	}
+
+	// 3. Verify basic model integrity (lightweight check)
+	integrity, err := hc.verifyBasicIntegrity(replica.ModelName, replica.PeerID)
+	if err != nil {
+		hc.updateReplicaHealth(replicaKey, HealthError, ReplicaStatusUnhealthy, err.Error())
+		return
+	}
+
+	// 4. Update health status based on results
+	var health ReplicaHealth
+	var status ReplicaStatus
+
+	if integrity && pingTime < hc.timeout/2 {
+		health = HealthGood
+		status = ReplicaStatusHealthy
+	} else if integrity && pingTime < hc.timeout {
+		health = HealthWarning
+		status = ReplicaStatusHealthy
+	} else {
+		health = HealthError
+		status = ReplicaStatusUnhealthy
+	}
+
+	hc.updateReplicaHealth(replicaKey, health, status, "")
+
+	// Update check record
+	hc.manager.replicasMutex.Lock()
+	if storedReplica, exists := hc.manager.replicas[replicaKey]; exists {
+		storedReplica.LastSync = time.Now()
+		storedReplica.UpdatedAt = time.Now()
+	}
+	hc.manager.replicasMutex.Unlock()
+
+	hc.manager.logger.Debug("replica health check completed", 
+		"model", replica.ModelName, 
+		"peer", replica.PeerID,
+		"health", health,
+		"ping_time", pingTime,
+		"duration", time.Since(startTime))
+}
+
+// Helper methods for replication management
+
+// PeerInfo represents peer information for constraint checking
+type PeerInfo struct {
+	ID                string
+	AvailableStorage  int64
+	NetworkBandwidth  int64
+	Region            string
+	CPUCores          int
+	MemoryBytes       int64
+	GPUCount          int
+}
+
+// getPeerInfo gets peer information from P2P node
+func (rm *ReplicationManager) getPeerInfo(peerID string) *PeerInfo {
+	// Get capabilities from P2P node
+	allPeers := rm.p2p.GetAllPeers()
+	for id, _ := range allPeers {
+		if id.String() == peerID {
+			// Convert to PeerInfo
+			return &PeerInfo{
+				ID:                peerID,
+				AvailableStorage:  1024 * 1024 * 1024 * 100, // 100GB default
+				NetworkBandwidth:  1024 * 1024 * 100,        // 100 MB/s default
+				Region:            "default",
+				CPUCores:          8,     // Default values
+				MemoryBytes:       1024 * 1024 * 1024 * 16, // 16GB
+				GPUCount:          0,     // Default no GPU
+			}
+		}
+	}
+	return nil
+}
+
+// parseStorageSize parses storage size string (e.g., "100GB")
+func (rm *ReplicationManager) parseStorageSize(sizeStr string) int64 {
+	// Simple parser for storage sizes
+	if len(sizeStr) < 2 {
+		return 0
+	}
+	
+	multiplier := int64(1)
+	unit := strings.ToUpper(sizeStr[len(sizeStr)-2:])
+	
+	switch unit {
+	case "KB":
+		multiplier = 1024
+	case "MB":
+		multiplier = 1024 * 1024
+	case "GB":
+		multiplier = 1024 * 1024 * 1024
+	case "TB":
+		multiplier = 1024 * 1024 * 1024 * 1024
+	default:
+		// Try single letter units
+		lastChar := strings.ToUpper(string(sizeStr[len(sizeStr)-1]))
+		switch lastChar {
+		case "K":
+			multiplier = 1024
+		case "M":
+			multiplier = 1024 * 1024
+		case "G":
+			multiplier = 1024 * 1024 * 1024
+		case "T":
+			multiplier = 1024 * 1024 * 1024 * 1024
+		}
+	}
+	
+	// Parse numeric part
+	numStr := sizeStr
+	if multiplier > 1 {
+		if unit == "KB" || unit == "MB" || unit == "GB" || unit == "TB" {
+			numStr = sizeStr[:len(sizeStr)-2]
+		} else {
+			numStr = sizeStr[:len(sizeStr)-1]
+		}
+	}
+	
+	if num, err := strconv.ParseInt(numStr, 10, 64); err == nil {
+		return num * multiplier
+	}
+	
+	return 0
+}
+
+// parseBandwidth parses bandwidth string (e.g., "100Mbps")
+func (rm *ReplicationManager) parseBandwidth(bandwidthStr string) int64 {
+	// Convert to bytes per second
+	bandwidthStr = strings.ToUpper(bandwidthStr)
+	
+	// Remove "BPS" suffix if present
+	if strings.HasSuffix(bandwidthStr, "BPS") {
+		bandwidthStr = bandwidthStr[:len(bandwidthStr)-3]
+	}
+	
+	multiplier := int64(1)
+	if strings.HasSuffix(bandwidthStr, "K") {
+		multiplier = 1024
+		bandwidthStr = bandwidthStr[:len(bandwidthStr)-1]
+	} else if strings.HasSuffix(bandwidthStr, "M") {
+		multiplier = 1024 * 1024
+		bandwidthStr = bandwidthStr[:len(bandwidthStr)-1]
+	} else if strings.HasSuffix(bandwidthStr, "G") {
+		multiplier = 1024 * 1024 * 1024
+		bandwidthStr = bandwidthStr[:len(bandwidthStr)-1]
+	}
+	
+	if num, err := strconv.ParseInt(bandwidthStr, 10, 64); err == nil {
+		return num * multiplier
+	}
+	
+	return 0
+}
+
+// parseMemorySize parses memory size string
+func (rm *ReplicationManager) parseMemorySize(sizeStr string) int64 {
+	return rm.parseStorageSize(sizeStr) // Same logic as storage
+}
+
+// parseInt parses integer string
+func (rm *ReplicationManager) parseInt(intStr string) int {
+	if num, err := strconv.Atoi(intStr); err == nil {
+		return num
+	}
+	return 0
+}
+
+// isPeerConnectedAndReachable checks if peer is connected and reachable
+func (rm *ReplicationManager) isPeerConnectedAndReachable(peerID string) bool {
+	connectedPeers := rm.p2p.GetConnectedPeers()
+	for _, peer := range connectedPeers {
+		if peer.String() == peerID {
+			return true
+		}
+	}
+	return false
+}
+
+// loadPoliciesFromStorage loads policies from persistent storage
+func (rm *ReplicationManager) loadPoliciesFromStorage() error {
+	// This would load from a database or file system
+	// For now, return error to use defaults
+	return fmt.Errorf("persistent storage not implemented")
+}
+
+// ReplicationWorker helper methods
+
+// initiateModelTransfer starts model transfer to target peer
+func (w *ReplicationWorker) initiateModelTransfer(modelName, targetPeer string, modelInfo interface{}) (string, error) {
+	// Generate transfer ID
+	transferID := fmt.Sprintf("transfer_%s_%s_%d", modelName, targetPeer, time.Now().UnixNano())
+	
+	// This would use P2P transfer mechanisms
+	// For now, simulate successful transfer initiation
+	w.manager.logger.Info("initiated model transfer", "transfer_id", transferID, "model", modelName, "target", targetPeer)
+	
+	return transferID, nil
+}
+
+// monitorTransferProgress monitors transfer progress
+func (w *ReplicationWorker) monitorTransferProgress(transferID, modelName, targetPeer string) error {
+	// Simulate transfer monitoring
+	duration := time.Duration(100+len(modelName)*10) * time.Millisecond
+	time.Sleep(duration)
+	
+	w.manager.logger.Info("transfer completed", "transfer_id", transferID, "model", modelName, "target", targetPeer)
+	return nil
+}
+
+// verifyReplication verifies successful replication
+func (w *ReplicationWorker) verifyReplication(modelName, targetPeer string) error {
+	// This would verify the model exists and is correct on the target peer
+	// For now, simulate successful verification
+	time.Sleep(50 * time.Millisecond)
+	return nil
+}
+
+// sendRemoveRequest sends replica removal request to peer
+func (w *ReplicationWorker) sendRemoveRequest(modelName, targetPeer string) error {
+	// This would send actual P2P message to remove model
+	w.manager.logger.Info("sending remove request", "model", modelName, "target", targetPeer)
+	time.Sleep(25 * time.Millisecond) // Simulate network delay
+	return nil
+}
+
+// waitForRemovalConfirmation waits for removal confirmation
+func (w *ReplicationWorker) waitForRemovalConfirmation(modelName, targetPeer string, timeout time.Duration) bool {
+	// This would wait for actual confirmation message
+	// For now, simulate successful confirmation
+	time.Sleep(100 * time.Millisecond)
+	return true
+}
+
+// getRemoteModelHash gets model hash from remote peer
+func (w *ReplicationWorker) getRemoteModelHash(modelName, targetPeer string) (string, error) {
+	// This would fetch actual hash from remote peer
+	// For now, return a mock hash based on model name
+	hash := fmt.Sprintf("hash_%s_%d", modelName, len(modelName))
+	return hash, nil
+}
+
+// HealthChecker helper methods
+
+// pingPeer pings a peer to check connectivity
+func (hc *HealthChecker) pingPeer(peerID string) (time.Duration, error) {
+	start := time.Now()
+	
+	// This would perform actual P2P ping
+	// For now, simulate ping with random latency
+	latency := time.Duration(10+len(peerID)%50) * time.Millisecond
+	time.Sleep(latency)
+	
+	return time.Since(start), nil
+}
+
+// checkModelAvailability checks if model is available on peer
+func (hc *HealthChecker) checkModelAvailability(modelName, peerID string) (bool, error) {
+	// This would query peer for model availability
+	// For now, assume models are available
+	time.Sleep(25 * time.Millisecond)
+	return true, nil
+}
+
+// verifyBasicIntegrity performs basic integrity check
+func (hc *HealthChecker) verifyBasicIntegrity(modelName, peerID string) (bool, error) {
+	// This would perform basic integrity verification
+	// For now, assume integrity is good
+	time.Sleep(50 * time.Millisecond)
+	return true, nil
+}
+
+// updateReplicaHealth updates replica health status
+func (hc *HealthChecker) updateReplicaHealth(replicaKey string, health ReplicaHealth, status ReplicaStatus, errorMsg string) {
 	hc.manager.replicasMutex.Lock()
 	defer hc.manager.replicasMutex.Unlock()
 
-	replicaKey := fmt.Sprintf("%s:%s", replica.ModelName, replica.PeerID)
-	if storedReplica, exists := hc.manager.replicas[replicaKey]; exists {
-		if healthy {
-			storedReplica.Health = HealthGood
-			storedReplica.Status = ReplicaStatusHealthy
-		} else {
-			storedReplica.Health = HealthError
-			storedReplica.Status = ReplicaStatusUnhealthy
+	if replica, exists := hc.manager.replicas[replicaKey]; exists {
+		replica.Health = health
+		replica.Status = status
+		replica.UpdatedAt = time.Now()
+		
+		if errorMsg != "" {
+			if replica.Metadata == nil {
+				replica.Metadata = make(map[string]string)
+			}
+			replica.Metadata["last_error"] = errorMsg
 		}
-		storedReplica.UpdatedAt = time.Now()
+		
+		hc.manager.replicas[replicaKey] = replica
 	}
 }

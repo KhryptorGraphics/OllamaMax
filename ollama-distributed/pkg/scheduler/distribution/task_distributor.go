@@ -353,7 +353,10 @@ func (td *TaskDistributor) DistributeTasks() error {
 		}
 
 		// Select strategy
-		strategy := td.getStrategy(task)
+		strategy, err := td.getStrategy(task)
+		if err != nil {
+			continue // Try next task
+		}
 
 		// Select node
 		selectedNode, err := strategy.SelectNode(task, availableNodes)
@@ -463,26 +466,26 @@ func (td *TaskDistributor) isNodeAvailable(node *NodeInfo) bool {
 }
 
 // getStrategy returns the appropriate distribution strategy for a task
-func (td *TaskDistributor) getStrategy(task *Task) DistributionStrategy {
+func (td *TaskDistributor) getStrategy(task *Task) (DistributionStrategy, error) {
 	// Check if task specifies a strategy
 	if strategyName, exists := task.Metadata["strategy"]; exists {
 		if strategy, found := td.strategies[strategyName.(string)]; found {
-			return strategy
+			return strategy, nil
 		}
 	}
 
 	// Use default strategy
 	if strategy, exists := td.strategies[td.defaultStrategy]; exists {
-		return strategy
+		return strategy, nil
 	}
 
 	// Fallback to first available strategy
 	for _, strategy := range td.strategies {
-		return strategy
+		return strategy, nil
 	}
 
-	// This should never happen if strategies are properly registered
-	panic("no distribution strategies available")
+	// Return error instead of panic for better error handling
+	return nil, fmt.Errorf("no distribution strategies available - this indicates a configuration error")
 }
 
 // validateTask validates a task before submission

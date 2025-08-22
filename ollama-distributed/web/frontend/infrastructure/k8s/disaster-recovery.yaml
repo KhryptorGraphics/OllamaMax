@@ -1,0 +1,453 @@
+# Ollama Frontend - Disaster Recovery Configuration
+# Production-ready backup, restore, and multi-region failover
+
+# Velero Backup Configuration
+apiVersion: velero.io/v1
+kind: Backup
+metadata:
+  name: ollama-frontend-daily-backup
+  namespace: velero
+  labels:
+    app: ollama-frontend
+    backup-type: daily
+spec:
+  # Include all resources in the ollama-frontend namespace
+  includedNamespaces:
+  - ollama-frontend
+  - monitoring
+  
+  # Include cluster-scoped resources
+  includeClusterResources: true
+  
+  # Storage location
+  storageLocation: default
+  
+  # Volume snapshot locations
+  volumeSnapshotLocations:
+  - default
+  
+  # Backup TTL (retention)
+  ttl: 2160h  # 90 days
+  
+  # Exclude resources that shouldn't be backed up
+  excludedResources:
+  - events
+  - events.events.k8s.io
+  
+  # Label selector for specific resources
+  labelSelector:
+    matchLabels:
+      backup-enabled: "true"
+  
+  # Hooks for application-consistent backups
+  hooks:
+    resources:
+    - name: postgres-backup-hook
+      includedNamespaces:
+      - ollama-frontend
+      includedResources:
+      - pods
+      labelSelector:
+        matchLabels:
+          app: postgres
+      pre:
+      - exec:
+          container: postgres
+          command:
+          - /bin/bash
+          - -c
+          - pg_dump -U postgres ollama > /tmp/backup.sql
+          onError: Fail
+          timeout: 300s
+      post:
+      - exec:
+          container: postgres
+          command:
+          - /bin/bash
+          - -c
+          - rm -f /tmp/backup.sql
+          onError: Continue
+
+---
+# Velero Backup Schedule
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: ollama-frontend-backup-schedule
+  namespace: velero
+  labels:
+    app: ollama-frontend
+    schedule-type: automated
+spec:
+  # Daily backup at 2 AM UTC
+  schedule: "0 2 * * *"
+  template:
+    includedNamespaces:
+    - ollama-frontend
+    - monitoring
+    storageLocation: default
+    ttl: 2160h  # 90 days
+    includeClusterResources: true
+
+---
+# Weekly Full Cluster Backup
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: ollama-frontend-weekly-backup
+  namespace: velero
+  labels:
+    app: ollama-frontend
+    schedule-type: weekly
+spec:
+  # Weekly backup on Sunday at 1 AM UTC
+  schedule: "0 1 * * 0"
+  template:
+    # Full cluster backup
+    includeClusterResources: true
+    storageLocation: default
+    ttl: 4320h  # 180 days
+    
+    # Exclude non-essential namespaces
+    excludedNamespaces:
+    - kube-system
+    - kube-public
+    - kube-node-lease
+
+---
+# Disaster Recovery Restore Job
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: disaster-recovery-restore
+  namespace: ollama-frontend
+  labels:
+    app: ollama-frontend
+    job-type: disaster-recovery
+spec:
+  ttlSecondsAfterFinished: 86400  # Clean up after 24 hours
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: disaster-recovery
+    spec:
+      restartPolicy: Never
+      serviceAccountName: disaster-recovery
+      containers:
+      - name: restore-job
+        image: velero/velero:v1.12.0
+        command:
+        - /bin/bash
+        - -c
+        - |
+          set -e
+          echo "Starting disaster recovery restore process..."
+          
+          # Get the latest backup
+          LATEST_BACKUP=$(velero backup get --output json | jq -r '.items | sort_by(.status.completionTimestamp) | reverse | .[0].metadata.name')
+          
+          if [ "$LATEST_BACKUP" = "null" ] || [ -z "$LATEST_BACKUP" ]; then
+            echo "ERROR: No backup found for restore"
+            exit 1
+          fi
+          
+          echo "Latest backup found: $LATEST_BACKUP"
+          
+          # Create restore
+          velero restore create \
+            --from-backup $LATEST_BACKUP \
+            --restore-name disaster-recovery-$(date +%Y%m%d-%H%M%S) \
+            --include-namespaces ollama-frontend,monitoring \
+            --wait
+          
+          echo "Disaster recovery restore completed successfully"
+        env:
+        - name: VELERO_NAMESPACE
+          value: velero
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+
+---
+# Multi-Region Failover ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: failover-config
+  namespace: ollama-frontend
+  labels:
+    app: ollama-frontend
+    component: failover
+data:
+  failover.yaml: |
+    primary_region: us-west-2
+    dr_region: us-east-1
+    
+    # RTO (Recovery Time Objective) in minutes
+    rto_minutes: 15
+    
+    # RPO (Recovery Point Objective) in minutes
+    rpo_minutes: 5
+    
+    # Health check configuration
+    health_check:
+      interval: 30s
+      timeout: 10s
+      failure_threshold: 3
+      success_threshold: 2
+      endpoints:
+        - https://ollama.example.com/health
+        - https://api.ollama.example.com/health
+    
+    # Failover triggers
+    triggers:
+      - type: health_check_failure
+        consecutive_failures: 3
+        duration: 5m
+      - type: region_outage
+        provider_alerts: true
+      - type: manual
+        authorized_users:
+          - platform-team@ollama.example.com
+    
+    # DNS failover configuration
+    dns:
+      provider: route53
+      hosted_zone: ollama.example.com
+      ttl: 60  # Low TTL for fast failover
+      
+    # Database failover
+    database:
+      type: postgresql
+      primary_endpoint: postgres.us-west-2.rds.amazonaws.com
+      replica_endpoint: postgres.us-east-1.rds.amazonaws.com
+      sync_mode: async
+      
+    # Storage failover
+    storage:
+      type: s3
+      primary_bucket: ollama-prod-us-west-2
+      replica_bucket: ollama-prod-us-east-1
+      cross_region_replication: true
+
+---
+# Failover Automation CronJob
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: failover-health-check
+  namespace: ollama-frontend
+  labels:
+    app: ollama-frontend
+    component: failover-automation
+spec:
+  schedule: "*/1 * * * *"  # Every minute
+  concurrencyPolicy: Forbid
+  failedJobsHistoryLimit: 3
+  successfulJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: failover-health-check
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: failover-automation
+          containers:
+          - name: health-check
+            image: curlimages/curl:latest
+            command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              
+              # Load configuration
+              HEALTH_ENDPOINTS="https://ollama.example.com/health https://api.ollama.example.com/health"
+              FAILURE_THRESHOLD=3
+              SUCCESS_THRESHOLD=2
+              
+              # Initialize counters if not exists
+              if ! kubectl get configmap health-check-state -n ollama-frontend >/dev/null 2>&1; then
+                kubectl create configmap health-check-state -n ollama-frontend \
+                  --from-literal=consecutive_failures=0 \
+                  --from-literal=consecutive_successes=0 \
+                  --from-literal=last_state=healthy
+              fi
+              
+              # Get current state
+              CONSECUTIVE_FAILURES=$(kubectl get configmap health-check-state -n ollama-frontend -o jsonpath='{.data.consecutive_failures}')
+              CONSECUTIVE_SUCCESSES=$(kubectl get configmap health-check-state -n ollama-frontend -o jsonpath='{.data.consecutive_successes}')
+              LAST_STATE=$(kubectl get configmap health-check-state -n ollama-frontend -o jsonpath='{.data.last_state}')
+              
+              # Perform health checks
+              OVERALL_HEALTH=healthy
+              
+              for endpoint in $HEALTH_ENDPOINTS; do
+                if ! curl -f -s --max-time 10 "$endpoint" >/dev/null; then
+                  echo "Health check failed for $endpoint"
+                  OVERALL_HEALTH=unhealthy
+                  break
+                fi
+              done
+              
+              # Update counters
+              if [ "$OVERALL_HEALTH" = "healthy" ]; then
+                CONSECUTIVE_SUCCESSES=$((CONSECUTIVE_SUCCESSES + 1))
+                CONSECUTIVE_FAILURES=0
+              else
+                CONSECUTIVE_FAILURES=$((CONSECUTIVE_FAILURES + 1))
+                CONSECUTIVE_SUCCESSES=0
+              fi
+              
+              # Check for failover trigger
+              if [ "$CONSECUTIVE_FAILURES" -ge "$FAILURE_THRESHOLD" ] && [ "$LAST_STATE" = "healthy" ]; then
+                echo "TRIGGERING FAILOVER: $CONSECUTIVE_FAILURES consecutive failures detected"
+                kubectl annotate configmap failover-config -n ollama-frontend \
+                  failover.triggered="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+                  failover.reason="health_check_failure" \
+                  --overwrite
+                
+                # Send alert
+                curl -X POST "${SLACK_WEBHOOK_URL}" \
+                  -H 'Content-type: application/json' \
+                  --data '{"text":"🚨 DISASTER RECOVERY FAILOVER TRIGGERED - Health check failures detected for Ollama Frontend"}'
+                
+                LAST_STATE=unhealthy
+              elif [ "$CONSECUTIVE_SUCCESSES" -ge "$SUCCESS_THRESHOLD" ] && [ "$LAST_STATE" = "unhealthy" ]; then
+                echo "Service recovered: $CONSECUTIVE_SUCCESSES consecutive successes"
+                LAST_STATE=healthy
+              fi
+              
+              # Update state
+              kubectl patch configmap health-check-state -n ollama-frontend \
+                --type merge \
+                -p "{\"data\":{\"consecutive_failures\":\"$CONSECUTIVE_FAILURES\",\"consecutive_successes\":\"$CONSECUTIVE_SUCCESSES\",\"last_state\":\"$LAST_STATE\"}}"
+              
+              echo "Health check completed: Overall=$OVERALL_HEALTH, Failures=$CONSECUTIVE_FAILURES, Successes=$CONSECUTIVE_SUCCESSES"
+            env:
+            - name: SLACK_WEBHOOK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: alerting-secrets
+                  key: slack-webhook-url
+            resources:
+              requests:
+                cpu: 50m
+                memory: 64Mi
+              limits:
+                cpu: 200m
+                memory: 128Mi
+
+---
+# Cross-Region Backup Sync CronJob
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cross-region-backup-sync
+  namespace: ollama-frontend
+  labels:
+    app: ollama-frontend
+    component: backup-sync
+spec:
+  schedule: "0 */6 * * *"  # Every 6 hours
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: backup-sync
+          containers:
+          - name: backup-sync
+            image: amazon/aws-cli:latest
+            command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              
+              echo "Starting cross-region backup sync..."
+              
+              # Sync Velero backups to DR region
+              aws s3 sync s3://ollama-velero-backups-us-west-2/ s3://ollama-velero-backups-us-east-1/ \
+                --delete \
+                --storage-class STANDARD_IA
+              
+              # Sync application data
+              aws s3 sync s3://ollama-prod-us-west-2/ s3://ollama-prod-us-east-1/ \
+                --delete \
+                --storage-class STANDARD_IA
+              
+              # Update sync timestamp
+              kubectl annotate configmap failover-config -n ollama-frontend \
+                backup.last-sync="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+                --overwrite
+              
+              echo "Cross-region backup sync completed"
+            env:
+            - name: AWS_DEFAULT_REGION
+              value: us-west-2
+            resources:
+              requests:
+                cpu: 100m
+                memory: 256Mi
+              limits:
+                cpu: 500m
+                memory: 1Gi
+
+---
+# Service Account for Disaster Recovery
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: disaster-recovery
+  namespace: ollama-frontend
+  labels:
+    app: ollama-frontend
+    component: disaster-recovery
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::ACCOUNT:role/ollama-disaster-recovery"
+
+---
+# RBAC for Disaster Recovery
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: disaster-recovery
+  labels:
+    app: ollama-frontend
+    component: disaster-recovery
+rules:
+- apiGroups: [""]
+  resources: ["*"]
+  verbs: ["*"]
+- apiGroups: ["apps"]
+  resources: ["*"]
+  verbs: ["*"]
+- apiGroups: ["velero.io"]
+  resources: ["*"]
+  verbs: ["*"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: disaster-recovery
+  labels:
+    app: ollama-frontend
+    component: disaster-recovery
+subjects:
+- kind: ServiceAccount
+  name: disaster-recovery
+  namespace: ollama-frontend
+roleRef:
+  kind: ClusterRole
+  name: disaster-recovery
+  apiGroup: rbac.authorization.k8s.io

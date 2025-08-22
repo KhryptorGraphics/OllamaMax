@@ -1,0 +1,22 @@
+:root {
+  --omx-color-brand-500: #0ea5e9;
+  --omx-color-brand-600: #0284c7;
+  --omx-color-accent-500: #d946ef;
+  --omx-color-text-default: #0f172a;
+  --omx-color-text-muted: #64748b;
+  --omx-color-bg-default: #ffffff;
+  --omx-color-bg-surface: #f8fafc;
+  --omx-spacing-1: 0.25rem;
+  --omx-spacing-2: 0.5rem;
+  --omx-spacing-3: 0.75rem;
+  --omx-spacing-4: 1rem;
+  --omx-spacing-6: 1.5rem;
+  --omx-radius-sm: 0.125rem;
+  --omx-radius-md: 0.375rem;
+  --omx-radius-lg: 0.5rem;
+  --omx-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --omx-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  --omx-typography-font-sans: Inter, system-ui, sans-serif;
+  --omx-typography-size-base: 1rem;
+  --omx-typography-size-lg: 1.125rem;
+}

@@ -433,7 +433,7 @@ func TestNode_SecurityOperations(t *testing.T) {
 	require.NoError(t, err)
 
 	// Test establishing secure channel (will fail without peer)
-	_, err = node.EstablishSecureChannel(ctx, "nonexistent-peer")
+	err = node.EstablishSecureChannel(ctx, "nonexistent-peer")
 	assert.Error(t, err) // Expected to fail
 }
 

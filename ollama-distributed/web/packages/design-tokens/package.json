@@ -1,0 +1,20 @@
+{
+  "name": "@ollamamax/design-tokens",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.umd.js",
+  "module": "dist/index.esm.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.esm.js",
+      "require": "./dist/index.umd.js"
+    },
+    "./css": "./dist/omx-tokens.css"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/build-css.js"
+  }
+}
+

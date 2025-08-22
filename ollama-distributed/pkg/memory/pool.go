@@ -24,6 +24,12 @@ type PoolStats struct {
 	CurrentSize int     `json:"current_size"`
 }
 
+// MultiBufferPool manages multiple pools of different buffer sizes
+type MultiBufferPool struct {
+	pools map[int]*Pool
+	mu    sync.RWMutex
+}
+
 // NewPool creates a new memory pool
 func NewPool(itemSize int) *Pool {
 	p := &Pool{
@@ -109,22 +115,22 @@ func (p *Pool) Cleanup() {
 }
 
 // BufferPool manages pools of different buffer sizes
-type BufferPool struct {
+type LegacyBufferPool struct {
 	pools map[int]*Pool
 	mu    sync.RWMutex
 }
 
-// NewBufferPool creates a new buffer pool manager
-func NewBufferPool() *BufferPool {
-	return &BufferPool{
+// NewLegacyBufferPool creates a new buffer pool manager
+func NewLegacyBufferPool() *LegacyBufferPool {
+	return &LegacyBufferPool{
 		pools: make(map[int]*Pool),
 	}
 }
 
 // GetBuffer gets a buffer of the specified size
-func (bp *BufferPool) GetBuffer(size int) []byte {
+func (bp *LegacyBufferPool) GetBuffer(size int) []byte {
 	// Round up to nearest power of 2 for better pool utilization
-	poolSize := nextPowerOf2(size)
+	poolSize := legacyNextPowerOf2(size)
 
 	bp.mu.RLock()
 	pool, exists := bp.pools[poolSize]
@@ -145,7 +151,7 @@ func (bp *BufferPool) GetBuffer(size int) []byte {
 }
 
 // PutBuffer returns a buffer to the appropriate pool
-func (bp *BufferPool) PutBuffer(buf []byte) {
+func (bp *LegacyBufferPool) PutBuffer(buf []byte) {
 	if cap(buf) == 0 {
 		return
 	}
@@ -164,7 +170,7 @@ func (bp *BufferPool) PutBuffer(buf []byte) {
 }
 
 // GetStats returns statistics for all pools
-func (bp *BufferPool) GetStats() map[int]PoolStats {
+func (bp *MultiBufferPool) GetStats() map[int]PoolStats {
 	bp.mu.RLock()
 	defer bp.mu.RUnlock()
 
@@ -177,7 +183,7 @@ func (bp *BufferPool) GetStats() map[int]PoolStats {
 }
 
 // Clear clears all pools
-func (bp *BufferPool) Clear() {
+func (bp *MultiBufferPool) Clear() {
 	bp.mu.Lock()
 	defer bp.mu.Unlock()
 
@@ -186,8 +192,8 @@ func (bp *BufferPool) Clear() {
 	}
 }
 
-// nextPowerOf2 returns the next power of 2 greater than or equal to n
-func nextPowerOf2(n int) int {
+// legacyNextPowerOf2 returns the next power of 2 greater than or equal to n
+func legacyNextPowerOf2(n int) int {
 	if n <= 0 {
 		return 1
 	}
@@ -206,8 +212,8 @@ func nextPowerOf2(n int) int {
 	return power
 }
 
-// ObjectPool manages a pool of reusable objects
-type ObjectPool struct {
+// SimpleObjectPool manages a pool of reusable objects
+type SimpleObjectPool struct {
 	pool      sync.Pool
 	newFunc   func() interface{}
 	resetFunc func(interface{})
@@ -224,9 +230,9 @@ type ObjectPoolStats struct {
 	HitRatio float64 `json:"hit_ratio"`
 }
 
-// NewObjectPool creates a new object pool
-func NewObjectPool(newFunc func() interface{}, resetFunc func(interface{})) *ObjectPool {
-	op := &ObjectPool{
+// NewSimpleObjectPool creates a new object pool
+func NewSimpleObjectPool(newFunc func() interface{}, resetFunc func(interface{})) *SimpleObjectPool {
+	op := &SimpleObjectPool{
 		newFunc:   newFunc,
 		resetFunc: resetFunc,
 	}
@@ -242,7 +248,7 @@ func NewObjectPool(newFunc func() interface{}, resetFunc func(interface{})) *Obj
 }
 
 // Get retrieves an object from the pool
-func (op *ObjectPool) Get() interface{} {
+func (op *SimpleObjectPool) Get() interface{} {
 	op.mu.Lock()
 	op.stats.Gets++
 	op.mu.Unlock()
@@ -258,7 +264,7 @@ func (op *ObjectPool) Get() interface{} {
 }
 
 // Put returns an object to the pool
-func (op *ObjectPool) Put(obj interface{}) {
+func (op *SimpleObjectPool) Put(obj interface{}) {
 	if op.resetFunc != nil {
 		op.resetFunc(obj)
 	}
@@ -271,7 +277,7 @@ func (op *ObjectPool) Put(obj interface{}) {
 }
 
 // Stats returns object pool statistics
-func (op *ObjectPool) Stats() ObjectPoolStats {
+func (op *SimpleObjectPool) Stats() ObjectPoolStats {
 	op.mu.RLock()
 	defer op.mu.RUnlock()
 
@@ -284,7 +290,7 @@ func (op *ObjectPool) Stats() ObjectPoolStats {
 }
 
 // Clear clears the object pool
-func (op *ObjectPool) Clear() {
+func (op *SimpleObjectPool) Clear() {
 	op.pool = sync.Pool{
 		New: func() interface{} {
 			op.mu.Lock()
@@ -297,7 +303,7 @@ func (op *ObjectPool) Clear() {
 
 // TimedPool manages objects with automatic cleanup
 type TimedPool struct {
-	pool   *ObjectPool
+	pool   *SimpleObjectPool
 	items  map[interface{}]time.Time
 	maxAge time.Duration
 	mu     sync.RWMutex
@@ -306,7 +312,7 @@ type TimedPool struct {
 // NewTimedPool creates a new timed object pool
 func NewTimedPool(newFunc func() interface{}, resetFunc func(interface{}), maxAge time.Duration) *TimedPool {
 	return &TimedPool{
-		pool:   NewObjectPool(newFunc, resetFunc),
+		pool:   NewSimpleObjectPool(newFunc, resetFunc),
 		items:  make(map[interface{}]time.Time),
 		maxAge: maxAge,
 	}

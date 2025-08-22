@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="114" height="114" viewBox="0 0 114 114" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+    
+  </defs>
+  
+  
+  
+  <!-- Background circle -->
+  <circle cx="57" cy="57" r="57" fill="url(#gradient)" stroke="#ffffff" stroke-width="2"/>
+  
+  <!-- OllamaMax "O" Letter -->
+  <circle cx="57" cy="57" r="28.5" fill="none" stroke="#ffffff" stroke-width="6.84" opacity="0.9"/>
+  
+  <!-- Inner dot for "O" -->
+  <circle cx="57" cy="57" r="9.120000000000001" fill="#ffffff" opacity="0.8"/>
+  
+  <!-- Tech accent marks -->
+  <rect x="17.1" y="54.72" width="17.099999999999998" height="4.5600000000000005" rx="2.2800000000000002" fill="#ffffff" opacity="0.6"/>
+  <rect x="79.8" y="54.72" width="17.099999999999998" height="4.5600000000000005" rx="2.2800000000000002" fill="#ffffff" opacity="0.6"/>
+  
+  
+</svg>

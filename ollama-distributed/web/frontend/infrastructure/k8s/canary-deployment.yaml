@@ -1,0 +1,595 @@
+# Ollama Frontend - Canary Deployment and Rollback Configuration
+# Production-ready progressive delivery with automatic rollback
+
+# Argo Rollouts Deployment for Canary Strategy
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: ollama-frontend-rollout
+  namespace: ollama-frontend
+  labels:
+    app: ollama-frontend
+    deployment-strategy: canary
+    managed-by: argo-rollouts
+  annotations:
+    notifications.argoproj.io/subscribe.on-rollout-completed.slack: "deployments"
+    notifications.argoproj.io/subscribe.on-rollout-aborted.slack: "alerts-critical"
+spec:
+  replicas: 10
+  
+  # Rollout strategy - Canary with analysis
+  strategy:
+    canary:
+      # Canary service for traffic splitting
+      canaryService: ollama-frontend-canary
+      # Stable service for production traffic
+      stableService: ollama-frontend-stable
+      
+      # Traffic routing via Istio (alternative: NGINX, ALB)
+      trafficRouting:
+        istio:
+          virtualService:
+            name: ollama-frontend-vs
+            routes:
+            - primary
+          destinationRule:
+            name: ollama-frontend-dr
+            canarySubsetName: canary
+            stableSubsetName: stable
+      
+      # Canary steps with automatic promotion
+      steps:
+      # Step 1: Deploy canary with 5% traffic
+      - setWeight: 5
+      - pause: 
+          duration: 30s
+      
+      # Step 2: Run analysis for 2 minutes
+      - analysis:
+          templates:
+          - templateName: success-rate-analysis
+          - templateName: latency-analysis
+          args:
+          - name: service-name
+            value: ollama-frontend-canary
+          - name: duration
+            value: 2m
+      
+      # Step 3: Increase to 20% traffic
+      - setWeight: 20
+      - pause:
+          duration: 1m
+      
+      # Step 4: Extended analysis for 5 minutes
+      - analysis:
+          templates:
+          - templateName: success-rate-analysis
+          - templateName: latency-analysis
+          - templateName: error-rate-analysis
+          args:
+          - name: service-name
+            value: ollama-frontend-canary
+          - name: duration
+            value: 5m
+      
+      # Step 5: Increase to 50% traffic
+      - setWeight: 50
+      - pause:
+          duration: 2m
+      
+      # Step 6: Final analysis before full promotion
+      - analysis:
+          templates:
+          - templateName: success-rate-analysis
+          - templateName: latency-analysis
+          - templateName: error-rate-analysis
+          - templateName: business-metrics-analysis
+          args:
+          - name: service-name
+            value: ollama-frontend-canary
+          - name: duration
+            value: 10m
+      
+      # Step 7: Full promotion (100% traffic)
+      - setWeight: 100
+      - pause:
+          duration: 30s
+      
+      # Anti-affinity for canary pods
+      antiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution: {}
+        preferredDuringSchedulingIgnoredDuringExecution:
+          weight: 100
+  
+  # Pod template
+  selector:
+    matchLabels:
+      app: ollama-frontend
+  template:
+    metadata:
+      labels:
+        app: ollama-frontend
+        deployment-type: rollout
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: ollama-frontend
+      automountServiceAccountToken: false
+      
+      # Security context
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      
+      containers:
+      - name: ollama-frontend
+        image: ollamamax/frontend:latest
+        imagePullPolicy: Always
+        
+        # Security context
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 10001
+          runAsGroup: 10001
+          capabilities:
+            drop:
+            - ALL
+        
+        ports:
+        - name: http
+          containerPort: 3000
+          protocol: TCP
+        - name: metrics
+          containerPort: 9090
+          protocol: TCP
+        
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: DEPLOYMENT_TYPE
+          value: "canary"
+        
+        # Health checks
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 2
+          successThreshold: 2
+        
+        # Resources
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+        
+        # Volume mounts
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: config
+          mountPath: /app/config
+          readOnly: true
+      
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      - name: config
+        configMap:
+          name: ollama-frontend-config
+
+---
+# Analysis Templates for Canary Validation
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: success-rate-analysis
+  namespace: ollama-frontend
+  labels:
+    app: ollama-frontend
+    component: analysis
+spec:
+  args:
+  - name: service-name
+  - name: duration
+    value: 5m
+  metrics:
+  - name: success-rate
+    interval: 30s
+    successCondition: result[0] >= 0.95  # 95% success rate minimum
+    failureLimit: 3
+    provider:
+      prometheus:
+        address: http://prometheus.monitoring.svc.cluster.local:9090
+        query: |
+          sum(rate(http_requests_total{service="{{args.service-name}}",code!~"5.."}[5m])) /
+          sum(rate(http_requests_total{service="{{args.service-name}}"}[5m]))
+
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: latency-analysis
+  namespace: ollama-frontend
+  labels:
+    app: ollama-frontend
+    component: analysis
+spec:
+  args:
+  - name: service-name
+  - name: duration
+    value: 5m
+  metrics:
+  - name: p95-latency
+    interval: 30s
+    successCondition: result[0] <= 1.0  # 1 second maximum
+    failureLimit: 3
+    provider:
+      prometheus:
+        address: http://prometheus.monitoring.svc.cluster.local:9090
+        query: |
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket{service="{{args.service-name}}"}[5m])) by (le)
+          )
+  - name: p99-latency
+    interval: 30s
+    successCondition: result[0] <= 2.0  # 2 seconds maximum
+    failureLimit: 2
+    provider:
+      prometheus:
+        address: http://prometheus.monitoring.svc.cluster.local:9090
+        query: |
+          histogram_quantile(0.99,
+            sum(rate(http_request_duration_seconds_bucket{service="{{args.service-name}}"}[5m])) by (le)
+          )
+
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: error-rate-analysis
+  namespace: ollama-frontend
+  labels:
+    app: ollama-frontend
+    component: analysis
+spec:
+  args:
+  - name: service-name
+  - name: duration
+    value: 5m
+  metrics:
+  - name: error-rate
+    interval: 30s
+    successCondition: result[0] <= 0.01  # 1% error rate maximum
+    failureLimit: 5
+    provider:
+      prometheus:
+        address: http://prometheus.monitoring.svc.cluster.local:9090
+        query: |
+          sum(rate(http_requests_total{service="{{args.service-name}}",code=~"5.."}[5m])) /
+          sum(rate(http_requests_total{service="{{args.service-name}}"}[5m]))
+
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: business-metrics-analysis
+  namespace: ollama-frontend
+  labels:
+    app: ollama-frontend
+    component: analysis
+spec:
+  args:
+  - name: service-name
+  - name: duration
+    value: 10m
+  metrics:
+  - name: active-users
+    interval: 60s
+    successCondition: result[0] >= 100  # Minimum active users
+    failureLimit: 3
+    provider:
+      prometheus:
+        address: http://prometheus.monitoring.svc.cluster.local:9090
+        query: |
+          sum(increase(user_sessions_total{service="{{args.service-name}}"}[5m]))
+  
+  - name: conversion-rate
+    interval: 60s
+    successCondition: result[0] >= 0.02  # 2% minimum conversion rate
+    failureLimit: 2
+    provider:
+      prometheus:
+        address: http://prometheus.monitoring.svc.cluster.local:9090
+        query: |
+          sum(increase(conversion_events_total{service="{{args.service-name}}"}[5m])) /
+          sum(increase(page_views_total{service="{{args.service-name}}"}[5m]))
+
+---
+# Canary Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: ollama-frontend-canary
+  namespace: ollama-frontend
+  labels:
+    app: ollama-frontend
+    service-type: canary
+spec:
+  type: ClusterIP
+  ports:
+  - port: 3000
+    targetPort: http
+    protocol: TCP
+    name: http
+  - port: 9090
+    targetPort: metrics
+    protocol: TCP
+    name: metrics
+  selector:
+    app: ollama-frontend
+
+---
+# Stable Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: ollama-frontend-stable
+  namespace: ollama-frontend
+  labels:
+    app: ollama-frontend
+    service-type: stable
+spec:
+  type: ClusterIP
+  ports:
+  - port: 3000
+    targetPort: http
+    protocol: TCP
+    name: http
+  - port: 9090
+    targetPort: metrics
+    protocol: TCP
+    name: metrics
+  selector:
+    app: ollama-frontend
+
+---
+# Rollback Job
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: rollback-deployment
+  namespace: ollama-frontend
+  labels:
+    app: ollama-frontend
+    job-type: rollback
+spec:
+  ttlSecondsAfterFinished: 3600  # Clean up after 1 hour
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: rollback-job
+    spec:
+      restartPolicy: Never
+      serviceAccountName: rollback-operator
+      containers:
+      - name: rollback
+        image: argoproj/kubectl-argo-rollouts:v1.6.0
+        command:
+        - /bin/bash
+        - -c
+        - |
+          set -e
+          
+          echo "Starting rollback process..."
+          
+          # Get current rollout status
+          CURRENT_STATUS=$(kubectl argo rollouts status ollama-frontend-rollout -n ollama-frontend --timeout 10s || echo "unknown")
+          
+          if [[ "$CURRENT_STATUS" == *"Healthy"* ]]; then
+            echo "Current deployment is healthy, no rollback needed"
+            exit 0
+          fi
+          
+          # Check if rollback is needed based on analysis results
+          ANALYSIS_STATUS=$(kubectl argo rollouts get rollout ollama-frontend-rollout -n ollama-frontend -o json | \
+            jq -r '.status.canary.stablePingPong.analysis.run.status' 2>/dev/null || echo "unknown")
+          
+          if [[ "$ANALYSIS_STATUS" == "Failed" ]] || [[ "$ANALYSIS_STATUS" == "Error" ]]; then
+            echo "Analysis failed, initiating rollback..."
+            
+            # Abort the current rollout
+            kubectl argo rollouts abort ollama-frontend-rollout -n ollama-frontend
+            
+            # Wait for abort to complete
+            sleep 10
+            
+            # Trigger rollback to previous stable version
+            kubectl argo rollouts undo ollama-frontend-rollout -n ollama-frontend
+            
+            # Wait for rollback to complete
+            kubectl argo rollouts status ollama-frontend-rollout -n ollama-frontend --timeout 300s
+            
+            # Send notification
+            curl -X POST "${SLACK_WEBHOOK_URL}" \
+              -H 'Content-type: application/json' \
+              --data '{"text":"🚨 AUTOMATIC ROLLBACK COMPLETED - Ollama Frontend deployment rolled back due to failed canary analysis"}'
+            
+            echo "Rollback completed successfully"
+          else
+            echo "No rollback needed - analysis status: $ANALYSIS_STATUS"
+          fi
+        env:
+        - name: SLACK_WEBHOOK_URL
+          valueFrom:
+            secretKeyRef:
+              name: alerting-secrets
+              key: slack-webhook-url
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+
+---
+# Automated Rollback CronJob
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: automated-rollback-check
+  namespace: ollama-frontend
+  labels:
+    app: ollama-frontend
+    component: automated-rollback
+spec:
+  schedule: "*/5 * * * *"  # Every 5 minutes
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: rollback-operator
+          containers:
+          - name: rollback-check
+            image: argoproj/kubectl-argo-rollouts:v1.6.0
+            command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              
+              # Check rollout health
+              ROLLOUT_STATUS=$(kubectl argo rollouts status ollama-frontend-rollout -n ollama-frontend --timeout 30s 2>/dev/null || echo "unhealthy")
+              
+              # Check for failed analysis runs
+              FAILED_ANALYSIS=$(kubectl get analysisruns -n ollama-frontend -l rollout=ollama-frontend-rollout \
+                --sort-by=.metadata.creationTimestamp --no-headers | tail -1 | awk '{print $2}' || echo "unknown")
+              
+              # Check error rate from Prometheus
+              ERROR_RATE=$(curl -s "http://prometheus.monitoring.svc.cluster.local:9090/api/v1/query?query=sum(rate(http_requests_total{service=\"ollama-frontend-canary\",code=~\"5..\"}[5m]))/sum(rate(http_requests_total{service=\"ollama-frontend-canary\"}[5m]))" | \
+                jq -r '.data.result[0].value[1]' 2>/dev/null || echo "0")
+              
+              # Trigger rollback conditions
+              SHOULD_ROLLBACK=false
+              ROLLBACK_REASON=""
+              
+              if [[ "$FAILED_ANALYSIS" == "Failed" ]]; then
+                SHOULD_ROLLBACK=true
+                ROLLBACK_REASON="Failed canary analysis"
+              elif (( $(echo "$ERROR_RATE > 0.05" | bc -l) )); then
+                SHOULD_ROLLBACK=true
+                ROLLBACK_REASON="High error rate: $ERROR_RATE"
+              elif [[ "$ROLLOUT_STATUS" == *"Degraded"* ]] || [[ "$ROLLOUT_STATUS" == *"unhealthy"* ]]; then
+                SHOULD_ROLLBACK=true
+                ROLLBACK_REASON="Unhealthy rollout status"
+              fi
+              
+              if [[ "$SHOULD_ROLLBACK" == "true" ]]; then
+                echo "Triggering automatic rollback: $ROLLBACK_REASON"
+                
+                # Create rollback job
+                kubectl create job --from=cronjob/automated-rollback-check \
+                  rollback-$(date +%Y%m%d-%H%M%S) -n ollama-frontend
+                
+                # Send alert
+                curl -X POST "${SLACK_WEBHOOK_URL}" \
+                  -H 'Content-type: application/json' \
+                  --data "{\"text\":\"⚠️ AUTOMATIC ROLLBACK TRIGGERED: $ROLLBACK_REASON\"}"
+              else
+                echo "Rollout is healthy, no rollback needed"
+              fi
+            env:
+            - name: SLACK_WEBHOOK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: alerting-secrets
+                  key: slack-webhook-url
+            resources:
+              requests:
+                cpu: 50m
+                memory: 64Mi
+              limits:
+                cpu: 200m
+                memory: 128Mi
+
+---
+# Service Account for Rollback Operations
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: rollback-operator
+  namespace: ollama-frontend
+  labels:
+    app: ollama-frontend
+    component: rollback-operator
+
+---
+# RBAC for Rollback Operations
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: rollback-operator
+  namespace: ollama-frontend
+  labels:
+    app: ollama-frontend
+    component: rollback-operator
+rules:
+- apiGroups: ["argoproj.io"]
+  resources: ["rollouts", "analysisruns", "analysistemplates"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["apps"]
+  resources: ["replicasets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["pods", "services"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["batch"]
+  resources: ["jobs", "cronjobs"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: rollback-operator
+  namespace: ollama-frontend
+  labels:
+    app: ollama-frontend
+    component: rollback-operator
+subjects:
+- kind: ServiceAccount
+  name: rollback-operator
+  namespace: ollama-frontend
+roleRef:
+  kind: Role
+  name: rollback-operator
+  apiGroup: rbac.authorization.k8s.io

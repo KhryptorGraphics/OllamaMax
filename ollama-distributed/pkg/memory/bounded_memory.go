@@ -28,7 +28,7 @@ type BoundedMemoryManager struct {
 
 	// Garbage collection optimization
 	gcStats     *GCStats
-	gcOptimizer *GCOptimizer
+	gcOptimizer *BoundedGCOptimizer
 
 	// Monitoring and alerts
 	monitors []MemoryMonitor
@@ -78,8 +78,8 @@ type GCStats struct {
 	mu             sync.RWMutex
 }
 
-// GCOptimizer manages garbage collection optimization
-type GCOptimizer struct {
+// BoundedGCOptimizer manages garbage collection optimization
+type BoundedGCOptimizer struct {
 	config             *MemoryConfig
 	lastOptimization   time.Time
 	optimizationCount  int64
@@ -135,7 +135,7 @@ func NewBoundedMemoryManager(config *MemoryConfig) (*BoundedMemoryManager, error
 
 	// Initialize GC optimizer
 	if config.EnableGCOptimization {
-		manager.gcOptimizer = &GCOptimizer{
+		manager.gcOptimizer = &BoundedGCOptimizer{
 			config:           config,
 			lastOptimization: time.Now(),
 		}

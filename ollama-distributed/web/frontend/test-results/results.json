@@ -1,0 +1,2635 @@
+{
+  "config": {
+    "configFile": "/home/kp/ollamamax/ollama-distributed/web/frontend/playwright.config.ts",
+    "rootDir": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests",
+    "forbidOnly": false,
+    "fullyParallel": true,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 7
+    },
+    "preserveOutput": "always",
+    "reporter": [
+      [
+        "html",
+        {
+          "outputFolder": "playwright-report",
+          "open": "never"
+        }
+      ],
+      [
+        "json",
+        {
+          "outputFile": "test-results/results.json"
+        }
+      ],
+      [
+        "junit",
+        {
+          "outputFile": "test-results/results.xml"
+        }
+      ],
+      [
+        "github",
+        null
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "quiet": false,
+    "projects": [
+      {
+        "outputDir": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 7
+        },
+        "id": "setup",
+        "name": "setup",
+        "testDir": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/.*\\.setup\\.ts/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 7
+        },
+        "id": "cleanup",
+        "name": "cleanup",
+        "testDir": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/.*\\.teardown\\.ts/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 7
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 7
+        },
+        "id": "firefox",
+        "name": "firefox",
+        "testDir": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 7
+        },
+        "id": "webkit",
+        "name": "webkit",
+        "testDir": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 7
+        },
+        "id": "edge",
+        "name": "edge",
+        "testDir": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 7
+        },
+        "id": "mobile-chrome",
+        "name": "mobile-chrome",
+        "testDir": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 7
+        },
+        "id": "mobile-safari",
+        "name": "mobile-safari",
+        "testDir": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 7
+        },
+        "id": "performance",
+        "name": "performance",
+        "testDir": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/performance/*.spec.ts"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 7
+        },
+        "id": "accessibility",
+        "name": "accessibility",
+        "testDir": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/accessibility/*.spec.ts"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 7
+        },
+        "id": "visual",
+        "name": "visual",
+        "testDir": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/visual/*.spec.ts"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "shard": null,
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.54.2",
+    "workers": 7,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "accessibility/auth-accessibility.spec.ts",
+      "file": "accessibility/auth-accessibility.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Auth pages accessibility",
+          "file": "accessibility/auth-accessibility.spec.ts",
+          "line": 2,
+          "column": 6,
+          "specs": [
+            {
+              "title": "no critical a11y violations on /v2/auth/login",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "accessibility",
+                  "projectName": "accessibility",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 3787,
+                      "error": {
+                        "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2/auth/login\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2/auth/login\", waiting until \"load\"\u001b[22m\n",
+                        "stack": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2/auth/login\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2/auth/login\", waiting until \"load\"\u001b[22m\n\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/auth-accessibility.spec.ts:7:18",
+                        "location": {
+                          "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/auth-accessibility.spec.ts",
+                          "column": 18,
+                          "line": 7
+                        },
+                        "snippet": "   5 |   for (const route of routes) {\n   6 |     test(`no critical a11y violations on ${route}`, async ({ page }) => {\n>  7 |       await page.goto(route)\n     |                  ^\n   8 |       let AxeBuilder: any\n   9 |       try {\n  10 |         AxeBuilder = (await import('@axe-core/playwright')).default"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/auth-accessibility.spec.ts",
+                            "column": 18,
+                            "line": 7
+                          },
+                          "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2/auth/login\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2/auth/login\", waiting until \"load\"\u001b[22m\n\n\n   5 |   for (const route of routes) {\n   6 |     test(`no critical a11y violations on ${route}`, async ({ page }) => {\n>  7 |       await page.goto(route)\n     |                  ^\n   8 |       let AxeBuilder: any\n   9 |       try {\n  10 |         AxeBuilder = (await import('@axe-core/playwright')).default\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/auth-accessibility.spec.ts:7:18"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-08-19T23:53:20.975Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-auth-accessi-cbe7b-violations-on-v2-auth-login-accessibility/test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-auth-accessi-cbe7b-violations-on-v2-auth-login-accessibility/video.webm"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/auth-accessibility.spec.ts",
+                        "column": 18,
+                        "line": 7
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "384e754f78ead8ac0730-64d760f27e0c167edb03",
+              "file": "accessibility/auth-accessibility.spec.ts",
+              "line": 6,
+              "column": 5
+            },
+            {
+              "title": "no critical a11y violations on /v2/auth/register",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "accessibility",
+                  "projectName": "accessibility",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "failed",
+                      "duration": 3083,
+                      "error": {
+                        "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2/auth/register\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2/auth/register\", waiting until \"load\"\u001b[22m\n",
+                        "stack": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2/auth/register\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2/auth/register\", waiting until \"load\"\u001b[22m\n\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/auth-accessibility.spec.ts:7:18",
+                        "location": {
+                          "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/auth-accessibility.spec.ts",
+                          "column": 18,
+                          "line": 7
+                        },
+                        "snippet": "   5 |   for (const route of routes) {\n   6 |     test(`no critical a11y violations on ${route}`, async ({ page }) => {\n>  7 |       await page.goto(route)\n     |                  ^\n   8 |       let AxeBuilder: any\n   9 |       try {\n  10 |         AxeBuilder = (await import('@axe-core/playwright')).default"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/auth-accessibility.spec.ts",
+                            "column": 18,
+                            "line": 7
+                          },
+                          "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2/auth/register\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2/auth/register\", waiting until \"load\"\u001b[22m\n\n\n   5 |   for (const route of routes) {\n   6 |     test(`no critical a11y violations on ${route}`, async ({ page }) => {\n>  7 |       await page.goto(route)\n     |                  ^\n   8 |       let AxeBuilder: any\n   9 |       try {\n  10 |         AxeBuilder = (await import('@axe-core/playwright')).default\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/auth-accessibility.spec.ts:7:18"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-08-19T23:53:22.634Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-auth-accessi-d9902-lations-on-v2-auth-register-accessibility/test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-auth-accessi-d9902-lations-on-v2-auth-register-accessibility/video.webm"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/auth-accessibility.spec.ts",
+                        "column": 18,
+                        "line": 7
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "384e754f78ead8ac0730-328236994a01a01d3aca",
+              "file": "accessibility/auth-accessibility.spec.ts",
+              "line": 6,
+              "column": 5
+            },
+            {
+              "title": "no critical a11y violations on /v2/auth/forgot-password",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "accessibility",
+                  "projectName": "accessibility",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 2,
+                      "status": "failed",
+                      "duration": 3668,
+                      "error": {
+                        "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2/auth/forgot-password\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2/auth/forgot-password\", waiting until \"load\"\u001b[22m\n",
+                        "stack": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2/auth/forgot-password\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2/auth/forgot-password\", waiting until \"load\"\u001b[22m\n\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/auth-accessibility.spec.ts:7:18",
+                        "location": {
+                          "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/auth-accessibility.spec.ts",
+                          "column": 18,
+                          "line": 7
+                        },
+                        "snippet": "   5 |   for (const route of routes) {\n   6 |     test(`no critical a11y violations on ${route}`, async ({ page }) => {\n>  7 |       await page.goto(route)\n     |                  ^\n   8 |       let AxeBuilder: any\n   9 |       try {\n  10 |         AxeBuilder = (await import('@axe-core/playwright')).default"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/auth-accessibility.spec.ts",
+                            "column": 18,
+                            "line": 7
+                          },
+                          "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2/auth/forgot-password\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2/auth/forgot-password\", waiting until \"load\"\u001b[22m\n\n\n   5 |   for (const route of routes) {\n   6 |     test(`no critical a11y violations on ${route}`, async ({ page }) => {\n>  7 |       await page.goto(route)\n     |                  ^\n   8 |       let AxeBuilder: any\n   9 |       try {\n  10 |         AxeBuilder = (await import('@axe-core/playwright')).default\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/auth-accessibility.spec.ts:7:18"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-08-19T23:53:20.592Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-auth-accessi-edb2a--on-v2-auth-forgot-password-accessibility/test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-auth-accessi-edb2a--on-v2-auth-forgot-password-accessibility/video.webm"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/auth-accessibility.spec.ts",
+                        "column": 18,
+                        "line": 7
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "384e754f78ead8ac0730-dc53938821158983cf34",
+              "file": "accessibility/auth-accessibility.spec.ts",
+              "line": 6,
+              "column": 5
+            },
+            {
+              "title": "no critical a11y violations on /v2/auth/reset-password?token=TEST",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "accessibility",
+                  "projectName": "accessibility",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 3,
+                      "status": "failed",
+                      "duration": 3163,
+                      "error": {
+                        "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2/auth/reset-password?token=TEST\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2/auth/reset-password?token=TEST\", waiting until \"load\"\u001b[22m\n",
+                        "stack": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2/auth/reset-password?token=TEST\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2/auth/reset-password?token=TEST\", waiting until \"load\"\u001b[22m\n\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/auth-accessibility.spec.ts:7:18",
+                        "location": {
+                          "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/auth-accessibility.spec.ts",
+                          "column": 18,
+                          "line": 7
+                        },
+                        "snippet": "   5 |   for (const route of routes) {\n   6 |     test(`no critical a11y violations on ${route}`, async ({ page }) => {\n>  7 |       await page.goto(route)\n     |                  ^\n   8 |       let AxeBuilder: any\n   9 |       try {\n  10 |         AxeBuilder = (await import('@axe-core/playwright')).default"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/auth-accessibility.spec.ts",
+                            "column": 18,
+                            "line": 7
+                          },
+                          "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2/auth/reset-password?token=TEST\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2/auth/reset-password?token=TEST\", waiting until \"load\"\u001b[22m\n\n\n   5 |   for (const route of routes) {\n   6 |     test(`no critical a11y violations on ${route}`, async ({ page }) => {\n>  7 |       await page.goto(route)\n     |                  ^\n   8 |       let AxeBuilder: any\n   9 |       try {\n  10 |         AxeBuilder = (await import('@axe-core/playwright')).default\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/auth-accessibility.spec.ts:7:18"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-08-19T23:53:22.295Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-auth-accessi-d79e2-h-reset-password-token-TEST-accessibility/test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-auth-accessi-d79e2-h-reset-password-token-TEST-accessibility/video.webm"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/auth-accessibility.spec.ts",
+                        "column": 18,
+                        "line": 7
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "384e754f78ead8ac0730-d37467adc416bbf940b9",
+              "file": "accessibility/auth-accessibility.spec.ts",
+              "line": 6,
+              "column": 5
+            },
+            {
+              "title": "no critical a11y violations on /v2/auth/verify-email?token=TEST",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "accessibility",
+                  "projectName": "accessibility",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 4,
+                      "status": "failed",
+                      "duration": 2865,
+                      "error": {
+                        "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2/auth/verify-email?token=TEST\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2/auth/verify-email?token=TEST\", waiting until \"load\"\u001b[22m\n",
+                        "stack": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2/auth/verify-email?token=TEST\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2/auth/verify-email?token=TEST\", waiting until \"load\"\u001b[22m\n\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/auth-accessibility.spec.ts:7:18",
+                        "location": {
+                          "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/auth-accessibility.spec.ts",
+                          "column": 18,
+                          "line": 7
+                        },
+                        "snippet": "   5 |   for (const route of routes) {\n   6 |     test(`no critical a11y violations on ${route}`, async ({ page }) => {\n>  7 |       await page.goto(route)\n     |                  ^\n   8 |       let AxeBuilder: any\n   9 |       try {\n  10 |         AxeBuilder = (await import('@axe-core/playwright')).default"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/auth-accessibility.spec.ts",
+                            "column": 18,
+                            "line": 7
+                          },
+                          "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2/auth/verify-email?token=TEST\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2/auth/verify-email?token=TEST\", waiting until \"load\"\u001b[22m\n\n\n   5 |   for (const route of routes) {\n   6 |     test(`no critical a11y violations on ${route}`, async ({ page }) => {\n>  7 |       await page.goto(route)\n     |                  ^\n   8 |       let AxeBuilder: any\n   9 |       try {\n  10 |         AxeBuilder = (await import('@axe-core/playwright')).default\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/auth-accessibility.spec.ts:7:18"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-08-19T23:53:22.051Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-auth-accessi-49bfa-uth-verify-email-token-TEST-accessibility/test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-auth-accessi-49bfa-uth-verify-email-token-TEST-accessibility/video.webm"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/auth-accessibility.spec.ts",
+                        "column": 18,
+                        "line": 7
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "384e754f78ead8ac0730-3e4da0d3431216e5442c",
+              "file": "accessibility/auth-accessibility.spec.ts",
+              "line": 6,
+              "column": 5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "accessibility/comprehensive-a11y.spec.ts",
+      "file": "accessibility/comprehensive-a11y.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Comprehensive Accessibility Testing",
+          "file": "accessibility/comprehensive-a11y.spec.ts",
+          "line": 42,
+          "column": 6,
+          "specs": [],
+          "suites": [
+            {
+              "title": "Application-wide Accessibility",
+              "file": "accessibility/comprehensive-a11y.spec.ts",
+              "line": 55,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "Dashboard page should meet WCAG 2.1 AA standards",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "accessibility",
+                      "projectName": "accessibility",
+                      "results": [
+                        {
+                          "workerIndex": 5,
+                          "parallelIndex": 5,
+                          "status": "failed",
+                          "duration": 2745,
+                          "error": {
+                            "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n",
+                            "stack": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16",
+                            "location": {
+                              "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                              "column": 16,
+                              "line": 45
+                            },
+                            "snippet": "  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                                "column": 16,
+                                "line": 45
+                              },
+                              "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n\n  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-08-19T23:53:21.746Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-ca352--meet-WCAG-2-1-AA-standards-accessibility/test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-ca352--meet-WCAG-2-1-AA-standards-accessibility/video.webm"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                            "column": 16,
+                            "line": 45
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "ae904d3dff6b9cf7e07e-77dab4d0865ea94de1e8",
+                  "file": "accessibility/comprehensive-a11y.spec.ts",
+                  "line": 66,
+                  "column": 7
+                },
+                {
+                  "title": "Models page should meet WCAG 2.1 AA standards",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "accessibility",
+                      "projectName": "accessibility",
+                      "results": [
+                        {
+                          "workerIndex": 6,
+                          "parallelIndex": 6,
+                          "status": "failed",
+                          "duration": 3276,
+                          "error": {
+                            "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n",
+                            "stack": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16",
+                            "location": {
+                              "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                              "column": 16,
+                              "line": 45
+                            },
+                            "snippet": "  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                                "column": 16,
+                                "line": 45
+                              },
+                              "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n\n  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-08-19T23:53:22.380Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-e4704--meet-WCAG-2-1-AA-standards-accessibility/test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-e4704--meet-WCAG-2-1-AA-standards-accessibility/video.webm"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                            "column": 16,
+                            "line": 45
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "ae904d3dff6b9cf7e07e-b94be08ad1f360ca394f",
+                  "file": "accessibility/comprehensive-a11y.spec.ts",
+                  "line": 66,
+                  "column": 7
+                },
+                {
+                  "title": "Cluster page should meet WCAG 2.1 AA standards",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "accessibility",
+                      "projectName": "accessibility",
+                      "results": [
+                        {
+                          "workerIndex": 7,
+                          "parallelIndex": 5,
+                          "status": "failed",
+                          "duration": 3661,
+                          "error": {
+                            "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n",
+                            "stack": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16",
+                            "location": {
+                              "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                              "column": 16,
+                              "line": 45
+                            },
+                            "snippet": "  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                                "column": 16,
+                                "line": 45
+                              },
+                              "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n\n  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-08-19T23:53:37.481Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-66156--meet-WCAG-2-1-AA-standards-accessibility/test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-66156--meet-WCAG-2-1-AA-standards-accessibility/video.webm"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                            "column": 16,
+                            "line": 45
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "ae904d3dff6b9cf7e07e-3967b10149e757f0129c",
+                  "file": "accessibility/comprehensive-a11y.spec.ts",
+                  "line": 66,
+                  "column": 7
+                },
+                {
+                  "title": "Analytics page should meet WCAG 2.1 AA standards",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "accessibility",
+                      "projectName": "accessibility",
+                      "results": [
+                        {
+                          "workerIndex": 8,
+                          "parallelIndex": 4,
+                          "status": "failed",
+                          "duration": 3593,
+                          "error": {
+                            "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n",
+                            "stack": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16",
+                            "location": {
+                              "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                              "column": 16,
+                              "line": 45
+                            },
+                            "snippet": "  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                                "column": 16,
+                                "line": 45
+                              },
+                              "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n\n  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-08-19T23:53:36.869Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-08747--meet-WCAG-2-1-AA-standards-accessibility/test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-08747--meet-WCAG-2-1-AA-standards-accessibility/video.webm"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                            "column": 16,
+                            "line": 45
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "ae904d3dff6b9cf7e07e-f48f73753cf697a0cd5d",
+                  "file": "accessibility/comprehensive-a11y.spec.ts",
+                  "line": 66,
+                  "column": 7
+                },
+                {
+                  "title": "Login page should meet WCAG 2.1 AA standards",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "accessibility",
+                      "projectName": "accessibility",
+                      "results": [
+                        {
+                          "workerIndex": 9,
+                          "parallelIndex": 1,
+                          "status": "failed",
+                          "duration": 3996,
+                          "error": {
+                            "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n",
+                            "stack": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16",
+                            "location": {
+                              "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                              "column": 16,
+                              "line": 45
+                            },
+                            "snippet": "  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                                "column": 16,
+                                "line": 45
+                              },
+                              "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n\n  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-08-19T23:53:37.285Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-94048--meet-WCAG-2-1-AA-standards-accessibility/test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-94048--meet-WCAG-2-1-AA-standards-accessibility/video.webm"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                            "column": 16,
+                            "line": 45
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "ae904d3dff6b9cf7e07e-e743125fc725d5fa4e70",
+                  "file": "accessibility/comprehensive-a11y.spec.ts",
+                  "line": 66,
+                  "column": 7
+                },
+                {
+                  "title": "Register page should meet WCAG 2.1 AA standards",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "accessibility",
+                      "projectName": "accessibility",
+                      "results": [
+                        {
+                          "workerIndex": 10,
+                          "parallelIndex": 6,
+                          "status": "failed",
+                          "duration": 4236,
+                          "error": {
+                            "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n",
+                            "stack": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16",
+                            "location": {
+                              "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                              "column": 16,
+                              "line": 45
+                            },
+                            "snippet": "  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                                "column": 16,
+                                "line": 45
+                              },
+                              "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n\n  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-08-19T23:53:37.139Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-79c03--meet-WCAG-2-1-AA-standards-accessibility/test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-79c03--meet-WCAG-2-1-AA-standards-accessibility/video.webm"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                            "column": 16,
+                            "line": 45
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "ae904d3dff6b9cf7e07e-1b108f0148de8613ea0e",
+                  "file": "accessibility/comprehensive-a11y.spec.ts",
+                  "line": 66,
+                  "column": 7
+                }
+              ]
+            },
+            {
+              "title": "Keyboard Navigation",
+              "file": "accessibility/comprehensive-a11y.spec.ts",
+              "line": 83,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should support complete keyboard navigation",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "accessibility",
+                      "projectName": "accessibility",
+                      "results": [
+                        {
+                          "workerIndex": 11,
+                          "parallelIndex": 3,
+                          "status": "failed",
+                          "duration": 3256,
+                          "error": {
+                            "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n",
+                            "stack": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16",
+                            "location": {
+                              "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                              "column": 16,
+                              "line": 45
+                            },
+                            "snippet": "  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                                "column": 16,
+                                "line": 45
+                              },
+                              "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n\n  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-08-19T23:53:37.342Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-0b6b1-omplete-keyboard-navigation-accessibility/test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-0b6b1-omplete-keyboard-navigation-accessibility/video.webm"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                            "column": 16,
+                            "line": 45
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "ae904d3dff6b9cf7e07e-24ee629901e0a457136d",
+                  "file": "accessibility/comprehensive-a11y.spec.ts",
+                  "line": 84,
+                  "column": 5
+                },
+                {
+                  "title": "should trap focus in modal dialogs",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "accessibility",
+                      "projectName": "accessibility",
+                      "results": [
+                        {
+                          "workerIndex": 12,
+                          "parallelIndex": 2,
+                          "status": "failed",
+                          "duration": 3724,
+                          "error": {
+                            "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n",
+                            "stack": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16",
+                            "location": {
+                              "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                              "column": 16,
+                              "line": 45
+                            },
+                            "snippet": "  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                                "column": 16,
+                                "line": 45
+                              },
+                              "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n\n  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-08-19T23:53:38.365Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-e0eb8-trap-focus-in-modal-dialogs-accessibility/test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-e0eb8-trap-focus-in-modal-dialogs-accessibility/video.webm"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                            "column": 16,
+                            "line": 45
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "ae904d3dff6b9cf7e07e-2372be56864c44ec16da",
+                  "file": "accessibility/comprehensive-a11y.spec.ts",
+                  "line": 112,
+                  "column": 5
+                },
+                {
+                  "title": "should support arrow key navigation in menus and lists",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "accessibility",
+                      "projectName": "accessibility",
+                      "results": [
+                        {
+                          "workerIndex": 13,
+                          "parallelIndex": 0,
+                          "status": "failed",
+                          "duration": 3601,
+                          "error": {
+                            "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n",
+                            "stack": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16",
+                            "location": {
+                              "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                              "column": 16,
+                              "line": 45
+                            },
+                            "snippet": "  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                                "column": 16,
+                                "line": 45
+                              },
+                              "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n\n  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-08-19T23:53:38.768Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-ffe69-vigation-in-menus-and-lists-accessibility/test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-ffe69-vigation-in-menus-and-lists-accessibility/video.webm"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                            "column": 16,
+                            "line": 45
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "ae904d3dff6b9cf7e07e-e9a994e44383c47ab57e",
+                  "file": "accessibility/comprehensive-a11y.spec.ts",
+                  "line": 153,
+                  "column": 5
+                },
+                {
+                  "title": "should handle Enter and Space key activation",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "accessibility",
+                      "projectName": "accessibility",
+                      "results": [
+                        {
+                          "workerIndex": 14,
+                          "parallelIndex": 4,
+                          "status": "failed",
+                          "duration": 3040,
+                          "error": {
+                            "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n",
+                            "stack": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16",
+                            "location": {
+                              "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                              "column": 16,
+                              "line": 45
+                            },
+                            "snippet": "  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                                "column": 16,
+                                "line": 45
+                              },
+                              "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n\n  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-08-19T23:53:48.899Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-55762-er-and-Space-key-activation-accessibility/test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-55762-er-and-Space-key-activation-accessibility/video.webm"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                            "column": 16,
+                            "line": 45
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "ae904d3dff6b9cf7e07e-58a040afccfa7497e607",
+                  "file": "accessibility/comprehensive-a11y.spec.ts",
+                  "line": 179,
+                  "column": 5
+                }
+              ]
+            },
+            {
+              "title": "Screen Reader Compatibility",
+              "file": "accessibility/comprehensive-a11y.spec.ts",
+              "line": 205,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should have proper heading structure",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "accessibility",
+                      "projectName": "accessibility",
+                      "results": [
+                        {
+                          "workerIndex": 15,
+                          "parallelIndex": 5,
+                          "status": "failed",
+                          "duration": 2412,
+                          "error": {
+                            "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n",
+                            "stack": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16",
+                            "location": {
+                              "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                              "column": 16,
+                              "line": 45
+                            },
+                            "snippet": "  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                                "column": 16,
+                                "line": 45
+                              },
+                              "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n\n  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-08-19T23:53:51.489Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-c9efb-ve-proper-heading-structure-accessibility/test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-c9efb-ve-proper-heading-structure-accessibility/video.webm"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                            "column": 16,
+                            "line": 45
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "ae904d3dff6b9cf7e07e-9177009499d48a7d7d7d",
+                  "file": "accessibility/comprehensive-a11y.spec.ts",
+                  "line": 206,
+                  "column": 5
+                },
+                {
+                  "title": "should have proper landmark structure",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "accessibility",
+                      "projectName": "accessibility",
+                      "results": [
+                        {
+                          "workerIndex": 16,
+                          "parallelIndex": 6,
+                          "status": "failed",
+                          "duration": 3436,
+                          "error": {
+                            "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n",
+                            "stack": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16",
+                            "location": {
+                              "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                              "column": 16,
+                              "line": 45
+                            },
+                            "snippet": "  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                                "column": 16,
+                                "line": 45
+                              },
+                              "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n\n  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-08-19T23:53:50.104Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-f5153-e-proper-landmark-structure-accessibility/test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-f5153-e-proper-landmark-structure-accessibility/video.webm"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                            "column": 16,
+                            "line": 45
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "ae904d3dff6b9cf7e07e-1f9eb1e89f4737e230f9",
+                  "file": "accessibility/comprehensive-a11y.spec.ts",
+                  "line": 235,
+                  "column": 5
+                },
+                {
+                  "title": "should have accessible form labels and descriptions",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "accessibility",
+                      "projectName": "accessibility",
+                      "results": [
+                        {
+                          "workerIndex": 17,
+                          "parallelIndex": 2,
+                          "status": "failed",
+                          "duration": 2852,
+                          "error": {
+                            "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n",
+                            "stack": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16",
+                            "location": {
+                              "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                              "column": 16,
+                              "line": 45
+                            },
+                            "snippet": "  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                                "column": 16,
+                                "line": 45
+                              },
+                              "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n\n  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-08-19T23:53:50.977Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-c6b7f-orm-labels-and-descriptions-accessibility/test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-c6b7f-orm-labels-and-descriptions-accessibility/video.webm"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                            "column": 16,
+                            "line": 45
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "ae904d3dff6b9cf7e07e-d3da89e0318e375bb722",
+                  "file": "accessibility/comprehensive-a11y.spec.ts",
+                  "line": 256,
+                  "column": 5
+                },
+                {
+                  "title": "should announce dynamic content changes",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "accessibility",
+                      "projectName": "accessibility",
+                      "results": [
+                        {
+                          "workerIndex": 18,
+                          "parallelIndex": 3,
+                          "status": "failed",
+                          "duration": 2844,
+                          "error": {
+                            "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n",
+                            "stack": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16",
+                            "location": {
+                              "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                              "column": 16,
+                              "line": 45
+                            },
+                            "snippet": "  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                                "column": 16,
+                                "line": 45
+                              },
+                              "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n\n  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-08-19T23:53:51.487Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-27baa-nce-dynamic-content-changes-accessibility/test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-27baa-nce-dynamic-content-changes-accessibility/video.webm"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                            "column": 16,
+                            "line": 45
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "ae904d3dff6b9cf7e07e-f626258445be80c51c48",
+                  "file": "accessibility/comprehensive-a11y.spec.ts",
+                  "line": 285,
+                  "column": 5
+                }
+              ]
+            },
+            {
+              "title": "Visual and Motor Accessibility",
+              "file": "accessibility/comprehensive-a11y.spec.ts",
+              "line": 310,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should have sufficient color contrast",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "accessibility",
+                      "projectName": "accessibility",
+                      "results": [
+                        {
+                          "workerIndex": 19,
+                          "parallelIndex": 1,
+                          "status": "failed",
+                          "duration": 3353,
+                          "error": {
+                            "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n",
+                            "stack": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16",
+                            "location": {
+                              "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                              "column": 16,
+                              "line": 45
+                            },
+                            "snippet": "  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                                "column": 16,
+                                "line": 45
+                              },
+                              "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n\n  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-08-19T23:53:50.926Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-8bf38-e-sufficient-color-contrast-accessibility/test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-8bf38-e-sufficient-color-contrast-accessibility/video.webm"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                            "column": 16,
+                            "line": 45
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "ae904d3dff6b9cf7e07e-49cc62978ad7f2a38db5",
+                  "file": "accessibility/comprehensive-a11y.spec.ts",
+                  "line": 311,
+                  "column": 5
+                },
+                {
+                  "title": "should have adequate touch target sizes",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "accessibility",
+                      "projectName": "accessibility",
+                      "results": [
+                        {
+                          "workerIndex": 20,
+                          "parallelIndex": 0,
+                          "status": "failed",
+                          "duration": 2799,
+                          "error": {
+                            "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n",
+                            "stack": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16",
+                            "location": {
+                              "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                              "column": 16,
+                              "line": 45
+                            },
+                            "snippet": "  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                                "column": 16,
+                                "line": 45
+                              },
+                              "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n\n  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-08-19T23:53:52.543Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-c7a12-adequate-touch-target-sizes-accessibility/test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-c7a12-adequate-touch-target-sizes-accessibility/video.webm"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                            "column": 16,
+                            "line": 45
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "ae904d3dff6b9cf7e07e-0b703f568249443bd53d",
+                  "file": "accessibility/comprehensive-a11y.spec.ts",
+                  "line": 321,
+                  "column": 5
+                },
+                {
+                  "title": "should respect reduced motion preferences",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "accessibility",
+                      "projectName": "accessibility",
+                      "results": [
+                        {
+                          "workerIndex": 21,
+                          "parallelIndex": 4,
+                          "status": "failed",
+                          "duration": 2498,
+                          "error": {
+                            "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n",
+                            "stack": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16",
+                            "location": {
+                              "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                              "column": 16,
+                              "line": 45
+                            },
+                            "snippet": "  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                                "column": 16,
+                                "line": 45
+                              },
+                              "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n\n  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-08-19T23:53:59.872Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-a36ef--reduced-motion-preferences-accessibility/test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-a36ef--reduced-motion-preferences-accessibility/video.webm"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                            "column": 16,
+                            "line": 45
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "ae904d3dff6b9cf7e07e-6959613ad1c67c1e00c9",
+                  "file": "accessibility/comprehensive-a11y.spec.ts",
+                  "line": 339,
+                  "column": 5
+                },
+                {
+                  "title": "should support high contrast mode",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "accessibility",
+                      "projectName": "accessibility",
+                      "results": [
+                        {
+                          "workerIndex": 22,
+                          "parallelIndex": 6,
+                          "status": "failed",
+                          "duration": 3052,
+                          "error": {
+                            "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n",
+                            "stack": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16",
+                            "location": {
+                              "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                              "column": 16,
+                              "line": 45
+                            },
+                            "snippet": "  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                                "column": 16,
+                                "line": 45
+                              },
+                              "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n\n  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-08-19T23:54:01.704Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-5ccae--support-high-contrast-mode-accessibility/test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-5ccae--support-high-contrast-mode-accessibility/video.webm"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                            "column": 16,
+                            "line": 45
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "ae904d3dff6b9cf7e07e-9079ce3fb1f5d35f5e4c",
+                  "file": "accessibility/comprehensive-a11y.spec.ts",
+                  "line": 363,
+                  "column": 5
+                }
+              ]
+            },
+            {
+              "title": "Form Accessibility",
+              "file": "accessibility/comprehensive-a11y.spec.ts",
+              "line": 378,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should handle form validation accessibly",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "accessibility",
+                      "projectName": "accessibility",
+                      "results": [
+                        {
+                          "workerIndex": 24,
+                          "parallelIndex": 2,
+                          "status": "failed",
+                          "duration": 2910,
+                          "error": {
+                            "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n",
+                            "stack": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16",
+                            "location": {
+                              "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                              "column": 16,
+                              "line": 45
+                            },
+                            "snippet": "  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                                "column": 16,
+                                "line": 45
+                              },
+                              "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n\n  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-08-19T23:54:03.071Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-51f23--form-validation-accessibly-accessibility/test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-51f23--form-validation-accessibly-accessibility/video.webm"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                            "column": 16,
+                            "line": 45
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "ae904d3dff6b9cf7e07e-c1acfea967980896a4be",
+                  "file": "accessibility/comprehensive-a11y.spec.ts",
+                  "line": 379,
+                  "column": 5
+                },
+                {
+                  "title": "should associate errors with form fields",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "accessibility",
+                      "projectName": "accessibility",
+                      "results": [
+                        {
+                          "workerIndex": 23,
+                          "parallelIndex": 5,
+                          "status": "failed",
+                          "duration": 3126,
+                          "error": {
+                            "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n",
+                            "stack": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16",
+                            "location": {
+                              "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                              "column": 16,
+                              "line": 45
+                            },
+                            "snippet": "  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                                "column": 16,
+                                "line": 45
+                              },
+                              "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n\n  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-08-19T23:54:02.250Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-d723b-ate-errors-with-form-fields-accessibility/test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-d723b-ate-errors-with-form-fields-accessibility/video.webm"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                            "column": 16,
+                            "line": 45
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "ae904d3dff6b9cf7e07e-5961e744b72aadb65659",
+                  "file": "accessibility/comprehensive-a11y.spec.ts",
+                  "line": 406,
+                  "column": 5
+                }
+              ]
+            },
+            {
+              "title": "Component-Specific Tests",
+              "file": "accessibility/comprehensive-a11y.spec.ts",
+              "line": 433,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should have accessible data tables",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "accessibility",
+                      "projectName": "accessibility",
+                      "results": [
+                        {
+                          "workerIndex": 25,
+                          "parallelIndex": 1,
+                          "status": "failed",
+                          "duration": 2700,
+                          "error": {
+                            "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n",
+                            "stack": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16",
+                            "location": {
+                              "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                              "column": 16,
+                              "line": 45
+                            },
+                            "snippet": "  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                                "column": 16,
+                                "line": 45
+                              },
+                              "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n\n  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-08-19T23:54:03.119Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-8dec5-have-accessible-data-tables-accessibility/test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-8dec5-have-accessible-data-tables-accessibility/video.webm"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                            "column": 16,
+                            "line": 45
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "ae904d3dff6b9cf7e07e-95e8a2f21c4985fe59c5",
+                  "file": "accessibility/comprehensive-a11y.spec.ts",
+                  "line": 434,
+                  "column": 5
+                },
+                {
+                  "title": "should have accessible navigation menus",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "accessibility",
+                      "projectName": "accessibility",
+                      "results": [
+                        {
+                          "workerIndex": 26,
+                          "parallelIndex": 3,
+                          "status": "failed",
+                          "duration": 4321,
+                          "error": {
+                            "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n",
+                            "stack": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16",
+                            "location": {
+                              "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                              "column": 16,
+                              "line": 45
+                            },
+                            "snippet": "  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                                "column": 16,
+                                "line": 45
+                              },
+                              "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n\n  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-08-19T23:54:03.585Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-ca6ba-accessible-navigation-menus-accessibility/test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-ca6ba-accessible-navigation-menus-accessibility/video.webm"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                            "column": 16,
+                            "line": 45
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "ae904d3dff6b9cf7e07e-ebc572e3f6d0c798ef18",
+                  "file": "accessibility/comprehensive-a11y.spec.ts",
+                  "line": 464,
+                  "column": 5
+                }
+              ]
+            },
+            {
+              "title": "Performance and Accessibility",
+              "file": "accessibility/comprehensive-a11y.spec.ts",
+              "line": 489,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should maintain accessibility during loading states",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "accessibility",
+                      "projectName": "accessibility",
+                      "results": [
+                        {
+                          "workerIndex": 27,
+                          "parallelIndex": 0,
+                          "status": "failed",
+                          "duration": 2979,
+                          "error": {
+                            "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n",
+                            "stack": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16",
+                            "location": {
+                              "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                              "column": 16,
+                              "line": 45
+                            },
+                            "snippet": "  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                                "column": 16,
+                                "line": 45
+                              },
+                              "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n\n  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-08-19T23:54:05.496Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-e3392-ility-during-loading-states-accessibility/test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-e3392-ility-during-loading-states-accessibility/video.webm"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                            "column": 16,
+                            "line": 45
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "ae904d3dff6b9cf7e07e-b278ca94cd627fee0f89",
+                  "file": "accessibility/comprehensive-a11y.spec.ts",
+                  "line": 490,
+                  "column": 5
+                },
+                {
+                  "title": "should maintain accessibility with dynamic content",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "accessibility",
+                      "projectName": "accessibility",
+                      "results": [
+                        {
+                          "workerIndex": 28,
+                          "parallelIndex": 4,
+                          "status": "failed",
+                          "duration": 3369,
+                          "error": {
+                            "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n",
+                            "stack": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16",
+                            "location": {
+                              "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                              "column": 16,
+                              "line": 45
+                            },
+                            "snippet": "  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                                "column": 16,
+                                "line": 45
+                              },
+                              "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n\n  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-08-19T23:54:12.519Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-08a45-bility-with-dynamic-content-accessibility/test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-08a45-bility-with-dynamic-content-accessibility/video.webm"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                            "column": 16,
+                            "line": 45
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "ae904d3dff6b9cf7e07e-cfe695f7bc2ae15f2e3e",
+                  "file": "accessibility/comprehensive-a11y.spec.ts",
+                  "line": 512,
+                  "column": 5
+                }
+              ]
+            },
+            {
+              "title": "Multi-language Accessibility",
+              "file": "accessibility/comprehensive-a11y.spec.ts",
+              "line": 531,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should handle language attributes correctly",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "accessibility",
+                      "projectName": "accessibility",
+                      "results": [
+                        {
+                          "workerIndex": 29,
+                          "parallelIndex": 6,
+                          "status": "failed",
+                          "duration": 2452,
+                          "error": {
+                            "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n",
+                            "stack": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16",
+                            "location": {
+                              "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                              "column": 16,
+                              "line": 45
+                            },
+                            "snippet": "  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                                "column": 16,
+                                "line": 45
+                              },
+                              "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n\n  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-08-19T23:54:14.287Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-8bc62-nguage-attributes-correctly-accessibility/test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-8bc62-nguage-attributes-correctly-accessibility/video.webm"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                            "column": 16,
+                            "line": 45
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "ae904d3dff6b9cf7e07e-e5f5f1bce36ca6bb03da",
+                  "file": "accessibility/comprehensive-a11y.spec.ts",
+                  "line": 532,
+                  "column": 5
+                }
+              ]
+            },
+            {
+              "title": "Accessibility Regression Prevention",
+              "file": "accessibility/comprehensive-a11y.spec.ts",
+              "line": 550,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should maintain accessibility across browser zoom levels",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "accessibility",
+                      "projectName": "accessibility",
+                      "results": [
+                        {
+                          "workerIndex": 30,
+                          "parallelIndex": 5,
+                          "status": "failed",
+                          "duration": 3113,
+                          "error": {
+                            "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n",
+                            "stack": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16",
+                            "location": {
+                              "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                              "column": 16,
+                              "line": 45
+                            },
+                            "snippet": "  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                                "column": 16,
+                                "line": 45
+                              },
+                              "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n\n  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-08-19T23:54:15.056Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-d46e2--across-browser-zoom-levels-accessibility/test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-d46e2--across-browser-zoom-levels-accessibility/video.webm"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                            "column": 16,
+                            "line": 45
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "ae904d3dff6b9cf7e07e-b2e1fa12db59f946af40",
+                  "file": "accessibility/comprehensive-a11y.spec.ts",
+                  "line": 551,
+                  "column": 5
+                },
+                {
+                  "title": "should work with browser accessibility tools",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "accessibility",
+                      "projectName": "accessibility",
+                      "results": [
+                        {
+                          "workerIndex": 31,
+                          "parallelIndex": 2,
+                          "status": "failed",
+                          "duration": 1717,
+                          "error": {
+                            "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n",
+                            "stack": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16",
+                            "location": {
+                              "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                              "column": 16,
+                              "line": 45
+                            },
+                            "snippet": "  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                                "column": 16,
+                                "line": 45
+                              },
+                              "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2\", waiting until \"load\"\u001b[22m\n\n\n  43 |   test.beforeEach(async ({ page }) => {\n  44 |     // Set up accessibility testing context\n> 45 |     await page.goto('/v2')\n     |                ^\n  46 |     \n  47 |     // Wait for initial load\n  48 |     await page.waitForLoadState('networkidle')\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:45:16"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-08-19T23:54:17.251Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-aa34c-browser-accessibility-tools-accessibility/test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-aa34c-browser-accessibility-tools-accessibility/video.webm"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                            "column": 16,
+                            "line": 45
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "ae904d3dff6b9cf7e07e-29d9446b49fb244dfb98",
+                  "file": "accessibility/comprehensive-a11y.spec.ts",
+                  "line": 569,
+                  "column": 5
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Component Library Accessibility",
+          "file": "accessibility/comprehensive-a11y.spec.ts",
+          "line": 603,
+          "column": 6,
+          "specs": [
+            {
+              "title": "should have accessible design system components",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "accessibility",
+                  "projectName": "accessibility",
+                  "results": [
+                    {
+                      "workerIndex": 32,
+                      "parallelIndex": 1,
+                      "status": "failed",
+                      "duration": 2384,
+                      "error": {
+                        "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2/styleguide\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2/styleguide\", waiting until \"load\"\u001b[22m\n",
+                        "stack": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2/styleguide\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2/styleguide\", waiting until \"load\"\u001b[22m\n\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:606:16",
+                        "location": {
+                          "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                          "column": 16,
+                          "line": 606
+                        },
+                        "snippet": "  604 |   test('should have accessible design system components', async ({ page }) => {\n  605 |     // This would test a dedicated component showcase page\n> 606 |     await page.goto('/v2/styleguide') // If you have one\n      |                ^\n  607 |     \n  608 |     if (await page.locator('body').textContent() !== null) {\n  609 |       const axeResults = await new AxeBuilder({ page })"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                            "column": 16,
+                            "line": 606
+                          },
+                          "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/v2/styleguide\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/v2/styleguide\", waiting until \"load\"\u001b[22m\n\n\n  604 |   test('should have accessible design system components', async ({ page }) => {\n  605 |     // This would test a dedicated component showcase page\n> 606 |     await page.goto('/v2/styleguide') // If you have one\n      |                ^\n  607 |     \n  608 |     if (await page.locator('body').textContent() !== null) {\n  609 |       const axeResults = await new AxeBuilder({ page })\n    at /home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts:606:16"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-08-19T23:54:16.885Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-5ff71-le-design-system-components-accessibility/test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "/home/kp/ollamamax/ollama-distributed/web/frontend/test-results/accessibility-comprehensiv-5ff71-le-design-system-components-accessibility/video.webm"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "/home/kp/ollamamax/ollama-distributed/web/frontend/tests/accessibility/comprehensive-a11y.spec.ts",
+                        "column": 16,
+                        "line": 606
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "ae904d3dff6b9cf7e07e-4e33d8801264a77e05b4",
+              "file": "accessibility/comprehensive-a11y.spec.ts",
+              "line": 604,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2025-08-19T23:53:09.751Z",
+    "duration": 70931.131,
+    "expected": 0,
+    "skipped": 0,
+    "unexpected": 33,
+    "flaky": 0
+  }
+}

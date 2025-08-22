@@ -1,0 +1,401 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  NODE_VERSION: '18'
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # Code Quality & Testing
+  quality:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [16, 18, 20]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: '**/package-lock.json'
+
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.npm
+          node_modules
+          ~/.cache/Cypress
+        key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-node-${{ matrix.node-version }}-
+          ${{ runner.os }}-node-
+
+    - name: Install dependencies
+      run: |
+        cd ollama-distributed/web/frontend
+        npm ci
+
+    - name: Run linting
+      run: |
+        cd ollama-distributed/web/frontend
+        npm run lint
+        npm run lint:css
+
+    - name: Run type checking
+      run: |
+        cd ollama-distributed/web/frontend
+        npm run typecheck
+
+    - name: Run unit tests
+      run: |
+        cd ollama-distributed/web/frontend
+        npm run test:unit -- --coverage --watchAll=false
+
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./ollama-distributed/web/frontend/coverage/lcov.info
+        flags: frontend
+        name: frontend-coverage
+
+  # Accessibility Testing
+  accessibility:
+    runs-on: ubuntu-latest
+    needs: quality
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: '**/package-lock.json'
+
+    - name: Install dependencies
+      run: |
+        cd ollama-distributed/web/frontend
+        npm ci
+
+    - name: Build application
+      run: |
+        cd ollama-distributed/web/frontend
+        npm run build
+
+    - name: Run accessibility tests
+      run: |
+        cd ollama-distributed/web/frontend
+        npm run test:a11y
+
+    - name: Upload accessibility reports
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: accessibility-reports
+        path: ollama-distributed/web/frontend/reports/accessibility/
+
+  # End-to-End Testing
+  e2e:
+    runs-on: ubuntu-latest
+    needs: quality
+    
+    strategy:
+      matrix:
+        browser: [chromium, firefox, webkit]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: '**/package-lock.json'
+
+    - name: Install dependencies
+      run: |
+        cd ollama-distributed/web/frontend
+        npm ci
+
+    - name: Install Playwright browsers
+      run: |
+        cd ollama-distributed/web/frontend
+        npx playwright install --with-deps ${{ matrix.browser }}
+
+    - name: Start mock backend
+      run: |
+        cd ollama-distributed/web/frontend
+        npm run mock:server &
+        sleep 10
+
+    - name: Run E2E tests
+      run: |
+        cd ollama-distributed/web/frontend
+        npm run test:e2e:${{ matrix.browser }}
+
+    - name: Upload E2E reports
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: e2e-reports-${{ matrix.browser }}
+        path: |
+          ollama-distributed/web/frontend/test-results/
+          ollama-distributed/web/frontend/playwright-report/
+
+  # Performance Testing
+  performance:
+    runs-on: ubuntu-latest
+    needs: quality
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: '**/package-lock.json'
+
+    - name: Install dependencies
+      run: |
+        cd ollama-distributed/web/frontend
+        npm ci
+
+    - name: Build application
+      run: |
+        cd ollama-distributed/web/frontend
+        npm run build
+
+    - name: Run Lighthouse CI
+      run: |
+        cd ollama-distributed/web/frontend
+        npm run lhci:autorun
+
+    - name: Run bundle analysis
+      run: |
+        cd ollama-distributed/web/frontend
+        npm run analyze
+
+    - name: Upload performance reports
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: performance-reports
+        path: |
+          ollama-distributed/web/frontend/.lighthouseci/
+          ollama-distributed/web/frontend/bundle-analysis/
+
+  # Security Scanning
+  security:
+    runs-on: ubuntu-latest
+    needs: quality
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: '**/package-lock.json'
+
+    - name: Install dependencies
+      run: |
+        cd ollama-distributed/web/frontend
+        npm ci
+
+    - name: Run security audit
+      run: |
+        cd ollama-distributed/web/frontend
+        npm audit --audit-level moderate
+
+    - name: Run dependency check
+      uses: dependency-check/Dependency-Check_Action@main
+      with:
+        project: 'ollama-frontend'
+        path: './ollama-distributed/web/frontend'
+        format: 'HTML'
+
+    - name: Upload security reports
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: security-reports
+        path: reports/
+
+  # Build & Deploy
+  build:
+    runs-on: ubuntu-latest
+    needs: [quality, accessibility, e2e, performance, security]
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: '**/package-lock.json'
+
+    - name: Install dependencies
+      run: |
+        cd ollama-distributed/web/frontend
+        npm ci
+
+    - name: Build application
+      run: |
+        cd ollama-distributed/web/frontend
+        npm run build
+
+    - name: Build Docker image
+      run: |
+        cd ollama-distributed/web/frontend
+        docker build -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} .
+        docker tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Push Docker image
+      run: |
+        docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+        docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-artifacts
+        path: ollama-distributed/web/frontend/dist/
+
+  # Staging Deployment
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    environment: staging
+    
+    steps:
+    - name: Deploy to staging
+      run: |
+        echo "Deploying to staging environment..."
+        # Add your deployment script here
+        # kubectl apply -f k8s/staging/
+        # or terraform apply
+        # or AWS CLI commands
+
+    - name: Run smoke tests
+      run: |
+        echo "Running smoke tests on staging..."
+        # Add smoke test commands
+        # curl -f https://staging.example.com/health
+
+    - name: Notify deployment
+      uses: 8398a7/action-slack@v3
+      with:
+        status: ${{ job.status }}
+        channel: '#deployments'
+        webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+      if: always()
+
+  # Production Deployment
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    
+    steps:
+    - name: Manual approval
+      uses: trstringer/manual-approval@v1
+      with:
+        secret: ${{ secrets.GITHUB_TOKEN }}
+        approvers: ${{ secrets.PRODUCTION_APPROVERS }}
+        minimum-approvals: 2
+
+    - name: Blue-green deployment
+      run: |
+        echo "Starting blue-green deployment..."
+        # Implement blue-green deployment logic
+        # 1. Deploy to green environment
+        # 2. Run health checks
+        # 3. Switch traffic
+        # 4. Monitor for issues
+        # 5. Rollback if needed
+
+    - name: Health check
+      run: |
+        echo "Running production health checks..."
+        # Comprehensive health checks
+        # curl -f https://api.example.com/health
+        # Check key metrics and functionality
+
+    - name: Rollback on failure
+      if: failure()
+      run: |
+        echo "Deployment failed, initiating rollback..."
+        # Rollback logic
+        # kubectl rollout undo deployment/app
+
+    - name: Update monitoring
+      run: |
+        echo "Updating monitoring and alerting..."
+        # Update monitoring dashboards
+        # Set up deployment-specific alerts
+
+    - name: Notify success
+      uses: 8398a7/action-slack@v3
+      with:
+        status: success
+        channel: '#deployments'
+        webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        text: '🚀 Production deployment successful!'
+
+  # Cleanup
+  cleanup:
+    runs-on: ubuntu-latest
+    needs: [deploy-staging, deploy-production]
+    if: always()
+    
+    steps:
+    - name: Cleanup artifacts
+      run: |
+        echo "Cleaning up old artifacts and images..."
+        # Clean up old Docker images
+        # Clean up old build artifacts
+        # Prune unused resources
+
+    - name: Update deployment records
+      run: |
+        echo "Updating deployment records..."
+        # Update deployment database
+        # Log deployment metrics
+        # Archive deployment reports

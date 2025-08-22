@@ -1,0 +1,50 @@
+{
+  "name": "ollama-distributed-e2e-tests",
+  "version": "1.0.0",
+  "description": "Enterprise-grade E2E testing suite for Ollama Distributed",
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "test:ui": "playwright test --ui",
+    "test:auth": "playwright test tests/e2e/auth/",
+    "test:dashboard": "playwright test tests/e2e/dashboard/",
+    "test:admin": "playwright test tests/e2e/admin/",
+    "test:monitoring": "playwright test tests/e2e/monitoring/",
+    "test:enterprise": "playwright test tests/e2e/enterprise/",
+    "test:mobile": "playwright test --project=mobile",
+    "test:browsers": "playwright test --project=chromium --project=firefox --project=webkit",
+    "test:performance": "lighthouse-ci autorun",
+    "test:accessibility": "pa11y-ci --sitemap http://localhost:3000/sitemap.xml",
+    "test:security": "npm run test:auth && npm run test:enterprise",
+    "test:health": "node scripts/health-checks.js",
+    "test:load": "k6 run tests/performance/load-test.js",
+    "test:visual": "playwright test --project=visual-regression",
+    "install-browsers": "playwright install",
+    "update-snapshots": "playwright test --update-snapshots",
+    "report": "playwright show-report",
+    "ci": "npm run test:browsers && npm run test:performance && npm run test:accessibility"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.42.0",
+    "@axe-core/playwright": "^4.8.4",
+    "lighthouse": "^11.5.0",
+    "@lhci/cli": "^0.13.0",
+    "pa11y": "^8.0.0",
+    "pa11y-ci": "^3.1.0",
+    "k6": "^0.49.0",
+    "jest": "^29.7.0",
+    "@types/jest": "^29.5.11",
+    "typescript": "^5.3.3",
+    "@types/node": "^20.11.0",
+    "dotenv": "^16.3.1",
+    "fs-extra": "^11.2.0",
+    "yaml": "^2.3.4"
+  },
+  "dependencies": {
+    "ws": "^8.16.0",
+    "puppeteer": "^21.9.0",
+    "selenium-webdriver": "^4.17.0"
+  }
+}

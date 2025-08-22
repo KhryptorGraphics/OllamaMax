@@ -1,7 +1,7 @@
 package api
 
 import (
-	"encoding/json"
+	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -10,101 +10,111 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// WSHub manages WebSocket connections
-type WSHub struct {
-	clients    map[*WSConnection]bool
-	broadcast  chan []byte
-	register   chan *WSConnection
-	unregister chan *WSConnection
-	mutex      sync.RWMutex
-}
-
 // WSConnection represents a WebSocket connection
 type WSConnection struct {
-	conn   *websocket.Conn
-	send   chan []byte
-	hub    *WSHub
-	userID string
+	Conn     *websocket.Conn
+	UserID   string
+	Username string
+	Roles    []string
+	LastPing time.Time
+	mu       sync.Mutex
+}
+
+// WSHub manages WebSocket connections
+type WSHub struct {
+	clients    map[string]*WSConnection
+	broadcast  chan WSMessage
+	register   chan *WSConnection
+	unregister chan *WSConnection
+	mu         sync.RWMutex
+	running    bool
 }
 
 // WSMessage represents a WebSocket message
 type WSMessage struct {
 	Type      string      `json:"type"`
 	Data      interface{} `json:"data"`
-	Timestamp time.Time   `json:"timestamp"`
 	UserID    string      `json:"user_id,omitempty"`
+	Timestamp time.Time   `json:"timestamp"`
 }
 
-// Dashboard update message types
+// WSMessageType constants
 const (
-	MsgTypeClusterUpdate   = "cluster_update"
-	MsgTypeNodeUpdate      = "node_update"
-	MsgTypeMetricsUpdate   = "metrics_update"
-	MsgTypeModelUpdate     = "model_update"
-	MsgTypeInferenceUpdate = "inference_update"
-	MsgTypeNotification    = "notification"
-	MsgTypeHeartbeat       = "heartbeat"
-	MsgTypeSubscribe       = "subscribe"
-	MsgTypeUnsubscribe     = "unsubscribe"
+	WSMsgTypeHeartbeat     = "heartbeat"
+	WSMsgTypeNotification  = "notification"
+	WSMsgTypeStatus        = "status"
+	WSMsgTypeMetrics       = "metrics"
+	WSMsgTypeTaskUpdate    = "task_update"
+	WSMsgTypeNodeUpdate    = "node_update"
+	WSMsgTypeModelUpdate   = "model_update"
+	WSMsgTypeClusterUpdate = "cluster_update"
+	WSMsgTypeError         = "error"
+	WSMsgTypeAuth          = "auth"
+	WSMsgTypeSubscribe     = "subscribe"
+	WSMsgTypeUnsubscribe   = "unsubscribe"
 )
 
 // NewWSHub creates a new WebSocket hub
 func NewWSHub() *WSHub {
 	return &WSHub{
-		clients:    make(map[*WSConnection]bool),
-		broadcast:  make(chan []byte, 256),
-		register:   make(chan *WSConnection),
-		unregister: make(chan *WSConnection),
+		clients:    make(map[string]*WSConnection),
+		broadcast:  make(chan WSMessage, 256),
+		register:   make(chan *WSConnection, 32),
+		unregister: make(chan *WSConnection, 32),
 	}
 }
 
 // Run starts the WebSocket hub
 func (h *WSHub) Run() {
+	h.mu.Lock()
+	h.running = true
+	h.mu.Unlock()
+
+	// Start heartbeat routine
+	go h.heartbeatRoutine()
+
 	for {
 		select {
-		case client := <-h.register:
-			h.mutex.Lock()
-			h.clients[client] = true
-			h.mutex.Unlock()
+		case conn := <-h.register:
+			h.registerConnection(conn)
 
-			// Send welcome message
-			welcome := WSMessage{
-				Type:      "welcome",
-				Data:      map[string]string{"status": "connected"},
-				Timestamp: time.Now(),
-			}
-			if data, err := json.Marshal(welcome); err == nil {
-				select {
-				case client.send <- data:
-				default:
-					close(client.send)
-					h.mutex.Lock()
-					delete(h.clients, client)
-					h.mutex.Unlock()
-				}
-			}
-
-		case client := <-h.unregister:
-			h.mutex.Lock()
-			if _, ok := h.clients[client]; ok {
-				delete(h.clients, client)
-				close(client.send)
-			}
-			h.mutex.Unlock()
+		case conn := <-h.unregister:
+			h.unregisterConnection(conn)
 
 		case message := <-h.broadcast:
-			h.mutex.RLock()
-			for client := range h.clients {
-				select {
-				case client.send <- message:
-				default:
-					close(client.send)
-					delete(h.clients, client)
-				}
-			}
-			h.mutex.RUnlock()
+			h.broadcastMessage(message)
 		}
 	}
+}
+
+// Stop stops the WebSocket hub
+func (h *WSHub) Stop() {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	h.running = false
+
+	// Close all connections
+	for _, conn := range h.clients {
+		conn.Conn.Close()
+	}
+
+	// Clear clients
+	h.clients = make(map[string]*WSConnection)
+}
+
+// IsHealthy returns whether the WebSocket hub is healthy
+func (h *WSHub) IsHealthy() bool {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return h.running
+}
+
+// GetClientCount returns the number of connected clients
+func (h *WSHub) GetClientCount() int {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return len(h.clients)
 }
 
 // Broadcast sends a message to all connected clients
@@ -115,262 +125,379 @@ func (h *WSHub) Broadcast(msgType string, data interface{}) {
 		Timestamp: time.Now(),
 	}
 
-	if jsonData, err := json.Marshal(message); err == nil {
-		select {
-		case h.broadcast <- jsonData:
-		default:
-			log.Printf("WebSocket broadcast channel full, dropping message")
+	select {
+	case h.broadcast <- message:
+	default:
+		log.Printf("WebSocket broadcast channel full, dropping message")
+	}
+}
+
+// registerConnection registers a new WebSocket connection
+func (h *WSHub) registerConnection(conn *WSConnection) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	// Remove existing connection for this user if any
+	if existing, exists := h.clients[conn.UserID]; exists {
+		existing.Conn.Close()
+	}
+
+	h.clients[conn.UserID] = conn
+	log.Printf("WebSocket client registered: %s (%s)", conn.Username, conn.UserID)
+
+	// Send welcome message
+	welcomeMsg := WSMessage{
+		Type: WSMsgTypeStatus,
+		Data: map[string]interface{}{
+			"status":    "connected",
+			"timestamp": time.Now(),
+			"user_id":   conn.UserID,
+			"username":  conn.Username,
+		},
+		Timestamp: time.Now(),
+	}
+	conn.sendMessage(welcomeMsg)
+}
+
+// unregisterConnection unregisters a WebSocket connection
+func (h *WSHub) unregisterConnection(conn *WSConnection) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	if _, exists := h.clients[conn.UserID]; exists {
+		delete(h.clients, conn.UserID)
+		conn.Conn.Close()
+		log.Printf("WebSocket client unregistered: %s (%s)", conn.Username, conn.UserID)
+	}
+}
+
+// broadcastMessage broadcasts a message to all connected clients
+func (h *WSHub) broadcastMessage(message WSMessage) {
+	h.mu.RLock()
+	clients := make([]*WSConnection, 0, len(h.clients))
+	for _, conn := range h.clients {
+		clients = append(clients, conn)
+	}
+	h.mu.RUnlock()
+
+	// Send to all clients (or specific user if UserID is set)
+	for _, conn := range clients {
+		if message.UserID == "" || message.UserID == conn.UserID {
+			// Check if user has permission to receive this message type
+			if h.hasPermission(conn, message.Type) {
+				conn.sendMessage(message)
+			}
 		}
 	}
 }
 
-// GetClientCount returns the number of connected clients
-func (h *WSHub) GetClientCount() int {
-	h.mutex.RLock()
-	defer h.mutex.RUnlock()
-	return len(h.clients)
+// hasPermission checks if a user has permission to receive a message type
+func (h *WSHub) hasPermission(conn *WSConnection, msgType string) bool {
+	// Admin users can receive all messages
+	for _, role := range conn.Roles {
+		if role == "admin" {
+			return true
+		}
+	}
+
+	// Regular users can receive most messages except sensitive ones
+	switch msgType {
+	case WSMsgTypeHeartbeat, WSMsgTypeNotification, WSMsgTypeStatus, WSMsgTypeTaskUpdate:
+		return true
+	case WSMsgTypeMetrics, WSMsgTypeNodeUpdate, WSMsgTypeClusterUpdate:
+		// Only admin users can receive system metrics and updates
+		return false
+	default:
+		return true
+	}
+}
+
+// heartbeatRoutine sends periodic heartbeat messages
+func (h *WSHub) heartbeatRoutine() {
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			h.sendHeartbeat()
+		}
+	}
+}
+
+// sendHeartbeat sends heartbeat to all connected clients
+func (h *WSHub) sendHeartbeat() {
+	h.Broadcast(WSMsgTypeHeartbeat, map[string]interface{}{
+		"timestamp":    time.Now(),
+		"server_time":  time.Now().Unix(),
+		"client_count": h.GetClientCount(),
+	})
+}
+
+// sendMessage sends a message through the WebSocket connection
+func (conn *WSConnection) sendMessage(message WSMessage) {
+	conn.mu.Lock()
+	defer conn.mu.Unlock()
+
+	// Set write deadline
+	conn.Conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+
+	if err := conn.Conn.WriteJSON(message); err != nil {
+		log.Printf("WebSocket write error for user %s: %v", conn.UserID, err)
+		conn.Conn.Close()
+	}
 }
 
 // HandleWebSocket handles WebSocket connections
 func (s *Server) HandleWebSocket(c *gin.Context) {
+	// Upgrade HTTP connection to WebSocket
 	conn, err := s.upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
-		log.Printf("WebSocket upgrade failed: %v", err)
+		s.logger.Error("WebSocket upgrade failed", "error", err)
 		return
 	}
 
-	// Get user ID from context or token
-	userID := c.GetString("user_id")
-	if userID == "" {
-		userID = "anonymous"
+	// Authenticate the WebSocket connection
+	wsConn, err := s.authenticateWebSocket(c, conn)
+	if err != nil {
+		s.logger.Error("WebSocket authentication failed", "error", err)
+		conn.WriteMessage(websocket.CloseMessage, 
+			websocket.FormatCloseMessage(websocket.CloseUnsupportedData, "Authentication failed"))
+		conn.Close()
+		return
 	}
 
-	client := &WSConnection{
-		conn:   conn,
-		send:   make(chan []byte, 256),
-		hub:    s.wsHub,
-		userID: userID,
-	}
+	// Register the connection
+	s.wsHub.register <- wsConn
 
-	client.hub.register <- client
+	// Store connection for cleanup
+	s.wsConnections[wsConn.UserID] = wsConn
 
 	// Start goroutines for reading and writing
-	go client.writePump()
-	go client.readPump()
+	go s.handleWebSocketRead(wsConn)
+	go s.handleWebSocketWrite(wsConn)
 }
 
-// readPump handles reading from the WebSocket connection
-func (c *WSConnection) readPump() {
+// authenticateWebSocket authenticates a WebSocket connection
+func (s *Server) authenticateWebSocket(c *gin.Context, conn *websocket.Conn) (*WSConnection, error) {
+	// Try to get token from query parameter or headers
+	token := c.Query("token")
+	if token == "" {
+		token = c.GetHeader("Authorization")
+		if token != "" && len(token) > 7 && token[:7] == "Bearer " {
+			token = token[7:]
+		}
+	}
+
+	if token == "" {
+		return nil, fmt.Errorf("no authentication token provided")
+	}
+
+	// Validate the token
+	claims, err := s.validateToken(token)
+	if err != nil {
+		return nil, fmt.Errorf("invalid token: %w", err)
+	}
+
+	wsConn := &WSConnection{
+		Conn:     conn,
+		UserID:   claims.UserID,
+		Username: claims.Username,
+		Roles:    claims.Roles,
+		LastPing: time.Now(),
+	}
+
+	s.logger.Info("WebSocket connection authenticated", 
+		"user_id", claims.UserID, 
+		"username", claims.Username)
+
+	return wsConn, nil
+}
+
+// handleWebSocketRead handles reading messages from WebSocket connection
+func (s *Server) handleWebSocketRead(wsConn *WSConnection) {
 	defer func() {
-		c.hub.unregister <- c
-		c.conn.Close()
+		s.wsHub.unregister <- wsConn
+		delete(s.wsConnections, wsConn.UserID)
 	}()
 
-	c.conn.SetReadLimit(512)
-	c.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
-	c.conn.SetPongHandler(func(string) error {
-		c.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	// Set read deadline and pong handler
+	wsConn.Conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	wsConn.Conn.SetPongHandler(func(string) error {
+		wsConn.LastPing = time.Now()
+		wsConn.Conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 		return nil
 	})
 
 	for {
-		_, message, err := c.conn.ReadMessage()
+		var message WSMessage
+		err := wsConn.Conn.ReadJSON(&message)
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("WebSocket error: %v", err)
+				s.logger.Error("WebSocket read error", "user_id", wsConn.UserID, "error", err)
 			}
 			break
 		}
 
 		// Handle incoming message
-		var wsMsg WSMessage
-		if err := json.Unmarshal(message, &wsMsg); err == nil {
-			c.handleMessage(&wsMsg)
-		}
+		s.handleWebSocketMessage(wsConn, message)
 	}
 }
 
-// writePump handles writing to the WebSocket connection
-func (c *WSConnection) writePump() {
+// handleWebSocketWrite handles writing messages to WebSocket connection
+func (s *Server) handleWebSocketWrite(wsConn *WSConnection) {
 	ticker := time.NewTicker(54 * time.Second)
-	defer func() {
-		ticker.Stop()
-		c.conn.Close()
-	}()
+	defer ticker.Stop()
 
 	for {
 		select {
-		case message, ok := <-c.send:
-			c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-			if !ok {
-				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
-				return
-			}
-
-			w, err := c.conn.NextWriter(websocket.TextMessage)
-			if err != nil {
-				return
-			}
-			w.Write(message)
-
-			// Add queued messages to the current message
-			n := len(c.send)
-			for i := 0; i < n; i++ {
-				w.Write([]byte{'\n'})
-				w.Write(<-c.send)
-			}
-
-			if err := w.Close(); err != nil {
-				return
-			}
-
 		case <-ticker.C:
-			c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+			// Send ping
+			wsConn.Conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			if err := wsConn.Conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				s.logger.Error("WebSocket ping failed", "user_id", wsConn.UserID, "error", err)
 				return
 			}
 		}
 	}
 }
 
-// handleMessage processes incoming WebSocket messages
-func (c *WSConnection) handleMessage(msg *WSMessage) {
-	switch msg.Type {
-	case "ping":
-		response := WSMessage{
-			Type:      "pong",
-			Data:      map[string]string{"status": "ok"},
-			Timestamp: time.Now(),
-		}
-		if data, err := json.Marshal(response); err == nil {
-			select {
-			case c.send <- data:
-			default:
-				close(c.send)
-			}
-		}
+// handleWebSocketMessage handles incoming WebSocket messages
+func (s *Server) handleWebSocketMessage(wsConn *WSConnection, message WSMessage) {
+	s.logger.Debug("WebSocket message received", 
+		"user_id", wsConn.UserID, 
+		"type", message.Type)
 
-	case "subscribe":
-		// Handle subscription requests
-		if data, ok := msg.Data.(map[string]interface{}); ok {
-			if topic, exists := data["topic"].(string); exists {
-				log.Printf("Client %s subscribed to topic: %s", c.userID, topic)
-				// TODO: Implement topic-based subscriptions
-			}
-		}
+	switch message.Type {
+	case WSMsgTypeAuth:
+		// Re-authentication request
+		s.handleWebSocketAuth(wsConn, message)
 
-	case "unsubscribe":
-		// Handle unsubscription requests
-		if data, ok := msg.Data.(map[string]interface{}); ok {
-			if topic, exists := data["topic"].(string); exists {
-				log.Printf("Client %s unsubscribed from topic: %s", c.userID, topic)
-				// TODO: Implement topic-based unsubscriptions
-			}
-		}
+	case WSMsgTypeSubscribe:
+		// Subscribe to specific events
+		s.handleWebSocketSubscribe(wsConn, message)
+
+	case WSMsgTypeUnsubscribe:
+		// Unsubscribe from specific events
+		s.handleWebSocketUnsubscribe(wsConn, message)
+
+	case WSMsgTypeHeartbeat:
+		// Client heartbeat response
+		wsConn.LastPing = time.Now()
 
 	default:
-		log.Printf("Unknown WebSocket message type: %s", msg.Type)
+		s.logger.Warn("Unknown WebSocket message type", 
+			"user_id", wsConn.UserID, 
+			"type", message.Type)
 	}
 }
 
-// BroadcastNodeUpdate broadcasts node status updates
-func (s *Server) BroadcastNodeUpdate(nodeID string, status string) {
-	s.wsHub.Broadcast("node_update", map[string]interface{}{
-		"node_id":   nodeID,
-		"status":    status,
-		"timestamp": time.Now(),
+// handleWebSocketAuth handles authentication messages
+func (s *Server) handleWebSocketAuth(wsConn *WSConnection, message WSMessage) {
+	// For now, just send success response
+	response := WSMessage{
+		Type: WSMsgTypeAuth,
+		Data: map[string]interface{}{
+			"status":    "authenticated",
+			"user_id":   wsConn.UserID,
+			"username":  wsConn.Username,
+			"roles":     wsConn.Roles,
+		},
+		Timestamp: time.Now(),
+	}
+	wsConn.sendMessage(response)
+}
+
+// handleWebSocketSubscribe handles subscription messages
+func (s *Server) handleWebSocketSubscribe(wsConn *WSConnection, message WSMessage) {
+	// Parse subscription data
+	data, ok := message.Data.(map[string]interface{})
+	if !ok {
+		return
+	}
+
+	events, ok := data["events"].([]interface{})
+	if !ok {
+		return
+	}
+
+	// Store subscription preferences (in a real implementation)
+	s.logger.Info("WebSocket subscription", 
+		"user_id", wsConn.UserID, 
+		"events", events)
+
+	// Send confirmation
+	response := WSMessage{
+		Type: WSMsgTypeSubscribe,
+		Data: map[string]interface{}{
+			"status": "subscribed",
+			"events": events,
+		},
+		Timestamp: time.Now(),
+	}
+	wsConn.sendMessage(response)
+}
+
+// handleWebSocketUnsubscribe handles unsubscription messages
+func (s *Server) handleWebSocketUnsubscribe(wsConn *WSConnection, message WSMessage) {
+	// Parse unsubscription data
+	data, ok := message.Data.(map[string]interface{})
+	if !ok {
+		return
+	}
+
+	events, ok := data["events"].([]interface{})
+	if !ok {
+		return
+	}
+
+	// Remove subscription preferences (in a real implementation)
+	s.logger.Info("WebSocket unsubscription", 
+		"user_id", wsConn.UserID, 
+		"events", events)
+
+	// Send confirmation
+	response := WSMessage{
+		Type: WSMsgTypeUnsubscribe,
+		Data: map[string]interface{}{
+			"status": "unsubscribed",
+			"events": events,
+		},
+		Timestamp: time.Now(),
+	}
+	wsConn.sendMessage(response)
+}
+
+// WebSocket notification methods
+
+// NotifyModelUpdate sends model update notifications
+func (s *Server) NotifyModelUpdate(modelName, action string, data interface{}) {
+	s.wsHub.Broadcast(WSMsgTypeModelUpdate, map[string]interface{}{
+		"model":  modelName,
+		"action": action,
+		"data":   data,
 	})
 }
 
-// BroadcastModelUpdate broadcasts model status updates
-func (s *Server) BroadcastModelUpdate(modelName string, status string, progress float64) {
-	s.wsHub.Broadcast("model_update", map[string]interface{}{
-		"model_name": modelName,
-		"status":     status,
-		"progress":   progress,
-		"timestamp":  time.Now(),
+// NotifyNodeUpdate sends node update notifications
+func (s *Server) NotifyNodeUpdate(nodeID, action string, data interface{}) {
+	s.wsHub.Broadcast(WSMsgTypeNodeUpdate, map[string]interface{}{
+		"node_id": nodeID,
+		"action":  action,
+		"data":    data,
 	})
 }
 
-// BroadcastMetricsUpdate broadcasts system metrics updates
-func (s *Server) BroadcastMetricsUpdate(metrics map[string]interface{}) {
-	s.wsHub.Broadcast("metrics_update", map[string]interface{}{
-		"metrics":   metrics,
-		"timestamp": time.Now(),
+// NotifyTaskUpdate sends task update notifications
+func (s *Server) NotifyTaskUpdate(taskID, status string, data interface{}) {
+	s.wsHub.Broadcast(WSMsgTypeTaskUpdate, map[string]interface{}{
+		"task_id": taskID,
+		"status":  status,
+		"data":    data,
 	})
 }
 
-// BroadcastDashboardUpdate broadcasts comprehensive dashboard updates
-func (s *Server) BroadcastDashboardUpdate(data map[string]interface{}) {
-	s.wsHub.Broadcast(MsgTypeClusterUpdate, map[string]interface{}{
-		"dashboard": data,
-		"timestamp": time.Now(),
-	})
-}
-
-// BroadcastNotification broadcasts notifications to users
-func (s *Server) BroadcastNotification(notification map[string]interface{}) {
-	s.wsHub.Broadcast(MsgTypeNotification, map[string]interface{}{
-		"notification": notification,
-		"timestamp":    time.Now(),
-	})
-}
-
-// BroadcastInferenceUpdate broadcasts inference request updates
-func (s *Server) BroadcastInferenceUpdate(requestID string, status string, progress float64, result interface{}) {
-	s.wsHub.Broadcast(MsgTypeInferenceUpdate, map[string]interface{}{
-		"request_id": requestID,
-		"status":     status,
-		"progress":   progress,
-		"result":     result,
-		"timestamp":  time.Now(),
-	})
-}
-
-// SendHeartbeat sends periodic heartbeat to maintain connections
-func (s *Server) SendHeartbeat() {
-	s.wsHub.Broadcast(MsgTypeHeartbeat, map[string]interface{}{
-		"timestamp":   time.Now(),
-		"server_time": time.Now().Unix(),
-	})
-}
-
-// StartDashboardUpdates starts periodic dashboard updates
-func (s *Server) StartDashboardUpdates() {
-	ticker := time.NewTicker(5 * time.Second) // Update every 5 seconds
-	go func() {
-		for range ticker.C {
-			// Get current dashboard data
-			clusterSize := 0
-			if s.scheduler != nil {
-				clusterSize = len(s.scheduler.GetAvailableNodes())
-			}
-
-			isLeader := false
-			if s.consensus != nil {
-				isLeader = s.consensus.IsLeader()
-			}
-
-			// Broadcast real-time updates
-			s.BroadcastDashboardUpdate(map[string]interface{}{
-				"clusterStatus": map[string]interface{}{
-					"healthy":   true,
-					"size":      clusterSize,
-					"leader":    isLeader,
-					"consensus": s.consensus != nil,
-				},
-				"nodeCount":    clusterSize,
-				"activeModels": 3, // TODO: Get from model manager
-				"timestamp":    time.Now().UTC(),
-			})
-		}
-	}()
-
-	// Send heartbeat every 30 seconds
-	heartbeatTicker := time.NewTicker(30 * time.Second)
-	go func() {
-		for range heartbeatTicker.C {
-			s.SendHeartbeat()
-		}
-	}()
+// BroadcastMetrics sends system metrics to all connected clients
+func (s *Server) BroadcastMetrics(metrics map[string]interface{}) {
+	s.wsHub.Broadcast(WSMsgTypeMetrics, metrics)
 }

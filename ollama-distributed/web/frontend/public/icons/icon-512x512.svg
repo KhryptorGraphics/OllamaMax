@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+    
+  </defs>
+  
+  
+  
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="256" fill="url(#gradient)" stroke="#ffffff" stroke-width="2"/>
+  
+  <!-- OllamaMax "O" Letter -->
+  <circle cx="256" cy="256" r="128" fill="none" stroke="#ffffff" stroke-width="30.72" opacity="0.9"/>
+  
+  <!-- Inner dot for "O" -->
+  <circle cx="256" cy="256" r="40.96" fill="#ffffff" opacity="0.8"/>
+  
+  <!-- Tech accent marks -->
+  <rect x="76.80000000000001" y="245.76" width="76.8" height="20.48" rx="10.24" fill="#ffffff" opacity="0.6"/>
+  <rect x="358.4" y="245.76" width="76.8" height="20.48" rx="10.24" fill="#ffffff" opacity="0.6"/>
+  
+  
+  <!-- Additional detail for larger icons -->
+  <circle cx="153.6" cy="153.6" r="15.36" fill="#ffffff" opacity="0.4"/>
+  <circle cx="358.4" cy="358.4" r="15.36" fill="#ffffff" opacity="0.4"/>
+  
+</svg>

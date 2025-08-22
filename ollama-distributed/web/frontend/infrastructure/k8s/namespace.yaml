@@ -1,0 +1,227 @@
+# Ollama Frontend - Kubernetes Namespace Configuration
+# Production-ready namespace with resource quotas and limits
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ollama-frontend
+  labels:
+    app: ollama-frontend
+    environment: production
+    version: v1
+    managed-by: terraform
+    team: platform
+    cost-center: engineering
+    compliance: soc2
+  annotations:
+    description: "Ollama Distributed Frontend Production Environment"
+    contact: "platform-team@company.com"
+    created-by: "infrastructure-automation"
+    last-updated: "{{ .Values.lastUpdated }}"
+
+---
+# Resource Quota for the namespace
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: ollama-frontend-quota
+  namespace: ollama-frontend
+  labels:
+    app: ollama-frontend
+    component: resource-quota
+spec:
+  hard:
+    # Compute resources
+    requests.cpu: "4"
+    requests.memory: "8Gi"
+    limits.cpu: "16"
+    limits.memory: "32Gi"
+    
+    # Storage resources
+    requests.storage: "100Gi"
+    persistentvolumeclaims: "10"
+    
+    # Object counts
+    pods: "50"
+    services: "20"
+    secrets: "20"
+    configmaps: "20"
+    persistentvolumeclaims: "10"
+    
+    # Load balancer resources
+    services.loadbalancers: "5"
+    services.nodeports: "0"  # Disable NodePort for security
+
+---
+# Limit Range for pod resources
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: ollama-frontend-limits
+  namespace: ollama-frontend
+  labels:
+    app: ollama-frontend
+    component: limit-range
+spec:
+  limits:
+  # Container limits
+  - type: Container
+    default:
+      cpu: "500m"
+      memory: "512Mi"
+      ephemeral-storage: "1Gi"
+    defaultRequest:
+      cpu: "100m"
+      memory: "128Mi"
+      ephemeral-storage: "256Mi"
+    max:
+      cpu: "2"
+      memory: "4Gi"
+      ephemeral-storage: "10Gi"
+    min:
+      cpu: "50m"
+      memory: "64Mi"
+      ephemeral-storage: "128Mi"
+  
+  # Pod limits
+  - type: Pod
+    max:
+      cpu: "4"
+      memory: "8Gi"
+      ephemeral-storage: "20Gi"
+  
+  # PVC limits
+  - type: PersistentVolumeClaim
+    max:
+      storage: "50Gi"
+    min:
+      storage: "1Gi"
+
+---
+# Network Policy for namespace isolation
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ollama-frontend-network-policy
+  namespace: ollama-frontend
+  labels:
+    app: ollama-frontend
+    component: network-policy
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+  
+  # Ingress rules
+  ingress:
+  # Allow ingress from ingress controller
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx
+    ports:
+    - protocol: TCP
+      port: 3000
+  
+  # Allow ingress from monitoring namespace
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 9090  # Prometheus metrics
+    - protocol: TCP
+      port: 3000  # Health checks
+  
+  # Allow ingress within namespace
+  - from:
+    - podSelector: {}
+  
+  # Egress rules
+  egress:
+  # Allow DNS resolution
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  
+  # Allow HTTPS traffic
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+  
+  # Allow HTTP traffic (for internal services)
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 80
+  
+  # Allow backend API access
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: ollama-backend
+    ports:
+    - protocol: TCP
+      port: 8080
+
+---
+# Service Account for the application
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ollama-frontend
+  namespace: ollama-frontend
+  labels:
+    app: ollama-frontend
+    component: service-account
+  annotations:
+    # For AWS IAM roles (if using EKS)
+    eks.amazonaws.com/role-arn: "{{ .Values.awsRoleArn }}"
+automountServiceAccountToken: false  # Security best practice
+
+---
+# Role for the service account
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ollama-frontend
+  namespace: ollama-frontend
+  labels:
+    app: ollama-frontend
+    component: rbac
+rules:
+# Allow reading ConfigMaps and Secrets
+- apiGroups: [""]
+  resources: ["configmaps", "secrets"]
+  verbs: ["get", "list", "watch"]
+
+# Allow reading own pod information
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+  resourceNames: []
+
+---
+# Role binding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ollama-frontend
+  namespace: ollama-frontend
+  labels:
+    app: ollama-frontend
+    component: rbac
+subjects:
+- kind: ServiceAccount
+  name: ollama-frontend
+  namespace: ollama-frontend
+roleRef:
+  kind: Role
+  name: ollama-frontend
+  apiGroup: rbac.authorization.k8s.io

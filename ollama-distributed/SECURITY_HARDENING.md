@@ -69,7 +69,7 @@ openssl x509 -in certs/server.crt -noout -text
 ./ollama-distributed start --config config/security.yaml
 
 # Or with environment variables
-JWT_SECRET="your-secure-secret" ./ollama-distributed start
+OLLAMA_JWT_SECRET="your-secure-secret" ./ollama-distributed start
 ```
 
 ## 🔐 Authentication Security
@@ -204,14 +204,14 @@ grep "rate_limit" /var/log/ollama-security.log
 ### **Required Environment Variables**
 ```bash
 # JWT Secret (minimum 32 characters)
-export JWT_SECRET="your-very-long-and-secure-jwt-secret-key"
+export OLLAMA_JWT_SECRET="your-very-long-and-secure-jwt-secret-key"
 
 # Admin Password
 export ADMIN_DEFAULT_PASSWORD="secure-admin-password-123"
 
 # TLS Certificates
-export TLS_CERT_FILE="/path/to/server.crt"
-export TLS_KEY_FILE="/path/to/server.key"
+export OLLAMA_TLS_CERT_FILE="/path/to/server.crt"
+export OLLAMA_TLS_KEY_FILE="/path/to/server.key"
 ```
 
 ### **Security Configuration File**
@@ -219,15 +219,15 @@ export TLS_KEY_FILE="/path/to/server.key"
 # config/security.yaml
 security:
   authentication:
-    jwt_secret: "${JWT_SECRET}"
+    jwt_secret: "${OLLAMA_JWT_SECRET}"
     session_timeout: 3600
     max_failed_attempts: 5
     lockout_duration: 900
   
   tls:
     enabled: true
-    cert_file: "${TLS_CERT_FILE}"
-    key_file: "${TLS_KEY_FILE}"
+    cert_file: "${OLLAMA_TLS_CERT_FILE}"
+    key_file: "${OLLAMA_TLS_KEY_FILE}"
     min_version: "1.2"
   
   headers:

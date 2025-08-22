@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    
+    <!-- Primary Meta Tags -->
+    <title>OllamaMax - Distributed AI Platform</title>
+    <meta name="title" content="OllamaMax - Distributed AI Platform" />
+    <meta name="description" content="Enterprise-grade distributed AI model management platform for scaling Ollama models across multiple nodes with real-time monitoring and analytics." />
+    <meta name="keywords" content="ollama, ai, machine learning, distributed computing, model management, artificial intelligence" />
+    <meta name="author" content="OllamaMax Team" />
+    
+    <!-- PWA Meta Tags -->
+    <meta name="application-name" content="OllamaMax" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="OllamaMax" />
+    
+    <!-- Theme Colors -->
+    <meta name="theme-color" content="#2563eb" />
+    <meta name="msapplication-TileColor" content="#2563eb" />
+    <meta name="msapplication-navbutton-color" content="#2563eb" />
+    
+    <!-- Viewport Meta for Mobile -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover" />
+    
+    <!-- Web App Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- Favicons and Icons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16x16.png" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png" />
+    <link rel="apple-touch-icon" sizes="144x144" href="/icons/icon-144x144.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/icons/icon-120x120.png" />
+    <link rel="apple-touch-icon" sizes="114x114" href="/icons/icon-114x114.png" />
+    <link rel="apple-touch-icon" sizes="76x76" href="/icons/icon-76x76.png" />
+    <link rel="apple-touch-icon" sizes="72x72" href="/icons/icon-72x72.png" />
+    <link rel="apple-touch-icon" sizes="60x60" href="/icons/icon-60x60.png" />
+    <link rel="apple-touch-icon" sizes="57x57" href="/icons/icon-57x57.png" />
+    
+    <!-- Microsoft Tiles -->
+    <meta name="msapplication-TileImage" content="/icons/icon-144x144.png" />
+    <meta name="msapplication-square70x70logo" content="/icons/icon-70x70.png" />
+    <meta name="msapplication-square150x150logo" content="/icons/icon-150x150.png" />
+    <meta name="msapplication-wide310x150logo" content="/icons/icon-310x150.png" />
+    <meta name="msapplication-square310x310logo" content="/icons/icon-310x310.png" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://ollamamax.com/" />
+    <meta property="og:title" content="OllamaMax - Distributed AI Platform" />
+    <meta property="og:description" content="Enterprise-grade distributed AI model management platform for scaling Ollama models across multiple nodes." />
+    <meta property="og:image" content="/icons/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://ollamamax.com/" />
+    <meta property="twitter:title" content="OllamaMax - Distributed AI Platform" />
+    <meta property="twitter:description" content="Enterprise-grade distributed AI model management platform for scaling Ollama models across multiple nodes." />
+    <meta property="twitter:image" content="/icons/twitter-image.png" />
+    
+    <!-- DNS Prefetch for Performance -->
+    <link rel="dns-prefetch" href="//fonts.googleapis.com" />
+    <link rel="dns-prefetch" href="//api.ollamamax.com" />
+    
+    <!-- Preload Critical Resources -->
+    <link rel="preload" href="/icons/icon-192x192.png" as="image" type="image/png" />
+    
+    <!-- Security Headers -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <meta http-equiv="X-Frame-Options" content="DENY" />
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block" />
+    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
+    
+    <!-- Performance Hints -->
+    <meta http-equiv="Accept-CH" content="DPR, Width, Viewport-Width" />
+    
+    <!-- iOS Safari specific -->
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-touch-fullscreen" content="yes" />
+    
+    <!-- Android Chrome specific -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="OllamaMax" />
+    
+    <!-- Windows specific -->
+    <meta name="msapplication-starturl" content="/" />
+    <meta name="msapplication-tooltip" content="OllamaMax - Distributed AI Platform" />
+    <meta name="msapplication-task" content="name=Dashboard;action-uri=/v2;icon-uri=/icons/icon-32x32.png" />
+    <meta name="msapplication-task" content="name=Models;action-uri=/v2/models;icon-uri=/icons/icon-32x32.png" />
+    
+    <!-- Splash Screens for iOS -->
+    <link rel="apple-touch-startup-image" href="/splash/apple-splash-2048-2732.jpg" media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/apple-splash-1668-2388.jpg" media="(device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/apple-splash-1536-2048.jpg" media="(device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/apple-splash-1125-2436.jpg" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/apple-splash-1242-2688.jpg" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/apple-splash-828-1792.jpg" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/apple-splash-1242-2208.jpg" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash/apple-splash-750-1334.jpg" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+  </head>
+  <body class="min-h-screen bg-gray-50 text-slate-800">
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 bg-white text-blue-700 px-3 py-2 rounded shadow z-50">Skip to content</a>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

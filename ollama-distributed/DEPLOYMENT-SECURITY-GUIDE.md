@@ -56,7 +56,7 @@ vi deploy/docker/.env
 ### 2. Configure Secrets
 ```bash
 # Replace ALL placeholder values in .env file:
-JWT_SECRET=your_secure_64_char_jwt_secret_here
+OLLAMA_JWT_SECRET=your_secure_64_char_jwt_secret_here
 GRAFANA_ADMIN_PASSWORD=your_secure_grafana_password
 REDIS_PASSWORD=your_secure_redis_password
 DATABASE_PASSWORD=your_secure_database_password

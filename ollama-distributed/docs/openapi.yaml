@@ -1,0 +1,1079 @@
+openapi: 3.0.3
+info:
+  title: OllamaMax Distributed API
+  description: |
+    OllamaMax Distributed is an enterprise-grade distributed AI platform that transforms 
+    the single-node Ollama architecture into a horizontally scalable, fault-tolerant system.
+    
+    ## Authentication
+    
+    The API uses JWT-based authentication. Include the token in the Authorization header:
+    ```
+    Authorization: Bearer <JWT_TOKEN>
+    ```
+    
+    ## Base URLs
+    
+    - **API Server**: `http://localhost:8080`
+    - **Web Interface**: `http://localhost:8081`
+    - **Metrics**: `http://localhost:9090`
+    
+    ## Rate Limiting
+    
+    Default rate limit: 1000 requests per minute per client.
+    
+  version: 1.0.0
+  contact:
+    name: OllamaMax Support
+    url: https://github.com/khryptorgraphics/ollamamax
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+  - url: https://api.ollamamax.com
+    description: Production server
+
+security:
+  - bearerAuth: []
+
+paths:
+  # Health & Status Endpoints
+  /api/v1/health:
+    get:
+      summary: System health check
+      description: Returns the current health status of the system
+      tags:
+        - Health
+      security: []
+      responses:
+        '200':
+          description: System is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: "healthy"
+                timestamp: "2024-01-15T10:00:00Z"
+                version: "1.0.0"
+                uptime: "24h30m15s"
+
+  /api/v1/version:
+    get:
+      summary: Get version information
+      description: Returns version and build information
+      tags:
+        - Health
+      security: []
+      responses:
+        '200':
+          description: Version information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionResponse'
+
+  /api/v1/cluster/status:
+    get:
+      summary: Get cluster status
+      description: Returns the current status of the distributed cluster
+      tags:
+        - Cluster
+      responses:
+        '200':
+          description: Cluster status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClusterStatus'
+
+  # Authentication Endpoints
+  /api/v1/auth/login:
+    post:
+      summary: User authentication
+      description: Authenticate user and receive JWT token
+      tags:
+        - Authentication
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              username: "admin"
+              password: "secure-password"
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/auth/refresh:
+    post:
+      summary: Refresh JWT token
+      description: Get a new JWT token using a valid refresh token
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+
+  /api/v1/auth/logout:
+    post:
+      summary: User logout
+      description: Invalidate the current JWT token
+      tags:
+        - Authentication
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+
+  # Model Management Endpoints
+  /api/v1/models:
+    get:
+      summary: List available models
+      description: Get a list of all available AI models in the cluster
+      tags:
+        - Models
+      parameters:
+        - name: page
+          in: query
+          description: Page number for pagination
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: Number of models per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: List of models
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelsResponse'
+
+  /api/v1/models/{name}:
+    get:
+      summary: Get model details
+      description: Get detailed information about a specific model
+      tags:
+        - Models
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: Model name
+          schema:
+            type: string
+          example: "llama2:7b"
+      responses:
+        '200':
+          description: Model details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelDetails'
+        '404':
+          description: Model not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Delete model
+      description: Remove a model from the cluster
+      tags:
+        - Models
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: Model name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Model deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '404':
+          description: Model not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/models/{name}/download:
+    post:
+      summary: Download model
+      description: Download and install a model in the cluster
+      tags:
+        - Models
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: Model name
+          schema:
+            type: string
+      responses:
+        '202':
+          description: Download started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DownloadResponse'
+        '400':
+          description: Invalid model name
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Node Management Endpoints
+  /api/v1/nodes:
+    get:
+      summary: List cluster nodes
+      description: Get information about all nodes in the cluster
+      tags:
+        - Nodes
+      responses:
+        '200':
+          description: List of nodes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodesResponse'
+
+  /api/v1/nodes/{id}:
+    get:
+      summary: Get node details
+      description: Get detailed information about a specific node
+      tags:
+        - Nodes
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Node ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Node details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NodeDetails'
+        '404':
+          description: Node not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/nodes/{id}/drain:
+    post:
+      summary: Drain node
+      description: Gracefully drain a node of its workload
+      tags:
+        - Nodes
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Node ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Node drain initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+
+  /api/v1/nodes/{id}/undrain:
+    post:
+      summary: Undrain node
+      description: Mark a drained node as available for scheduling
+      tags:
+        - Nodes
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Node ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Node undrain completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+
+  # Inference Endpoints
+  /api/v1/generate:
+    post:
+      summary: Text generation
+      description: Generate text using a specified model
+      tags:
+        - Inference
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateRequest'
+            example:
+              model: "llama2:7b"
+              prompt: "Explain quantum computing"
+              max_tokens: 500
+              temperature: 0.7
+      responses:
+        '200':
+          description: Generated text
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerateResponse'
+
+  /api/v1/chat:
+    post:
+      summary: Chat completion
+      description: Generate chat completions using a conversational model
+      tags:
+        - Inference
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+      responses:
+        '200':
+          description: Chat completion
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatResponse'
+
+  /api/v1/embeddings:
+    post:
+      summary: Generate embeddings
+      description: Generate vector embeddings for input text
+      tags:
+        - Inference
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmbeddingsRequest'
+      responses:
+        '200':
+          description: Generated embeddings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmbeddingsResponse'
+
+  # Cluster Operations
+  /api/v1/cluster/leader:
+    get:
+      summary: Get cluster leader
+      description: Get information about the current cluster leader
+      tags:
+        - Cluster
+      responses:
+        '200':
+          description: Cluster leader information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaderResponse'
+
+  /api/v1/cluster/join:
+    post:
+      summary: Join cluster
+      description: Join this node to an existing cluster
+      tags:
+        - Cluster
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JoinRequest'
+      responses:
+        '200':
+          description: Successfully joined cluster
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+
+  /api/v1/cluster/leave:
+    post:
+      summary: Leave cluster
+      description: Remove this node from the cluster
+      tags:
+        - Cluster
+      responses:
+        '200':
+          description: Successfully left cluster
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+
+  # Monitoring Endpoints
+  /api/v1/metrics:
+    get:
+      summary: Get system metrics
+      description: Get Prometheus-format metrics
+      tags:
+        - Monitoring
+      responses:
+        '200':
+          description: Metrics in Prometheus format
+          content:
+            text/plain:
+              example: |
+                # HELP ollama_requests_total Total number of requests
+                # TYPE ollama_requests_total counter
+                ollama_requests_total{method="GET",endpoint="/api/v1/models"} 42
+
+  /api/v1/stats:
+    get:
+      summary: Get runtime statistics
+      description: Get detailed runtime statistics
+      tags:
+        - Monitoring
+      responses:
+        '200':
+          description: Runtime statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatsResponse'
+
+  # WebSocket for real-time updates
+  /ws:
+    get:
+      summary: WebSocket connection
+      description: |
+        WebSocket endpoint for real-time updates. 
+        
+        **Authentication**: Include JWT token as query parameter or in headers.
+        
+        **Example**: `ws://localhost:8080/ws?token=<JWT_TOKEN>`
+        
+        **Message Types**:
+        - `cluster_status`: Cluster status updates
+        - `model_event`: Model-related events
+        - `node_status`: Node status changes
+        - `metrics`: Real-time metrics
+      tags:
+        - WebSocket
+      responses:
+        '101':
+          description: WebSocket connection established
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, unhealthy, degraded]
+        timestamp:
+          type: string
+          format: date-time
+        version:
+          type: string
+        uptime:
+          type: string
+        components:
+          type: object
+          additionalProperties:
+            type: string
+
+    VersionResponse:
+      type: object
+      properties:
+        version:
+          type: string
+        build_date:
+          type: string
+          format: date-time
+        git_commit:
+          type: string
+        go_version:
+          type: string
+
+    ClusterStatus:
+      type: object
+      properties:
+        cluster_id:
+          type: string
+        leader:
+          type: string
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/NodeSummary'
+        consensus:
+          $ref: '#/components/schemas/ConsensusInfo'
+
+    NodeSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+          enum: [online, offline, draining, unhealthy]
+        last_seen:
+          type: string
+          format: date-time
+        capabilities:
+          type: array
+          items:
+            type: string
+        resources:
+          $ref: '#/components/schemas/ResourceInfo'
+
+    ConsensusInfo:
+      type: object
+      properties:
+        term:
+          type: integer
+        log_index:
+          type: integer
+        state:
+          type: string
+          enum: [leader, follower, candidate]
+
+    ResourceInfo:
+      type: object
+      properties:
+        cpu_cores:
+          type: integer
+        memory_gb:
+          type: number
+        storage_gb:
+          type: number
+        gpu_count:
+          type: integer
+
+    LoginRequest:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        refresh_token:
+          type: string
+        expires_in:
+          type: integer
+        user:
+          $ref: '#/components/schemas/UserInfo'
+
+    RefreshRequest:
+      type: object
+      required:
+        - refresh_token
+      properties:
+        refresh_token:
+          type: string
+
+    UserInfo:
+      type: object
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        roles:
+          type: array
+          items:
+            type: string
+
+    ModelsResponse:
+      type: object
+      properties:
+        models:
+          type: array
+          items:
+            $ref: '#/components/schemas/ModelSummary'
+        pagination:
+          $ref: '#/components/schemas/PaginationInfo'
+
+    ModelSummary:
+      type: object
+      properties:
+        name:
+          type: string
+        size:
+          type: integer
+          format: int64
+        digest:
+          type: string
+        modified_at:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [available, downloading, error]
+
+    ModelDetails:
+      type: object
+      properties:
+        name:
+          type: string
+        size:
+          type: integer
+          format: int64
+        digest:
+          type: string
+        format:
+          type: string
+        family:
+          type: string
+        parameter_size:
+          type: string
+        quantization_level:
+          type: string
+        capabilities:
+          type: array
+          items:
+            type: string
+        modified_at:
+          type: string
+          format: date-time
+        download_count:
+          type: integer
+        nodes:
+          type: array
+          items:
+            type: string
+
+    DownloadResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+          enum: [queued, downloading, completed, failed]
+        progress:
+          type: number
+          minimum: 0
+          maximum: 100
+
+    NodesResponse:
+      type: object
+      properties:
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/NodeDetails'
+
+    NodeDetails:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+          enum: [online, offline, draining, unhealthy]
+        address:
+          type: string
+        last_seen:
+          type: string
+          format: date-time
+        capabilities:
+          type: array
+          items:
+            type: string
+        resources:
+          $ref: '#/components/schemas/ResourceInfo'
+        models:
+          type: array
+          items:
+            type: string
+        metrics:
+          $ref: '#/components/schemas/NodeMetrics'
+
+    NodeMetrics:
+      type: object
+      properties:
+        cpu_usage:
+          type: number
+        memory_usage:
+          type: number
+        disk_usage:
+          type: number
+        network_io:
+          $ref: '#/components/schemas/NetworkIO'
+
+    NetworkIO:
+      type: object
+      properties:
+        bytes_sent:
+          type: integer
+          format: int64
+        bytes_received:
+          type: integer
+          format: int64
+
+    GenerateRequest:
+      type: object
+      required:
+        - model
+        - prompt
+      properties:
+        model:
+          type: string
+        prompt:
+          type: string
+        max_tokens:
+          type: integer
+          minimum: 1
+          maximum: 4096
+          default: 100
+        temperature:
+          type: number
+          minimum: 0
+          maximum: 2
+          default: 0.8
+        top_p:
+          type: number
+          minimum: 0
+          maximum: 1
+          default: 0.9
+        stop:
+          oneOf:
+            - type: string
+            - type: array
+              items:
+                type: string
+        stream:
+          type: boolean
+          default: false
+
+    GenerateResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        object:
+          type: string
+          enum: [text_completion]
+        created:
+          type: integer
+        model:
+          type: string
+        choices:
+          type: array
+          items:
+            $ref: '#/components/schemas/Choice'
+        usage:
+          $ref: '#/components/schemas/Usage'
+
+    Choice:
+      type: object
+      properties:
+        index:
+          type: integer
+        text:
+          type: string
+        finish_reason:
+          type: string
+          enum: [stop, length, temperature]
+
+    ChatRequest:
+      type: object
+      required:
+        - model
+        - messages
+      properties:
+        model:
+          type: string
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChatMessage'
+        max_tokens:
+          type: integer
+        temperature:
+          type: number
+        stream:
+          type: boolean
+
+    ChatMessage:
+      type: object
+      required:
+        - role
+        - content
+      properties:
+        role:
+          type: string
+          enum: [system, user, assistant]
+        content:
+          type: string
+
+    ChatResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        object:
+          type: string
+          enum: [chat.completion]
+        created:
+          type: integer
+        model:
+          type: string
+        choices:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChatChoice'
+        usage:
+          $ref: '#/components/schemas/Usage'
+
+    ChatChoice:
+      type: object
+      properties:
+        index:
+          type: integer
+        message:
+          $ref: '#/components/schemas/ChatMessage'
+        finish_reason:
+          type: string
+
+    EmbeddingsRequest:
+      type: object
+      required:
+        - model
+        - input
+      properties:
+        model:
+          type: string
+        input:
+          oneOf:
+            - type: string
+            - type: array
+              items:
+                type: string
+
+    EmbeddingsResponse:
+      type: object
+      properties:
+        object:
+          type: string
+          enum: [list]
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Embedding'
+        model:
+          type: string
+        usage:
+          $ref: '#/components/schemas/Usage'
+
+    Embedding:
+      type: object
+      properties:
+        object:
+          type: string
+          enum: [embedding]
+        index:
+          type: integer
+        embedding:
+          type: array
+          items:
+            type: number
+
+    Usage:
+      type: object
+      properties:
+        prompt_tokens:
+          type: integer
+        completion_tokens:
+          type: integer
+        total_tokens:
+          type: integer
+
+    LeaderResponse:
+      type: object
+      properties:
+        leader_id:
+          type: string
+        leader_address:
+          type: string
+        term:
+          type: integer
+        last_contact:
+          type: string
+          format: date-time
+
+    JoinRequest:
+      type: object
+      required:
+        - cluster_address
+      properties:
+        cluster_address:
+          type: string
+        node_id:
+          type: string
+
+    StatsResponse:
+      type: object
+      properties:
+        uptime:
+          type: string
+        requests_total:
+          type: integer
+        requests_per_second:
+          type: number
+        memory:
+          $ref: '#/components/schemas/MemoryStats'
+        models:
+          $ref: '#/components/schemas/ModelStats'
+
+    MemoryStats:
+      type: object
+      properties:
+        allocated:
+          type: integer
+          format: int64
+        heap_size:
+          type: integer
+          format: int64
+        gc_count:
+          type: integer
+
+    ModelStats:
+      type: object
+      properties:
+        total_models:
+          type: integer
+        total_size:
+          type: integer
+          format: int64
+        active_models:
+          type: integer
+
+    PaginationInfo:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        pages:
+          type: integer
+
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: integer
+        details:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+tags:
+  - name: Health
+    description: Health and status endpoints
+  - name: Authentication
+    description: User authentication and authorization
+  - name: Models
+    description: AI model management
+  - name: Nodes
+    description: Cluster node management
+  - name: Inference
+    description: AI inference operations
+  - name: Cluster
+    description: Cluster management operations
+  - name: Monitoring
+    description: Metrics and monitoring
+  - name: WebSocket
+    description: Real-time communication

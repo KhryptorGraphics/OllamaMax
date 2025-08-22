@@ -1,0 +1,388 @@
+# OllamaMax Distributed CI/CD Pipeline
+# GitHub Actions workflow for comprehensive testing, building, and deployment
+
+name: OllamaMax Distributed CI/CD
+
+on:
+  push:
+    branches: [ main, develop, feat/* ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: khryptorgraphics/ollamamax
+  GO_VERSION: '1.21'
+  NODE_VERSION: '18'
+
+jobs:
+  # Security and validation checks
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Run gosec security scanner
+        uses: securecodewarrior/github-action-gosec@master
+        with:
+          args: './...'
+
+  # Code quality and linting
+  lint:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: latest
+          args: --timeout=5m
+
+      - name: Go mod tidy check
+        run: |
+          go mod tidy
+          git diff --exit-code go.mod go.sum
+
+  # Backend testing
+  test-backend:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Cache Go modules
+        uses: actions/cache@v3
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Run unit tests
+        run: |
+          go test -race -coverprofile=coverage.out -covermode=atomic ./...
+
+      - name: Generate coverage report
+        run: |
+          go tool cover -html=coverage.out -o coverage.html
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.out
+          flags: backend
+          name: backend-coverage
+
+      - name: Run integration tests
+        run: |
+          make test-integration
+        env:
+          REDIS_URL: redis://localhost:6379
+
+  # Frontend testing
+  test-frontend:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web/frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: web/frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linting
+        run: npm run lint
+
+      - name: Run type checking
+        run: npm run typecheck
+
+      - name: Run unit tests
+        run: npm run test:coverage
+
+      - name: Upload frontend coverage
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./web/frontend/coverage/lcov.info
+          flags: frontend
+          name: frontend-coverage
+
+  # E2E testing
+  test-e2e:
+    name: End-to-End Tests
+    runs-on: ubuntu-latest
+    needs: [test-backend, test-frontend]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build test images
+        run: |
+          docker-compose -f docker-compose.test.yml build
+
+      - name: Run E2E tests
+        run: |
+          docker-compose -f docker-compose.test.yml up --abort-on-container-exit --exit-code-from e2e-tests
+
+      - name: Collect test artifacts
+        if: always()
+        run: |
+          docker-compose -f docker-compose.test.yml logs > e2e-logs.txt
+
+      - name: Upload E2E artifacts
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: e2e-test-results
+          path: |
+            e2e-logs.txt
+            test-results/
+
+  # Performance testing
+  test-performance:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Run benchmark tests
+        run: |
+          go test -bench=. -benchmem -run=^$ ./... > benchmark-results.txt
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v3
+        with:
+          name: benchmark-results
+          path: benchmark-results.txt
+
+  # Build and publish
+  build:
+    name: Build and Push Images
+    runs-on: ubuntu-latest
+    needs: [security, lint, test-backend, test-frontend]
+    
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./build/docker/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            VERSION=${{ steps.meta.outputs.version }}
+            BUILD_TIME=${{ github.event.head_commit.timestamp }}
+            GIT_COMMIT=${{ github.sha }}
+
+      - name: Build and push web image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./web/frontend
+          file: ./web/frontend/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-web:${{ steps.meta.outputs.version }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # Deploy to staging
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [build, test-e2e]
+    if: github.ref == 'refs/heads/develop'
+    
+    environment:
+      name: staging
+      url: https://staging.ollamamax.io
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Configure kubectl
+        run: |
+          echo "${{ secrets.KUBECONFIG_STAGING }}" | base64 -d > kubeconfig
+          export KUBECONFIG=kubeconfig
+
+      - name: Deploy to staging
+        run: |
+          export KUBECONFIG=kubeconfig
+          kubectl set image deployment/ollamamax-distributed \
+            ollamamax=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:develop \
+            --namespace=staging
+          kubectl rollout status deployment/ollamamax-distributed --namespace=staging
+
+      - name: Run health checks
+        run: |
+          ./scripts/health-check.sh staging.ollamamax.io
+
+  # Deploy to production
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build, test-e2e]
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    environment:
+      name: production
+      url: https://ollamamax.io
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Configure kubectl
+        run: |
+          echo "${{ secrets.KUBECONFIG_PRODUCTION }}" | base64 -d > kubeconfig
+          export KUBECONFIG=kubeconfig
+
+      - name: Deploy to production
+        run: |
+          export KUBECONFIG=kubeconfig
+          TAG_VERSION=${GITHUB_REF#refs/tags/}
+          kubectl set image deployment/ollamamax-distributed \
+            ollamamax=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${TAG_VERSION} \
+            --namespace=production
+          kubectl rollout status deployment/ollamamax-distributed --namespace=production
+
+      - name: Run production health checks
+        run: |
+          ./scripts/health-check.sh ollamamax.io
+
+      - name: Create GitHub release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          body: |
+            ## Changes in this Release
+            - Automated release from tag ${{ github.ref }}
+            
+            ## Docker Images
+            - Backend: `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}`
+            - Frontend: `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-web:${{ github.ref_name }}`
+          draft: false
+          prerelease: false
+
+  # Cleanup
+  cleanup:
+    name: Cleanup
+    runs-on: ubuntu-latest
+    needs: [deploy-staging, deploy-production]
+    if: always()
+
+    steps:
+      - name: Clean up old images
+        run: |
+          # This would typically clean up old container images
+          echo "Cleanup completed"

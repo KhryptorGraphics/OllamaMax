@@ -449,8 +449,39 @@ const (
 	ErrCodeQuotaExceeded    = "QUOTA_EXCEEDED"
 	ErrCodeInvalidArgument  = "INVALID_ARGUMENT"
 	ErrCodeInternal         = "INTERNAL_ERROR"
+	ErrCodeInternalError    = "INTERNAL_ERROR"
+	ErrCodeIOError          = "IO_ERROR"
 	ErrCodeUnavailable      = "UNAVAILABLE"
 	ErrCodeTimeout          = "TIMEOUT"
 	ErrCodeCorrupted        = "CORRUPTED"
 	ErrCodeConsistency      = "CONSISTENCY_ERROR"
 )
+
+// IsNotFoundError checks if an error is a not found error
+func IsNotFoundError(err error) bool {
+	if err == nil {
+		return false
+	}
+	if storageErr, ok := err.(*StorageError); ok {
+		return storageErr.Code == ErrCodeNotFound
+	}
+	return false
+}
+
+// isNotFoundError is an alias for IsNotFoundError for backward compatibility
+func isNotFoundError(err error) bool {
+	return IsNotFoundError(err)
+}
+
+// NewStorageStats creates a new StorageStats instance
+func NewStorageStats() *StorageStats {
+	return &StorageStats{
+		OperationCounts: make(map[string]int64),
+		Performance: &PerformanceStats{
+			ReadLatency:   &LatencyStats{},
+			WriteLatency:  &LatencyStats{},
+			DeleteLatency: &LatencyStats{},
+			Throughput:    &Throughput{},
+		},
+	}
+}

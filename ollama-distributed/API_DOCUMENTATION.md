@@ -12,11 +12,18 @@ http://localhost:8080/api/v1
 
 ## Authentication
 
-Currently, the API uses simple token-based authentication for admin endpoints:
+The API uses JWT-based authentication for secure endpoints. Authentication is required for all protected endpoints.
 
+**Headers:**
 ```
-Authorization: Bearer <OLLAMA_ADMIN_TOKEN>
+Authorization: Bearer <JWT_TOKEN>
+Content-Type: application/json
 ```
+
+**Authentication Endpoints:**
+- `POST /api/v1/auth/login` - Authenticate and receive JWT token
+- `POST /api/v1/auth/refresh` - Refresh JWT token
+- `POST /api/v1/auth/logout` - Logout and invalidate token
 
 ## Endpoints
 
@@ -25,16 +32,35 @@ Authorization: Bearer <OLLAMA_ADMIN_TOKEN>
 #### GET /health
 Returns the health status of the distributed system.
 
+**Authentication:** None required
+
 **Response:**
 ```json
 {
   "status": "healthy",
-  "timestamp": 1642694400,
-  "services": {
-    "p2p": "healthy",
-    "consensus": "healthy",
-    "scheduler": "healthy"
-  }
+  "timestamp": "2024-01-15T10:00:00Z",
+  "uptime": "24h 15m 30s"
+}
+```
+
+**Status Codes:**
+- `200 OK` - System is healthy
+- `503 Service Unavailable` - System is unhealthy
+
+#### GET /version
+Returns version information about the system.
+
+**Authentication:** None required
+
+**Response:**
+```json
+{
+  "version": "1.0.0",
+  "build_time": "2024-01-15T10:00:00Z",
+  "git_commit": "abc123def456",
+  "go_version": "go1.21.0",
+  "platform": "linux/amd64",
+  "api_version": "v1"
 }
 ```
 
@@ -57,22 +83,32 @@ Returns detailed cluster status information.
 #### GET /nodes
 Returns all nodes in the distributed cluster.
 
+**Authentication:** Required
+
 **Response:**
 ```json
 {
-  "nodes": {
-    "node_001": {
-      "id": "node_001",
+  "nodes": [
+    {
+      "id": "node-001",
       "address": "192.168.1.100:8080",
       "status": "online",
-      "models": ["llama2", "mistral"],
+      "last_seen": "2024-01-15T10:00:00Z",
+      "models": ["llama2:7b", "codellama:13b"],
+      "capacity": {
+        "cpu_cores": 8,
+        "memory_gb": 32,
+        "disk_gb": 500,
+        "gpu_count": 1
+      },
       "usage": {
-        "cpu": 45.2,
-        "memory": 67.8,
-        "bandwidth": 12.5
+        "cpu_usage": 0.45,
+        "memory_usage": 0.67,
+        "disk_usage": 0.23,
+        "gpu_usage": 0.12
       }
     }
-  }
+  ]
 }
 ```
 
@@ -130,18 +166,27 @@ Removes drain status from a node.
 #### GET /models
 Returns all models available in the distributed system.
 
+**Authentication:** Required
+
 **Response:**
 ```json
 {
-  "models": {
-    "llama2": {
-      "name": "llama2",
-      "size": 7340032,
-      "status": "available",
-      "replicas": ["node_001", "node_002"],
-      "inference_ready": true
+  "models": [
+    {
+      "name": "llama2:7b",
+      "size": 3826793677,
+      "digest": "sha256:fe938a131f40e6f6d40083c9f0f430a515233eb2edaa6d72eb85c50d64f2300e",
+      "modified_at": "2024-01-15T10:00:00Z",
+      "details": {
+        "parent_model": "",
+        "format": "gguf",
+        "family": "llama",
+        "families": ["llama"],
+        "parameter_size": "7B",
+        "quantization_level": "Q4_0"
+      }
     }
-  }
+  ]
 }
 ```
 
@@ -167,14 +212,17 @@ Returns information about a specific model.
 #### POST /models/:name/download
 Initiates download of a model to the distributed system.
 
+**Authentication:** Required
+
 **Parameters:**
 - `name` (string): Model name
 
 **Response:**
 ```json
 {
-  "message": "Download started for model llama2 on node node_001",
-  "node_id": "node_001"
+  "status": "downloading",
+  "model": "llama2:7b",
+  "message": "Model download started"
 }
 ```
 
@@ -345,68 +393,97 @@ Removes a node from the cluster.
 #### POST /generate
 Generates text using a distributed model.
 
+**Authentication:** Required
+
 **Request Body:**
 ```json
 {
-  "model": "llama2",
+  "model": "llama2:7b",
   "prompt": "Hello, how are you?",
-  "stream": false
+  "stream": false,
+  "options": {},
+  "context": []
 }
 ```
 
 **Response:**
 ```json
 {
-  "response": "Generated response text",
-  "model": "llama2",
-  "node_id": "node_001"
+  "model": "llama2:7b",
+  "response": "This is a mock response to your prompt: Hello, how are you?",
+  "done": true,
+  "context": [1, 2, 3, 4, 5],
+  "created_at": "2024-01-15T10:00:00Z",
+  "total_duration": 1500000000,
+  "load_duration": 500000000,
+  "prompt_eval_count": 25,
+  "prompt_eval_duration": 200000000,
+  "eval_count": 50,
+  "eval_duration": 800000000
 }
 ```
 
 #### POST /chat
 Performs chat completion using a distributed model.
 
+**Authentication:** Required
+
 **Request Body:**
 ```json
 {
-  "model": "llama2",
+  "model": "llama2:7b",
   "messages": [
     {
       "role": "user",
       "content": "Hello!"
     }
   ],
-  "stream": false
+  "stream": false,
+  "options": {}
 }
 ```
 
 **Response:**
 ```json
 {
+  "model": "llama2:7b",
   "message": {
     "role": "assistant",
-    "content": "Hello! How can I help you today?"
-  }
+    "content": "This is a mock chat response."
+  },
+  "done": true,
+  "created_at": "2024-01-15T10:00:00Z",
+  "total_duration": 1200000000,
+  "load_duration": 300000000,
+  "prompt_eval_count": 20,
+  "prompt_eval_duration": 150000000,
+  "eval_count": 40,
+  "eval_duration": 750000000
 }
 ```
 
 #### POST /embeddings
 Generates embeddings using a distributed model.
 
+**Authentication:** Required
+
 **Request Body:**
 ```json
 {
-  "model": "llama2",
-  "input": "Hello world"
+  "model": "llama2:7b",
+  "prompt": "Hello world"
 }
 ```
 
 **Response:**
 ```json
 {
-  "embeddings": [0.1, 0.2, 0.3, 0.4, 0.5]
+  "model": "llama2:7b",
+  "embedding": [0.001, 0.002, 0.003, ...]
 }
 ```
+
+**Note:** The embedding array contains 4096 float64 values representing the text embedding.
 
 ## 🔌 WebSocket API
 
@@ -415,7 +492,19 @@ Generates embeddings using a distributed model.
 Connect to the WebSocket endpoint:
 
 ```
-ws://localhost:8080/api/v1/ws
+ws://localhost:8080/ws
+```
+
+**Authentication:** Required via query parameter or header
+
+**Query Parameter:**
+```
+ws://localhost:8080/ws?token=<JWT_TOKEN>
+```
+
+**Or Header:**
+```
+Authorization: Bearer <JWT_TOKEN>
 ```
 
 ### Message Types
@@ -566,10 +655,13 @@ The API implements rate limiting to prevent abuse:
 
 ### Environment Variables
 
-- `OLLAMA_ADMIN_TOKEN` - Admin authentication token
-- `OLLAMA_LISTEN_ADDRESS` - Server listen address (default: ":8080")
-- `OLLAMA_DISTRIBUTED_MODE` - Enable distributed mode (default: true)
-- `OLLAMA_FALLBACK_MODE` - Enable fallback mode (default: true)
+- `OLLAMA_JWT_SECRET` - JWT signing secret
+- `API_LISTEN` - API server listen address (default: "0.0.0.0:8080")
+- `P2P_LISTEN` - P2P network listen address (default: "/ip4/0.0.0.0/tcp/9000")
+- `RAFT_BIND_ADDR` - Raft consensus bind address (default: "0.0.0.0:7000")
+- `LOG_LEVEL` - Logging level (default: "info")
+- `NODE_ID` - Unique node identifier
+- `BOOTSTRAP` - Whether this node is a bootstrap node (default: false)
 
 ### Configuration Files
 

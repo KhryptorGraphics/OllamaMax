@@ -212,6 +212,16 @@ func (ws *WebServer) setupRouter() {
 
 	// Serve static files
 	ws.setupStaticFiles()
+
+	// Optional: redirect legacy /login to new /v2/auth/login when enabled
+	if os.Getenv("LOGIN_REDIRECT") == "1" {
+		ws.router.GET("/login", func(c *gin.Context) {
+			c.Redirect(http.StatusTemporaryRedirect, "/v2/auth/login")
+		})
+	}
+
+	// Dev proxy or prod static for Vite-based app under /v2
+	ws.setupV2Routes()
 }
 
 // setupStaticFiles configures static file serving
@@ -544,6 +554,72 @@ func (ws *WebServer) BroadcastMessage(message []byte) {
 	select {
 	case ws.broadcast <- message:
 	default:
+		// Channel is full, skip this message
+	}
+}
+
+// setupV2Routes configures /v2 to point to Vite (dev or prod)
+func (ws *WebServer) setupV2Routes() {
+	// Environment-driven behavior
+	viteDev := os.Getenv("VITE_DEV_PROXY") == "1"
+	viteDevURL := os.Getenv("VITE_DEV_URL")
+	if viteDevURL == "" {
+		viteDevURL = "http://localhost:5173"
+	}
+
+	if viteDev {
+		// Proxy /v2/* to Vite dev server
+		ws.router.Any("/v2/*path", func(c *gin.Context) {
+			target, _ := url.Parse(viteDevURL)
+			// Rebuild target URL
+			target.Path = c.Request.URL.Path
+			target.RawQuery = c.Request.URL.RawQuery
+
+			req, err := http.NewRequest(c.Request.Method, target.String(), c.Request.Body)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "proxy request create failed"})
+				return
+			}
+			for k, vs := range c.Request.Header {
+				for _, v := range vs {
+					req.Header.Add(k, v)
+				}
+			}
+			resp, err := ws.httpClient.Do(req)
+			if err != nil {
+				c.JSON(http.StatusBadGateway, gin.H{"error": "vite dev unreachable", "details": err.Error()})
+				return
+			}
+			defer resp.Body.Close()
+			for k, vs := range resp.Header {
+				for _, v := range vs {
+					c.Header(k, v)
+				}
+			}
+			body, _ := io.ReadAll(resp.Body)
+			c.Data(resp.StatusCode, resp.Header.Get("Content-Type"), body)
+		})
+		return
+	}
+
+	// Production: serve built Vite app (web/frontend/dist) under /v2
+	viteDist := filepath.Join("./web/frontend", "dist")
+	// Static assets
+	ws.router.Static("/v2/assets", filepath.Join(viteDist, "assets"))
+	// Index for /v2 and client-side routes
+	ws.router.GET("/v2", func(c *gin.Context) {
+		c.File(filepath.Join(viteDist, "index.html"))
+	})
+	ws.router.GET("/v2/*path", func(c *gin.Context) {
+		// Do not shadow API
+		if strings.HasPrefix(c.Param("path"), "/api/") {
+			c.Next()
+			return
+		}
+		c.File(filepath.Join(viteDist, "index.html"))
+	})
+}
+
 		// Channel is full, skip this message
 	}
 }

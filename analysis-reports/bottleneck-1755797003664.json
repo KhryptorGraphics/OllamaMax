@@ -1,0 +1,15 @@
+{
+  "scope": "system",
+  "target": "neural-training",
+  "bottlenecks": [
+    {
+      "severity": "good",
+      "component": "Overall system",
+      "metric": "No bottlenecks detected"
+    }
+  ],
+  "recommendations": [],
+  "analysisDuration": 358.590351,
+  "confidenceScore": 0.85,
+  "issuesDetected": 0
+}

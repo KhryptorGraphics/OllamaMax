@@ -1,0 +1,529 @@
+name: E2E Testing Pipeline
+
+on:
+  push:
+    branches: [ main, develop, 'feat/*' ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run nightly tests at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      test_scope:
+        description: 'Test scope to run'
+        required: false
+        default: 'full'
+        type: choice
+        options:
+          - full
+          - smoke
+          - regression
+          - performance
+      browser:
+        description: 'Browser to test'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - chromium
+          - firefox
+          - webkit
+          - mobile
+
+env:
+  NODE_VERSION: '20'
+  GO_VERSION: '1.21'
+  PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/ms-playwright
+
+jobs:
+  # Smoke tests - quick validation
+  smoke-tests:
+    name: Smoke Tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    timeout-minutes: 15
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
+          
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+          
+      - name: Install dependencies
+        run: |
+          cd tests
+          npm ci
+          
+      - name: Cache Playwright browsers
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
+          key: ${{ runner.os }}-playwright-${{ hashFiles('tests/package-lock.json') }}
+          
+      - name: Install Playwright browsers
+        run: |
+          cd tests
+          npx playwright install chromium
+          
+      - name: Start application
+        run: |
+          cd web/frontend
+          npm ci
+          npm run build
+          npm run preview &
+          sleep 10
+          
+      - name: Run smoke tests
+        run: |
+          cd tests
+          npx playwright test tests/e2e/auth/login-flow.spec.ts tests/e2e/dashboard/basic-navigation.spec.ts \
+            --project=chromium \
+            --workers=2 \
+            --retries=1 \
+            --reporter=github
+            
+      - name: Upload smoke test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-test-results
+          path: tests/test-results/
+          retention-days: 7
+
+  # Main E2E test suite
+  e2e-tests:
+    name: E2E Tests - ${{ matrix.browser }}
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'e2e-tests')
+    timeout-minutes: 60
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+        
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
+          
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+          
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libnss3-dev \
+            libatk-bridge2.0-dev \
+            libdrm-dev \
+            libxcomposite-dev \
+            libxdamage-dev \
+            libxrandr-dev \
+            libgbm-dev \
+            libxss-dev \
+            libasound2-dev
+            
+      - name: Install dependencies
+        run: |
+          cd tests
+          npm ci
+          
+      - name: Cache Playwright browsers
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
+          key: ${{ runner.os }}-playwright-${{ matrix.browser }}-${{ hashFiles('tests/package-lock.json') }}
+          
+      - name: Install Playwright browsers
+        run: |
+          cd tests
+          npx playwright install ${{ matrix.browser }} --with-deps
+          
+      - name: Build application
+        run: |
+          cd web/frontend
+          npm ci
+          npm run build
+          
+      - name: Start backend services
+        run: |
+          # Start backend API server
+          go mod tidy
+          go run main.go &
+          echo $! > backend.pid
+          sleep 10
+          
+      - name: Start frontend
+        run: |
+          cd web/frontend
+          npm run preview &
+          echo $! > frontend.pid
+          sleep 10
+          
+      - name: Wait for services
+        run: |
+          timeout 60 bash -c 'until curl -f http://localhost:3000/health; do sleep 2; done'
+          timeout 60 bash -c 'until curl -f http://localhost:8080/api/health; do sleep 2; done'
+          
+      - name: Run E2E tests
+        run: |
+          cd tests
+          npx playwright test \
+            --project=${{ matrix.browser }} \
+            --workers=4 \
+            --retries=2 \
+            --reporter=github,html,json,junit
+        env:
+          BASE_URL: http://localhost:3000
+          API_URL: http://localhost:8080
+          CI: true
+          
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-results-${{ matrix.browser }}
+          path: |
+            tests/test-results/
+            tests/playwright-report/
+            tests/reports/
+          retention-days: 30
+          
+      - name: Upload test report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-${{ matrix.browser }}
+          path: tests/playwright-report/
+          retention-days: 30
+
+  # Mobile testing
+  mobile-tests:
+    name: Mobile E2E Tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    timeout-minutes: 45
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
+          
+      - name: Install dependencies
+        run: |
+          cd tests
+          npm ci
+          
+      - name: Install Playwright browsers
+        run: |
+          cd tests
+          npx playwright install chromium --with-deps
+          
+      - name: Start services
+        run: |
+          cd web/frontend
+          npm ci
+          npm run build
+          npm run preview &
+          sleep 10
+          
+      - name: Run mobile tests
+        run: |
+          cd tests
+          npx playwright test tests/e2e/mobile/ \
+            --project=mobile \
+            --workers=2 \
+            --retries=2 \
+            --reporter=github,html
+            
+      - name: Upload mobile test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mobile-test-results
+          path: tests/test-results/
+          retention-days: 30
+
+  # Performance testing
+  performance-tests:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    timeout-minutes: 30
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          
+      - name: Install K6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+          
+      - name: Install dependencies
+        run: |
+          cd tests
+          npm ci
+          npm install -g @lhci/cli
+          
+      - name: Start services
+        run: |
+          cd web/frontend
+          npm ci
+          npm run build
+          npm run preview &
+          sleep 10
+          
+      - name: Run Lighthouse CI
+        run: |
+          cd tests
+          lhci autorun --config=performance/lighthouse.config.js
+          
+      - name: Run load tests
+        run: |
+          cd tests
+          k6 run performance/load-test.js \
+            --out json=reports/performance/load-test-results.json \
+            --summary-trend-stats="avg,min,med,max,p(95),p(99)"
+            
+      - name: Upload performance results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: performance-results
+          path: |
+            tests/reports/lighthouse/
+            tests/reports/performance/
+          retention-days: 30
+
+  # Security testing
+  security-tests:
+    name: Security Tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    timeout-minutes: 30
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          
+      - name: Install dependencies
+        run: |
+          cd tests
+          npm ci
+          
+      - name: Install Playwright browsers
+        run: |
+          cd tests
+          npx playwright install chromium --with-deps
+          
+      - name: Start services
+        run: |
+          cd web/frontend
+          npm ci
+          npm run build
+          npm run preview &
+          sleep 10
+          
+      - name: Run security tests
+        run: |
+          cd tests
+          npx playwright test tests/e2e/enterprise/security-audit.spec.ts \
+            --project=chromium \
+            --workers=1 \
+            --retries=1 \
+            --reporter=github,json
+            
+      - name: Upload security test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-test-results
+          path: tests/test-results/
+          retention-days: 30
+
+  # Test reporting and aggregation
+  test-report:
+    name: Generate Test Report
+    runs-on: ubuntu-latest
+    needs: [e2e-tests, mobile-tests, performance-tests, security-tests]
+    if: always()
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: test-artifacts/
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          
+      - name: Generate consolidated report
+        run: |
+          cd tests
+          npm ci
+          node scripts/generate-consolidated-report.js ../test-artifacts/
+          
+      - name: Upload consolidated report
+        uses: actions/upload-artifact@v4
+        with:
+          name: consolidated-test-report
+          path: tests/reports/consolidated/
+          retention-days: 90
+          
+      - name: Comment PR with test results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = 'tests/reports/consolidated/summary.json';
+            
+            if (fs.existsSync(path)) {
+              const summary = JSON.parse(fs.readFileSync(path, 'utf8'));
+              
+              const body = `## 🧪 E2E Test Results
+              
+              | Browser | Tests | Passed | Failed | Status |
+              |---------|-------|--------|--------|--------|
+              | Chromium | ${summary.chromium.total} | ${summary.chromium.passed} | ${summary.chromium.failed} | ${summary.chromium.status} |
+              | Firefox | ${summary.firefox.total} | ${summary.firefox.passed} | ${summary.firefox.failed} | ${summary.firefox.status} |
+              | WebKit | ${summary.webkit.total} | ${summary.webkit.passed} | ${summary.webkit.failed} | ${summary.webkit.status} |
+              | Mobile | ${summary.mobile.total} | ${summary.mobile.passed} | ${summary.mobile.failed} | ${summary.mobile.status} |
+              
+              **Performance Score:** ${summary.performance.lighthouse_score}/100
+              **Security Score:** ${summary.security.score}/100
+              
+              📊 [Detailed Report](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})
+              `;
+              
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: body
+              });
+            }
+
+  # Continuous monitoring (nightly)
+  continuous-monitoring:
+    name: Continuous Monitoring
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    timeout-minutes: 20
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          
+      - name: Install dependencies
+        run: |
+          cd tests
+          npm ci
+          
+      - name: Start services
+        run: |
+          cd web/frontend
+          npm ci
+          npm run build
+          npm run preview &
+          sleep 10
+          
+      - name: Run health checks
+        run: |
+          cd tests
+          node scripts/health-checks.js
+          
+      - name: Upload monitoring results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: monitoring-results-${{ github.run_number }}
+          path: tests/reports/monitoring/
+          retention-days: 365
+
+  # Cleanup
+  cleanup:
+    name: Cleanup
+    runs-on: ubuntu-latest
+    needs: [test-report]
+    if: always()
+    
+    steps:
+      - name: Delete old artifacts
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const artifacts = await github.rest.actions.listArtifactsForRepo({
+              owner,
+              repo,
+              per_page: 100
+            });
+            
+            const cutoffDate = new Date();
+            cutoffDate.setDate(cutoffDate.getDate() - 30);
+            
+            for (const artifact of artifacts.data.artifacts) {
+              const createdAt = new Date(artifact.created_at);
+              if (createdAt < cutoffDate && !artifact.name.includes('consolidated')) {
+                await github.rest.actions.deleteArtifact({
+                  owner,
+                  repo,
+                  artifact_id: artifact.id
+                });
+                console.log(`Deleted artifact: ${artifact.name}`);
+              }
+            }

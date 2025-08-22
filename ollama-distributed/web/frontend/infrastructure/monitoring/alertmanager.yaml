@@ -1,0 +1,381 @@
+# Ollama Frontend - Alertmanager Configuration
+# Production-ready alerting with multiple notification channels
+
+# Alertmanager ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-config
+  namespace: monitoring
+  labels:
+    app: alertmanager
+    component: config
+data:
+  alertmanager.yml: |
+    global:
+      smtp_smarthost: 'smtp.gmail.com:587'
+      smtp_from: 'alerts@ollama.example.com'
+      smtp_auth_username: '{{ .Values.smtpUsername }}'
+      smtp_auth_password: '{{ .Values.smtpPassword }}'
+      resolve_timeout: 5m
+      
+    route:
+      group_by: ['alertname', 'cluster', 'service']
+      group_wait: 10s
+      group_interval: 10s
+      repeat_interval: 1h
+      receiver: 'default-receiver'
+      routes:
+      # Critical alerts go to PagerDuty and Slack
+      - match:
+          severity: critical
+        receiver: 'critical-alerts'
+        group_wait: 10s
+        repeat_interval: 5m
+        
+      # Warning alerts go to Slack only
+      - match:
+          severity: warning
+        receiver: 'warning-alerts'
+        group_wait: 30s
+        repeat_interval: 15m
+        
+      # Info alerts go to email only
+      - match:
+          severity: info
+        receiver: 'info-alerts'
+        group_wait: 1m
+        repeat_interval: 1h
+
+    receivers:
+    # Default receiver (fallback)
+    - name: 'default-receiver'
+      email_configs:
+      - to: 'platform-team@ollama.example.com'
+        subject: '[ALERT] {{ .GroupLabels.alertname }}'
+        body: |
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Severity: {{ .Labels.severity }}
+          Service: {{ .Labels.service }}
+          Instance: {{ .Labels.instance }}
+          {{ end }}
+          
+    # Critical alerts (PagerDuty + Slack + Email)
+    - name: 'critical-alerts'
+      pagerduty_configs:
+      - service_key: '{{ .Values.pagerdutyServiceKey }}'
+        client: 'Alertmanager'
+        client_url: 'https://alertmanager.ollama.example.com'
+        description: '{{ .GroupLabels.alertname }} - {{ .Annotations.summary }}'
+        details:
+          firing: '{{ .Alerts.Firing | len }}'
+          resolved: '{{ .Alerts.Resolved | len }}'
+          service: '{{ .GroupLabels.service }}'
+          cluster: '{{ .GroupLabels.cluster }}'
+          
+      slack_configs:
+      - api_url: '{{ .Values.slackWebhookUrl }}'
+        channel: '#alerts-critical'
+        username: 'Alertmanager'
+        icon_emoji: ':rotating_light:'
+        title: 'CRITICAL ALERT: {{ .GroupLabels.alertname }}'
+        text: |
+          {{ range .Alerts }}
+          *Alert:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          *Severity:* {{ .Labels.severity }}
+          *Service:* {{ .Labels.service }}
+          *Instance:* {{ .Labels.instance }}
+          *Status:* {{ .Status }}
+          {{ end }}
+        send_resolved: true
+        
+      email_configs:
+      - to: 'oncall@ollama.example.com'
+        subject: '[CRITICAL] {{ .GroupLabels.alertname }}'
+        headers:
+          X-Priority: '1'
+        body: |
+          CRITICAL ALERT TRIGGERED
+          
+          Service: {{ .GroupLabels.service }}
+          Cluster: {{ .GroupLabels.cluster }}
+          
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Severity: {{ .Labels.severity }}
+          Instance: {{ .Labels.instance }}
+          Status: {{ .Status }}
+          Started: {{ .StartsAt }}
+          {{ if .EndsAt }}Ended: {{ .EndsAt }}{{ end }}
+          
+          Labels:
+          {{ range .Labels.SortedPairs }}  {{ .Name }}: {{ .Value }}
+          {{ end }}
+          
+          Annotations:
+          {{ range .Annotations.SortedPairs }}  {{ .Name }}: {{ .Value }}
+          {{ end }}
+          {{ end }}
+          
+    # Warning alerts (Slack + Email)
+    - name: 'warning-alerts'
+      slack_configs:
+      - api_url: '{{ .Values.slackWebhookUrl }}'
+        channel: '#alerts-warning'
+        username: 'Alertmanager'
+        icon_emoji: ':warning:'
+        title: 'WARNING: {{ .GroupLabels.alertname }}'
+        text: |
+          {{ range .Alerts }}
+          *Alert:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          *Service:* {{ .Labels.service }}
+          *Instance:* {{ .Labels.instance }}
+          {{ end }}
+        send_resolved: true
+        
+      email_configs:
+      - to: 'platform-team@ollama.example.com'
+        subject: '[WARNING] {{ .GroupLabels.alertname }}'
+        body: |
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Service: {{ .Labels.service }}
+          Instance: {{ .Labels.instance }}
+          {{ end }}
+          
+    # Info alerts (Email only)
+    - name: 'info-alerts'
+      email_configs:
+      - to: 'platform-team@ollama.example.com'
+        subject: '[INFO] {{ .GroupLabels.alertname }}'
+        body: |
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Service: {{ .Labels.service }}
+          Instance: {{ .Labels.instance }}
+          {{ end }}
+
+    inhibit_rules:
+    # Inhibit warning alerts if critical alert is firing
+    - source_match:
+        severity: 'critical'
+      target_match:
+        severity: 'warning'
+      equal: ['alertname', 'service', 'instance']
+      
+    # Inhibit info alerts if warning or critical is firing
+    - source_match:
+        severity: 'warning'
+      target_match:
+        severity: 'info'
+      equal: ['alertname', 'service', 'instance']
+      
+    - source_match:
+        severity: 'critical'
+      target_match:
+        severity: 'info'
+      equal: ['alertname', 'service', 'instance']
+
+    templates:
+    - '/etc/alertmanager/templates/*.tmpl'
+
+  # Custom templates
+  default.tmpl: |
+    {{ define "__alert_severity" }}{{ if eq .Labels.severity "critical" }}🔴{{ else if eq .Labels.severity "warning" }}🟡{{ else }}🔵{{ end }}{{ end }}
+    
+    {{ define "__alert_subject" }}
+    {{ __alert_severity . }} [{{ .Labels.severity | upper }}] {{ .Labels.alertname }}
+    {{ end }}
+    
+    {{ define "slack.title" }}
+    {{ __alert_subject . }}
+    {{ end }}
+    
+    {{ define "slack.text" }}
+    {{ range .Alerts }}
+    {{ __alert_severity . }} *{{ .Labels.alertname }}*
+    
+    *Summary:* {{ .Annotations.summary }}
+    *Description:* {{ .Annotations.description }}
+    *Service:* {{ .Labels.service }}
+    *Instance:* {{ .Labels.instance }}
+    *Runbook:* {{ .Annotations.runbook_url }}
+    {{ end }}
+    {{ end }}
+
+---
+# Alertmanager Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alertmanager
+  namespace: monitoring
+  labels:
+    app: alertmanager
+spec:
+  replicas: 3  # High availability
+  selector:
+    matchLabels:
+      app: alertmanager
+  template:
+    metadata:
+      labels:
+        app: alertmanager
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9093"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        fsGroup: 65534
+        
+      # Pod anti-affinity for high availability
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values: ["alertmanager"]
+              topologyKey: kubernetes.io/hostname
+              
+      containers:
+      - name: alertmanager
+        image: prom/alertmanager:v0.26.0
+        imagePullPolicy: IfNotPresent
+        args:
+        - --config.file=/etc/alertmanager/alertmanager.yml
+        - --storage.path=/alertmanager
+        - --data.retention=120h
+        - --web.listen-address=:9093
+        - --web.external-url=https://alertmanager.ollama.example.com
+        - --cluster.listen-address=:9094
+        - --cluster.peer=alertmanager-0.alertmanager.monitoring.svc.cluster.local:9094
+        - --cluster.peer=alertmanager-1.alertmanager.monitoring.svc.cluster.local:9094
+        - --cluster.peer=alertmanager-2.alertmanager.monitoring.svc.cluster.local:9094
+        - --log.level=info
+        ports:
+        - containerPort: 9093
+          name: web
+          protocol: TCP
+        - containerPort: 9094
+          name: cluster
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /-/healthy
+            port: web
+          initialDelaySeconds: 30
+          periodSeconds: 15
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /-/ready
+            port: web
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 4
+          failureThreshold: 3
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        volumeMounts:
+        - name: config
+          mountPath: /etc/alertmanager
+          readOnly: true
+        - name: storage
+          mountPath: /alertmanager
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 65534
+          capabilities:
+            drop:
+            - ALL
+      volumes:
+      - name: config
+        configMap:
+          name: alertmanager-config
+      - name: storage
+        persistentVolumeClaim:
+          claimName: alertmanager-storage
+
+---
+# Alertmanager Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: alertmanager
+  namespace: monitoring
+  labels:
+    app: alertmanager
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9093"
+spec:
+  type: ClusterIP
+  ports:
+  - port: 9093
+    targetPort: web
+    protocol: TCP
+    name: web
+  - port: 9094
+    targetPort: cluster
+    protocol: TCP
+    name: cluster
+  selector:
+    app: alertmanager
+
+---
+# Alertmanager Headless Service (for clustering)
+apiVersion: v1
+kind: Service
+metadata:
+  name: alertmanager-headless
+  namespace: monitoring
+  labels:
+    app: alertmanager
+spec:
+  clusterIP: None
+  ports:
+  - port: 9094
+    targetPort: cluster
+    protocol: TCP
+    name: cluster
+  selector:
+    app: alertmanager
+
+---
+# Alertmanager PVC
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: alertmanager-storage
+  namespace: monitoring
+  labels:
+    app: alertmanager
+    component: storage
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: gp3

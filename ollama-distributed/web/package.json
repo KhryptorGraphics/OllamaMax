@@ -1,0 +1,27 @@
+{
+  "name": "ollamamax-web",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build:tokens && npm run build:ui && npm run build:api-client && npm run build:bridge && npm run build:frontend",
+    "build:tokens": "npm run build --workspace=@ollamamax/design-tokens",
+    "build:ui": "npm run build --workspace=@ollamamax/ui",
+    "build:api-client": "npm run build --workspace=@ollamamax/api-client",
+    "build:bridge": "npm run build --workspace=@ollamamax/bridge",
+    "build:frontend": "npm run build --workspace=ollamamax-frontend",
+    "dev:frontend": "npm run dev --workspace=ollamamax-frontend",
+    "test": "npm run test --workspace=ollamamax-frontend"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^25.0.7",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-typescript": "^11.1.5",
+    "rollup": "^4.9.6",
+    "typescript": "^5.3.3"
+  }
+}

@@ -1,0 +1,422 @@
+# Ollama Frontend - Prometheus Monitoring Configuration
+# Production-ready monitoring with comprehensive metrics collection
+
+# Prometheus ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: monitoring
+  labels:
+    app: prometheus
+    component: config
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      scrape_timeout: 10s
+      evaluation_interval: 15s
+      external_labels:
+        cluster: 'ollama-prod'
+        region: 'us-west-2'
+        environment: 'production'
+    
+    # Alertmanager configuration
+    alerting:
+      alertmanagers:
+      - static_configs:
+        - targets:
+          - alertmanager:9093
+    
+    # Rule files
+    rule_files:
+    - "/etc/prometheus/rules/*.yml"
+    
+    # Scrape configurations
+    scrape_configs:
+    
+    # Prometheus self-monitoring
+    - job_name: 'prometheus'
+      static_configs:
+      - targets: ['localhost:9090']
+      
+    # Kubernetes API server
+    - job_name: 'kubernetes-apiservers'
+      kubernetes_sd_configs:
+      - role: endpoints
+      scheme: https
+      tls_config:
+        ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+        action: keep
+        regex: default;kubernetes;https
+        
+    # Kubernetes nodes
+    - job_name: 'kubernetes-nodes'
+      scheme: https
+      tls_config:
+        ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        insecure_skip_verify: true
+      bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+      kubernetes_sd_configs:
+      - role: node
+      relabel_configs:
+      - action: labelmap
+        regex: __meta_kubernetes_node_label_(.+)
+        
+    # Kubernetes pods
+    - job_name: 'kubernetes-pods'
+      kubernetes_sd_configs:
+      - role: pod
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+        action: replace
+        target_label: __metrics_path__
+        regex: (.+)
+      - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+        action: replace
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+        target_label: __address__
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_(.+)
+      - source_labels: [__meta_kubernetes_namespace]
+        action: replace
+        target_label: kubernetes_namespace
+      - source_labels: [__meta_kubernetes_pod_name]
+        action: replace
+        target_label: kubernetes_pod_name
+        
+    # Ollama Frontend specific scraping
+    - job_name: 'ollama-frontend'
+      kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names:
+          - ollama-frontend
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_label_app]
+        action: keep
+        regex: ollama-frontend
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+        action: replace
+        target_label: __metrics_path__
+        regex: (.+)
+      - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+        action: replace
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+        target_label: __address__
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_(.+)
+      - source_labels: [__meta_kubernetes_namespace]
+        action: replace
+        target_label: kubernetes_namespace
+      - source_labels: [__meta_kubernetes_pod_name]
+        action: replace
+        target_label: kubernetes_pod_name
+      - source_labels: [__meta_kubernetes_pod_label_version]
+        action: replace
+        target_label: deployment_version
+        
+    # Node Exporter
+    - job_name: 'node-exporter'
+      kubernetes_sd_configs:
+      - role: endpoints
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_endpoints_name]
+        regex: 'node-exporter'
+        action: keep
+        
+    # cAdvisor (container metrics)
+    - job_name: 'cadvisor'
+      scheme: https
+      tls_config:
+        ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+      kubernetes_sd_configs:
+      - role: node
+      relabel_configs:
+      - action: labelmap
+        regex: __meta_kubernetes_node_label_(.+)
+      - target_label: __address__
+        replacement: kubernetes.default.svc:443
+      - source_labels: [__meta_kubernetes_node_name]
+        regex: (.+)
+        target_label: __metrics_path__
+        replacement: /api/v1/nodes/${1}/proxy/metrics/cadvisor
+        
+    # Kube-state-metrics
+    - job_name: 'kube-state-metrics'
+      static_configs:
+      - targets: ['kube-state-metrics:8080']
+      
+    # NGINX Ingress Controller
+    - job_name: 'nginx-ingress'
+      kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names:
+          - ingress-nginx
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
+        action: keep
+        regex: ingress-nginx
+
+  # Alert rules
+  alert_rules.yml: |
+    groups:
+    - name: ollama-frontend.rules
+      rules:
+      
+      # High error rate
+      - alert: HighErrorRate
+        expr: |
+          (
+            rate(http_requests_total{job="ollama-frontend",code=~"5.."}[5m])
+            /
+            rate(http_requests_total{job="ollama-frontend"}[5m])
+          ) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          service: ollama-frontend
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} for {{ $labels.instance }}"
+          
+      # High response time
+      - alert: HighResponseTime
+        expr: |
+          histogram_quantile(0.95, 
+            rate(http_request_duration_seconds_bucket{job="ollama-frontend"}[5m])
+          ) > 2
+        for: 5m
+        labels:
+          severity: warning
+          service: ollama-frontend
+        annotations:
+          summary: "High response time detected"
+          description: "95th percentile response time is {{ $value }}s for {{ $labels.instance }}"
+          
+      # High CPU usage
+      - alert: HighCPUUsage
+        expr: |
+          (
+            rate(container_cpu_usage_seconds_total{
+              namespace="ollama-frontend",
+              container="ollama-frontend"
+            }[5m]) * 100
+          ) > 80
+        for: 10m
+        labels:
+          severity: warning
+          service: ollama-frontend
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is {{ $value }}% for {{ $labels.pod }}"
+          
+      # High memory usage
+      - alert: HighMemoryUsage
+        expr: |
+          (
+            container_memory_usage_bytes{
+              namespace="ollama-frontend",
+              container="ollama-frontend"
+            }
+            /
+            container_spec_memory_limit_bytes{
+              namespace="ollama-frontend",
+              container="ollama-frontend"
+            }
+          ) > 0.85
+        for: 10m
+        labels:
+          severity: warning
+          service: ollama-frontend
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is {{ $value | humanizePercentage }} for {{ $labels.pod }}"
+          
+      # Pod crash looping
+      - alert: PodCrashLooping
+        expr: |
+          increase(kube_pod_container_status_restarts_total{
+            namespace="ollama-frontend"
+          }[15m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          service: ollama-frontend
+        annotations:
+          summary: "Pod is crash looping"
+          description: "Pod {{ $labels.pod }} is restarting frequently"
+          
+      # Deployment replica mismatch
+      - alert: DeploymentReplicaMismatch
+        expr: |
+          kube_deployment_status_replicas{
+            namespace="ollama-frontend"
+          }
+          !=
+          kube_deployment_status_replicas_available{
+            namespace="ollama-frontend"
+          }
+        for: 15m
+        labels:
+          severity: critical
+          service: ollama-frontend
+        annotations:
+          summary: "Deployment replica mismatch"
+          description: "Deployment {{ $labels.deployment }} has {{ $value }} unavailable replicas"
+          
+      # Service down
+      - alert: ServiceDown
+        expr: |
+          up{job="ollama-frontend"} == 0
+        for: 5m
+        labels:
+          severity: critical
+          service: ollama-frontend
+        annotations:
+          summary: "Service is down"
+          description: "Service {{ $labels.instance }} is down"
+
+---
+# Prometheus Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: monitoring
+  labels:
+    app: prometheus
+    component: server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+    spec:
+      serviceAccountName: prometheus
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        fsGroup: 65534
+      containers:
+      - name: prometheus
+        image: prom/prometheus:v2.48.0
+        imagePullPolicy: IfNotPresent
+        args:
+        - --config.file=/etc/prometheus/prometheus.yml
+        - --storage.tsdb.path=/prometheus
+        - --storage.tsdb.retention.time=30d
+        - --storage.tsdb.retention.size=50GB
+        - --web.console.libraries=/etc/prometheus/console_libraries
+        - --web.console.templates=/etc/prometheus/consoles
+        - --web.enable-lifecycle
+        - --web.external-url=https://prometheus.ollama.example.com
+        - --web.route-prefix=/
+        ports:
+        - containerPort: 9090
+          name: web
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /-/healthy
+            port: web
+          initialDelaySeconds: 30
+          periodSeconds: 15
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /-/ready
+            port: web
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 4
+          failureThreshold: 3
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+          limits:
+            cpu: 2
+            memory: 4Gi
+        volumeMounts:
+        - name: config
+          mountPath: /etc/prometheus
+          readOnly: true
+        - name: storage
+          mountPath: /prometheus
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 65534
+          capabilities:
+            drop:
+            - ALL
+      volumes:
+      - name: config
+        configMap:
+          name: prometheus-config
+      - name: storage
+        persistentVolumeClaim:
+          claimName: prometheus-storage
+
+---
+# Prometheus Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  namespace: monitoring
+  labels:
+    app: prometheus
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9090"
+spec:
+  type: ClusterIP
+  ports:
+  - port: 9090
+    targetPort: web
+    protocol: TCP
+    name: web
+  selector:
+    app: prometheus
+
+---
+# Prometheus PVC
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: prometheus-storage
+  namespace: monitoring
+  labels:
+    app: prometheus
+    component: storage
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Gi
+  storageClassName: gp3

@@ -12,7 +12,7 @@
 ### 🔐 Authentication & Security
 ```bash
 # JWT Secret (REQUIRED - 64 characters minimum)
-export JWT_SECRET="your_secure_64_char_jwt_secret_here_generated_with_openssl"
+export OLLAMA_JWT_SECRET="your_secure_64_char_jwt_secret_here_generated_with_openssl"
 
 # Admin Default Password (OPTIONAL - generates random if not set)
 export ADMIN_DEFAULT_PASSWORD="your_secure_admin_password"

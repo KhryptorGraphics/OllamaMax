@@ -1,0 +1,24 @@
+# github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/deployment
+../../go/pkg/mod/github.com/moby/moby@v26.1.5+incompatible/api/types/client.go:8:2: no required module provides package github.com/docker/docker/api/types/container; to add it:
+	go get github.com/docker/docker/api/types/container
+# github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/deployment
+../../go/pkg/mod/github.com/moby/moby@v26.1.5+incompatible/api/types/client.go:9:2: no required module provides package github.com/docker/docker/api/types/filters; to add it:
+	go get github.com/docker/docker/api/types/filters
+# github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/deployment
+../../go/pkg/mod/github.com/moby/moby@v26.1.5+incompatible/api/types/types.go:10:2: no required module provides package github.com/docker/docker/api/types/image; to add it:
+	go get github.com/docker/docker/api/types/image
+# github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/deployment
+../../go/pkg/mod/github.com/moby/moby@v26.1.5+incompatible/api/types/types.go:11:2: no required module provides package github.com/docker/docker/api/types/mount; to add it:
+	go get github.com/docker/docker/api/types/mount
+# github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/deployment
+../../go/pkg/mod/github.com/moby/moby@v26.1.5+incompatible/api/types/types.go:12:2: no required module provides package github.com/docker/docker/api/types/network; to add it:
+	go get github.com/docker/docker/api/types/network
+# github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/deployment
+../../go/pkg/mod/github.com/moby/moby@v26.1.5+incompatible/api/types/client.go:10:2: no required module provides package github.com/docker/docker/api/types/registry; to add it:
+	go get github.com/docker/docker/api/types/registry
+# github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/deployment
+../../go/pkg/mod/github.com/moby/moby@v26.1.5+incompatible/api/types/types.go:13:2: no required module provides package github.com/docker/docker/api/types/swarm; to add it:
+	go get github.com/docker/docker/api/types/swarm
+# github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/deployment
+../../go/pkg/mod/github.com/moby/moby@v26.1.5+incompatible/api/types/types.go:14:2: no required module provides package github.com/docker/docker/api/types/volume; to add it:
+	go get github.com/docker/docker/api/types/volume

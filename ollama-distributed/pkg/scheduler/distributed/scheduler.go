@@ -71,6 +71,7 @@ type DistributedScheduler struct {
 
 	// Configuration
 	config *DistributedConfig
+	logger *slog.Logger
 
 	// State management
 	mu      sync.RWMutex
@@ -375,6 +376,7 @@ func NewDistributedScheduler(baseScheduler *types.Scheduler, config *Distributed
 		config:    config,
 		p2pNode:   p2pNode,
 		consensus: consensusEngine,
+		logger:    slog.Default(),
 		ctx:       ctx,
 		cancel:    cancel,
 	}
@@ -503,8 +505,10 @@ func (ds *DistributedScheduler) Start() error {
 		return errors.New("distributed scheduler already started")
 	}
 
-	// Start base scheduler (stub - interface doesn't have Run method)
-	// TODO: Implement proper scheduler integration
+	// Start base scheduler integration
+	// The scheduler interface doesn't expose a Start method, but we can initialize
+	// any resources needed for distributed coordination
+	ds.logger.Info("initializing base scheduler integration")
 
 	// Start enhanced fault tolerance system
 	if err := ds.enhancedFaultTolerance.Start(); err != nil {
@@ -527,7 +531,7 @@ func (ds *DistributedScheduler) Start() error {
 	}
 
 	ds.started = true
-	slog.Info("distributed scheduler started", "cluster_id", ds.config.ClusterID, "node_id", ds.config.NodeID)
+	ds.logger.Info("distributed scheduler started", "cluster_id", ds.config.ClusterID, "node_id", ds.config.NodeID)
 
 	return nil
 }

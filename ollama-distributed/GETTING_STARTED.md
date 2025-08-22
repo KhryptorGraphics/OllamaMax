@@ -17,34 +17,35 @@ OllamaMax transforms the single-node Ollama architecture into a **horizontally s
 ### **Option 1: Quick Start (Recommended for beginners)**
 
 ```bash
-# 1. Download and extract OllamaMax
-wget https://github.com/KhryptorGraphics/OllamaMax/releases/latest/download/ollama-distributed-linux.tar.gz
-tar -xzf ollama-distributed-linux.tar.gz
-cd ollama-distributed
+# 1. Clone and build
+git clone https://github.com/KhryptorGraphics/OllamaMax.git
+cd OllamaMax/ollama-distributed
+make build
 
-# 2. Quick start with defaults
-./ollama-distributed quickstart
+# 2. Start with default configuration
+./bin/ollama-distributed start --config config/node.yaml
 
-# 3. Start your node
-./ollama-distributed start --config quickstart-config.yaml
-
-# 4. Access the Web UI
-open http://localhost:8081
+# 3. Access the interfaces
+# API: http://localhost:8080/api/v1
+# Web UI: http://localhost:8081 (if enabled)
+# Metrics: http://localhost:9090/metrics
 ```
 
-### **Option 2: Interactive Setup (Recommended for production)**
+### **Option 2: Docker Deployment (Recommended for production)**
 
 ```bash
-# 1. Run the setup wizard
-./ollama-distributed setup
+# 1. Using Docker Compose
+git clone https://github.com/KhryptorGraphics/OllamaMax.git
+cd OllamaMax/ollama-distributed
 
-# 2. Follow the interactive prompts
-# 3. Start your configured node
-./ollama-distributed start --config config.yaml
+# 2. Start the cluster
+docker-compose up -d
 
-# 4. Access your node
-open http://localhost:8081  # Web UI
-curl http://localhost:8080/api/v1/proxy/status  # API
+# 3. Access your nodes
+# Node 1: http://localhost:8080
+# Node 2: http://localhost:8082  
+# Node 3: http://localhost:8084
+# Web UIs: 8081, 8083, 8085
 ```
 
 ## 🌐 Web Interface
@@ -61,17 +62,18 @@ Once your node is running, access the **beautiful web interface**:
 
 ### **Quick Actions:**
 ```bash
-# Access Web UI
-http://localhost:8081
+# Access API directly
+curl http://localhost:8080/api/v1/health
 
 # View cluster status
-http://localhost:8081/dashboard
+curl http://localhost:8080/api/v1/cluster/status
 
-# Manage models
-http://localhost:8081/models
+# List available models
+curl -H "Authorization: Bearer <JWT_TOKEN>" \
+  http://localhost:8080/api/v1/models
 
-# Monitor nodes
-http://localhost:8081/nodes
+# Monitor cluster metrics
+curl http://localhost:9090/metrics
 ```
 
 ## 🤖 Using AI Models
@@ -79,17 +81,20 @@ http://localhost:8081/nodes
 ### **Pull and Use Models:**
 
 ```bash
-# Pull a model through the distributed system
-./ollama-distributed proxy pull llama2
+# Download a model (requires authentication)
+curl -X POST -H "Authorization: Bearer <JWT_TOKEN>" \
+  http://localhost:8080/api/v1/models/llama2:7b/download
 
 # List available models
-./ollama-distributed proxy list
+curl -H "Authorization: Bearer <JWT_TOKEN>" \
+  http://localhost:8080/api/v1/models
 
-# Run a model
-curl -X POST http://localhost:8080/api/generate \
+# Generate text with a model
+curl -X POST -H "Authorization: Bearer <JWT_TOKEN>" \
   -H "Content-Type: application/json" \
+  http://localhost:8080/api/v1/generate \
   -d '{
-    "model": "llama2",
+    "model": "llama2:7b",
     "prompt": "Why is the sky blue?",
     "stream": false
   }'
@@ -106,32 +111,33 @@ curl -X POST http://localhost:8080/api/generate \
 ### **Single Node (Development):**
 ```bash
 # Start a standalone node
-./ollama-distributed quickstart --name dev-node
-./ollama-distributed start --config quickstart-config.yaml
+NODE_ID=dev-node BOOTSTRAP=true \
+./ollama-distributed start --config config/node.yaml
 ```
 
 ### **Multi-Node Cluster (Production):**
 
 **Node 1 (Bootstrap):**
 ```bash
-./ollama-distributed setup
-# Configure as new cluster
-./ollama-distributed start --config config.yaml
+NODE_ID=node-1 BOOTSTRAP=true \
+API_LISTEN=0.0.0.0:8080 P2P_LISTEN=/ip4/0.0.0.0/tcp/9000 \
+./ollama-distributed start --config config/node.yaml
 ```
 
 **Node 2 (Join cluster):**
 ```bash
-./ollama-distributed setup
-# Configure to join existing cluster
-# Enter Node 1's address as bootstrap peer
-./ollama-distributed start --config config.yaml
+NODE_ID=node-2 BOOTSTRAP=false \
+API_LISTEN=0.0.0.0:8082 P2P_LISTEN=/ip4/0.0.0.0/tcp/9001 \
+P2P_BOOTSTRAP_PEERS=/ip4/NODE1_IP/tcp/9000 \
+./ollama-distributed start --config config/node.yaml
 ```
 
 **Node 3+ (Additional nodes):**
 ```bash
-# Same process as Node 2
-./ollama-distributed setup
-./ollama-distributed start --config config.yaml
+NODE_ID=node-3 BOOTSTRAP=false \
+API_LISTEN=0.0.0.0:8084 P2P_LISTEN=/ip4/0.0.0.0/tcp/9002 \
+P2P_BOOTSTRAP_PEERS=/ip4/NODE1_IP/tcp/9000 \
+./ollama-distributed start --config config/node.yaml
 ```
 
 ## 📊 Monitoring and Management
@@ -139,16 +145,19 @@ curl -X POST http://localhost:8080/api/generate \
 ### **Real-time Monitoring:**
 ```bash
 # Check cluster status
-./ollama-distributed proxy status
+curl http://localhost:8080/api/v1/cluster/status
 
 # View node health
-./ollama-distributed proxy instances
+curl http://localhost:8080/api/v1/nodes
 
 # Monitor performance
 curl http://localhost:8080/api/v1/metrics
 
 # Access Prometheus metrics
 curl http://localhost:9090/metrics
+
+# WebSocket real-time updates
+wscat -c ws://localhost:8080/ws?token=<JWT_TOKEN>
 ```
 
 ### **Web Dashboard:**
@@ -170,15 +179,23 @@ OllamaMax includes **enterprise-grade security**:
 
 ### **Security Configuration:**
 ```bash
-# Enable security during setup
-./ollama-distributed setup
-# Choose "Enable security features" = yes
+# Set JWT secret (required for authentication)
+export OLLAMA_JWT_SECRET="your-secure-secret-here"
 
-# Or configure manually in config.yaml
+# Enable TLS (recommended for production)
+export OLLAMA_TLS_CERT_FILE="/etc/ssl/certs/ollama.crt"
+export OLLAMA_TLS_KEY_FILE="/etc/ssl/private/ollama.key"
+
+# Configure in node.yaml
 security:
-  enabled: true
-  jwt_secret: "your-secret-key"
-  session_timeout: "24h"
+  auth:
+    enabled: true
+    method: "jwt"
+    secret_key: "${OLLAMA_JWT_SECRET}"
+  tls:
+    enabled: true
+    cert_file: "${OLLAMA_TLS_CERT_FILE}"
+    key_file: "${OLLAMA_TLS_KEY_FILE}"
 ```
 
 ## 🎛️ Configuration
@@ -186,25 +203,31 @@ security:
 ### **Basic Configuration (config.yaml):**
 ```yaml
 node:
-  name: "my-ollama-node"
-  data_dir: "./data"
+  id: "my-ollama-node"
+  name: "ollama-node"
+  region: "us-west-2"
 
 api:
-  listen_address: ":8080"
-  enable_cors: true
+  listen: "0.0.0.0:8080"
+  timeout: "30s"
+  cors:
+    enabled: true
+    allowed_origins: ["*"]
 
 web:
   enabled: true
-  listen_address: ":8081"
+  listen: "0.0.0.0:8081"
 
-models:
-  storage_path: "./models"
-  cache_size: "1GB"
-  auto_pull: true
+storage:
+  data_dir: "./data"
+  model_dir: "./models"
+  cache_dir: "./cache"
 
 security:
-  enabled: true
-  jwt_secret: "auto-generated"
+  auth:
+    enabled: true
+    method: "jwt"
+    secret_key: "${OLLAMA_JWT_SECRET}"
 ```
 
 ### **Advanced Configuration:**
@@ -230,41 +253,58 @@ performance:
 
 ### **Model Management:**
 ```bash
-# Pull models
-./ollama-distributed proxy pull llama2
-./ollama-distributed proxy pull codellama
+# Download models (requires authentication)
+curl -X POST -H "Authorization: Bearer <JWT_TOKEN>" \
+  http://localhost:8080/api/v1/models/llama2:7b/download
+
+curl -X POST -H "Authorization: Bearer <JWT_TOKEN>" \
+  http://localhost:8080/api/v1/models/codellama:13b/download
 
 # List models
-./ollama-distributed proxy list
+curl -H "Authorization: Bearer <JWT_TOKEN>" \
+  http://localhost:8080/api/v1/models
 
-# Remove models
-./ollama-distributed proxy rm llama2
+# Delete models
+curl -X DELETE -H "Authorization: Bearer <JWT_TOKEN>" \
+  http://localhost:8080/api/v1/models/llama2:7b
 
-# Check model status
-curl http://localhost:8080/api/v1/models
+# Check model status with details
+curl -H "Authorization: Bearer <JWT_TOKEN>" \
+  http://localhost:8080/api/v1/models/llama2:7b
 ```
 
 ### **Cluster Management:**
 ```bash
 # Check cluster health
-./ollama-distributed proxy status
+curl http://localhost:8080/api/v1/cluster/status
 
 # View cluster nodes
-curl http://localhost:8080/api/v1/nodes
+curl -H "Authorization: Bearer <JWT_TOKEN>" \
+  http://localhost:8080/api/v1/nodes
 
 # Monitor transfers
-curl http://localhost:8080/api/v1/transfers
+curl -H "Authorization: Bearer <JWT_TOKEN>" \
+  http://localhost:8080/api/v1/transfers
+
+# Get cluster leader
+curl -H "Authorization: Bearer <JWT_TOKEN>" \
+  http://localhost:8080/api/v1/cluster/leader
 ```
 
 ### **Performance Monitoring:**
 ```bash
-# View performance metrics
-curl http://localhost:8080/api/v1/analytics/performance
+# View system metrics
+curl -H "Authorization: Bearer <JWT_TOKEN>" \
+  http://localhost:8080/api/v1/metrics
 
-# Check resource usage
-curl http://localhost:8080/api/v1/proxy/metrics
+# Check dashboard data
+curl -H "Authorization: Bearer <JWT_TOKEN>" \
+  http://localhost:8080/api/v1/dashboard/metrics
 
-# Access Grafana dashboards
+# Access Prometheus metrics (no auth required)
+curl http://localhost:9090/metrics
+
+# Access Grafana dashboards (if deployed)
 open http://localhost:3000
 ```
 
@@ -274,14 +314,17 @@ open http://localhost:3000
 
 **Node won't start:**
 ```bash
-# Check configuration
-./ollama-distributed validate config.yaml
+# Check configuration format
+yaml-lint config/node.yaml
 
-# Check logs
-./ollama-distributed start --config config.yaml --log-level debug
+# Check logs with debug level
+LOG_LEVEL=debug ./ollama-distributed start --config config/node.yaml
 
 # Verify ports are available
-netstat -tulpn | grep :8080
+netstat -tulpn | grep -E ':(8080|8081|9000|7000|9090)'
+
+# Check if directories exist
+ls -la ./data ./models ./cache
 ```
 
 **Can't connect to cluster:**
@@ -290,33 +333,44 @@ netstat -tulpn | grep :8080
 ping <bootstrap-peer-ip>
 telnet <bootstrap-peer-ip> 9000
 
-# Verify bootstrap peers in config
-cat config.yaml | grep bootstrap_peers
+# Verify bootstrap peers configuration
+grep -A5 "p2p:" config/node.yaml
+
+# Check P2P connectivity
+curl http://localhost:8080/api/v1/cluster/status
 ```
 
 **Models not syncing:**
 ```bash
 # Check transfer status
-curl http://localhost:8080/api/v1/transfers
+curl -H "Authorization: Bearer <JWT_TOKEN>" \
+  http://localhost:8080/api/v1/transfers
 
-# Force model sync
-./ollama-distributed proxy pull <model-name>
+# Download model manually
+curl -X POST -H "Authorization: Bearer <JWT_TOKEN>" \
+  http://localhost:8080/api/v1/models/<model-name>/download
 
 # Check storage space
 df -h ./models
+
+# Check replication status
+curl -H "Authorization: Bearer <JWT_TOKEN>" \
+  http://localhost:8080/api/v1/nodes
 ```
 
 ### **Getting Help:**
 ```bash
-# Command help
-./ollama-distributed help
-./ollama-distributed proxy help
+# Check available commands
+./ollama-distributed --help
 
-# Configuration validation
-./ollama-distributed validate config.yaml
+# View configuration options
+./ollama-distributed start --help
 
-# Health check
-curl http://localhost:8080/health
+# Health check (no auth required)
+curl http://localhost:8080/api/v1/health
+
+# Version information (no auth required)
+curl http://localhost:8080/api/v1/version
 ```
 
 ## 📚 Next Steps

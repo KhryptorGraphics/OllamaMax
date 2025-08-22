@@ -26,15 +26,17 @@ make build-all
 
 ```bash
 # Start with default configuration
-./bin/ollama-distributed start
+./ollama-distributed start --config config/node.yaml
 
-# Or with custom configuration
-./bin/ollama-distributed start --config config/node.yaml
+# Or with custom configuration file
+./ollama-distributed start --config config/production.yaml
 ```
 
-### 3. Access the Web Interface
+### 3. Access the Interfaces
 
-Open your browser to `http://localhost:8080` to access the web control panel.
+- **API Server**: `http://localhost:8080/api/v1`
+- **Web Interface**: `http://localhost:8081` (if enabled)
+- **Metrics**: `http://localhost:9090/metrics`
 
 ## 🏗️ Architecture Overview
 
@@ -141,31 +143,46 @@ version: '3.8'
 services:
   ollama-node-1:
     image: ollama-distributed:latest
-    command: ["start", "--config", "/app/config/node.yaml"]
+    command: ["start", "--config", "/app/config/config.yaml"]
     ports:
-      - "11434:11434"
-      - "8080:8080"
+      - "8080:8080"   # API
+      - "8081:8081"   # Web UI
+      - "9000:9000"   # P2P
+      - "7000:7000"   # Consensus
+      - "9090:9090"   # Metrics
     volumes:
-      - ./data/node1:/data
-      - ./models:/models
-      - ./config:/app/config
+      - ./data/node1:/app/data
+      - ./models:/app/models
+      - ./config/node.yaml:/app/config/config.yaml:ro
     environment:
-      - OLLAMA_NODE_NAME=node-1
+      - OLLAMA_NODE_ID=node-1
       - OLLAMA_CONSENSUS_BOOTSTRAP=true
+      - OLLAMA_API_LISTEN=0.0.0.0:8080
+      - P2P_LISTEN=/ip4/0.0.0.0/tcp/9000
+      - OLLAMA_CONSENSUS_BIND_ADDR=0.0.0.0:7000
+      - OLLAMA_LOG_LEVEL=info
 
   ollama-node-2:
     image: ollama-distributed:latest
-    command: ["start", "--config", "/app/config/node.yaml"]
+    command: ["start", "--config", "/app/config/config.yaml"]
     ports:
-      - "11435:11434"
-      - "8081:8080"
+      - "8082:8080"   # API
+      - "8083:8081"   # Web UI
+      - "9001:9000"   # P2P
+      - "7001:7000"   # Consensus
+      - "9091:9090"   # Metrics
     volumes:
-      - ./data/node2:/data
-      - ./models:/models
-      - ./config:/app/config
+      - ./data/node2:/app/data
+      - ./models:/app/models
+      - ./config/node.yaml:/app/config/config.yaml:ro
     environment:
-      - OLLAMA_NODE_NAME=node-2
-      - OLLAMA_P2P_BOOTSTRAP=/ip4/ollama-node-1/tcp/4001
+      - OLLAMA_NODE_ID=node-2
+      - OLLAMA_CONSENSUS_BOOTSTRAP=false
+      - OLLAMA_API_LISTEN=0.0.0.0:8080
+      - P2P_LISTEN=/ip4/0.0.0.0/tcp/9000
+      - P2P_BOOTSTRAP_PEERS=/ip4/ollama-node-1/tcp/9000
+      - OLLAMA_CONSENSUS_BIND_ADDR=0.0.0.0:7000
+      - OLLAMA_LOG_LEVEL=info
     depends_on:
       - ollama-node-1
 
@@ -190,21 +207,21 @@ services:
 
 ```bash
 # Node 1 (Bootstrap)
-./bin/ollama-distributed start \
-  --config config/node.yaml \
-  --listen 0.0.0.0:11434 \
-  --p2p-listen /ip4/0.0.0.0/tcp/4001 \
-  --data-dir /opt/ollama/data \
-  --enable-web
+OLLAMA_NODE_ID=node-1 OLLAMA_CONSENSUS_BOOTSTRAP=true OLLAMA_API_LISTEN=0.0.0.0:8080 \
+P2P_LISTEN=/ip4/0.0.0.0/tcp/9000 OLLAMA_CONSENSUS_BIND_ADDR=0.0.0.0:7000 \
+./ollama-distributed start --config config/node.yaml
 
 # Node 2 (Join cluster)
-./bin/ollama-distributed start \
-  --config config/node.yaml \
-  --listen 0.0.0.0:11435 \
-  --p2p-listen /ip4/0.0.0.0/tcp/4002 \
-  --data-dir /opt/ollama/data2 \
-  --bootstrap /ip4/NODE1_IP/tcp/4001 \
-  --enable-web
+OLLAMA_NODE_ID=node-2 OLLAMA_CONSENSUS_BOOTSTRAP=false API_LISTEN=0.0.0.0:8082 \
+P2P_LISTEN=/ip4/0.0.0.0/tcp/9001 RAFT_BIND_ADDR=0.0.0.0:7001 \
+P2P_BOOTSTRAP_PEERS=/ip4/NODE1_IP/tcp/9000 \
+./ollama-distributed start --config config/node.yaml
+
+# Node 3 (Join cluster)
+OLLAMA_NODE_ID=node-3 OLLAMA_CONSENSUS_BOOTSTRAP=false API_LISTEN=0.0.0.0:8084 \
+P2P_LISTEN=/ip4/0.0.0.0/tcp/9002 RAFT_BIND_ADDR=0.0.0.0:7002 \
+P2P_BOOTSTRAP_PEERS=/ip4/NODE1_IP/tcp/9000 \
+./ollama-distributed start --config config/node.yaml
 
 # Node 3 (Join cluster)
 ./bin/ollama-distributed start \
@@ -222,20 +239,25 @@ services:
 
 ```bash
 # API Configuration
-OLLAMA_API_LISTEN=0.0.0.0:11434
-OLLAMA_API_TIMEOUT=30s
-OLLAMA_API_MAX_BODY_SIZE=33554432
+OLLAMA_API_LISTEN=0.0.0.0:8080
+API_TIMEOUT=30s
+API_MAX_BODY_SIZE=33554432
 
 # P2P Configuration
-OLLAMA_P2P_LISTEN=/ip4/0.0.0.0/tcp/4001
-OLLAMA_P2P_BOOTSTRAP=
-OLLAMA_P2P_ENABLE_DHT=true
-OLLAMA_P2P_ENABLE_PUBSUB=true
+P2P_LISTEN=/ip4/0.0.0.0/tcp/9000
+P2P_BOOTSTRAP_PEERS=
+P2P_ENABLE_DHT=true
+P2P_ENABLE_PUBSUB=true
 
 # Consensus Configuration
 OLLAMA_CONSENSUS_BIND_ADDR=0.0.0.0:7000
+RAFT_ADVERTISE_ADDR=
 OLLAMA_CONSENSUS_BOOTSTRAP=false
-OLLAMA_CONSENSUS_DATA_DIR=./data/consensus
+
+# Security Configuration
+OLLAMA_JWT_SECRET=your-jwt-secret-here
+OLLAMA_TLS_CERT_FILE=/etc/ssl/certs/ollama.crt
+OLLAMA_TLS_KEY_FILE=/etc/ssl/private/ollama.key
 
 # Security Configuration
 OLLAMA_SECURITY_TLS_ENABLED=true
@@ -243,13 +265,21 @@ OLLAMA_SECURITY_AUTH_ENABLED=true
 OLLAMA_SECURITY_AUTH_METHOD=jwt
 
 # Web Interface
-OLLAMA_WEB_ENABLED=true
-OLLAMA_WEB_LISTEN=0.0.0.0:8080
+WEB_ENABLED=true
+WEB_LISTEN=0.0.0.0:8081
 
 # Storage Configuration
-OLLAMA_STORAGE_DATA_DIR=./data
-OLLAMA_STORAGE_MODEL_DIR=./models
-OLLAMA_STORAGE_CACHE_DIR=./cache
+OLLAMA_DATA_DIR=./data
+OLLAMA_MODEL_DIR=./models
+OLLAMA_CACHE_DIR=./cache
+
+# Metrics
+METRICS_ENABLED=true
+METRICS_LISTEN=0.0.0.0:9090
+
+# Node Configuration
+OLLAMA_NODE_ID=auto-generated
+OLLAMA_LOG_LEVEL=info
 ```
 
 ### Configuration File
@@ -319,13 +349,16 @@ Import the pre-built dashboard from `monitoring/grafana-dashboard.json`.
 
 ```bash
 # Check node health
-curl http://localhost:11434/api/v1/health
+curl http://localhost:8080/api/v1/health
 
-# Check cluster status
-curl http://localhost:11434/api/v1/cluster/status
+# Check cluster status  
+curl http://localhost:8080/api/v1/cluster/status
 
 # Check metrics
 curl http://localhost:9090/metrics
+
+# Check web interface
+curl http://localhost:8081/
 ```
 
 ## 🧪 Testing

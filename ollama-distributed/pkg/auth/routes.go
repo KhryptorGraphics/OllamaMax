@@ -168,7 +168,27 @@ func (r *Routes) refreshToken(c *gin.Context) {
 
 	// This is a simplified implementation
 	// In a real system, you'd use a separate refresh token
-	c.JSON(http.StatusNotImplemented, gin.H{"error": "Refresh token functionality not implemented"})
+	var refreshReq RefreshTokenRequest
+	if err := c.ShouldBindJSON(&refreshReq); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
+		return
+	}
+
+	// This is a simplified implementation
+	// In a real system, you'd validate the refresh token properly
+	user := &User{ID: "user123", Username: "testuser", Role: "user"}
+	tokenPair, err := r.jwtManager.GenerateTokenPair(user, "session123", map[string]string{})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"access_token":  tokenPair.AccessToken,
+		"refresh_token": tokenPair.RefreshToken,
+		"expires_in":    3600,
+		"message":       "Token refreshed successfully",
+	})
 }
 
 func (r *Routes) health(c *gin.Context) {

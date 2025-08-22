@@ -1,0 +1,23 @@
+{
+  "name": "@ollamamax/bridge",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.umd.js",
+  "module": "dist/index.esm.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.esm.js",
+      "require": "./dist/index.umd.js"
+    }
+  },
+  "dependencies": {
+    "@ollamamax/design-tokens": "0.1.0",
+    "@ollamamax/ui": "0.1.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && rollup -c"
+  }
+}
+

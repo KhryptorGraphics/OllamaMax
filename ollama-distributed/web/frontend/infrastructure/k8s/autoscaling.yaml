@@ -1,0 +1,517 @@
+# Ollama Frontend - Auto-scaling Configuration
+# Production-ready horizontal and vertical pod autoscaling
+
+# Horizontal Pod Autoscaler for Blue Deployment
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: ollama-frontend-blue-hpa
+  namespace: ollama-frontend
+  labels:
+    app: ollama-frontend
+    version: blue
+    component: autoscaler
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ollama-frontend-blue
+  
+  minReplicas: 3
+  maxReplicas: 50
+  
+  # Scaling behavior
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300  # 5 minutes
+      policies:
+      - type: Percent
+        value: 10
+        periodSeconds: 60
+      - type: Pods
+        value: 2
+        periodSeconds: 60
+      selectPolicy: Min
+    scaleUp:
+      stabilizationWindowSeconds: 60   # 1 minute
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 60
+      - type: Pods
+        value: 10
+        periodSeconds: 60
+      selectPolicy: Max
+  
+  # Metrics for scaling decisions
+  metrics:
+  # CPU utilization
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  
+  # Memory utilization
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  
+  # Custom metric: Request rate
+  - type: Pods
+    pods:
+      metric:
+        name: nginx_ingress_controller_requests_rate
+        selector:
+          matchLabels:
+            service: ollama-frontend-blue
+      target:
+        type: AverageValue
+        averageValue: "100"  # 100 requests per second per pod
+  
+  # Custom metric: Response time
+  - type: Pods
+    pods:
+      metric:
+        name: http_request_duration_p99
+        selector:
+          matchLabels:
+            service: ollama-frontend-blue
+      target:
+        type: AverageValue
+        averageValue: "500m"  # 500ms
+
+---
+# Horizontal Pod Autoscaler for Green Deployment
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: ollama-frontend-green-hpa
+  namespace: ollama-frontend
+  labels:
+    app: ollama-frontend
+    version: green
+    component: autoscaler
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ollama-frontend-green
+  
+  minReplicas: 3
+  maxReplicas: 50
+  
+  # Scaling behavior
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300  # 5 minutes
+      policies:
+      - type: Percent
+        value: 10
+        periodSeconds: 60
+      - type: Pods
+        value: 2
+        periodSeconds: 60
+      selectPolicy: Min
+    scaleUp:
+      stabilizationWindowSeconds: 60   # 1 minute
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 60
+      - type: Pods
+        value: 10
+        periodSeconds: 60
+      selectPolicy: Max
+  
+  # Metrics for scaling decisions
+  metrics:
+  # CPU utilization
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  
+  # Memory utilization
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  
+  # Custom metric: Request rate
+  - type: Pods
+    pods:
+      metric:
+        name: nginx_ingress_controller_requests_rate
+        selector:
+          matchLabels:
+            service: ollama-frontend-green
+      target:
+        type: AverageValue
+        averageValue: "100"  # 100 requests per second per pod
+  
+  # Custom metric: Response time
+  - type: Pods
+    pods:
+      metric:
+        name: http_request_duration_p99
+        selector:
+          matchLabels:
+            service: ollama-frontend-green
+      target:
+        type: AverageValue
+        averageValue: "500m"  # 500ms
+
+---
+# Vertical Pod Autoscaler for Blue Deployment
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: ollama-frontend-blue-vpa
+  namespace: ollama-frontend
+  labels:
+    app: ollama-frontend
+    version: blue
+    component: vpa
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ollama-frontend-blue
+  
+  # Update policy
+  updatePolicy:
+    updateMode: "Auto"  # Automatically apply recommendations
+    
+  # Resource policy
+  resourcePolicy:
+    containerPolicies:
+    - containerName: ollama-frontend
+      minAllowed:
+        cpu: 50m
+        memory: 64Mi
+      maxAllowed:
+        cpu: 2
+        memory: 4Gi
+      controlledResources:
+      - cpu
+      - memory
+      controlledValues: RequestsAndLimits
+
+---
+# Vertical Pod Autoscaler for Green Deployment
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: ollama-frontend-green-vpa
+  namespace: ollama-frontend
+  labels:
+    app: ollama-frontend
+    version: green
+    component: vpa
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ollama-frontend-green
+  
+  # Update policy
+  updatePolicy:
+    updateMode: "Auto"  # Automatically apply recommendations
+    
+  # Resource policy
+  resourcePolicy:
+    containerPolicies:
+    - containerName: ollama-frontend
+      minAllowed:
+        cpu: 50m
+        memory: 64Mi
+      maxAllowed:
+        cpu: 2
+        memory: 4Gi
+      controlledResources:
+      - cpu
+      - memory
+      controlledValues: RequestsAndLimits
+
+---
+# Pod Disruption Budget for Blue Deployment
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: ollama-frontend-blue-pdb
+  namespace: ollama-frontend
+  labels:
+    app: ollama-frontend
+    version: blue
+    component: disruption-budget
+spec:
+  minAvailable: 2  # Always keep at least 2 pods running
+  selector:
+    matchLabels:
+      app: ollama-frontend
+      version: blue
+
+---
+# Pod Disruption Budget for Green Deployment
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: ollama-frontend-green-pdb
+  namespace: ollama-frontend
+  labels:
+    app: ollama-frontend
+    version: green
+    component: disruption-budget
+spec:
+  minAvailable: 2  # Always keep at least 2 pods running
+  selector:
+    matchLabels:
+      app: ollama-frontend
+      version: green
+
+---
+# Custom Metrics API Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: custom-metrics-config
+  namespace: ollama-frontend
+  labels:
+    app: ollama-frontend
+    component: custom-metrics
+data:
+  config.yaml: |
+    # Custom metrics for autoscaling
+    rules:
+    - seriesQuery: 'nginx_ingress_controller_requests{namespace!="",ingress!=""}'
+      resources:
+        overrides:
+          namespace: {resource: "namespace"}
+          ingress: {resource: "ingress"}
+      name:
+        matches: "^nginx_ingress_controller_requests"
+        as: "nginx_ingress_controller_requests_rate"
+      metricsQuery: 'sum(rate(<<.Series>>{<<.LabelMatchers>>}[2m])) by (<<.GroupBy>>)'
+    
+    - seriesQuery: 'http_request_duration_seconds{namespace!="",service!=""}'
+      resources:
+        overrides:
+          namespace: {resource: "namespace"}
+          service: {resource: "service"}
+      name:
+        matches: "^http_request_duration_seconds"
+        as: "http_request_duration_p99"
+      metricsQuery: 'histogram_quantile(0.99, sum(rate(<<.Series>>_bucket{<<.LabelMatchers>>}[2m])) by (<<.GroupBy>>, le))'
+
+---
+# Cluster Autoscaler Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-autoscaler-config
+  namespace: kube-system
+  labels:
+    app: cluster-autoscaler
+    component: config
+data:
+  cluster_autoscaler_config.yaml: |
+    # Cluster autoscaler configuration
+    scale-down-enabled: true
+    scale-down-delay-after-add: 10m
+    scale-down-delay-after-delete: 10s
+    scale-down-delay-after-failure: 3m
+    scale-down-unneeded-time: 10m
+    scale-down-utilization-threshold: 0.5
+    skip-nodes-with-local-storage: false
+    skip-nodes-with-system-pods: false
+    max-node-provision-time: 15m
+    max-nodes-total: 100
+    cores-total: "0:1000"
+    memory-total: "0:1000Gi"
+    
+    # Node groups
+    node-groups:
+    - name: ollama-frontend-nodes
+      min-size: 3
+      max-size: 20
+      instance-types:
+      - m5.large
+      - m5.xlarge
+      - c5.large
+      - c5.xlarge
+
+---
+# Predictive Scaling CronJob
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: predictive-scaling
+  namespace: ollama-frontend
+  labels:
+    app: ollama-frontend
+    component: predictive-scaling
+spec:
+  schedule: "*/5 * * * *"  # Every 5 minutes
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: predictive-scaling
+          containers:
+          - name: predictive-scaling
+            image: ollamamax/predictive-scaler:latest
+            command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              
+              echo "Starting predictive scaling analysis..."
+              
+              # Get current metrics
+              CURRENT_CPU=$(kubectl top pods -n ollama-frontend --no-headers | grep ollama-frontend | awk '{sum+=$3} END {print sum/NR}' | sed 's/[^0-9]*//g')
+              CURRENT_MEMORY=$(kubectl top pods -n ollama-frontend --no-headers | grep ollama-frontend | awk '{sum+=$4} END {print sum/NR}' | sed 's/[^0-9]*//g')
+              CURRENT_REPLICAS=$(kubectl get deployment ollama-frontend-blue -n ollama-frontend -o jsonpath='{.status.replicas}')
+              
+              # Get historical data from Prometheus
+              PROMETHEUS_URL="http://prometheus.monitoring.svc.cluster.local:9090"
+              
+              # Query request rate trend (last 30 minutes)
+              REQUEST_RATE_TREND=$(curl -s "${PROMETHEUS_URL}/api/v1/query?query=avg_over_time(sum(rate(http_requests_total{job=\"ollama-frontend\"}[5m]))[30m:])" | \
+                jq -r '.data.result[0].value[1]' 2>/dev/null || echo "0")
+              
+              # Query error rate
+              ERROR_RATE=$(curl -s "${PROMETHEUS_URL}/api/v1/query?query=sum(rate(http_requests_total{job=\"ollama-frontend\",code=~\"5..\"}[5m]))/sum(rate(http_requests_total{job=\"ollama-frontend\"}[5m]))" | \
+                jq -r '.data.result[0].value[1]' 2>/dev/null || echo "0")
+              
+              # Predict scaling needs based on trends
+              if (( $(echo "$REQUEST_RATE_TREND > 1000" | bc -l) )) && (( $(echo "$CURRENT_CPU > 60" | bc -l) )); then
+                RECOMMENDED_REPLICAS=$((CURRENT_REPLICAS + 5))
+                echo "High load predicted - recommending scale up to $RECOMMENDED_REPLICAS replicas"
+                
+                # Update HPA max replicas temporarily
+                kubectl patch hpa ollama-frontend-blue-hpa -n ollama-frontend -p '{"spec":{"maxReplicas":'$RECOMMENDED_REPLICAS'}}'
+                
+              elif (( $(echo "$REQUEST_RATE_TREND < 100" | bc -l) )) && (( $(echo "$CURRENT_CPU < 30" | bc -l) )); then
+                RECOMMENDED_REPLICAS=$((CURRENT_REPLICAS > 5 ? CURRENT_REPLICAS - 2 : 3))
+                echo "Low load predicted - recommending scale down to $RECOMMENDED_REPLICAS replicas"
+                
+              else
+                echo "Current scaling is appropriate - no changes needed"
+              fi
+              
+              # Check for time-based patterns (business hours)
+              HOUR=$(date +%H)
+              DAY=$(date +%u)  # 1-7, Monday is 1
+              
+              if [[ $DAY -le 5 ]] && [[ $HOUR -ge 8 ]] && [[ $HOUR -le 18 ]]; then
+                echo "Business hours detected - ensuring minimum 5 replicas"
+                kubectl patch hpa ollama-frontend-blue-hpa -n ollama-frontend -p '{"spec":{"minReplicas":5}}'
+              else
+                echo "Off-hours detected - using standard minimum 3 replicas"
+                kubectl patch hpa ollama-frontend-blue-hpa -n ollama-frontend -p '{"spec":{"minReplicas":3}}'
+              fi
+              
+              # Log metrics for analysis
+              kubectl annotate configmap autoscaling-metrics -n ollama-frontend \
+                current-cpu="$CURRENT_CPU" \
+                current-memory="$CURRENT_MEMORY" \
+                current-replicas="$CURRENT_REPLICAS" \
+                request-rate-trend="$REQUEST_RATE_TREND" \
+                error-rate="$ERROR_RATE" \
+                timestamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+                --overwrite
+              
+              echo "Predictive scaling analysis completed"
+            env:
+            - name: PROMETHEUS_URL
+              value: "http://prometheus.monitoring.svc.cluster.local:9090"
+            resources:
+              requests:
+                cpu: 50m
+                memory: 64Mi
+              limits:
+                cpu: 200m
+                memory: 128Mi
+
+---
+# Scaling Metrics ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: autoscaling-metrics
+  namespace: ollama-frontend
+  labels:
+    app: ollama-frontend
+    component: metrics
+data:
+  current-cpu: "0"
+  current-memory: "0"
+  current-replicas: "3"
+  request-rate-trend: "0"
+  error-rate: "0"
+  timestamp: "1970-01-01T00:00:00Z"
+
+---
+# Service Account for Predictive Scaling
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: predictive-scaling
+  namespace: ollama-frontend
+  labels:
+    app: ollama-frontend
+    component: predictive-scaling
+
+---
+# RBAC for Predictive Scaling
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: predictive-scaling
+  namespace: ollama-frontend
+  labels:
+    app: ollama-frontend
+    component: predictive-scaling
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["autoscaling"]
+  resources: ["horizontalpodautoscalers"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+- apiGroups: ["metrics.k8s.io"]
+  resources: ["pods", "nodes"]
+  verbs: ["get", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: predictive-scaling
+  namespace: ollama-frontend
+  labels:
+    app: ollama-frontend
+    component: predictive-scaling
+subjects:
+- kind: ServiceAccount
+  name: predictive-scaling
+  namespace: ollama-frontend
+roleRef:
+  kind: Role
+  name: predictive-scaling
+  apiGroup: rbac.authorization.k8s.io

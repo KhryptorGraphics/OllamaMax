@@ -1,13 +1,32 @@
 {
   "mcpServers": {
-    "stripe": {
+    "supabase": {
       "command": "npx",
       "args": [
         "-y",
-        "@stripe/mcp",
-        "--tools=all",
-        "--api-key=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"
+        "@supabase/mcp-server-supabase@latest",
+        "--access-token",
+        "${env:SUPABASE_ACCESS_TOKEN}"
+      ],
+      "alwaysAllow": [
+        "list_tables",
+        "execute_sql",
+        "listTables",
+        "list_projects",
+        "list_organizations",
+        "get_organization",
+        "apply_migration",
+        "get_project",
+        "execute_query",
+        "generate_typescript_types",
+        "listProjects"
       ]
+    },
+    "mem0": {
+      "url": "https://mcp.composio.dev/mem0/abandoned-creamy-horse-Y39-hm?agent=cursor"
+    },
+    "perplexityai": {
+      "url": "https://mcp.composio.dev/perplexityai/abandoned-creamy-horse-Y39-hm?agent=cursor"
     }
   }
 }

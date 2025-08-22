@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="750" height="1334" viewBox="0 0 750 1334" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="750" height="1334" fill="url(#bg-gradient)"/>
+  
+  <!-- Center logo -->
+  <g transform="translate(375, 667)">
+    <!-- Main circle -->
+    <circle r="80" fill="rgba(255,255,255,0.9)" stroke="#ffffff" stroke-width="4"/>
+    
+    <!-- OllamaMax "O" -->
+    <circle r="40" fill="none" stroke="#667eea" stroke-width="8"/>
+    <circle r="12" fill="#667eea"/>
+    
+    <!-- App name -->
+    <text x="0" y="140" text-anchor="middle" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600">OllamaMax</text>
+    <text x="0" y="170" text-anchor="middle" fill="rgba(255,255,255,0.8)" font-family="system-ui, -apple-system, sans-serif" font-size="16">Distributed AI Platform</text>
+  </g>
+</svg>

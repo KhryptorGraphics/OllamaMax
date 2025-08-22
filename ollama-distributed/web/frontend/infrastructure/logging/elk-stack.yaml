@@ -1,0 +1,620 @@
+# Ollama Frontend - ELK Stack Logging Configuration
+# Production-ready centralized logging with Elasticsearch, Logstash, and Kibana
+
+# Elasticsearch StatefulSet
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: elasticsearch
+  namespace: logging
+  labels:
+    app: elasticsearch
+    component: search-engine
+spec:
+  serviceName: elasticsearch-headless
+  replicas: 3
+  selector:
+    matchLabels:
+      app: elasticsearch
+  template:
+    metadata:
+      labels:
+        app: elasticsearch
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9200"
+    spec:
+      serviceAccountName: elasticsearch
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+        
+      # Pod anti-affinity for high availability
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values: ["elasticsearch"]
+            topologyKey: kubernetes.io/hostname
+      
+      # Init container to set vm.max_map_count
+      initContainers:
+      - name: init-sysctl
+        image: busybox:1.35
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          privileged: true
+        command:
+        - /bin/sh
+        - -c
+        - |
+          sysctl -w vm.max_map_count=262144
+          echo 'vm.max_map_count=262144' >> /etc/sysctl.conf
+      
+      containers:
+      - name: elasticsearch
+        image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: node.name
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: cluster.name
+          value: "ollama-elasticsearch"
+        - name: discovery.seed_hosts
+          value: "elasticsearch-headless"
+        - name: cluster.initial_master_nodes
+          value: "elasticsearch-0,elasticsearch-1,elasticsearch-2"
+        - name: ES_JAVA_OPTS
+          value: "-Xms2g -Xmx2g"
+        - name: xpack.security.enabled
+          value: "true"
+        - name: xpack.security.transport.ssl.enabled
+          value: "true"
+        - name: xpack.security.transport.ssl.verification_mode
+          value: "certificate"
+        - name: xpack.security.transport.ssl.key
+          value: "/usr/share/elasticsearch/config/certs/transport.key"
+        - name: xpack.security.transport.ssl.certificate
+          value: "/usr/share/elasticsearch/config/certs/transport.crt"
+        - name: xpack.security.transport.ssl.certificate_authorities
+          value: "/usr/share/elasticsearch/config/certs/ca.crt"
+        - name: xpack.security.http.ssl.enabled
+          value: "true"
+        - name: xpack.security.http.ssl.key
+          value: "/usr/share/elasticsearch/config/certs/http.key"
+        - name: xpack.security.http.ssl.certificate
+          value: "/usr/share/elasticsearch/config/certs/http.crt"
+        - name: xpack.security.http.ssl.certificate_authorities
+          value: "/usr/share/elasticsearch/config/certs/ca.crt"
+        - name: ELASTIC_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: elasticsearch-credentials
+              key: password
+        ports:
+        - containerPort: 9200
+          name: http
+          protocol: TCP
+        - containerPort: 9300
+          name: transport
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            scheme: HTTPS
+            path: /_cluster/health?local=true
+            port: http
+            httpHeaders:
+            - name: Authorization
+              value: "Basic {{ .Values.elasticAuth }}"
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            scheme: HTTPS
+            path: /_cluster/health?wait_for_status=yellow&timeout=5s
+            port: http
+            httpHeaders:
+            - name: Authorization
+              value: "Basic {{ .Values.elasticAuth }}"
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          timeoutSeconds: 5
+          failureThreshold: 3
+        resources:
+          requests:
+            cpu: 1
+            memory: 3Gi
+          limits:
+            cpu: 2
+            memory: 4Gi
+        volumeMounts:
+        - name: data
+          mountPath: /usr/share/elasticsearch/data
+        - name: config
+          mountPath: /usr/share/elasticsearch/config/elasticsearch.yml
+          subPath: elasticsearch.yml
+        - name: certs
+          mountPath: /usr/share/elasticsearch/config/certs
+          readOnly: true
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 1000
+          capabilities:
+            drop:
+            - ALL
+      volumes:
+      - name: config
+        configMap:
+          name: elasticsearch-config
+      - name: certs
+        secret:
+          secretName: elasticsearch-certs
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+      labels:
+        app: elasticsearch
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: gp3
+      resources:
+        requests:
+          storage: 100Gi
+
+---
+# Elasticsearch Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: elasticsearch-config
+  namespace: logging
+  labels:
+    app: elasticsearch
+    component: config
+data:
+  elasticsearch.yml: |
+    cluster.name: ollama-elasticsearch
+    network.host: 0.0.0.0
+    
+    # Discovery
+    discovery.seed_hosts:
+      - elasticsearch-headless.logging.svc.cluster.local
+    
+    # Security
+    xpack.security.enabled: true
+    xpack.security.transport.ssl.enabled: true
+    xpack.security.http.ssl.enabled: true
+    
+    # Monitoring
+    xpack.monitoring.collection.enabled: true
+    
+    # Index lifecycle management
+    xpack.ilm.enabled: true
+    
+    # Index settings
+    action.auto_create_index: true
+    
+    # Thread pools
+    thread_pool.write.queue_size: 10000
+    thread_pool.search.queue_size: 10000
+    
+    # Circuit breakers
+    indices.breaker.total.limit: 95%
+    indices.breaker.request.limit: 60%
+    indices.breaker.fielddata.limit: 40%
+
+---
+# Logstash Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: logstash
+  namespace: logging
+  labels:
+    app: logstash
+    component: log-processor
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: logstash
+  template:
+    metadata:
+      labels:
+        app: logstash
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9600"
+    spec:
+      serviceAccountName: logstash
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+      - name: logstash
+        image: docker.elastic.co/logstash/logstash:8.11.0
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: LS_JAVA_OPTS
+          value: "-Xms1g -Xmx2g"
+        - name: ELASTICSEARCH_USERNAME
+          value: "elastic"
+        - name: ELASTICSEARCH_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: elasticsearch-credentials
+              key: password
+        ports:
+        - containerPort: 5044
+          name: beats
+          protocol: TCP
+        - containerPort: 9600
+          name: http
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          timeoutSeconds: 5
+          failureThreshold: 3
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1.5Gi
+          limits:
+            cpu: 1
+            memory: 3Gi
+        volumeMounts:
+        - name: config
+          mountPath: /usr/share/logstash/pipeline
+        - name: logstash-yml
+          mountPath: /usr/share/logstash/config/logstash.yml
+          subPath: logstash.yml
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 1000
+          capabilities:
+            drop:
+            - ALL
+      volumes:
+      - name: config
+        configMap:
+          name: logstash-config
+      - name: logstash-yml
+        configMap:
+          name: logstash-settings
+
+---
+# Logstash Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: logstash-config
+  namespace: logging
+  labels:
+    app: logstash
+    component: config
+data:
+  ollama-frontend.conf: |
+    input {
+      beats {
+        port => 5044
+      }
+    }
+    
+    filter {
+      # Parse container logs
+      if [kubernetes][container][name] == "ollama-frontend" {
+        # Parse JSON logs
+        if [message] =~ /^\{.*\}$/ {
+          json {
+            source => "message"
+          }
+        }
+        
+        # Add custom fields
+        mutate {
+          add_field => { "application" => "ollama-frontend" }
+          add_field => { "environment" => "production" }
+        }
+        
+        # Parse log level
+        if [level] {
+          mutate {
+            lowercase => [ "level" ]
+          }
+        }
+        
+        # Parse timestamp
+        if [timestamp] {
+          date {
+            match => [ "timestamp", "ISO8601" ]
+            target => "@timestamp"
+          }
+        }
+        
+        # Extract request ID for tracing
+        if [request_id] {
+          mutate {
+            add_field => { "trace_id" => "%{request_id}" }
+          }
+        }
+        
+        # Grok patterns for structured logging
+        grok {
+          match => { 
+            "message" => "%{TIMESTAMP_ISO8601:timestamp} %{LOGLEVEL:level} \[%{DATA:component}\] %{GREEDYDATA:log_message}"
+          }
+        }
+        
+        # GeoIP for client IP addresses
+        if [client_ip] and [client_ip] !~ /^(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01]))/ {
+          geoip {
+            source => "client_ip"
+            target => "geoip"
+          }
+        }
+        
+        # User agent parsing
+        if [user_agent] {
+          useragent {
+            source => "user_agent"
+            target => "ua"
+          }
+        }
+        
+        # Performance metrics
+        if [response_time] {
+          mutate {
+            convert => { "response_time" => "float" }
+          }
+          
+          # Add performance categories
+          if [response_time] < 100 {
+            mutate { add_field => { "performance_category" => "excellent" } }
+          } else if [response_time] < 300 {
+            mutate { add_field => { "performance_category" => "good" } }
+          } else if [response_time] < 1000 {
+            mutate { add_field => { "performance_category" => "fair" } }
+          } else {
+            mutate { add_field => { "performance_category" => "poor" } }
+          }
+        }
+        
+        # Error categorization
+        if [level] == "error" {
+          if [message] =~ /timeout/i {
+            mutate { add_field => { "error_category" => "timeout" } }
+          } else if [message] =~ /connection/i {
+            mutate { add_field => { "error_category" => "connection" } }
+          } else if [message] =~ /authentication/i {
+            mutate { add_field => { "error_category" => "auth" } }
+          } else if [message] =~ /validation/i {
+            mutate { add_field => { "error_category" => "validation" } }
+          } else {
+            mutate { add_field => { "error_category" => "other" } }
+          }
+        }
+      }
+      
+      # Filter out noisy logs
+      if [kubernetes][container][name] in ["filebeat", "metricbeat"] and [log][level] == "info" {
+        drop { }
+      }
+      
+      # Remove sensitive data
+      mutate {
+        remove_field => [ "password", "token", "secret", "key" ]
+      }
+    }
+    
+    output {
+      elasticsearch {
+        hosts => ["https://elasticsearch:9200"]
+        user => "${ELASTICSEARCH_USERNAME}"
+        password => "${ELASTICSEARCH_PASSWORD}"
+        ssl => true
+        ssl_certificate_verification => false
+        index => "ollama-frontend-%{+YYYY.MM.dd}"
+        template_name => "ollama-frontend"
+        template => "/usr/share/logstash/templates/ollama-frontend.json"
+        template_overwrite => true
+      }
+      
+      # Debug output (remove in production)
+      # stdout { codec => rubydebug }
+    }
+
+---
+# Kibana Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kibana
+  namespace: logging
+  labels:
+    app: kibana
+    component: visualization
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kibana
+  template:
+    metadata:
+      labels:
+        app: kibana
+    spec:
+      serviceAccountName: kibana
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+      - name: kibana
+        image: docker.elastic.co/kibana/kibana:8.11.0
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: ELASTICSEARCH_HOSTS
+          value: "https://elasticsearch:9200"
+        - name: ELASTICSEARCH_USERNAME
+          value: "elastic"
+        - name: ELASTICSEARCH_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: elasticsearch-credentials
+              key: password
+        - name: SERVER_NAME
+          value: "kibana.ollama.example.com"
+        - name: SERVER_HOST
+          value: "0.0.0.0"
+        - name: ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES
+          value: "/usr/share/kibana/config/certs/ca.crt"
+        ports:
+        - containerPort: 5601
+          name: http
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /api/status
+            port: http
+          initialDelaySeconds: 120
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /api/status
+            port: http
+          initialDelaySeconds: 60
+          periodSeconds: 5
+          timeoutSeconds: 5
+          failureThreshold: 3
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+          limits:
+            cpu: 1
+            memory: 2Gi
+        volumeMounts:
+        - name: config
+          mountPath: /usr/share/kibana/config/kibana.yml
+          subPath: kibana.yml
+        - name: certs
+          mountPath: /usr/share/kibana/config/certs
+          readOnly: true
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 1000
+          capabilities:
+            drop:
+            - ALL
+      volumes:
+      - name: config
+        configMap:
+          name: kibana-config
+      - name: certs
+        secret:
+          secretName: elasticsearch-certs
+
+---
+# Filebeat DaemonSet
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: filebeat
+  namespace: logging
+  labels:
+    app: filebeat
+    component: log-shipper
+spec:
+  selector:
+    matchLabels:
+      app: filebeat
+  template:
+    metadata:
+      labels:
+        app: filebeat
+    spec:
+      serviceAccountName: filebeat
+      terminationGracePeriodSeconds: 30
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+      - name: filebeat
+        image: docker.elastic.co/beats/filebeat:8.11.0
+        imagePullPolicy: IfNotPresent
+        args: [
+          "-c", "/etc/filebeat.yml",
+          "-e",
+        ]
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        securityContext:
+          runAsUser: 0
+          privileged: true
+        resources:
+          limits:
+            memory: 200Mi
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        volumeMounts:
+        - name: config
+          mountPath: /etc/filebeat.yml
+          readOnly: true
+          subPath: filebeat.yml
+        - name: data
+          mountPath: /usr/share/filebeat/data
+        - name: varlibdockercontainers
+          mountPath: /var/lib/docker/containers
+          readOnly: true
+        - name: varlog
+          mountPath: /var/log
+          readOnly: true
+        - name: varpodlogs
+          mountPath: /var/log/pods
+          readOnly: true
+      volumes:
+      - name: config
+        configMap:
+          name: filebeat-config
+      - name: varlibdockercontainers
+        hostPath:
+          path: /var/lib/docker/containers
+      - name: varlog
+        hostPath:
+          path: /var/log
+      - name: varpodlogs
+        hostPath:
+          path: /var/log/pods
+      - name: data
+        hostPath:
+          path: /var/lib/filebeat-data
+          type: DirectoryOrCreate

@@ -64,34 +64,12 @@ type PerformanceMetrics struct {
 
 // HealthMonitor monitors system health
 type HealthMonitor struct {
-	config      *HealthConfig
-	healthCheck *HealthCheck
-	mu          sync.RWMutex
+	config *HealthConfig
+	status HealthStatus
+	mu     sync.RWMutex
 }
 
-// HealthConfig configures health monitoring
-type HealthConfig struct {
-	CheckInterval time.Duration `json:"check_interval"`
-	Timeout       time.Duration `json:"timeout"`
-}
-
-// HealthCheck represents a health check result
-type HealthCheck struct {
-	Status     HealthStatus            `json:"status"`
-	Components map[string]HealthStatus `json:"components"`
-	LastCheck  time.Time               `json:"last_check"`
-	Errors     []string                `json:"errors"`
-}
-
-// HealthStatus represents health status
-type HealthStatus string
-
-const (
-	HealthStatusHealthy   HealthStatus = "healthy"
-	HealthStatusDegraded  HealthStatus = "degraded"
-	HealthStatusUnhealthy HealthStatus = "unhealthy"
-	HealthStatusUnknown   HealthStatus = "unknown"
-)
+// Note: HealthConfig, HealthCheck, and HealthStatus types are defined in health_checker.go
 
 // NewMonitoringSystem creates a new monitoring system
 func NewMonitoringSystem(config *MonitoringConfig) *MonitoringSystem {
@@ -244,9 +222,9 @@ func (ms *MonitoringSystem) GetOverallHealth() HealthStatus {
 
 	// Check component health
 	if ms.healthMonitor != nil {
-		health := ms.healthMonitor.GetHealth()
-		if health.Status != HealthStatusHealthy {
-			return health.Status
+		status := ms.healthMonitor.GetStatus()
+		if status != HealthStatusHealthy {
+			return status
 		}
 	}
 
@@ -311,12 +289,7 @@ func NewHealthMonitor(config *HealthConfig) *HealthMonitor {
 
 	return &HealthMonitor{
 		config: config,
-		healthCheck: &HealthCheck{
-			Status:     HealthStatusHealthy,
-			Components: make(map[string]HealthStatus),
-			LastCheck:  time.Now(),
-			Errors:     []string{},
-		},
+		status: HealthStatusHealthy,
 	}
 }
 
@@ -334,24 +307,14 @@ func (hm *HealthMonitor) Stop() error {
 	return nil
 }
 
-// GetHealth returns current health status
-func (hm *HealthMonitor) GetHealth() *HealthCheck {
+// GetStatus returns current health status
+func (hm *HealthMonitor) GetStatus() HealthStatus {
 	hm.mu.RLock()
 	defer hm.mu.RUnlock()
+	return hm.status
+}
 
-	// Return a copy to avoid race conditions
-	components := make(map[string]HealthStatus)
-	for k, v := range hm.healthCheck.Components {
-		components[k] = v
-	}
-
-	errors := make([]string, len(hm.healthCheck.Errors))
-	copy(errors, hm.healthCheck.Errors)
-
-	return &HealthCheck{
-		Status:     hm.healthCheck.Status,
-		Components: components,
-		LastCheck:  hm.healthCheck.LastCheck,
-		Errors:     errors,
-	}
+// GetHealth returns current health status (deprecated - use GetStatus)
+func (hm *HealthMonitor) GetHealth() HealthStatus {
+	return hm.GetStatus()
 }

@@ -76,35 +76,10 @@ type Config struct {
 
 // Note: GenerateRequest is defined in handlers.go to avoid duplication
 
-// GenerateResponse represents a response from text generation
-type GenerateResponse struct {
-	Model              string    `json:"model"`
-	CreatedAt          time.Time `json:"created_at"`
-	Response           string    `json:"response"`
-	Done               bool      `json:"done"`
-	Context            []int     `json:"context,omitempty"`
-	TotalDuration      int64     `json:"total_duration,omitempty"`
-	LoadDuration       int64     `json:"load_duration,omitempty"`
-	PromptEvalCount    int       `json:"prompt_eval_count,omitempty"`
-	PromptEvalDuration int64     `json:"prompt_eval_duration,omitempty"`
-	EvalCount          int       `json:"eval_count,omitempty"`
-	EvalDuration       int64     `json:"eval_duration,omitempty"`
-}
-
-// Note: ChatRequest is defined in handlers.go to avoid duplication
-
 // ChatMessage represents a single chat message
 type ChatMessage struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
-}
-
-// ChatResponse represents a chat completion response
-type ChatResponse struct {
-	Model     string      `json:"model"`
-	CreatedAt time.Time   `json:"created_at"`
-	Message   ChatMessage `json:"message"`
-	Done      bool        `json:"done"`
 }
 
 // ModelInfo represents information about a model

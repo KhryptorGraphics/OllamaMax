@@ -1,0 +1,195 @@
+import { Meta } from '@storybook/blocks'
+
+<Meta title="Design System/Introduction" />
+
+# OllamaMax Design System
+
+Welcome to the **OllamaMax Design System** – a comprehensive component library built for the distributed AI platform. This design system provides a unified visual language and consistent user experience across all OllamaMax applications.
+
+## 🎯 Design Principles
+
+### Consistency
+Every component follows unified patterns for spacing, typography, colors, and interactions. This ensures a cohesive experience regardless of where users encounter our interface.
+
+### Accessibility
+Built with accessibility as a core requirement, not an afterthought. All components meet WCAG 2.1 AA standards and include:
+- Proper ARIA attributes
+- Keyboard navigation support
+- Screen reader compatibility
+- High contrast color schemes
+- Focus management
+
+### Performance
+Optimized for speed and efficiency with:
+- Tree-shakable components
+- Minimal bundle impact
+- Lazy loading support
+- Performance-first animations
+
+### Flexibility
+Designed to be adaptable to diverse use cases while maintaining consistency:
+- Composable component architecture
+- Extensive variant system
+- Theme customization
+- Responsive design patterns
+
+## 🏗️ Architecture
+
+### Component Structure
+Our components are built using modern React patterns:
+- **TypeScript** for type safety
+- **Class Variance Authority (CVA)** for consistent styling
+- **Forwardable refs** for composition
+- **Compound components** for flexibility
+
+### Design Tokens
+Centralized design tokens for:
+- Colors and themes
+- Typography scales
+- Spacing system
+- Border radius
+- Shadows and elevation
+- Animations and transitions
+
+### Responsive Design
+Mobile-first approach with:
+- Flexible grid systems
+- Responsive typography
+- Adaptive component layouts
+- Touch-friendly interactions
+
+## 📦 Component Categories
+
+### Primitives
+Building blocks for all interfaces:
+- **Button** - Actions and navigation
+- **Input** - Form controls and data entry
+- **Label** - Form labeling and descriptions
+
+### Layout
+Structure and organization:
+- **Card** - Content containers
+- **Layout** - Page and section structure
+- **Grid** - Responsive layout systems
+
+### Feedback
+User communication:
+- **Alert** - Messages and notifications
+- **Badge** - Status indicators and labels
+- **Toast** - Temporary notifications
+
+### Navigation
+Movement and wayfinding:
+- **Navigation** - Site navigation
+- **Breadcrumbs** - Hierarchical navigation
+- **Pagination** - Content navigation
+
+## 🎨 Visual Language
+
+### Color System
+Our color palette is designed for:
+- **Semantic meaning** - Colors convey purpose and state
+- **Accessibility compliance** - Meeting contrast requirements
+- **Dark mode support** - Consistent experience across themes
+- **Brand alignment** - Reflecting OllamaMax identity
+
+### Typography
+Carefully crafted type scale for:
+- **Hierarchy** - Clear information structure
+- **Readability** - Optimized for all screen sizes
+- **Performance** - Web-optimized font loading
+
+### Spacing & Layout
+Systematic approach to space:
+- **8-point grid system** - Consistent rhythm
+- **Flexible containers** - Responsive layouts
+- **Logical grouping** - Related content proximity
+
+## 🚀 Getting Started
+
+### Installation
+```bash
+npm install @ollamamax/ui
+```
+
+### Basic Usage
+```tsx
+import { Button, Input, Card } from '@ollamamax/ui'
+
+function MyComponent() {
+  return (
+    <Card>
+      <Card.Header>
+        <Card.Title>Welcome</Card.Title>
+      </Card.Header>
+      <Card.Content>
+        <Input label="Email" type="email" />
+        <Button>Get Started</Button>
+      </Card.Content>
+    </Card>
+  )
+}
+```
+
+### Theme Configuration
+```tsx
+import { ThemeProvider } from '@ollamamax/ui/theme'
+
+function App() {
+  return (
+    <ThemeProvider theme="dark">
+      <MyApp />
+    </ThemeProvider>
+  )
+}
+```
+
+## 📋 Component Status
+
+| Component | Status | Version | Accessibility |
+|-----------|--------|---------|---------------|
+| Button | ✅ Stable | 1.0.0 | WCAG 2.1 AA |
+| Input | ✅ Stable | 1.0.0 | WCAG 2.1 AA |
+| Alert | ✅ Stable | 1.0.0 | WCAG 2.1 AA |
+| Card | ✅ Stable | 1.0.0 | WCAG 2.1 AA |
+| Badge | ✅ Stable | 1.0.0 | WCAG 2.1 AA |
+| Layout | 🚧 Beta | 0.9.0 | WCAG 2.1 AA |
+
+## 🤝 Contributing
+
+We welcome contributions to improve the design system:
+
+1. **Report issues** - Found a bug or have a suggestion?
+2. **Request components** - Need a new component?
+3. **Submit improvements** - Code contributions welcome
+4. **Documentation** - Help improve our guides
+
+### Development Workflow
+1. Clone the repository
+2. Install dependencies: `npm install`
+3. Start Storybook: `npm run storybook`
+4. Make your changes
+5. Test thoroughly
+6. Submit a pull request
+
+## 📚 Resources
+
+### Documentation
+- **Component API** - Detailed props and usage
+- **Design Guidelines** - Visual standards and patterns
+- **Accessibility Guide** - WCAG compliance details
+- **Migration Guide** - Upgrading between versions
+
+### Design Assets
+- **Figma Library** - Design components and tokens
+- **Icon Library** - Lucide React icons
+- **Style Guide** - Brand colors and typography
+
+### Support
+- **GitHub Issues** - Bug reports and feature requests
+- **Documentation** - Comprehensive guides and examples
+- **Community** - Join our developer community
+
+---
+
+Ready to build amazing interfaces? Explore our components and start creating consistent, accessible, and beautiful user experiences with the OllamaMax Design System.

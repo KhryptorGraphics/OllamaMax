@@ -69,9 +69,8 @@ type PredictionSampleImpl struct {
 // NewFaultPredictor creates a new fault predictor
 func NewFaultPredictor(config *EnhancedFaultToleranceConfig, manager *FaultToleranceManager) *FaultPredictorImpl {
 	// Create enhanced manager (stub implementation)
-	enhancedManager := &EnhancedFaultToleranceManager{
-		FaultToleranceManager: manager,
-	}
+	enhancedConfig := NewEnhancedFaultToleranceConfig(manager.config)
+	enhancedManager := NewEnhancedFaultToleranceManager(enhancedConfig, manager)
 
 	fp := &FaultPredictorImpl{
 		manager:          enhancedManager,

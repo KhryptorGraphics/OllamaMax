@@ -1,0 +1,198 @@
+@import '../../packages/design-tokens/dist/omx-tokens.css';
+@import './styles/pwa.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* WebSocket and real-time dashboard animations */
+@keyframes slide-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.33);
+  }
+  80%, 100% {
+    opacity: 0;
+  }
+}
+
+@keyframes pulse-dot {
+  0% {
+    transform: scale(0.8);
+  }
+  50% {
+    transform: scale(1.0);
+  }
+  100% {
+    transform: scale(0.8);
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out;
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring 1.25s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite;
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 1.25s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite;
+}
+
+/* Live data indicators */
+.live-indicator {
+  position: relative;
+}
+
+.live-indicator::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  background: #10b981;
+  border-radius: 50%;
+  animation: pulse-dot 2s infinite;
+}
+
+/* Connection status styles */
+.connection-status {
+  transition: all 0.3s ease;
+}
+
+.connection-status.connected {
+  color: rgb(22 163 74);
+  background-color: rgb(240 253 244);
+  border-color: rgb(187 247 208);
+}
+
+.connection-status.connecting {
+  color: rgb(202 138 4);
+  background-color: rgb(254 252 232);
+  border-color: rgb(253 230 138);
+}
+
+.connection-status.disconnected {
+  color: rgb(75 85 99);
+  background-color: rgb(249 250 251);
+  border-color: rgb(209 213 219);
+}
+
+.connection-status.error {
+  color: rgb(220 38 38);
+  background-color: rgb(254 242 242);
+  border-color: rgb(252 165 165);
+}
+
+/* Real-time data highlighting */
+.realtime-update {
+  transition: all 0.5s ease;
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+}
+
+.realtime-update.updated {
+  animation: realtime-pulse 0.6s;
+}
+
+@keyframes realtime-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+/* Notification styles */
+.notification-enter {
+  opacity: 0;
+  transform: translateX(100%);
+}
+
+.notification-enter-active {
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.notification-exit {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.notification-exit-active {
+  opacity: 0;
+  transform: translateX(100%);
+  transition: opacity 300ms, transform 300ms;
+}
+
+:root { color-scheme: light dark; }
+
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0; }
+
+/* Mobile-first responsive utilities */
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
+  
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    overflow: hidden;
+  }
+  
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .safe-area-left {
+    padding-left: env(safe-area-inset-left);
+  }
+  
+  .safe-area-right {
+    padding-right: env(safe-area-inset-right);
+  }
+  
+  .safe-area-x {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  
+  .safe-area-y {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .scale-98 {
+    transform: scale(0.98);
+  }
+}
+
