@@ -4,7 +4,7 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/consensus"
+	"github.com/khryptorgraphics/ollamamax/pkg/consensus"
 )
 
 // Stub implementations for intelligent fault tolerance components

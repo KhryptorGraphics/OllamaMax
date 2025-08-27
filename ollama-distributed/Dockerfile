@@ -2,7 +2,7 @@
 # Multi-stage build optimized for production deployment
 
 # Build stage
-FROM golang:1.24.5 AS builder
+FROM golang:1.24.6 AS builder
 
 # Set build arguments
 ARG VERSION=dev
@@ -34,7 +34,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -X 'main.gitCommit=${GIT_COMMIT}'" \
     -a -installsuffix cgo \
     -o ollama-distributed \
-    ./cmd/node
+    ./cmd/distributed-ollama
 
 # Verify the binary disabled (no 'version' command available)
 
@@ -63,7 +63,7 @@ COPY --from=builder /app/web /app/web
 COPY --from=builder /app/pkg/web/static /app/pkg/web/static
 
 # Copy default configuration
-COPY --from=builder /app/config/production.yaml /app/config/config.yaml
+COPY --from=builder /app/config.yaml /app/config.yaml
 
 # Set proper permissions
 RUN chmod +x /usr/local/bin/ollama-distributed && \
@@ -105,7 +105,7 @@ echo ""
 mkdir -p "$OLLAMA_DATA_DIR" "$OLLAMA_MODELS_DIR" "$OLLAMA_CACHE_DIR" "$OLLAMA_LOG_DIR"
 
 # Start the application
-exec ollama-distributed start --config "$OLLAMA_CONFIG_FILE" "$@"
+exec ollama-distributed --config "$OLLAMA_CONFIG_FILE" "$@"
 EOF
 RUN chmod +x /app/start.sh
 

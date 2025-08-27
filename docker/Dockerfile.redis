@@ -1,0 +1,20 @@
+FROM redis:7-alpine
+
+# Install additional tools
+RUN apk add --no-cache curl
+
+# Copy custom Redis configuration
+COPY docker/redis/redis.conf /usr/local/etc/redis/redis.conf
+
+# Create data directory with correct permissions
+RUN mkdir -p /data && chown redis:redis /data
+
+# Expose custom port
+EXPOSE 16379
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD redis-cli -p 16379 ping || exit 1
+
+# Start Redis with custom config
+CMD ["redis-server", "/usr/local/etc/redis/redis.conf"]

@@ -1,0 +1,33 @@
+{
+  "name": "ollama-distributed",
+  "version": "1.0.0",
+  "description": "Distributed Ollama System",
+  "main": "web/index.html",
+  "scripts": {
+    "build": "go build -o bin/ollama-distributed ./cmd/distributed-ollama",
+    "build:all": "make build",
+    "test": "go test ./... -v",
+    "test:unit": "./run_tests.sh unit",
+    "test:integration": "./run_tests.sh integration", 
+    "test:comprehensive": "./comprehensive_test_runner.sh",
+    "test:coverage": "go test -coverprofile=coverage.out ./... && go tool cover -html=coverage.out -o coverage.html",
+    "lint": "golangci-lint run",
+    "dev": "go run ./cmd/distributed-ollama",
+    "web:serve": "python3 -m http.server 8000 --directory web",
+    "docker:build": "docker build -t ollama-distributed .",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "cluster:start": "./cluster-test/start-cluster.sh",
+    "cluster:stop": "./cluster-test/stop-cluster.sh",
+    "cluster:status": "./cluster-test/cluster-status.sh"
+  },
+  "keywords": ["ai", "ollama", "distributed", "p2p", "consensus"],
+  "author": "OllamaMax Distributed Team",
+  "license": "MIT",
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

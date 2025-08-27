@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/types"
+	"github.com/khryptorgraphics/ollamamax/pkg/types"
 )
 
 // Stub implementations for partitioning strategies to fix compilation

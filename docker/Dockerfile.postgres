@@ -1,0 +1,23 @@
+FROM postgres:15-alpine
+
+# Install extensions
+RUN apk add --no-cache postgresql-contrib
+
+# Copy initialization scripts
+COPY docker/postgres/init/ /docker-entrypoint-initdb.d/
+
+# Set custom port
+ENV POSTGRES_PORT=15432
+
+# Expose custom port
+EXPOSE 15432
+
+# Override default PostgreSQL configuration
+RUN echo "port = 15432" >> /usr/share/postgresql/postgresql.conf.sample
+
+# Create custom entrypoint to handle port configuration
+COPY docker/postgres/entrypoint.sh /usr/local/bin/custom-entrypoint.sh
+RUN chmod +x /usr/local/bin/custom-entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/custom-entrypoint.sh"]
+CMD ["postgres"]

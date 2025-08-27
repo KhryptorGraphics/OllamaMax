@@ -1,0 +1,8 @@
+# Benchmark Results - 20250825_064951
+total_categories: 2
+total_tests: 3
+successful_tests: 3
+failed_tests: 0
+overall_grade: A
+throughput_gain: 2.85
+latency_reduction: 32.1%

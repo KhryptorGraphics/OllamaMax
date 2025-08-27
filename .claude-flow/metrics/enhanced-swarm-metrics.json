@@ -1,0 +1,22 @@
+{
+  "timestamp": 1756084158004,
+  "activeAgents": 6,
+  "maxCapacity": 25,
+  "tasksCompleted": 0,
+  "taskQueueLength": 0,
+  "efficiency": 0.8813,
+  "swarmHealth": null,
+  "neuralMetrics": {
+    "totalPatterns": 1,
+    "highConfidencePatterns": 0,
+    "learningRate": 0.375
+  },
+  "specializationDistribution": {
+    "general-purpose": 6
+  },
+  "performanceInsights": {
+    "topPerformers": [],
+    "improvementOpportunities": [],
+    "emergingPatterns": []
+  }
+}

@@ -1,0 +1,4 @@
+#!/bin/bash
+# Smart Agents Hive-Mind Swarm Local Launcher
+cd /home/kp/ollamamax/.claude-flow/commands/smart-agents
+node index.js "$@"

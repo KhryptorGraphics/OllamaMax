@@ -1,0 +1,40 @@
+{
+  "name": "ollamamax",
+  "version": "1.0.0",
+  "description": "Enterprise-Grade Distributed AI Model Platform",
+  "main": "index.js",
+  "scripts": {
+    "build": "go build -o bin/ollamamax .",
+    "test": "go test ./... -v",
+    "test:coverage": "go test -coverprofile=coverage.out ./... && go tool cover -html=coverage.out -o coverage.html",
+    "lint": "golangci-lint run",
+    "dev": "go run .",
+    "build:distributed": "cd ollama-distributed && go build -o bin/ollama-distributed ./cmd/distributed-ollama",
+    "test:distributed": "cd ollama-distributed && go test ./... -v",
+    "docker:build": "docker-compose build",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "deploy:backend": "docker-compose -f docker-compose.backend.yml up -d",
+    "smart-agents": "node .claude-flow/commands/smart-agents/index.js",
+    "agents": "./smart-agents",
+    "agents:status": "node .claude-flow/commands/smart-agents/index.js status",
+    "agents:test": "node .claude-flow/commands/smart-agents/test-runner.js"
+  },
+  "keywords": ["ai", "ollama", "distributed", "kubernetes", "microservices"],
+  "author": "OllamaMax Team",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/khryptorgraphics/ollamamax.git"
+  },
+  "bugs": {
+    "url": "https://github.com/khryptorgraphics/ollamamax/issues"
+  },
+  "homepage": "https://github.com/khryptorgraphics/ollamamax#readme"
+}

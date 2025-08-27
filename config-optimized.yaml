@@ -1,0 +1,203 @@
+# Optimized Configuration for OllamaMax Distributed
+# Performance-optimized for multi-node cluster deployment
+
+node:
+  id: "node-1"
+  name: "ollama-node-1" 
+  environment: "production"
+
+api:
+  listen: "0.0.0.0:11434"
+  timeout: "30s"  # Reduced from 60s for faster response
+  max_body_size: 1073741824  # Increased to 1GB for larger models
+  tls:
+    enabled: true  # Enabled for security
+    cert_file: "/certs/server.crt"
+    key_file: "/certs/server.key"
+  cors:
+    enabled: true
+    allowed_origins: ["*"]
+    allowed_methods: ["GET", "POST", "PUT", "DELETE"]
+    allowed_headers: ["Authorization", "Content-Type"]
+  rate_limit:
+    enabled: true  # Enabled for protection
+    requests_per_second: 100
+    burst_size: 150
+
+distributed:
+  enabled: true
+  min_nodes: 3        # Increased from 1 for cluster formation
+  max_nodes: 10       # Added scaling limit
+  replication_factor: 3  # Increased from 1 for fault tolerance
+  consistency_level: "strong"  # Upgraded from eventual
+  load_balancer:
+    algorithm: "intelligent"  # Use ML-based load balancing
+    health_check_interval: "10s"
+    timeout: "5s"
+  scaling:
+    enabled: true
+    scale_up_threshold: 0.8
+    scale_down_threshold: 0.3
+    cooldown_period: "5m"
+
+p2p:
+  listen: "/ip4/0.0.0.0/tcp/4001"
+  enabled: true
+  bootstrap_peers: 
+    - "/ip4/node-2/tcp/4001"
+    - "/ip4/node-3/tcp/4001"
+  connection_timeout: "10s"
+  heartbeat_interval: "5s"
+  max_peers: 20
+  discovery:
+    enabled: true
+    announce_interval: "30s"
+    mdns_enabled: true
+    dht_enabled: true
+
+consensus:
+  bind_addr: "0.0.0.0:7000"
+  bootstrap: false
+  algorithm: "raft"
+  election_timeout: "1s"
+  heartbeat_timeout: "500ms"
+  log_level: "warn"  # Reduced verbosity
+  snapshot_interval: "10m"
+  snapshot_threshold: 10000
+
+security:
+  tls:
+    enabled: true
+    min_version: "1.3"
+    cipher_suites: ["TLS_AES_256_GCM_SHA384", "TLS_CHACHA20_POLY1305_SHA256"]
+  auth:
+    enabled: true
+    method: "jwt"
+    jwt_secret: "your-secure-jwt-secret-key"
+    token_expiry: "24h"
+  encryption:
+    enabled: true
+    algorithm: "AES-256-GCM"
+
+auth:
+  enabled: true
+  method: "jwt"
+  jwt:
+    secret_key: "your-secure-jwt-secret-key"
+    token_expiry: "24h"
+    issuer: "ollamamax-cluster"
+
+logging:
+  level: "info"
+  format: "json"  # Changed to structured logging
+  output: "stdout"
+  rotation:
+    enabled: true
+    max_size: "100MB"
+    max_backups: 5
+    max_age: "7d"
+
+storage:
+  data_dir: "/data"
+  model_dir: "/models" 
+  cache_dir: "/cache"
+  temp_dir: "/tmp"
+  persistence:
+    enabled: true
+    sync_interval: "30s"
+    backup_interval: "1h"
+
+# Performance optimization settings
+performance:
+  # Scheduler optimization
+  scheduler:
+    enable_ml_optimization: true
+    enable_predictive_scaling: true
+    enable_adaptive_scheduling: true
+    optimization_interval: "30s"
+    prediction_window: "5m"
+    adaptation_rate: 0.1
+    resource_prediction_depth: 10
+    scaling_threshold: 0.75
+    max_scaling_factor: 2.0
+    priority_levels: 5
+    priority_decay_rate: 0.9
+    deadline_weight: 0.7
+
+  # Load balancer optimization  
+  load_balancer:
+    algorithm_selection: "adaptive"
+    enable_predictive: true
+    enable_resource_aware: true
+    enable_locality_aware: true
+    latency_weight: 0.4
+    throughput_weight: 0.3
+    resource_weight: 0.2
+    locality_weight: 0.1
+    learning_rate: 0.01
+    min_confidence_threshold: 0.7
+
+  # Resource monitoring
+  monitoring:
+    collection_interval: "15s"  # Optimized from 5s
+    retention_period: "7d"
+    enable_detailed_logging: false  # Reduced overhead
+    metrics_export:
+      enabled: true
+      endpoint: "/metrics"
+      format: "prometheus"
+
+  # Memory management
+  memory:
+    gc_percentage: 100
+    max_heap_size: "2GB"
+    enable_memory_ballast: true
+    ballast_size: "512MB"
+
+  # Network optimization
+  network:
+    tcp_keepalive: "30s"
+    tcp_nodelay: true
+    connection_pool_size: 100
+    max_idle_connections: 20
+    connection_timeout: "10s"
+    request_timeout: "30s"
+
+# Swarm-specific optimizations
+swarm:
+  max_agents: 50      # Increased from 25
+  min_agents: 10      # Increased from 8
+  default_timeout: 60000  # Reduced from 120000ms
+  scaling_enabled: true
+  neural_learning_enabled: true
+  agents:
+    concurrency_limit: 25  # Increased from 15
+    retry_attempts: 3      # Increased from 2
+    health_check_interval: 15000  # Optimized from 10000ms
+  neural:
+    learning_rate: 0.15    # Increased from 0.1
+    memory_retention: 2000  # Increased from 1000
+    adaptation_threshold: 0.75  # Reduced from 0.8
+    pattern_confidence_threshold: 0.8  # Increased from 0.7
+  metrics:
+    collection_interval: 10000  # Optimized from 5000ms
+    retention_days: 14     # Reduced from 30
+    enable_detailed_logging: false
+
+# Fault tolerance configuration
+fault_tolerance:
+  enabled: true
+  detection:
+    failure_threshold: 3
+    timeout: "10s"
+    check_interval: "5s"
+  recovery:
+    max_retries: 5
+    backoff_strategy: "exponential"
+    initial_delay: "1s"
+    max_delay: "60s"
+  circuit_breaker:
+    enabled: true
+    failure_threshold: 10
+    reset_timeout: "30s"
+    half_open_max_calls: 3

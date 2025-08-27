@@ -6,9 +6,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/khryptorgraphics/ollamamax/ollama-distributed/internal/config"
-	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/consensus"
-	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p"
+	"github.com/khryptorgraphics/ollamamax/internal/config"
+	"github.com/khryptorgraphics/ollamamax/pkg/consensus"
+	"github.com/khryptorgraphics/ollamamax/pkg/p2p"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 

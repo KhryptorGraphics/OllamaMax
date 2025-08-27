@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p"
-	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/types"
+	"github.com/khryptorgraphics/ollamamax/pkg/p2p"
+	"github.com/khryptorgraphics/ollamamax/pkg/types"
 )
 
 // TaskStatus represents the status of a task

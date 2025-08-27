@@ -8,11 +8,18 @@ import {
   faClock,
   faMicrochip,
   faMemory,
-  faNetworkWired
+  faNetworkWired,
+  faSync,
+  faDownload,
+  faCopy,
+  faHeart,
+  faExclamationTriangle
 } from '@fortawesome/free-solid-svg-icons';
 import MetricsChart from './MetricsChart';
+import LoadingSpinner from './LoadingSpinner';
+import Alert from './Alert';
 
-const Dashboard = ({ clusterStatus, nodes, metrics, realTimeMetrics }) => {
+const Dashboard = ({ clusterStatus, nodes, metrics, realTimeMetrics, loading = false, error = null }) => {
   const [systemMetrics, setSystemMetrics] = useState({
     totalNodes: 0,
     onlineNodes: 0,
@@ -40,6 +47,21 @@ const Dashboard = ({ clusterStatus, nodes, metrics, realTimeMetrics }) => {
       });
     }
   }, [clusterStatus, nodes, metrics]);
+
+  if (loading) {
+    return <LoadingSpinner size="lg" text="Loading dashboard metrics..." />;
+  }
+
+  if (error) {
+    return (
+      <Alert 
+        type="danger" 
+        title="Dashboard Error"
+        message={error}
+        dismissible={false}
+      />
+    );
+  }
 
   return (
     <div>

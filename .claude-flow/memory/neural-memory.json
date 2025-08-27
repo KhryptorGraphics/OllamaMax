@@ -1,0 +1,58 @@
+{
+  "general-purpose-0.5-scaling": {
+    "samples": [
+      {
+        "timestamp": 1756083872531,
+        "agentId": "agent-1756083869034-general-purpose-37fg0w",
+        "specialization": "general-purpose",
+        "taskData": {
+          "task": "Support swarm workload",
+          "complexity": 0.5,
+          "priority": 5,
+          "taskType": "scaling"
+        },
+        "success": true,
+        "executionTime": 3494,
+        "output": "✅ general-purpose analysis and implementation completed successfully.\n\nKey deliverables:\n- Specialized analysis within general-purpose domain\n- Implementation artifacts ready for integration\n- Documentation and best practices applied\n- Performance optimizations identified\n- Integration points clearly defined",
+        "errors": [],
+        "patterns": []
+      },
+      {
+        "timestamp": 1756083873260,
+        "agentId": "agent-1756083869037-general-purpose-0jc8ax",
+        "specialization": "general-purpose",
+        "taskData": {
+          "task": "Support swarm workload",
+          "complexity": 0.5,
+          "priority": 5,
+          "taskType": "scaling"
+        },
+        "success": true,
+        "executionTime": 4223,
+        "output": "✅ general-purpose analysis and implementation completed successfully.\n\nKey deliverables:\n- Specialized analysis within general-purpose domain\n- Implementation artifacts ready for integration\n- Documentation and best practices applied\n- Performance optimizations identified\n- Integration points clearly defined",
+        "errors": [],
+        "patterns": []
+      },
+      {
+        "timestamp": 1756083875903,
+        "agentId": "agent-1756083872532-general-purpose-24uwm5",
+        "specialization": "general-purpose",
+        "taskData": {
+          "task": "Support swarm workload",
+          "complexity": 0.5,
+          "priority": 5,
+          "taskType": "scaling"
+        },
+        "success": true,
+        "executionTime": 3371,
+        "output": "✅ general-purpose analysis and implementation completed successfully.\n\nKey deliverables:\n- Specialized analysis within general-purpose domain\n- Implementation artifacts ready for integration\n- Documentation and best practices applied\n- Performance optimizations identified\n- Integration points clearly defined",
+        "errors": [],
+        "patterns": []
+      }
+    ],
+    "confidence": 0.17320508075688773,
+    "successRate": 1,
+    "avgExecutionTime": 3696,
+    "lastUpdated": 1756083875903
+  }
+}

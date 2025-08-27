@@ -8,16 +8,20 @@ import (
 	"sync"
 	"time"
 
-	"github.com/khryptorgraphics/ollamamax/ollama-distributed/internal/config"
-	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/consensus"
-	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p"
-	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/scheduler/loadbalancer"
-	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/types"
+	"github.com/khryptorgraphics/ollamamax/internal/config"
+	"github.com/khryptorgraphics/ollamamax/pkg/consensus"
+	"github.com/khryptorgraphics/ollamamax/pkg/p2p"
+	"github.com/khryptorgraphics/ollamamax/pkg/loadbalancer"
+	"github.com/khryptorgraphics/ollamamax/pkg/types"
 )
 
 // IntelligentScheduler provides advanced scheduling with ML-based optimization
 type IntelligentScheduler struct {
-	mu sync.RWMutex
+	// Fine-grained locking for better concurrency
+	taskQueueMu    sync.RWMutex // Lock for task queue operations
+	nodeStateMu    sync.RWMutex // Lock for node state updates
+	runningTasksMu sync.RWMutex // Lock for running tasks map
+	historyMu      sync.RWMutex // Lock for task history
 
 	// Core components
 	config    *IntelligentSchedulerConfig
@@ -385,8 +389,9 @@ func (is *IntelligentScheduler) initializeComponents() {
 
 // ScheduleTask schedules a task using intelligent algorithms
 func (is *IntelligentScheduler) ScheduleTask(task *ScheduledTask) error {
-	is.mu.Lock()
-	defer is.mu.Unlock()
+	// Use fine-grained locking instead of global lock
+	is.taskQueueMu.Lock()
+	defer is.taskQueueMu.Unlock()
 
 	startTime := time.Now()
 

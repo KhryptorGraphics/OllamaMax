@@ -1,0 +1,30 @@
+{
+  "swarm": {
+    "maxAgents": 25,
+    "minAgents": 8,
+    "defaultTimeout": 120000,
+    "scalingEnabled": true,
+    "neuralLearningEnabled": true
+  },
+  "agents": {
+    "concurrencyLimit": 15,
+    "retryAttempts": 2,
+    "healthCheckInterval": 10000
+  },
+  "neural": {
+    "learningRate": 0.1,
+    "memoryRetention": 1000,
+    "adaptationThreshold": 0.8,
+    "patternConfidenceThreshold": 0.7
+  },
+  "metrics": {
+    "collectionInterval": 5000,
+    "retentionDays": 30,
+    "enableDetailedLogging": true
+  },
+  "sparc": {
+    "enabled": true,
+    "phaseTimeout": 300000,
+    "parallelExecution": true
+  }
+}

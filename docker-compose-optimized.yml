@@ -1,0 +1,304 @@
+version: '3.8'
+
+# Optimized Docker Compose for OllamaMax Distributed Cluster
+# Performance and topology optimized for 3-node deployment
+
+services:
+  # Node 1 - Primary coordinator
+  ollama-node-1:
+    build:
+      context: ./ollama-distributed
+      dockerfile: Dockerfile
+    container_name: ollamamax-node-1
+    hostname: node-1
+    environment:
+      - NODE_ID=node-1
+      - NODE_NAME=ollama-node-1
+      - NODE_ROLE=coordinator
+      - CLUSTER_SIZE=3
+      - BOOTSTRAP_NODE=true
+    ports:
+      - "11434:11434"    # API port
+      - "14001:4001"     # P2P port
+      - "17000:7000"     # Consensus port
+      - "11435:8080"     # Admin UI
+      - "11436:9090"     # Metrics
+    volumes:
+      - ./config-optimized.yaml:/app/config.yaml
+      - ollama_models_1:/models
+      - ollama_data_1:/data
+      - ./certs:/certs:ro
+    networks:
+      - ollama_cluster
+    depends_on:
+      - postgres-cluster
+      - redis-cluster
+    healthcheck:
+      test: ["CMD", "/app/health-check.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+    restart: unless-stopped
+
+  # Node 2 - Secondary coordinator  
+  ollama-node-2:
+    build:
+      context: ./ollama-distributed
+      dockerfile: Dockerfile
+    container_name: ollamamax-node-2
+    hostname: node-2
+    environment:
+      - NODE_ID=node-2
+      - NODE_NAME=ollama-node-2
+      - NODE_ROLE=worker
+      - CLUSTER_SIZE=3
+      - BOOTSTRAP_NODE=false
+      - BOOTSTRAP_PEERS=node-1:4001
+    ports:
+      - "11444:11434"    # API port
+      - "14002:4001"     # P2P port
+      - "17001:7000"     # Consensus port
+      - "11445:8080"     # Admin UI
+      - "11446:9090"     # Metrics
+    volumes:
+      - ./config-optimized.yaml:/app/config.yaml
+      - ollama_models_2:/models
+      - ollama_data_2:/data
+      - ./certs:/certs:ro
+    networks:
+      - ollama_cluster
+    depends_on:
+      - ollama-node-1
+      - postgres-cluster
+      - redis-cluster
+    healthcheck:
+      test: ["CMD", "/app/health-check.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 45s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+    restart: unless-stopped
+
+  # Node 3 - Tertiary coordinator
+  ollama-node-3:
+    build:
+      context: ./ollama-distributed
+      dockerfile: Dockerfile
+    container_name: ollamamax-node-3
+    hostname: node-3
+    environment:
+      - NODE_ID=node-3
+      - NODE_NAME=ollama-node-3
+      - NODE_ROLE=worker
+      - CLUSTER_SIZE=3
+      - BOOTSTRAP_NODE=false
+      - BOOTSTRAP_PEERS=node-1:4001,node-2:4001
+    ports:
+      - "11454:11434"    # API port
+      - "14003:4001"     # P2P port
+      - "17002:7000"     # Consensus port
+      - "11455:8080"     # Admin UI
+      - "11456:9090"     # Metrics
+    volumes:
+      - ./config-optimized.yaml:/app/config.yaml
+      - ollama_models_3:/models
+      - ollama_data_3:/data
+      - ./certs:/certs:ro
+    networks:
+      - ollama_cluster
+    depends_on:
+      - ollama-node-1
+      - ollama-node-2
+      - postgres-cluster
+      - redis-cluster
+    healthcheck:
+      test: ["CMD", "/app/health-check.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+    restart: unless-stopped
+
+  # Shared PostgreSQL cluster for distributed state
+  postgres-cluster:
+    image: postgres:15-alpine
+    container_name: ollamamax-postgres-cluster
+    hostname: postgres-cluster
+    environment:
+      POSTGRES_DB: ollamamax_cluster
+      POSTGRES_USER: ollamamax
+      POSTGRES_PASSWORD: secure_cluster_password
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    ports:
+      - "15432:5432"
+    volumes:
+      - postgres_cluster_data:/var/lib/postgresql/data
+      - ./sql/cluster_init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - ollama_cluster
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ollamamax"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+    restart: unless-stopped
+
+  # Shared Redis cluster for caching and coordination
+  redis-cluster:
+    image: redis:7-alpine
+    container_name: ollamamax-redis-cluster
+    hostname: redis-cluster
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --tcp-keepalive 60
+      --timeout 300
+    ports:
+      - "16379:16379"
+    volumes:
+      - redis_cluster_data:/data
+    networks:
+      - ollama_cluster
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.25'
+        reservations:
+          memory: 256M
+          cpus: '0.1'
+    restart: unless-stopped
+
+  # Load balancer for external access
+  nginx-lb:
+    image: nginx:alpine
+    container_name: ollamamax-nginx-lb
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx-optimized.conf:/etc/nginx/nginx.conf
+      - ./certs:/etc/nginx/certs:ro
+    networks:
+      - ollama_cluster
+    depends_on:
+      - ollama-node-1
+      - ollama-node-2
+      - ollama-node-3
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Monitoring and metrics
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ollamamax-prometheus
+    ports:
+      - "19090:9090"
+    volumes:
+      - ./monitoring/prometheus-cluster.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=7d'
+      - '--web.enable-lifecycle'
+    networks:
+      - ollama_cluster
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ollamamax-grafana
+    ports:
+      - "13000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana-cluster-dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin_cluster_password
+      - GF_USERS_ALLOW_SIGN_UP=false
+    networks:
+      - ollama_cluster
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+networks:
+  ollama_cluster:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  # Node-specific volumes
+  ollama_models_1:
+    driver: local
+  ollama_data_1:
+    driver: local
+  ollama_models_2:
+    driver: local
+  ollama_data_2:
+    driver: local
+  ollama_models_3:
+    driver: local
+  ollama_data_3:
+    driver: local
+  
+  # Shared cluster volumes
+  postgres_cluster_data:
+    driver: local
+  redis_cluster_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local

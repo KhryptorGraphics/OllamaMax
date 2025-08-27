@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/consensus"
+	"github.com/khryptorgraphics/ollamamax/pkg/consensus"
 )
 
 // VersionBasedResolver resolves conflicts by preferring newer semantic versions

@@ -1,0 +1,138 @@
+# Optimized Prometheus Configuration for OllamaMax Cluster Monitoring
+# Performance-focused metrics collection
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'ollamamax'
+    environment: 'production'
+
+rule_files:
+  - "alerts.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+scrape_configs:
+  # OllamaMax Node Metrics
+  - job_name: 'ollamamax-nodes'
+    scrape_interval: 10s
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: 
+          - 'node-1:9090'
+          - 'node-2:9090'
+          - 'node-3:9090'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: '([^:]+):\d+'
+        replacement: '${1}'
+      - source_labels: [instance]
+        target_label: node_id
+        replacement: '${1}'
+
+  # Application Health Checks
+  - job_name: 'ollamamax-health'
+    scrape_interval: 30s
+    metrics_path: '/health'
+    static_configs:
+      - targets:
+          - 'node-1:11434'
+          - 'node-2:11434'
+          - 'node-3:11434'
+
+  # System Metrics (Node Exporter)
+  - job_name: 'node-exporter'
+    scrape_interval: 15s
+    static_configs:
+      - targets:
+          - 'node-1:9100'
+          - 'node-2:9100'
+          - 'node-3:9100'
+
+  # Container Metrics (cAdvisor)
+  - job_name: 'cadvisor'
+    scrape_interval: 30s
+    static_configs:
+      - targets:
+          - 'node-1:8080'
+          - 'node-2:8080'
+          - 'node-3:8080'
+    metrics_path: '/metrics/cadvisor'
+
+  # PostgreSQL Metrics
+  - job_name: 'postgres'
+    scrape_interval: 30s
+    static_configs:
+      - targets:
+          - 'postgres-cluster:9187'
+
+  # Redis Metrics
+  - job_name: 'redis'
+    scrape_interval: 30s
+    static_configs:
+      - targets:
+          - 'redis-cluster:9121'
+
+  # Nginx Load Balancer Metrics
+  - job_name: 'nginx'
+    scrape_interval: 30s
+    static_configs:
+      - targets:
+          - 'nginx-lb:9113'
+
+  # Swarm Intelligence Metrics
+  - job_name: 'swarm-metrics'
+    scrape_interval: 20s
+    metrics_path: '/api/swarm/metrics'
+    static_configs:
+      - targets:
+          - 'node-1:11434'
+          - 'node-2:11434'
+          - 'node-3:11434'
+    scrape_configs:
+      - honor_labels: true
+
+  # P2P Network Metrics
+  - job_name: 'p2p-network'
+    scrape_interval: 30s
+    metrics_path: '/api/p2p/metrics'
+    static_configs:
+      - targets:
+          - 'node-1:11434'
+          - 'node-2:11434'
+          - 'node-3:11434'
+
+  # Consensus Engine Metrics
+  - job_name: 'consensus'
+    scrape_interval: 20s
+    metrics_path: '/api/consensus/metrics'
+    static_configs:
+      - targets:
+          - 'node-1:11434'
+          - 'node-2:11434'
+          - 'node-3:11434'
+
+  # Model Performance Metrics
+  - job_name: 'model-inference'
+    scrape_interval: 10s
+    metrics_path: '/api/models/metrics'
+    static_configs:
+      - targets:
+          - 'node-1:11434'
+          - 'node-2:11434'
+          - 'node-3:11434'
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: '.*_bucket'
+        action: keep
+      - source_labels: [__name__]
+        regex: '.*_total'
+        action: keep
+      - source_labels: [__name__]
+        regex: '.*_duration.*'
+        action: keep

@@ -1,0 +1,26 @@
+{
+  "success_patterns": {
+    "weight": 1,
+    "activationCount": 3,
+    "lastActivated": 1756083875903,
+    "effectiveness": 0.5
+  },
+  "failure_analysis": {
+    "weight": 0.8,
+    "activationCount": 0,
+    "lastActivated": null,
+    "effectiveness": 0.5
+  },
+  "performance_optimization": {
+    "weight": 0.9,
+    "activationCount": 3,
+    "lastActivated": 1756083875903,
+    "effectiveness": 0.5
+  },
+  "specialization_optimization": {
+    "weight": 0.85,
+    "activationCount": 0,
+    "lastActivated": null,
+    "effectiveness": 0.5
+  }
+}

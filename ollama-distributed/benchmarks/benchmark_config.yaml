@@ -1,0 +1,243 @@
+# Comprehensive Benchmark Configuration
+# Configuration for benchmarking the ollama-distributed system
+
+# Test execution parameters
+execution:
+  duration: "5m"                    # Total benchmark duration
+  warmup_duration: "30s"            # Warmup phase duration
+  concurrent_workers: 8              # Number of concurrent benchmark workers
+  iterations: 3                      # Number of benchmark iterations
+  cooldown_duration: "10s"           # Cooldown between iterations
+
+# System parameters to test
+system:
+  cluster_sizes: [1, 3, 5, 7]       # Different cluster configurations
+  model_sizes: [100, 500, 1000, 2000, 5000]  # Model sizes in MB
+  request_sizes: [64, 256, 1024, 4096, 16384] # Request payload sizes in bytes
+  concurrency_levels: [1, 5, 10, 25, 50, 100, 200] # Concurrency levels to test
+
+# Benchmark categories and their configurations
+categories:
+  consensus:
+    enabled: true
+    tests:
+      - single_threaded
+      - multi_threaded  
+      - high_concurrency
+      - data_size_scaling
+    metrics:
+      - throughput
+      - latency
+      - memory_usage
+      - cpu_usage
+
+  p2p_networking:
+    enabled: true
+    tests:
+      - peer_discovery
+      - message_broadcast
+      - content_routing
+      - nat_traversal
+    metrics:
+      - network_throughput
+      - message_latency
+      - peer_connection_time
+      - bandwidth_usage
+
+  model_distribution:
+    enabled: true
+    tests:
+      - model_download
+      - model_replication
+      - concurrent_access
+      - cache_efficiency
+    metrics:
+      - download_speed
+      - replication_time
+      - cache_hit_ratio
+      - storage_efficiency
+
+  api_endpoints:
+    enabled: true
+    tests:
+      - health_check
+      - cluster_status
+      - node_operations
+      - model_operations
+      - generate_requests
+      - chat_requests
+    metrics:
+      - response_time
+      - requests_per_second
+      - error_rate
+      - concurrent_connections
+
+  memory_usage:
+    enabled: true
+    tests:
+      - memory_efficiency
+      - garbage_collection
+      - memory_leak_detection
+      - cache_performance
+    metrics:
+      - heap_size
+      - gc_frequency
+      - allocation_rate
+      - memory_growth
+
+  concurrent_operations:
+    enabled: true
+    tests:
+      - mixed_workload
+      - stress_test
+      - resource_contention
+      - deadlock_detection
+    metrics:
+      - operation_throughput
+      - resource_utilization
+      - contention_rate
+      - success_rate
+
+  fault_tolerance:
+    enabled: true
+    tests:
+      - node_failure_recovery
+      - network_partition
+      - leader_election
+      - data_consistency
+    metrics:
+      - recovery_time
+      - availability
+      - data_integrity
+      - failover_latency
+
+  load_balancing:
+    enabled: true
+    tests:
+      - light_load
+      - medium_load
+      - heavy_load
+      - burst_load
+    metrics:
+      - load_distribution
+      - response_consistency
+      - scalability_factor
+      - resource_balance
+
+# Performance targets and expectations
+targets:
+  throughput:
+    single_node: 100           # requests/second
+    three_node: 250            # requests/second (2.5x scaling)
+    five_node: 400             # requests/second (4x scaling)
+    
+  latency:
+    p50_ms: 50                 # 50ms P50 latency
+    p95_ms: 200                # 200ms P95 latency
+    p99_ms: 500                # 500ms P99 latency
+    
+  resource_usage:
+    max_cpu_percent: 80        # Maximum CPU usage
+    max_memory_mb: 2048        # Maximum memory usage
+    max_network_mbps: 100      # Maximum network bandwidth
+    
+  error_rates:
+    max_error_rate: 0.01       # 1% maximum error rate
+    max_timeout_rate: 0.001    # 0.1% maximum timeout rate
+
+# Output and reporting configuration
+output:
+  directory: "./benchmark-results"
+  format: "yaml"               # yaml, json, or html
+  include_raw_data: true
+  include_charts: true
+  include_comparisons: true
+  
+  reports:
+    - performance_summary
+    - scalability_analysis
+    - resource_utilization
+    - regression_analysis
+    - recommendations
+
+# Monitoring and alerting during benchmarks
+monitoring:
+  enabled: true
+  metrics_interval: "10s"
+  alert_thresholds:
+    high_cpu: 90              # Alert if CPU > 90%
+    high_memory: 90           # Alert if memory > 90%
+    high_latency: 1000        # Alert if latency > 1000ms
+    high_error_rate: 5        # Alert if error rate > 5%
+
+# Environment-specific configurations
+environments:
+  development:
+    duration: "2m"
+    cluster_sizes: [1, 3]
+    model_sizes: [100, 500]
+    
+  staging:
+    duration: "5m"
+    cluster_sizes: [1, 3, 5]
+    model_sizes: [100, 500, 1000]
+    
+  production:
+    duration: "10m"
+    cluster_sizes: [1, 3, 5, 7]
+    model_sizes: [100, 500, 1000, 2000, 5000]
+    include_stress_tests: true
+
+# Baseline performance data (to be updated)
+baseline:
+  version: "1.0.0"
+  timestamp: "2024-08-25T00:00:00Z"
+  system_info:
+    os: "linux"
+    arch: "amd64"
+    cpu_cores: 8
+    memory_gb: 16
+    
+  single_node:
+    requests_per_second: 85.5
+    latency_p50: 55.2
+    latency_p95: 185.8
+    latency_p99: 420.1
+    cpu_usage_percent: 45.2
+    memory_usage_mb: 512.8
+    
+  three_node:
+    requests_per_second: 210.3
+    latency_p50: 48.7
+    latency_p95: 165.4
+    latency_p99: 380.2
+    cpu_usage_percent: 38.6
+    memory_usage_mb: 1024.5
+    
+  five_node:
+    requests_per_second: 340.8
+    latency_p50: 45.1
+    latency_p95: 152.3
+    latency_p99: 350.7
+    cpu_usage_percent: 35.2
+    memory_usage_mb: 1536.2
+
+# Regression detection settings
+regression:
+  enabled: true
+  tolerance_percent: 10       # Allow 10% variation before flagging regression
+  comparison_method: "baseline" # baseline, previous, or rolling_average
+  alert_on_regression: true
+  
+  critical_metrics:
+    - requests_per_second
+    - latency_p95
+    - memory_usage_mb
+    - error_rate
+
+# Integration with CI/CD
+ci_cd:
+  enabled: false              # Enable for CI/CD pipeline integration
+  fail_on_regression: true    # Fail build on performance regression
+  publish_results: true       # Publish results to dashboard
+  notification_webhook: ""    # Webhook for notifications

@@ -1,0 +1,248 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: ollamamax-postgres
+    ports:
+      - "15432:5432"
+    environment:
+      POSTGRES_DB: ollamamax
+      POSTGRES_USER: ollama_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ollama_secure_password}
+    command: ["postgres", "-p", "5432"]
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ollama_user -d ollamamax"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - ollamamax-network
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+
+  redis:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.redis
+    container_name: ollamamax-redis
+    ports:
+      - "16379:16379"
+    volumes:
+      - redis_data:/data
+      - ./docker/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "16379", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - ollamamax-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+
+  ollama-distributed:
+    build:
+      context: ./ollama-distributed
+      dockerfile: Dockerfile
+    container_name: ollamamax-main
+    ports:
+      - "11434:11434"  # Main API
+      - "11435:8080"   # Web Dashboard
+      - "11436:9090"   # Metrics (Prometheus)
+      - "14001:4001"   # P2P networking
+      - "17000:7000"   # Consensus (Raft)
+    environment:
+      # Database configuration
+      - OLLAMA_DB_HOST=postgres
+      - OLLAMA_DB_PORT=5432
+      - OLLAMA_DB_NAME=ollamamax
+      - OLLAMA_DB_USER=ollama_user
+      - OLLAMA_DB_PASSWORD=${POSTGRES_PASSWORD:-ollama_secure_password}
+      - OLLAMA_DB_SSL_MODE=prefer
+      
+      # Redis configuration
+      - OLLAMA_REDIS_HOST=redis
+      - OLLAMA_REDIS_PORT=16379
+      - OLLAMA_REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      
+      # Application configuration
+      - OLLAMA_ENVIRONMENT=production
+      - OLLAMA_LOG_LEVEL=info
+      - OLLAMA_LOG_FORMAT=json
+      
+      # API configuration
+      - OLLAMA_API_LISTEN=0.0.0.0:11434
+      - OLLAMA_WEB_LISTEN=0.0.0.0:8080
+      - OLLAMA_METRICS_LISTEN=0.0.0.0:9090
+      
+      # P2P configuration
+      - OLLAMA_P2P_LISTEN=/ip4/0.0.0.0/tcp/4001
+      - OLLAMA_P2P_BOOTSTRAP=${OLLAMA_P2P_BOOTSTRAP:-}
+      
+      # Consensus configuration
+      - OLLAMA_CONSENSUS_BIND_ADDR=0.0.0.0:7000
+      - OLLAMA_CONSENSUS_ADVERTISE_ADDR=${OLLAMA_CONSENSUS_ADVERTISE_ADDR:-}
+      - OLLAMA_CONSENSUS_BOOTSTRAP=${OLLAMA_CONSENSUS_BOOTSTRAP:-false}
+      
+      # Authentication
+      - OLLAMA_AUTH_ENABLED=true
+      - OLLAMA_JWT_SECRET=${JWT_SECRET:-change_this_in_production}
+      - OLLAMA_AUTH_METHOD=jwt
+      
+      # Storage configuration
+      - OLLAMA_DATA_DIR=/data
+      - OLLAMA_MODEL_DIR=/models
+      - OLLAMA_CACHE_DIR=/cache
+      
+      # Performance tuning
+      - OLLAMA_MAX_CONCURRENT_REQUESTS=100
+      - OLLAMA_WORKER_COUNT=10
+      - OLLAMA_QUEUE_SIZE=1000
+      
+      # Security
+      - OLLAMA_TLS_ENABLED=false
+      - OLLAMA_RATE_LIMIT_ENABLED=true
+      - OLLAMA_RATE_LIMIT_RPS=1000
+      
+    volumes:
+      - ollama_data:/data
+      - ollama_models:/models
+      - ollama_cache:/cache
+      - ollama_logs:/logs
+      # Config file is now built into the image
+      - /var/run/docker.sock:/var/run/docker.sock:ro  # For container management
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - ollamamax-network
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2.0'
+        reservations:
+          memory: 2G
+          cpus: '1.0'
+
+  # Optional: Nginx reverse proxy for SSL termination and load balancing
+  nginx:
+    image: nginx:alpine
+    container_name: ollamamax-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/ssl:/etc/nginx/ssl:ro
+      - nginx_logs:/var/log/nginx
+    depends_on:
+      - ollama-distributed
+    restart: unless-stopped
+    networks:
+      - ollamamax-network
+    profiles:
+      - with-nginx
+
+  # Optional: Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ollamamax-prometheus
+    ports:
+      - "19090:9090"
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.enable-lifecycle'
+    depends_on:
+      - ollama-distributed
+    restart: unless-stopped
+    networks:
+      - ollamamax-network
+    profiles:
+      - with-monitoring
+
+  # Optional: Grafana for metrics visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ollamamax-grafana
+    ports:
+      - "13000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./docker/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    networks:
+      - ollamamax-network
+    profiles:
+      - with-monitoring
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  ollama_data:
+    driver: local
+  ollama_models:
+    driver: local
+  ollama_cache:
+    driver: local
+  ollama_logs:
+    driver: local
+  nginx_logs:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+networks:
+  ollamamax-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+          gateway: 172.20.0.1
+    driver_opts:
+      com.docker.network.bridge.name: ollamamax0

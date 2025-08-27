@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/khryptorgraphics/ollamamax/ollama-distributed/internal/config"
+	"github.com/khryptorgraphics/ollamamax/internal/config"
 )
 
 // JWTService handles JWT token operations
