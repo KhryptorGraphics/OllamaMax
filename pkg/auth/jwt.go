@@ -30,6 +30,16 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
+// IsAdmin checks if the user has admin role
+func (c *Claims) IsAdmin() bool {
+	return c.Role == RoleAdmin
+}
+
+// IsOperator checks if the user has operator role or higher
+func (c *Claims) IsOperator() bool {
+	return c.Role == RoleAdmin || c.Role == RoleOperator
+}
+
 // TokenPair represents access and refresh tokens
 type TokenPair struct {
 	AccessToken  string    `json:"access_token"`

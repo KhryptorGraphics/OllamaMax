@@ -341,6 +341,7 @@ type ModelFilters struct {
 	Tags       JSONArray
 	Status     *string
 	Family     *string
+	CreatedBy  *string
 	MinSize    *int64
 	MaxSize    *int64
 	Limit      int

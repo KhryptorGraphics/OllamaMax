@@ -227,10 +227,10 @@ jest.mock('@fortawesome/react-fontawesome', () => ({
   ),
 }));
 
-// Mock CSS imports
-jest.mock('*.css', () => ({}));
-jest.mock('*.scss', () => ({}));
-jest.mock('*.sass', () => ({}));
+// CSS imports are handled by moduleNameMapper in package.json
+
+// Import React for test components
+import React from 'react';
 
 // Error boundary for testing
 export class TestErrorBoundary extends React.Component {

@@ -6,6 +6,30 @@ import (
 	"sync"
 )
 
+// Role definitions
+const (
+	RoleAdmin    = "admin"
+	RoleOperator = "operator"
+	RoleUser     = "user"
+	RoleReadonly = "readonly"
+)
+
+// Permission definitions
+const (
+	PermissionModelManage    = "model:manage"
+	PermissionModelRead      = "model:read"
+	PermissionClusterManage  = "cluster:manage"
+	PermissionClusterRead    = "cluster:read"
+	PermissionNodeManage     = "node:manage"
+	PermissionNodeRead       = "node:read"
+	PermissionUserManage     = "user:manage"
+	PermissionUserRead       = "user:read"
+	PermissionInferenceWrite = "inference:write"
+	PermissionInferenceRead  = "inference:read"
+	PermissionSystemManage   = "system:manage"
+	PermissionSystemRead     = "system:read"
+)
+
 // RBAC implements Role-Based Access Control
 type RBAC struct {
 	roles       map[string]*Role

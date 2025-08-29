@@ -36,32 +36,58 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Sessions table
+-- Sessions table with enhanced indexing
 CREATE TABLE IF NOT EXISTS sessions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    token VARCHAR(512) NOT NULL,
+    token VARCHAR(512) NOT NULL UNIQUE,
     expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    ip_address INET,
+    user_agent TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    last_activity TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    INDEX idx_sessions_token (token),
-    INDEX idx_sessions_user_id (user_id),
-    INDEX idx_sessions_expires_at (expires_at)
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Inference requests table
+-- Enhanced indexes for sessions
+CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
+CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
+CREATE INDEX IF NOT EXISTS idx_sessions_active ON sessions(is_active, expires_at);
+CREATE INDEX IF NOT EXISTS idx_sessions_user_active ON sessions(user_id, is_active);
+
+-- Enhanced inference requests table with performance metrics
 CREATE TABLE IF NOT EXISTS inference_requests (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     model_id UUID NOT NULL REFERENCES models(id),
     user_id UUID NOT NULL REFERENCES users(id),
+    node_id UUID REFERENCES nodes(id),
     status VARCHAR(50) NOT NULL DEFAULT 'pending',
+    priority INTEGER DEFAULT 0,
     input JSONB,
     output JSONB,
+    metadata JSONB DEFAULT '{}',
+    processing_time_ms INTEGER,
+    queue_time_ms INTEGER,
+    tokens_input INTEGER,
+    tokens_output INTEGER,
+    error_message TEXT,
+    started_at TIMESTAMP WITH TIME ZONE,
+    completed_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    INDEX idx_inference_model_id (model_id),
-    INDEX idx_inference_user_id (user_id),
-    INDEX idx_inference_status (status)
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Performance-optimized indexes for inference requests
+CREATE INDEX IF NOT EXISTS idx_inference_model_id ON inference_requests(model_id);
+CREATE INDEX IF NOT EXISTS idx_inference_user_id ON inference_requests(user_id);
+CREATE INDEX IF NOT EXISTS idx_inference_status ON inference_requests(status);
+CREATE INDEX IF NOT EXISTS idx_inference_node_id ON inference_requests(node_id);
+CREATE INDEX IF NOT EXISTS idx_inference_priority ON inference_requests(priority DESC, created_at ASC);
+CREATE INDEX IF NOT EXISTS idx_inference_created_at ON inference_requests(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_inference_status_created ON inference_requests(status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_inference_user_status ON inference_requests(user_id, status, created_at DESC);
 
 -- Audit log table
 CREATE TABLE IF NOT EXISTS audit_logs (
