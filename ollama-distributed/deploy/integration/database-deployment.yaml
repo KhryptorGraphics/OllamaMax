@@ -1,0 +1,657 @@
+# Database Infrastructure for OllamaMax
+# PostgreSQL Primary-Replica setup with Redis caching
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: database
+  labels:
+    name: database
+    app.kubernetes.io/name: database
+    environment: production
+
+---
+# PostgreSQL ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-config
+  namespace: database
+data:
+  postgresql.conf: |
+    # PostgreSQL Configuration for OllamaMax Production
+    # Performance optimizations
+    max_connections = 200
+    shared_buffers = '1GB'
+    effective_cache_size = '3GB'
+    work_mem = '16MB'
+    maintenance_work_mem = '256MB'
+    
+    # WAL settings for replication
+    wal_level = replica
+    max_wal_senders = 3
+    max_replication_slots = 3
+    hot_standby = on
+    
+    # Checkpoint settings
+    checkpoint_timeout = '15min'
+    checkpoint_completion_target = 0.9
+    wal_buffers = '16MB'
+    
+    # Logging
+    log_destination = 'stderr'
+    logging_collector = on
+    log_directory = 'pg_log'
+    log_filename = 'postgresql-%Y-%m-%d_%H%M%S.log'
+    log_rotation_size = '100MB'
+    log_min_duration_statement = 1000
+    log_line_prefix = '%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h '
+    
+    # Security
+    ssl = on
+    ssl_cert_file = '/var/lib/postgresql/certs/server.crt'
+    ssl_key_file = '/var/lib/postgresql/certs/server.key'
+    
+    # Monitoring
+    track_activities = on
+    track_counts = on
+    track_io_timing = on
+    track_functions = all
+    
+  pg_hba.conf: |
+    # PostgreSQL Client Authentication Configuration
+    # TYPE  DATABASE        USER            ADDRESS                 METHOD
+    local   all             all                                     trust
+    host    all             all             127.0.0.1/32            scram-sha-256
+    host    all             all             ::1/128                 scram-sha-256
+    host    all             all             10.0.0.0/8              scram-sha-256
+    host    all             all             172.16.0.0/12           scram-sha-256
+    host    all             all             192.168.0.0/16          scram-sha-256
+    
+    # Replication connections
+    host    replication     replicator      10.0.0.0/8              scram-sha-256
+    host    replication     replicator      172.16.0.0/12           scram-sha-256
+    host    replication     replicator      192.168.0.0/16          scram-sha-256
+
+---
+# PostgreSQL Secrets
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-secrets
+  namespace: database
+type: Opaque
+data:
+  postgres-password: "T2xsYW1hTWF4MjAyNSE="  # OllamaMax2025!
+  replication-password: "UmVwbGljYXRlTWF4MjAyNSE="  # ReplicateMax2025!
+
+---
+# Redis ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-config
+  namespace: database
+data:
+  redis.conf: |
+    # Redis Configuration for OllamaMax Production
+    # Memory management
+    maxmemory 2gb
+    maxmemory-policy allkeys-lru
+    
+    # Persistence
+    save 900 1
+    save 300 10
+    save 60 10000
+    
+    # AOF
+    appendonly yes
+    appendfilename "appendonly.aof"
+    appendfsync everysec
+    
+    # Security
+    requirepass REDIS_PASSWORD_PLACEHOLDER
+    
+    # Networking
+    bind 0.0.0.0
+    port 6379
+    tcp-keepalive 60
+    timeout 0
+    
+    # Logging
+    loglevel notice
+    
+    # Performance
+    tcp-backlog 511
+    databases 16
+    
+  sentinel.conf: |
+    # Redis Sentinel Configuration
+    port 26379
+    bind 0.0.0.0
+    
+    # Monitor master
+    sentinel monitor mymaster redis-master 6379 2
+    sentinel auth-pass mymaster REDIS_PASSWORD_PLACEHOLDER
+    sentinel down-after-milliseconds mymaster 30000
+    sentinel parallel-syncs mymaster 1
+    sentinel failover-timeout mymaster 180000
+
+---
+# Redis Secrets
+apiVersion: v1
+kind: Secret
+metadata:
+  name: redis-secrets
+  namespace: database
+type: Opaque
+data:
+  redis-password: "UmVkaXNNYXgyMDI1IQ=="  # RedisMax2025!
+
+---
+# PostgreSQL Primary Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-primary
+  namespace: database
+  labels:
+    app: postgres
+    role: primary
+spec:
+  type: ClusterIP
+  ports:
+  - name: postgres
+    port: 5432
+    targetPort: 5432
+  selector:
+    app: postgres
+    role: primary
+
+---
+# PostgreSQL Primary StatefulSet
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-primary
+  namespace: database
+  labels:
+    app: postgres
+    role: primary
+spec:
+  serviceName: postgres-primary
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+      role: primary
+  template:
+    metadata:
+      labels:
+        app: postgres
+        role: primary
+    spec:
+      securityContext:
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        env:
+        - name: POSTGRES_DB
+          value: "ollamamax"
+        - name: POSTGRES_USER
+          value: "ollamamax"
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secrets
+              key: postgres-password
+        - name: POSTGRES_REPLICATION_USER
+          value: "replicator"
+        - name: POSTGRES_REPLICATION_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secrets
+              key: replication-password
+        - name: PGDATA
+          value: "/var/lib/postgresql/data/pgdata"
+        ports:
+        - name: postgres
+          containerPort: 5432
+        volumeMounts:
+        - name: postgres-data
+          mountPath: /var/lib/postgresql/data
+        - name: postgres-config
+          mountPath: /etc/postgresql
+          readOnly: true
+        - name: postgres-init
+          mountPath: /docker-entrypoint-initdb.d
+          readOnly: true
+        resources:
+          requests:
+            cpu: "1"
+            memory: "2Gi"
+          limits:
+            cpu: "2"
+            memory: "4Gi"
+        livenessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - ollamamax
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+        readinessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - ollamamax
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 5
+      volumes:
+      - name: postgres-config
+        configMap:
+          name: postgres-config
+      - name: postgres-init
+        configMap:
+          name: postgres-init-scripts
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 100Gi
+      storageClassName: fast-ssd
+
+---
+# PostgreSQL Replica Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-replica
+  namespace: database
+  labels:
+    app: postgres
+    role: replica
+spec:
+  type: ClusterIP
+  ports:
+  - name: postgres
+    port: 5432
+    targetPort: 5432
+  selector:
+    app: postgres
+    role: replica
+
+---
+# PostgreSQL Replica StatefulSet
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-replica
+  namespace: database
+  labels:
+    app: postgres
+    role: replica
+spec:
+  serviceName: postgres-replica
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+      role: replica
+  template:
+    metadata:
+      labels:
+        app: postgres
+        role: replica
+    spec:
+      securityContext:
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        env:
+        - name: POSTGRES_DB
+          value: "ollamamax"
+        - name: POSTGRES_USER
+          value: "ollamamax"
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secrets
+              key: postgres-password
+        - name: POSTGRES_MASTER_SERVICE
+          value: "postgres-primary"
+        - name: POSTGRES_REPLICATION_USER
+          value: "replicator"
+        - name: POSTGRES_REPLICATION_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secrets
+              key: replication-password
+        - name: PGDATA
+          value: "/var/lib/postgresql/data/pgdata"
+        - name: PGUSER
+          value: "ollamamax"
+        ports:
+        - name: postgres
+          containerPort: 5432
+        volumeMounts:
+        - name: postgres-data
+          mountPath: /var/lib/postgresql/data
+        - name: replica-init
+          mountPath: /docker-entrypoint-initdb.d
+          readOnly: true
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+          limits:
+            cpu: "1"
+            memory: "2Gi"
+        livenessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - ollamamax
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+        readinessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - ollamamax
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 5
+      volumes:
+      - name: replica-init
+        configMap:
+          name: postgres-replica-init
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 100Gi
+      storageClassName: fast-ssd
+
+---
+# Redis Master Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-master
+  namespace: database
+  labels:
+    app: redis
+    role: master
+spec:
+  type: ClusterIP
+  ports:
+  - name: redis
+    port: 6379
+    targetPort: 6379
+  selector:
+    app: redis
+    role: master
+
+---
+# Redis Master Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-master
+  namespace: database
+  labels:
+    app: redis
+    role: master
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+      role: master
+  template:
+    metadata:
+      labels:
+        app: redis
+        role: master
+    spec:
+      securityContext:
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        command: ["redis-server"]
+        args: ["/etc/redis/redis.conf"]
+        env:
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: redis-secrets
+              key: redis-password
+        ports:
+        - name: redis
+          containerPort: 6379
+        volumeMounts:
+        - name: redis-config
+          mountPath: /etc/redis
+        - name: redis-data
+          mountPath: /data
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+          limits:
+            cpu: "1"
+            memory: "2Gi"
+        livenessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+        readinessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 5
+      volumes:
+      - name: redis-config
+        configMap:
+          name: redis-config
+      - name: redis-data
+        persistentVolumeClaim:
+          claimName: redis-data
+
+---
+# Redis Data PVC
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-data
+  namespace: database
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+  storageClassName: fast-ssd
+
+---
+# Redis Sentinel Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-sentinel
+  namespace: database
+  labels:
+    app: redis
+    role: sentinel
+spec:
+  type: ClusterIP
+  ports:
+  - name: sentinel
+    port: 26379
+    targetPort: 26379
+  selector:
+    app: redis
+    role: sentinel
+
+---
+# Redis Sentinel Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-sentinel
+  namespace: database
+  labels:
+    app: redis
+    role: sentinel
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: redis
+      role: sentinel
+  template:
+    metadata:
+      labels:
+        app: redis
+        role: sentinel
+    spec:
+      securityContext:
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+      containers:
+      - name: sentinel
+        image: redis:7-alpine
+        command: ["redis-sentinel"]
+        args: ["/etc/redis/sentinel.conf"]
+        env:
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: redis-secrets
+              key: redis-password
+        ports:
+        - name: sentinel
+          containerPort: 26379
+        volumeMounts:
+        - name: sentinel-config
+          mountPath: /etc/redis
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "200m"
+            memory: "256Mi"
+      volumes:
+      - name: sentinel-config
+        configMap:
+          name: redis-config
+
+---
+# Database initialization scripts
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init-scripts
+  namespace: database
+data:
+  01-setup-replication.sql: |
+    -- Create replication user
+    CREATE USER replicator REPLICATION LOGIN CONNECTION LIMIT 3 ENCRYPTED PASSWORD 'ReplicateMax2025!';
+    
+    -- Create application user if not exists
+    DO $$
+    BEGIN
+      IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'ollamamax') THEN
+        CREATE USER ollamamax WITH PASSWORD 'OllamaMax2025!';
+      END IF;
+    END
+    $$;
+    
+    -- Grant necessary permissions
+    GRANT CONNECT ON DATABASE ollamamax TO ollamamax;
+    GRANT USAGE ON SCHEMA public TO ollamamax;
+    GRANT CREATE ON SCHEMA public TO ollamamax;
+    
+  02-create-schema.sql: |
+    -- Run the initial schema migration
+    \i /docker-entrypoint-initdb.d/schema-migration.sql
+
+  schema-migration.sql: |
+    -- Complete schema from migrations/001_initial_schema.sql
+    -- (Content would be copied from the migration file)
+    -- Enable required extensions
+    CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+    CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+    CREATE EXTENSION IF NOT EXISTS "pg_stat_statements";
+    
+    -- Create schema and basic tables
+    -- (This would contain the full schema from the migration file)
+
+---
+# PostgreSQL replica initialization
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-replica-init
+  namespace: database
+data:
+  setup-replica.sh: |
+    #!/bin/bash
+    set -e
+    
+    # Wait for master to be ready
+    until pg_isready -h postgres-primary -U ollamamax; do
+      echo "Waiting for master to be ready..."
+      sleep 5
+    done
+    
+    # Create base backup from master
+    if [ ! -s "$PGDATA/PG_VERSION" ]; then
+      echo "Creating base backup from master..."
+      PGPASSWORD=$POSTGRES_REPLICATION_PASSWORD pg_basebackup \
+        -h postgres-primary \
+        -D $PGDATA \
+        -U replicator \
+        -v \
+        -P \
+        -W
+      
+      # Configure as replica
+      echo "standby_mode = 'on'" >> $PGDATA/recovery.conf
+      echo "primary_conninfo = 'host=postgres-primary port=5432 user=replicator password=$POSTGRES_REPLICATION_PASSWORD'" >> $PGDATA/recovery.conf
+      echo "trigger_file = '/tmp/postgresql.trigger.5432'" >> $PGDATA/recovery.conf
+    fi
+    
+    # Start PostgreSQL
+    exec postgres

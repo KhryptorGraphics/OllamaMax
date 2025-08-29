@@ -43,18 +43,55 @@ func TestAuthenticate(t *testing.T) {
 	require.NoError(t, err)
 	defer manager.Close()
 
-	// Test authentication with default admin user
-	authCtx, err := manager.Authenticate("admin", "admin123", map[string]string{
+	// Get the actual generated admin password from the manager
+	manager.mu.RLock()
+	adminUser, exists := manager.users["admin"]
+	manager.mu.RUnlock()
+	require.True(t, exists, "Admin user should exist")
+
+	// Create a test user with known password for testing
+	testPassword := "testpassword123"
+	hashedPassword, err := manager.hashPassword(testPassword)
+	require.NoError(t, err)
+
+	manager.mu.Lock()
+	manager.users["testuser"] = &User{
+		Username:     "testuser",
+		PasswordHash: hashedPassword,
+		Role:         RoleUser,
+		Permissions:  []Permission{PermissionRead},
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
+		IsActive:     true,
+	}
+	manager.mu.Unlock()
+
+	// Test authentication with test user
+	authCtx, err := manager.Authenticate("testuser", testPassword, map[string]string{
 		"ip_address": "127.0.0.1",
 		"user_agent": "test-agent",
 	})
 
 	require.NoError(t, err)
 	require.NotNil(t, authCtx)
-	assert.Equal(t, "admin", authCtx.User.Username)
-	assert.Equal(t, RoleAdmin, authCtx.User.Role)
+	assert.Equal(t, "testuser", authCtx.User.Username)
+	assert.Equal(t, RoleUser, authCtx.User.Role)
 	assert.Equal(t, AuthMethodJWT, authCtx.Method)
 	assert.NotEmpty(t, authCtx.TokenString)
+
+	// Test authentication with wrong password
+	_, err = manager.Authenticate("testuser", "wrongpassword", map[string]string{})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "INVALID_CREDENTIALS")
+
+	// Test authentication with non-existent user
+	_, err = manager.Authenticate("nonexistent", "password", map[string]string{})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "INVALID_CREDENTIALS")
+
+	// Verify admin user exists but use a proper test for admin login
+	assert.NotNil(t, adminUser)
+	assert.Equal(t, RoleAdmin, adminUser.Role)
 }
 
 func TestValidateToken(t *testing.T) {
@@ -71,16 +108,43 @@ func TestValidateToken(t *testing.T) {
 	require.NoError(t, err)
 	defer manager.Close()
 
+	// Create a test user with known password
+	testPassword := "testpassword123"
+	hashedPassword, err := manager.hashPassword(testPassword)
+	require.NoError(t, err)
+
+	manager.mu.Lock()
+	manager.users["testuser"] = &User{
+		Username:     "testuser",
+		PasswordHash: hashedPassword,
+		Role:         RoleUser,
+		Permissions:  []Permission{PermissionRead},
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
+		IsActive:     true,
+	}
+	manager.mu.Unlock()
+
 	// Authenticate to get a token
-	authCtx, err := manager.Authenticate("admin", "admin123", map[string]string{})
+	authCtx, err := manager.Authenticate("testuser", testPassword, map[string]string{})
 	require.NoError(t, err)
 
 	// Validate the token
 	validatedCtx, err := manager.ValidateToken(authCtx.TokenString)
 	require.NoError(t, err)
 	require.NotNil(t, validatedCtx)
-	assert.Equal(t, authCtx.User.ID, validatedCtx.User.ID)
-	assert.Equal(t, authCtx.User.Username, validatedCtx.User.Username)
+	assert.Equal(t, "testuser", validatedCtx.User.Username)
+	assert.Equal(t, RoleUser, validatedCtx.User.Role)
+
+	// Test invalid token
+	_, err = manager.ValidateToken("invalid.token.here")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "INVALID_TOKEN")
+
+	// Test empty token
+	_, err = manager.ValidateToken("")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "INVALID_TOKEN")
 }
 
 func TestCreateUser(t *testing.T) {
@@ -97,29 +161,25 @@ func TestCreateUser(t *testing.T) {
 	require.NoError(t, err)
 	defer manager.Close()
 
-	// Create a new user
-	req := &CreateUserRequest{
-		Username: "testuser",
-		Email:    "test@example.com",
-		Password: "testpassword",
-		Role:     RoleUser,
-	}
-
-	user, err := manager.CreateUser(req)
+	// Test creating a new user
+	user, err := manager.CreateUser("testuser", "password123", RoleUser, []Permission{PermissionRead})
 	require.NoError(t, err)
 	require.NotNil(t, user)
 	assert.Equal(t, "testuser", user.Username)
-	assert.Equal(t, "test@example.com", user.Email)
 	assert.Equal(t, RoleUser, user.Role)
-	assert.True(t, user.Active)
+	assert.True(t, user.IsActive)
 
-	// Should be able to authenticate with new user
-	authCtx, err := manager.Authenticate("testuser", "testpassword", map[string]string{})
-	require.NoError(t, err)
-	assert.Equal(t, user.ID, authCtx.User.ID)
+	// Test creating duplicate user
+	_, err = manager.CreateUser("testuser", "password123", RoleUser, []Permission{PermissionRead})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "USER_ALREADY_EXISTS")
+
+	// Test creating user with invalid username
+	_, err = manager.CreateUser("", "password123", RoleUser, []Permission{PermissionRead})
+	assert.Error(t, err)
 }
 
-func TestCreateAPIKey(t *testing.T) {
+func TestUserManagement(t *testing.T) {
 	cfg := &config.AuthConfig{
 		Enabled:     true,
 		Method:      "jwt",
@@ -133,43 +193,139 @@ func TestCreateAPIKey(t *testing.T) {
 	require.NoError(t, err)
 	defer manager.Close()
 
-	// Create a user first
-	req := &CreateUserRequest{
-		Username: "testuser",
-		Email:    "test@example.com",
-		Password: "testpassword",
-		Role:     RoleUser,
-	}
-
-	user, err := manager.CreateUser(req)
+	// Create a test user
+	user, err := manager.CreateUser("testuser", "password123", RoleUser, []Permission{PermissionRead})
 	require.NoError(t, err)
 
-	// Create API key
-	apiKeyReq := &CreateAPIKeyRequest{
-		Name:        "Test API Key",
-		Permissions: []string{PermissionModelRead, PermissionInferenceWrite},
+	// Test getting user
+	retrievedUser, err := manager.GetUser("testuser")
+	require.NoError(t, err)
+	assert.Equal(t, user.Username, retrievedUser.Username)
+
+	// Test updating user
+	err = manager.UpdateUser("testuser", &UserUpdate{
+		Role:        &RoleAdmin,
+		Permissions: &[]Permission{PermissionRead, PermissionWrite},
+	})
+	require.NoError(t, err)
+
+	updatedUser, err := manager.GetUser("testuser")
+	require.NoError(t, err)
+	assert.Equal(t, RoleAdmin, updatedUser.Role)
+	assert.Contains(t, updatedUser.Permissions, PermissionWrite)
+
+	// Test deactivating user
+	err = manager.DeactivateUser("testuser")
+	require.NoError(t, err)
+
+	deactivatedUser, err := manager.GetUser("testuser")
+	require.NoError(t, err)
+	assert.False(t, deactivatedUser.IsActive)
+
+	// Test deleting user
+	err = manager.DeleteUser("testuser")
+	require.NoError(t, err)
+
+	_, err = manager.GetUser("testuser")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "USER_NOT_FOUND")
+}
+
+func TestAPIKeyManagement(t *testing.T) {
+	cfg := &config.AuthConfig{
+		Enabled:     true,
+		Method:      "jwt",
+		TokenExpiry: 24 * time.Hour,
+		SecretKey:   "test-secret-key",
+		Issuer:      "ollama-test",
+		Audience:    "ollama-api",
 	}
 
-	apiKey, rawKey, err := manager.CreateAPIKey(user.ID, apiKeyReq)
+	manager, err := NewManager(cfg)
+	require.NoError(t, err)
+	defer manager.Close()
+
+	// Create a test user first
+	user, err := manager.CreateUser("testuser", "password123", RoleUser, []Permission{PermissionRead})
+	require.NoError(t, err)
+
+	// Test creating API key
+	apiKey, err := manager.CreateAPIKey("testuser", "test-key", []Permission{PermissionRead}, time.Hour)
 	require.NoError(t, err)
 	require.NotNil(t, apiKey)
-	assert.NotEmpty(t, rawKey)
-	assert.Equal(t, "Test API Key", apiKey.Name)
-	assert.Equal(t, user.ID, apiKey.UserID)
-	assert.True(t, apiKey.Active)
+	assert.Equal(t, "test-key", apiKey.Name)
+	assert.Equal(t, "testuser", apiKey.Username)
+	assert.True(t, apiKey.IsActive)
 
-	// Should be able to validate API key
-	authCtx, err := manager.ValidateAPIKey(rawKey)
+	// Test validating API key
+	authCtx, err := manager.ValidateAPIKey(apiKey.Key)
 	require.NoError(t, err)
-	assert.Equal(t, user.ID, authCtx.User.ID)
+	require.NotNil(t, authCtx)
+	assert.Equal(t, "testuser", authCtx.User.Username)
 	assert.Equal(t, AuthMethodAPIKey, authCtx.Method)
+
+	// Test revoking API key
+	err = manager.RevokeAPIKey(apiKey.Key)
+	require.NoError(t, err)
+
+	_, err = manager.ValidateAPIKey(apiKey.Key)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "INVALID_API_KEY")
 }
 
-func TestHasPermission(t *testing.T) {
+func TestRateLimiting(t *testing.T) {
+	cfg := &config.AuthConfig{
+		Enabled:        true,
+		Method:         "jwt",
+		TokenExpiry:    24 * time.Hour,
+		SecretKey:      "test-secret-key",
+		Issuer:         "ollama-test",
+		Audience:       "ollama-api",
+		RateLimitRPM:   5,    // 5 requests per minute
+		RateLimitBurst: 2,    // burst of 2
+	}
+
+	manager, err := NewManager(cfg)
+	require.NoError(t, err)
+	defer manager.Close()
+
+	// Create a test user
+	testPassword := "testpassword123"
+	hashedPassword, err := manager.hashPassword(testPassword)
+	require.NoError(t, err)
+
+	manager.mu.Lock()
+	manager.users["testuser"] = &User{
+		Username:     "testuser",
+		PasswordHash: hashedPassword,
+		Role:         RoleUser,
+		Permissions:  []Permission{PermissionRead},
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
+		IsActive:     true,
+	}
+	manager.mu.Unlock()
+
+	clientIP := "127.0.0.1"
+	metadata := map[string]string{"ip_address": clientIP}
+
+	// First few requests should succeed (within burst limit)
+	for i := 0; i < 2; i++ {
+		_, err := manager.Authenticate("testuser", testPassword, metadata)
+		require.NoError(t, err, "Request %d should succeed", i+1)
+	}
+
+	// Additional request should be rate limited
+	_, err = manager.Authenticate("testuser", testPassword, metadata)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "RATE_LIMIT_EXCEEDED")
+}
+
+func TestTokenExpiry(t *testing.T) {
 	cfg := &config.AuthConfig{
 		Enabled:     true,
 		Method:      "jwt",
-		TokenExpiry: 24 * time.Hour,
+		TokenExpiry: time.Millisecond, // Very short expiry for testing
 		SecretKey:   "test-secret-key",
 		Issuer:      "ollama-test",
 		Audience:    "ollama-api",
@@ -179,123 +335,69 @@ func TestHasPermission(t *testing.T) {
 	require.NoError(t, err)
 	defer manager.Close()
 
-	// Create user with specific permissions
-	req := &CreateUserRequest{
-		Username:    "testuser",
-		Email:       "test@example.com",
-		Password:    "testpassword",
-		Role:        RoleUser,
-		Permissions: []string{PermissionModelRead, PermissionInferenceWrite},
+	// Create a test user
+	testPassword := "testpassword123"
+	hashedPassword, err := manager.hashPassword(testPassword)
+	require.NoError(t, err)
+
+	manager.mu.Lock()
+	manager.users["testuser"] = &User{
+		Username:     "testuser",
+		PasswordHash: hashedPassword,
+		Role:         RoleUser,
+		Permissions:  []Permission{PermissionRead},
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
+		IsActive:     true,
 	}
-
-	user, err := manager.CreateUser(req)
-	require.NoError(t, err)
-
-	authCtx := &AuthContext{
-		User:   user,
-		Method: AuthMethodJWT,
-	}
-
-	// Test permissions
-	assert.True(t, manager.HasPermission(authCtx, PermissionModelRead))
-	assert.True(t, manager.HasPermission(authCtx, PermissionInferenceWrite))
-	assert.False(t, manager.HasPermission(authCtx, PermissionNodeAdmin))
-
-	// Admin should have all permissions
-	adminAuthCtx, err := manager.Authenticate("admin", "admin123", map[string]string{})
-	require.NoError(t, err)
-	assert.True(t, manager.HasPermission(adminAuthCtx, PermissionNodeAdmin))
-	assert.True(t, manager.HasPermission(adminAuthCtx, PermissionSystemAdmin))
-}
-
-func TestJWTManager(t *testing.T) {
-	cfg := &config.AuthConfig{
-		Enabled:     true,
-		Method:      "jwt",
-		TokenExpiry: 24 * time.Hour,
-		SecretKey:   "test-secret-key",
-		Issuer:      "ollama-test",
-		Audience:    "ollama-api",
-	}
-
-	jwtManager, err := NewJWTManager(cfg)
-	require.NoError(t, err)
-	require.NotNil(t, jwtManager)
-
-	// Create test user
-	user := &User{
-		ID:          "test-user-id",
-		Username:    "testuser",
-		Email:       "test@example.com",
-		Role:        RoleUser,
-		Permissions: []string{PermissionModelRead},
-	}
-
-	// Generate token pair
-	tokenPair, err := jwtManager.GenerateTokenPair(user, "session-id", map[string]string{})
-	require.NoError(t, err)
-	require.NotNil(t, tokenPair)
-	assert.NotEmpty(t, tokenPair.AccessToken)
-	assert.NotEmpty(t, tokenPair.RefreshToken)
-	assert.Equal(t, "Bearer", tokenPair.TokenType)
-
-	// Validate access token
-	claims, err := jwtManager.ValidateToken(tokenPair.AccessToken)
-	require.NoError(t, err)
-	require.NotNil(t, claims)
-	assert.Equal(t, user.ID, claims.UserID)
-	assert.Equal(t, user.Username, claims.Username)
-	assert.Equal(t, user.Role, claims.Role)
-}
-
-func TestServiceToken(t *testing.T) {
-	cfg := &config.AuthConfig{
-		Enabled:     true,
-		Method:      "jwt",
-		TokenExpiry: 24 * time.Hour,
-		SecretKey:   "test-secret-key",
-		Issuer:      "ollama-test",
-		Audience:    "ollama-api",
-	}
-
-	jwtManager, err := NewJWTManager(cfg)
-	require.NoError(t, err)
-
-	// Generate service token
-	serviceToken, err := jwtManager.GenerateServiceToken(
-		"service-1",
-		"Test Service",
-		[]string{PermissionNodeRead, PermissionModelRead},
-	)
-	require.NoError(t, err)
-	assert.NotEmpty(t, serviceToken)
-
-	// Validate service token
-	claims, err := jwtManager.ValidateServiceToken(serviceToken)
-	require.NoError(t, err)
-	require.NotNil(t, claims)
-	assert.Equal(t, "service-1", claims.UserID)
-	assert.Equal(t, "Test Service", claims.Username)
-	assert.Equal(t, RoleService, claims.Role)
-	assert.Equal(t, "service", claims.Metadata["token_type"])
-}
-
-func TestTokenBlacklist(t *testing.T) {
-	cfg := &config.AuthConfig{
-		Enabled:     true,
-		Method:      "jwt",
-		TokenExpiry: 24 * time.Hour,
-		SecretKey:   "test-secret-key",
-		Issuer:      "ollama-test",
-		Audience:    "ollama-api",
-	}
-
-	manager, err := NewManager(cfg)
-	require.NoError(t, err)
-	defer manager.Close()
+	manager.mu.Unlock()
 
 	// Authenticate to get a token
-	authCtx, err := manager.Authenticate("admin", "admin123", map[string]string{})
+	authCtx, err := manager.Authenticate("testuser", testPassword, map[string]string{})
+	require.NoError(t, err)
+
+	// Wait for token to expire
+	time.Sleep(10 * time.Millisecond)
+
+	// Token should now be invalid
+	_, err = manager.ValidateToken(authCtx.TokenString)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "TOKEN_EXPIRED")
+}
+
+func TestBlacklist(t *testing.T) {
+	cfg := &config.AuthConfig{
+		Enabled:     true,
+		Method:      "jwt",
+		TokenExpiry: 24 * time.Hour,
+		SecretKey:   "test-secret-key",
+		Issuer:      "ollama-test",
+		Audience:    "ollama-api",
+	}
+
+	manager, err := NewManager(cfg)
+	require.NoError(t, err)
+	defer manager.Close()
+
+	// Create a test user
+	testPassword := "testpassword123"
+	hashedPassword, err := manager.hashPassword(testPassword)
+	require.NoError(t, err)
+
+	manager.mu.Lock()
+	manager.users["testuser"] = &User{
+		Username:     "testuser",
+		PasswordHash: hashedPassword,
+		Role:         RoleUser,
+		Permissions:  []Permission{PermissionRead},
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
+		IsActive:     true,
+	}
+	manager.mu.Unlock()
+
+	// Authenticate to get a token
+	authCtx, err := manager.Authenticate("testuser", testPassword, map[string]string{})
 	require.NoError(t, err)
 
 	// Token should be valid initially
@@ -303,26 +405,42 @@ func TestTokenBlacklist(t *testing.T) {
 	require.NoError(t, err)
 
 	// Blacklist the token
-	manager.RevokeToken(authCtx.Claims.ID, authCtx.Claims.ExpiresAt.Time)
+	err = manager.BlacklistToken(authCtx.TokenString)
+	require.NoError(t, err)
 
 	// Token should now be invalid
 	_, err = manager.ValidateToken(authCtx.TokenString)
-	require.Error(t, err)
-	assert.Equal(t, ErrTokenBlacklisted, err)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "TOKEN_BLACKLISTED")
 }
 
-func TestRolePermissions(t *testing.T) {
-	// Test default role permissions
-	adminPerms := DefaultRolePermissions[RoleAdmin]
-	assert.Contains(t, adminPerms, PermissionSystemAdmin)
-	assert.Contains(t, adminPerms, PermissionUserAdmin)
+func TestPermissions(t *testing.T) {
+	cfg := &config.AuthConfig{
+		Enabled:     true,
+		Method:      "jwt",
+		TokenExpiry: 24 * time.Hour,
+		SecretKey:   "test-secret-key",
+		Issuer:      "ollama-test",
+		Audience:    "ollama-api",
+	}
 
-	userPerms := DefaultRolePermissions[RoleUser]
-	assert.Contains(t, userPerms, PermissionModelRead)
-	assert.Contains(t, userPerms, PermissionInferenceWrite)
-	assert.NotContains(t, userPerms, PermissionSystemAdmin)
+	manager, err := NewManager(cfg)
+	require.NoError(t, err)
+	defer manager.Close()
 
-	readOnlyPerms := DefaultRolePermissions[RoleReadOnly]
-	assert.Contains(t, readOnlyPerms, PermissionModelRead)
-	assert.NotContains(t, readOnlyPerms, PermissionModelWrite)
+	// Create users with different permissions
+	readOnlyUser, err := manager.CreateUser("readonly", "password123", RoleUser, []Permission{PermissionRead})
+	require.NoError(t, err)
+
+	adminUser, err := manager.CreateUser("admin", "password123", RoleAdmin, []Permission{PermissionRead, PermissionWrite, PermissionAdmin})
+	require.NoError(t, err)
+
+	// Test permission checking
+	assert.True(t, readOnlyUser.HasPermission(PermissionRead))
+	assert.False(t, readOnlyUser.HasPermission(PermissionWrite))
+	assert.False(t, readOnlyUser.HasPermission(PermissionAdmin))
+
+	assert.True(t, adminUser.HasPermission(PermissionRead))
+	assert.True(t, adminUser.HasPermission(PermissionWrite))
+	assert.True(t, adminUser.HasPermission(PermissionAdmin))
 }

@@ -1,0 +1,12 @@
+[0;36mℹ️  [1m🚀 Starting OllamaMax Optimized Cluster Deployment[0m[0m
+[2025-08-28 01:07:31] [INFO] \033[1m🚀 Starting OllamaMax Optimized Cluster Deployment\033[0m
+[0;36mℹ️  Target: 100-110s total startup time (55% faster than standard)[0m
+[2025-08-28 01:07:31] [INFO] Target: 100-110s total startup time (55% faster than standard)
+[0;36mℹ️  Compose file: docker-compose-topology-optimized.yml[0m
+[2025-08-28 01:07:31] [INFO] Compose file: docker-compose-topology-optimized.yml
+[0;31m❌ Required environment variable not set: JWT_SECRET[0m
+[2025-08-28 01:07:31] [ERROR] Required environment variable not set: JWT_SECRET
+[0;31m❌ Startup failed with exit code 1[0m
+[2025-08-28 01:07:31] [ERROR] Startup failed with exit code 1
+[0;36mℹ️  Cleaning up failed services...[0m
+[2025-08-28 01:07:31] [INFO] Cleaning up failed services...

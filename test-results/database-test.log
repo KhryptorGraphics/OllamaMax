@@ -1,0 +1,6 @@
+# github.com/khryptorgraphics/ollamamax/pkg/database [github.com/khryptorgraphics/ollamamax/pkg/database.test]
+pkg/database/models.go:234:9: invalid receiver type JSONValue (pointer or interface type)
+pkg/database/models.go:241:10: invalid receiver type JSONValue (pointer or interface type)
+pkg/database/database_test.go:4:2: "context" imported and not used
+FAIL	github.com/khryptorgraphics/ollamamax/pkg/database [build failed]
+FAIL

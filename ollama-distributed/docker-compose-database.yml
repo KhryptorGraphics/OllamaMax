@@ -1,0 +1,222 @@
+version: '3.8'
+
+# Database Services for OllamaMax
+# Configured with non-standard ports >11111
+
+services:
+  # PostgreSQL Cluster - Primary
+  postgres-primary:
+    image: postgres:15-alpine
+    container_name: ollamamax-postgres-primary
+    hostname: postgres-primary
+    environment:
+      - POSTGRES_USER=ollamamax
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-OllamaMax2025!}
+      - POSTGRES_DB=ollamamax
+      - POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256 --auth-local=trust
+      - POSTGRES_HOST_AUTH_METHOD=scram-sha-256
+    ports:
+      - "11432:5432"  # Non-standard port >11111
+    volumes:
+      - postgres_primary_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d:ro
+      - ./config/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+    networks:
+      - ollama_database
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ollamamax"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+    restart: unless-stopped
+
+  # PostgreSQL Replica (Read-only)
+  postgres-replica:
+    image: postgres:15-alpine
+    container_name: ollamamax-postgres-replica
+    hostname: postgres-replica
+    environment:
+      - POSTGRES_USER=ollamamax
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-OllamaMax2025!}
+      - POSTGRES_DB=ollamamax
+      - POSTGRES_REPLICATION_MODE=slave
+      - POSTGRES_REPLICATION_USER=replicator
+      - POSTGRES_REPLICATION_PASSWORD=${REPLICATION_PASSWORD:-ReplicateMax2025!}
+      - POSTGRES_MASTER_HOST=postgres-primary
+      - POSTGRES_MASTER_PORT_NUMBER=5432
+    ports:
+      - "11433:5432"  # Non-standard port >11111
+    volumes:
+      - postgres_replica_data:/var/lib/postgresql/data
+    networks:
+      - ollama_database
+    depends_on:
+      - postgres-primary
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ollamamax"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+    restart: unless-stopped
+
+  # Redis Cache Cluster
+  redis-master:
+    image: redis:7-alpine
+    container_name: ollamamax-redis-master
+    hostname: redis-master
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD:-RedisMax2025!}
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --appendonly yes
+      --appendfilename "redis.aof"
+      --dbfilename "redis.rdb"
+      --dir /data
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+    ports:
+      - "11379:6379"  # Non-standard port >11111
+    volumes:
+      - redis_master_data:/data
+    networks:
+      - ollama_database
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 128M
+          cpus: '0.25'
+    restart: unless-stopped
+
+  # Redis Sentinel for HA
+  redis-sentinel:
+    image: redis:7-alpine
+    container_name: ollamamax-redis-sentinel
+    hostname: redis-sentinel
+    command: >
+      redis-sentinel /etc/redis/sentinel.conf
+    ports:
+      - "11380:26379"  # Non-standard port >11111
+    volumes:
+      - ./config/sentinel.conf:/etc/redis/sentinel.conf:ro
+      - redis_sentinel_data:/data
+    networks:
+      - ollama_database
+    depends_on:
+      - redis-master
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.25'
+        reservations:
+          memory: 64M
+          cpus: '0.1'
+    restart: unless-stopped
+
+  # pgAdmin for Database Management
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: ollamamax-pgadmin
+    hostname: pgadmin
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_EMAIL:-admin@ollamamax.io}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD:-PgAdminMax2025!}
+      - PGADMIN_LISTEN_PORT=80
+    ports:
+      - "11480:80"  # Non-standard port >11111
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - ollama_database
+    depends_on:
+      - postgres-primary
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 128M
+          cpus: '0.25'
+    restart: unless-stopped
+
+  # Database Backup Service
+  postgres-backup:
+    image: postgres:15-alpine
+    container_name: ollamamax-postgres-backup
+    hostname: postgres-backup
+    environment:
+      - POSTGRES_HOST=postgres-primary
+      - POSTGRES_USER=ollamamax
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-OllamaMax2025!}
+      - POSTGRES_DB=ollamamax
+      - BACKUP_SCHEDULE="0 2 * * *"  # Daily at 2 AM
+    volumes:
+      - ./backups:/backups
+      - ./scripts/backup.sh:/backup.sh:ro
+    networks:
+      - ollama_database
+    depends_on:
+      - postgres-primary
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      "while true; do
+        PGPASSWORD=$$POSTGRES_PASSWORD pg_dump -h $$POSTGRES_HOST -U $$POSTGRES_USER -d $$POSTGRES_DB > /backups/backup_$$(date +%Y%m%d_%H%M%S).sql
+        find /backups -name 'backup_*.sql' -mtime +7 -delete
+        sleep 86400
+      done"
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.25'
+        reservations:
+          memory: 64M
+          cpus: '0.1'
+    restart: unless-stopped
+
+networks:
+  ollama_database:
+    name: ollama_database_network
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
+volumes:
+  postgres_primary_data:
+    name: ollamamax_postgres_primary_data
+  postgres_replica_data:
+    name: ollamamax_postgres_replica_data
+  redis_master_data:
+    name: ollamamax_redis_master_data
+  redis_sentinel_data:
+    name: ollamamax_redis_sentinel_data
+  pgadmin_data:
+    name: ollamamax_pgadmin_data

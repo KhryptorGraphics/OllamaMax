@@ -3,6 +3,11 @@ import { Container, Row, Col, Button } from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faBars, faTimes } from '@fortawesome/free-solid-svg-icons';
 
+// Import services
+import apiService from '../services/api.js';
+import authService from '../services/auth.js';
+import wsService from '../services/websocket.js';
+
 // Import all components
 import Sidebar from './Sidebar';
 import Dashboard from './Dashboard';
@@ -20,6 +25,8 @@ import WebSocketStatus from './WebSocketStatus';
 import LoadingSpinner from './LoadingSpinner';
 import Alert from './Alert';
 import ThemeToggle from './ThemeToggle';
+import Login from './Login';
+import RegistrationFlow from './RegistrationFlow';
 
 const EnhancedApp = () => {
   // Application state
@@ -29,6 +36,12 @@ const EnhancedApp = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [alerts, setAlerts] = useState([]);
+
+  // Authentication state
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [showLogin, setShowLogin] = useState(false);
+  const [showRegistration, setShowRegistration] = useState(false);
 
   // Data state
   const [clusterStatus, setClusterStatus] = useState(null);
@@ -45,70 +58,116 @@ const EnhancedApp = () => {
   // Initialize app
   useEffect(() => {
     initializeApp();
+    setupAuthListeners();
     setupWebSocket();
     loadTheme();
 
     return () => {
-      if (wsConnection) {
-        wsConnection.close();
-      }
+      wsService.disconnect();
+      authService.off('authenticated', handleAuthenticated);
+      authService.off('logged_out', handleLoggedOut);
     };
   }, []);
 
   const initializeApp = async () => {
     setLoading(true);
     try {
-      await Promise.all([
-        loadClusterStatus(),
-        loadNodes(),
-        loadModels(),
-        loadUsers(),
-        loadMetrics()
-      ]);
+      // Check authentication status
+      const authStatus = authService.isAuthenticated();
+      setIsAuthenticated(authStatus);
+
+      if (authStatus) {
+        setCurrentUser(authService.getCurrentUser());
+
+        // Load application data for authenticated users
+        await Promise.all([
+          loadClusterStatus(),
+          loadNodes(),
+          loadModels(),
+          loadUsers(),
+          loadMetrics()
+        ]);
+      } else {
+        // For unauthenticated users, only load public health data
+        await loadHealthStatus();
+      }
     } catch (err) {
       setError(`Failed to initialize application: ${err.message}`);
+      addAlert('error', 'Initialization Failed', err.message);
     } finally {
       setLoading(false);
     }
   };
 
+  // Authentication event handlers
+  const setupAuthListeners = () => {
+    authService.on('authenticated', handleAuthenticated);
+    authService.on('logged_out', handleLoggedOut);
+    authService.on('session_warning', handleSessionWarning);
+    authService.on('session_expired', handleSessionExpired);
+  };
+
+  const handleAuthenticated = (user) => {
+    setIsAuthenticated(true);
+    setCurrentUser(user);
+    setShowLogin(false);
+    setShowRegistration(false);
+    addAlert('success', 'Welcome!', `Successfully logged in as ${user.username}`);
+    initializeApp(); // Reload data for authenticated user
+  };
+
+  const handleLoggedOut = () => {
+    setIsAuthenticated(false);
+    setCurrentUser(null);
+    setActiveTab('dashboard');
+    addAlert('info', 'Logged Out', 'You have been successfully logged out');
+  };
+
+  const handleSessionWarning = (data) => {
+    addAlert('warning', 'Session Expiring', data.message);
+  };
+
+  const handleSessionExpired = () => {
+    addAlert('error', 'Session Expired', 'Your session has expired. Please log in again.');
+  };
+
   const setupWebSocket = () => {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws`;
-    
-    const ws = new WebSocket(wsUrl);
-    
-    ws.onopen = () => {
-      setIsConnected(true);
-      setReconnectAttempts(0);
-      showAlert('Connected to real-time updates', 'success', false, 3000);
-    };
-    
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        handleWebSocketMessage(data);
-      } catch (err) {
-        console.error('Failed to parse WebSocket message:', err);
-      }
-    };
-    
-    ws.onclose = () => {
-      setIsConnected(false);
-      if (reconnectAttempts < 5) {
-        setTimeout(() => {
-          setReconnectAttempts(prev => prev + 1);
-          setupWebSocket();
-        }, 5000);
-      }
-    };
-    
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-      setIsConnected(false);
-    };
-    
-    setWsConnection(ws);
+    if (isAuthenticated) {
+      wsService.connect(authService.getAuthToken());
+
+      wsService.on('connected', () => {
+        setIsConnected(true);
+        setReconnectAttempts(0);
+        addAlert('success', 'Connected', 'Real-time updates enabled');
+      });
+
+      wsService.on('disconnected', () => {
+        setIsConnected(false);
+      });
+
+      wsService.on('error', (error) => {
+        console.error('WebSocket error:', error);
+        addAlert('error', 'Connection Error', 'Real-time updates unavailable');
+      });
+
+      // Subscribe to real-time data streams
+      wsService.subscribe('metrics', handleMetricsUpdate);
+      wsService.subscribe('nodes', handleNodesUpdate);
+      wsService.subscribe('models', handleModelsUpdate);
+    }
+  };
+
+  // Real-time data update handlers
+  const handleMetricsUpdate = (data) => {
+    setRealTimeMetrics(data.metrics);
+  };
+
+  const handleNodesUpdate = (data) => {
+    setNodes(prev => updateNodeInList(prev, data.node));
+  };
+
+  const handleModelsUpdate = (data) => {
+    setModels(prev => updateModelInList(prev, data.model));
   };
 
   const handleWebSocketMessage = (data) => {
@@ -151,31 +210,40 @@ const EnhancedApp = () => {
   // Data loading functions
   const loadClusterStatus = async () => {
     try {
-      const response = await fetch('/api/cluster/status');
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
+      const data = await apiService.getClusterStatus();
       setClusterStatus(data);
     } catch (err) {
       console.error('Failed to load cluster status:', err);
-      // Fallback mock data
+      addAlert('error', 'Cluster Status Error', 'Failed to load cluster status');
+      // Fallback mock data for development
       setClusterStatus({
-        node_id: 'node-001-example',
-        leader: 'node-001-example',
+        node_id: 'localhost',
+        leader: 'localhost',
         is_leader: true,
         status: 'healthy',
-        peers: 3
+        peers: 0
       });
+    }
+  };
+
+  const loadHealthStatus = async () => {
+    try {
+      const health = await apiService.getHealth();
+      const readiness = await apiService.getReadiness();
+      setClusterStatus({ health, readiness });
+    } catch (err) {
+      console.error('Failed to load health status:', err);
+      addAlert('warning', 'Health Check Failed', 'Unable to verify system health');
     }
   };
 
   const loadNodes = async () => {
     try {
-      const response = await fetch('/api/nodes');
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
-      setNodes(data.nodes || []);
+      const data = await apiService.getNodes();
+      setNodes(data.nodes || data || []);
     } catch (err) {
       console.error('Failed to load nodes:', err);
+      addAlert('error', 'Nodes Error', 'Failed to load cluster nodes');
       // Fallback mock data
       setNodes([
         {
@@ -198,12 +266,11 @@ const EnhancedApp = () => {
 
   const loadModels = async () => {
     try {
-      const response = await fetch('/api/models');
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
-      setModels(data.models || []);
+      const data = await apiService.getModels();
+      setModels(data.models || data || []);
     } catch (err) {
       console.error('Failed to load models:', err);
+      addAlert('error', 'Models Error', 'Failed to load available models');
       // Fallback mock data
       setModels([
         {
@@ -226,12 +293,13 @@ const EnhancedApp = () => {
 
   const loadUsers = async () => {
     try {
-      const response = await fetch('/api/users');
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
-      setUsers(data.users || []);
+      if (authService.isAdmin()) {
+        const data = await apiService.getUsers();
+        setUsers(data.users || data || []);
+      }
     } catch (err) {
       console.error('Failed to load users:', err);
+      addAlert('error', 'Users Error', 'Failed to load user list');
       // Fallback mock data
       setUsers([
         {
@@ -256,12 +324,11 @@ const EnhancedApp = () => {
 
   const loadMetrics = async () => {
     try {
-      const response = await fetch('/api/metrics');
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
+      const data = await apiService.getMetrics();
       setMetrics(data);
     } catch (err) {
       console.error('Failed to load metrics:', err);
+      addAlert('error', 'Metrics Error', 'Failed to load system metrics');
       // Fallback mock data
       setMetrics({
         totalRequests: 15420,
@@ -288,15 +355,15 @@ const EnhancedApp = () => {
   };
 
   // Alert management
-  const showAlert = (message, type = 'info', dismissible = true, duration = null) => {
+  const addAlert = (type, title, message, duration = 5000) => {
     const alert = {
       id: Date.now(),
-      message,
       type,
-      dismissible,
+      title,
+      message,
       duration
     };
-    
+
     setAlerts(prev => [...prev, alert]);
 
     if (duration) {
@@ -306,8 +373,44 @@ const EnhancedApp = () => {
     }
   };
 
+  const showAlert = (message, type = 'info', dismissible = true, duration = null) => {
+    addAlert(type, type.charAt(0).toUpperCase() + type.slice(1), message, duration);
+  };
+
   const dismissAlert = (id) => {
     setAlerts(prev => prev.filter(alert => alert.id !== id));
+  };
+
+  // Utility functions for updating lists
+  const updateNodeInList = (nodes, updatedNode) => {
+    return nodes.map(node =>
+      node.id === updatedNode.id ? { ...node, ...updatedNode } : node
+    );
+  };
+
+  const updateModelInList = (models, updatedModel) => {
+    return models.map(model =>
+      model.id === updatedModel.id ? { ...model, ...updatedModel } : model
+    );
+  };
+
+  // Authentication handlers
+  const handleLogin = () => {
+    setShowLogin(true);
+    setShowRegistration(false);
+  };
+
+  const handleRegister = () => {
+    setShowRegistration(true);
+    setShowLogin(false);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await authService.logout();
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   };
 
   // Event handlers
@@ -522,6 +625,60 @@ const EnhancedApp = () => {
     return <LoadingSpinner size="xl" text="Loading Ollama Distributed Control Panel..." overlay />;
   }
 
+  // Show authentication screens for unauthenticated users
+  if (!isAuthenticated) {
+    return (
+      <div className="app-container">
+        {/* Theme Toggle */}
+        <div className="position-fixed" style={{ top: '20px', right: '20px', zIndex: 1050 }}>
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
+        </div>
+
+        {/* Alerts Container */}
+        <div className="position-fixed" style={{ top: '80px', right: '20px', zIndex: 1050, maxWidth: '400px' }}>
+          {alerts.map(alert => (
+            <Alert
+              key={alert.id}
+              type={alert.type}
+              title={alert.title}
+              message={alert.message}
+              dismissible={true}
+              onDismiss={() => dismissAlert(alert.id)}
+            />
+          ))}
+        </div>
+
+        <Container fluid className="d-flex align-items-center justify-content-center min-vh-100">
+          <Row className="w-100">
+            <Col md={6} lg={4} className="mx-auto">
+              {showRegistration ? (
+                <RegistrationFlow
+                  onRegistrationComplete={(user) => {
+                    addAlert('success', 'Registration Successful', 'Please log in with your new account');
+                    setShowRegistration(false);
+                    setShowLogin(true);
+                  }}
+                  onCancel={() => {
+                    setShowRegistration(false);
+                    setShowLogin(true);
+                  }}
+                />
+              ) : (
+                <Login
+                  onLogin={handleAuthenticated}
+                  onRegister={handleRegister}
+                  onForgotPassword={() => {
+                    addAlert('info', 'Password Reset', 'Password reset functionality will be implemented soon');
+                  }}
+                />
+              )}
+            </Col>
+          </Row>
+        </Container>
+      </div>
+    );
+  }
+
   return (
     <div className="app-container">
       {/* Theme Toggle */}
@@ -570,6 +727,8 @@ const EnhancedApp = () => {
             onTabChange={setActiveTab}
             onClose={() => setSidebarOpen(false)}
             isOpen={true}
+            currentUser={currentUser}
+            onLogout={handleLogout}
           />
         </div>
 
@@ -606,6 +765,8 @@ const EnhancedApp = () => {
                 }}
                 onClose={() => setSidebarOpen(false)}
                 isOpen={true}
+                currentUser={currentUser}
+                onLogout={handleLogout}
               />
             </div>
           </>

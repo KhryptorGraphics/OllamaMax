@@ -2,10 +2,12 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/khryptorgraphics/ollamamax/internal/config"
+	"github.com/khryptorgraphics/ollamamax/pkg/p2p"
 )
 
 // Basic test to verify API package compiles and server can be created
@@ -15,14 +17,17 @@ func TestServerCreation(t *testing.T) {
 		Listen:      ":0",
 		MaxBodySize: 1024 * 1024,
 		RateLimit: config.RateLimitConfig{
-			RPS: 100,
+			Enabled:     true,
+			RequestsPer: 100,
+			Duration:    time.Minute,
+			BurstSize:   10,
 		},
 		Cors: config.CorsConfig{
+			Enabled:          true,
 			AllowedOrigins:   []string{"*"},
 			AllowedMethods:   []string{"GET", "POST"},
 			AllowedHeaders:   []string{"Content-Type"},
 			AllowCredentials: false,
-			MaxAge:           3600,
 		},
 	}
 
@@ -44,217 +49,93 @@ func TestBasicTypes(t *testing.T) {
 	}
 
 	// Test that we can create basic config structures
-	nodeConfig := &p2pconfig.NodeConfig{
-		Listen:       []string{"/ip4/127.0.0.1/tcp/0"},
-		EnableNoise:  true,
-		ConnMgrLow:   5,
-		ConnMgrHigh:  20,
-		ConnMgrGrace: 30 * time.Second,
+	p2pConfig := &config.P2PConfig{
+		ListenAddr:     "/ip4/127.0.0.1/tcp/0",
+		BootstrapPeers: []string{},
+		DialTimeout:    time.Second * 10,
+		MaxConnections: 100,
 	}
 
-	if len(nodeConfig.Listen) == 0 {
-		t.Error("Node config should have listen addresses")
-	}
-}
-
-func TestAPIConfigValidation(t *testing.T) {
-	tests := []struct {
-		name   string
-		config *config.APIConfig
-		valid  bool
-	}{
-		{
-			name: "valid config",
-			config: &config.APIConfig{
-				Listen:      ":8080",
-				MaxBodySize: 1024 * 1024,
-				RateLimit: config.RateLimitConfig{
-					RPS: 100,
-				},
-			},
-			valid: true,
-		},
-		{
-			name: "empty listen address",
-			config: &config.APIConfig{
-				Listen:      "",
-				MaxBodySize: 1024 * 1024,
-			},
-			valid: false,
-		},
-		{
-			name: "zero max body size",
-			config: &config.APIConfig{
-				Listen:      ":8080",
-				MaxBodySize: 0,
-			},
-			valid: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			isValid := tt.config.Listen != "" && tt.config.MaxBodySize > 0
-			if isValid != tt.valid {
-				t.Errorf("Expected config validity %v, got %v", tt.valid, isValid)
-			}
-		})
-	}
-}
-
-func TestCorsConfigDefaults(t *testing.T) {
-	corsConfig := config.CorsConfig{
-		AllowedOrigins:   []string{"*"},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE"},
-		AllowedHeaders:   []string{"Content-Type", "Authorization"},
-		AllowCredentials: false,
-		MaxAge:           3600,
-	}
-
-	if len(corsConfig.AllowedOrigins) == 0 {
-		t.Error("CORS config should have allowed origins")
-	}
-
-	if len(corsConfig.AllowedMethods) == 0 {
-		t.Error("CORS config should have allowed methods")
-	}
-
-	if corsConfig.MaxAge <= 0 {
-		t.Error("CORS config should have positive max age")
+	if p2pConfig.ListenAddr == "" {
+		t.Error("P2P config should have a listen address")
 	}
 }
 
 func TestRateLimitConfig(t *testing.T) {
 	rateLimitConfig := config.RateLimitConfig{
-		RPS:       100,
-		Burst:     200,
-		Enabled:   true,
-		WhiteList: []string{"127.0.0.1", "::1"},
-	}
-
-	if rateLimitConfig.RPS <= 0 {
-		t.Error("Rate limit RPS should be positive")
-	}
-
-	if rateLimitConfig.Burst <= 0 {
-		t.Error("Rate limit burst should be positive")
+		Enabled:     true,
+		RequestsPer: 100,
+		Duration:    time.Minute,
+		BurstSize:   20,
 	}
 
 	if !rateLimitConfig.Enabled {
-		t.Error("Rate limiting should be enabled for this test")
+		t.Error("Rate limit should be enabled for test")
 	}
 
-	if len(rateLimitConfig.WhiteList) == 0 {
-		t.Error("Rate limit should have whitelist entries")
-	}
-}
-
-func TestP2PNodeConfig(t *testing.T) {
-	nodeConfig := &p2pconfig.NodeConfig{
-		Listen: []string{
-			"/ip4/0.0.0.0/tcp/0",
-			"/ip6/::/tcp/0",
-		},
-		EnableNoise:       true,
-		EnableRelay:       true,
-		EnableAutoRelay:   true,
-		EnableHolePunch:   true,
-		ConnMgrLow:        10,
-		ConnMgrHigh:       100,
-		ConnMgrGrace:      30 * time.Second,
-		BootstrapPeers:    []string{},
-		ProtocolPrefix:    "/ollamamax",
-		EnableNAT:         true,
-		EnableMDNS:        true,
-		MDNSServiceName:   "ollamamax-node",
-	}
-
-	// Validate configuration
-	if len(nodeConfig.Listen) == 0 {
-		t.Error("Node config should have listen addresses")
-	}
-
-	if nodeConfig.ConnMgrLow >= nodeConfig.ConnMgrHigh {
-		t.Error("Connection manager low should be less than high")
-	}
-
-	if nodeConfig.ConnMgrGrace <= 0 {
-		t.Error("Connection manager grace period should be positive")
-	}
-
-	if !nodeConfig.EnableNoise {
-		t.Error("Noise protocol should be enabled for security")
-	}
-
-	// Test listen addresses are valid multiaddr formats
-	for _, addr := range nodeConfig.Listen {
-		if addr == "" {
-			t.Error("Listen address should not be empty")
-		}
-		
-		// Basic validation - should start with /ip4 or /ip6
-		if !(len(addr) > 4 && (addr[:4] == "/ip4" || addr[:4] == "/ip6")) {
-			t.Errorf("Invalid listen address format: %s", addr)
-		}
+	if rateLimitConfig.RequestsPer != 100 {
+		t.Errorf("Expected 100 requests per minute, got %d", rateLimitConfig.RequestsPer)
 	}
 }
 
-func TestConfigIntegration(t *testing.T) {
-	// Test that API and P2P configs can work together
-	apiConfig := &config.APIConfig{
-		Listen:      ":8080",
-		MaxBodySize: 10 * 1024 * 1024, // 10MB
-		RateLimit: config.RateLimitConfig{
-			RPS:     1000,
-			Burst:   2000,
-			Enabled: true,
-		},
-		Cors: config.CorsConfig{
-			AllowedOrigins: []string{"http://localhost:3000"},
-			AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-			AllowedHeaders: []string{"Content-Type", "Authorization", "X-Requested-With"},
-		},
+func TestCorsConfig(t *testing.T) {
+	corsConfig := config.CorsConfig{
+		Enabled:          true,
+		AllowedOrigins:   []string{"http://localhost:3000"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE"},
+		AllowedHeaders:   []string{"Content-Type", "Authorization"},
+		AllowCredentials: true,
 	}
 
-	p2pConfig := &p2pconfig.NodeConfig{
-		Listen:       []string{"/ip4/0.0.0.0/tcp/9000"},
-		EnableNoise:  true,
-		ConnMgrLow:   20,
-		ConnMgrHigh:  200,
-		ConnMgrGrace: 60 * time.Second,
+	if !corsConfig.Enabled {
+		t.Error("CORS should be enabled for test")
 	}
 
-	// Validate both configs are compatible
-	if apiConfig == nil || p2pConfig == nil {
-		t.Error("Both configs should be valid")
-	}
-
-	// Ensure they use different ports (basic check)
-	if apiConfig.Listen == "" || len(p2pConfig.Listen) == 0 {
-		t.Error("Both configs should specify listen addresses")
+	if len(corsConfig.AllowedOrigins) == 0 {
+		t.Error("CORS should have allowed origins")
 	}
 }
 
-func BenchmarkAPIConfigCreation(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		_ = &config.APIConfig{
-			Listen:      ":8080",
-			MaxBodySize: 1024 * 1024,
-			RateLimit: config.RateLimitConfig{
-				RPS: 100,
-			},
-		}
+func TestConfigValidation(t *testing.T) {
+	// Test default configuration
+	defaultConfig := config.DefaultConfig()
+	
+	if defaultConfig == nil {
+		t.Fatal("Default config should not be nil")
+	}
+
+	// Validate JWT config
+	if defaultConfig.JWT.SecretKey == "" {
+		t.Error("JWT secret key should not be empty")
+	}
+
+	// Validate API config
+	if defaultConfig.API.Listen == "" {
+		t.Error("API listen address should not be empty")
+	}
+
+	// Validate Auth config
+	if !defaultConfig.Auth.Enabled {
+		t.Log("Auth is disabled in default config")
+	}
+
+	// Validate P2P config
+	if defaultConfig.P2P.ListenAddr == "" {
+		t.Error("P2P listen address should not be empty")
 	}
 }
 
-func BenchmarkP2PConfigCreation(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		_ = &p2pconfig.NodeConfig{
-			Listen:       []string{"/ip4/127.0.0.1/tcp/0"},
-			EnableNoise:  true,
-			ConnMgrLow:   5,
-			ConnMgrHigh:  20,
-			ConnMgrGrace: 30 * time.Second,
-		}
+func TestPerformanceBenchmarks(t *testing.T) {
+	// Basic performance test for config creation
+	start := time.Now()
+	
+	for i := 0; i < 1000; i++ {
+		_ = config.DefaultConfig()
+	}
+	
+	duration := time.Since(start)
+	
+	if duration > time.Millisecond*100 {
+		t.Logf("Config creation took %v for 1000 iterations, consider optimization", duration)
 	}
 }

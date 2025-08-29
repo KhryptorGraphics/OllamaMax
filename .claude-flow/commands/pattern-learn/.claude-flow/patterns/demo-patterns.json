@@ -1,0 +1,82 @@
+{
+  "name": "demo-patterns",
+  "timestamp": "2025-08-29T13:28:36.429Z",
+  "patterns": [
+    {
+      "id": "resource-efficient",
+      "name": "Efficient Resource Utilization",
+      "category": "resource-allocation",
+      "description": "Resource allocation strategy that maintains high success with low resource usage",
+      "conditions": {
+        "maxMemory": 60,
+        "maxCpu": 70,
+        "minSuccess": 0.8
+      },
+      "outcomes": {
+        "memoryUsage": 33.07599031046567,
+        "cpuUsage": 39.808562697054235,
+        "successRate": 0.9097635300825142,
+        "duration": 3038.013094926246
+      },
+      "sampleSize": 11,
+      "rawConfidence": 0.4230769230769231,
+      "confidence": 0.8395348837209302,
+      "successRate": 0.3023255813953488,
+      "applicability": "Resource-constrained environments",
+      "details": {
+        "sampleSize": 11,
+        "validationScore": 0.2538128718226068,
+        "implementationComplexity": "medium"
+      }
+    },
+    {
+      "id": "coord-high-efficiency",
+      "name": "High-Efficiency Coordination",
+      "category": "coordination",
+      "description": "Coordination strategy that maintains high efficiency with multiple agents",
+      "conditions": {
+        "agentCount": {
+          "min": 4,
+          "max": 12
+        },
+        "topology": "ring",
+        "complexity": {
+          "max": 0.7
+        }
+      },
+      "outcomes": {
+        "coordinationEfficiency": 0.9004340329214034,
+        "taskCompletionRate": 0.48947771908124593,
+        "duration": 2701.920134810452
+      },
+      "sampleSize": 7,
+      "rawConfidence": 0.2692307692307692,
+      "confidence": 0.40697674418604657,
+      "successRate": 0.36,
+      "applicability": "Multi-agent coordination scenarios",
+      "details": {
+        "sampleSize": 7,
+        "validationScore": 0.14651162790697675,
+        "implementationComplexity": "medium"
+      }
+    }
+  ],
+  "summary": {
+    "operationsAnalyzed": 86,
+    "successfulOperations": 38,
+    "patternsDiscovered": 2,
+    "highConfidencePatterns": 0,
+    "learningTime": 2
+  },
+  "quality": {
+    "averageConfidence": 0.6232558139534884,
+    "diversity": 0.4,
+    "validationScore": 0.20016224986479178,
+    "applicabilityRange": "Moderate"
+  },
+  "metadata": {
+    "version": "1.0.0",
+    "source": "all",
+    "threshold": 0.6
+  }
+}

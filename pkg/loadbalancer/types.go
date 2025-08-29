@@ -22,8 +22,8 @@ const (
 	LatencyBased     Algorithm = "latency_based"
 )
 
-// NodeMetrics represents node performance metrics
-type NodeMetrics struct {
+// BasicNodeMetrics represents basic node performance metrics
+type BasicNodeMetrics struct {
 	NodeID         string        `json:"node_id"`
 	Connections    int           `json:"connections"`
 	ResponseTime   time.Duration `json:"response_time"`

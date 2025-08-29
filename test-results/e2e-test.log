@@ -1,0 +1,31 @@
+
+> ollamamax-e2e@1.0.0 test
+> npm run test:chrome && npm run test:firefox
+
+
+> ollamamax-e2e@1.0.0 test:chrome
+> jest --config=jest.config.js --runInBand --detectOpenHandles
+
+
+> ollamamax-e2e@1.0.0 test:firefox
+> node ./run-playwright-firefox.js
+
+node:internal/process/promises:394
+    triggerUncaughtException(err, true /* fromPromise */);
+    ^
+
+browserType.launch: Executable doesn't exist at /home/kp/.cache/ms-playwright/firefox-1489/firefox/firefox
+╔═════════════════════════════════════════════════════════════════════════╗
+║ Looks like Playwright Test or Playwright was just installed or updated. ║
+║ Please run the following command to download new browsers:              ║
+║                                                                         ║
+║     npx playwright install                                              ║
+║                                                                         ║
+║ <3 Playwright Team                                                      ║
+╚═════════════════════════════════════════════════════════════════════════╝
+    at /home/kp/ollamamax/tests/e2e/run-playwright-firefox.js:6:33
+    at Object.<anonymous> (/home/kp/ollamamax/tests/e2e/run-playwright-firefox.js:32:3) {
+  name: 'Error'
+}
+
+Node.js v23.11.1

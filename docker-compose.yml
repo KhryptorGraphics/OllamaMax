@@ -1,0 +1,137 @@
+version: '3.8'
+
+services:
+  ollamamax:
+    build: .
+    ports:
+      - "11434:11434"  # API port (above 11111 as requested)
+      - "11435:11435"  # P2P communication port
+      - "11436:11436"  # Admin dashboard port
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+      - OLLAMA_PORT=11434
+      - DB_HOST=postgres
+      - DB_NAME=ollamamax
+      - DB_USER=ollama
+      - DB_PASSWORD=secure_password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET_KEY=your-secret-key-change-this-in-production
+      - AUTH_ENABLED=true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ollama_models:/app/models
+      - ollama_logs:/app/logs
+    networks:
+      - ollama_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:11434/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  postgres:
+    image: postgres:15-alpine
+    ports:
+      - "11432:5432"  # Postgres port (above 11111)
+    environment:
+      - POSTGRES_DB=ollamamax
+      - POSTGRES_USER=ollama
+      - POSTGRES_PASSWORD=secure_password
+      - POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - ollama_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ollama -d ollamamax"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "11379:6379"  # Redis port (above 11111)
+    command: redis-server --appendonly yes --requirepass secure_redis_password
+    volumes:
+      - redis_data:/data
+    networks:
+      - ollama_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "11433:80"   # HTTP port (above 11111)
+      - "11443:443"  # HTTPS port (above 11111)
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - nginx_logs:/var/log/nginx
+    depends_on:
+      - ollamamax
+    networks:
+      - ollama_network
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "11490:9090"  # Prometheus port (above 11111)
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - ollama_network
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "11300:3000"  # Grafana port (above 11111)
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin_password
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+    networks:
+      - ollama_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  ollama_models:
+  ollama_logs:
+  nginx_logs:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  ollama_network:
+    driver: bridge

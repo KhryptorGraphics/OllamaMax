@@ -1,0 +1,248 @@
+# PostgreSQL custom queries for monitoring
+pg_postmaster:
+  query: "SELECT pg_postmaster_start_time as start_time_seconds from pg_postmaster_start_time()"
+  master: true
+  metrics:
+    - start_time_seconds:
+        usage: "GAUGE"
+        description: "Time at which postmaster started"
+
+pg_stat_user_tables:
+  query: |
+    SELECT 
+      current_database() as datname,
+      schemaname,
+      relname,
+      seq_scan,
+      seq_tup_read,
+      idx_scan,
+      idx_tup_fetch,
+      n_tup_ins,
+      n_tup_upd,
+      n_tup_del,
+      n_live_tup,
+      n_dead_tup,
+      n_mod_since_analyze,
+      COALESCE(last_vacuum, '1970-01-01Z') as last_vacuum,
+      COALESCE(last_autovacuum, '1970-01-01Z') as last_autovacuum,
+      COALESCE(last_analyze, '1970-01-01Z') as last_analyze,
+      COALESCE(last_autoanalyze, '1970-01-01Z') as last_autoanalyze,
+      vacuum_count,
+      autovacuum_count,
+      analyze_count,
+      autoanalyze_count
+    FROM pg_stat_user_tables
+  metrics:
+    - datname:
+        usage: "LABEL"
+        description: "Database name"
+    - schemaname:
+        usage: "LABEL"
+        description: "Schema name"
+    - relname:
+        usage: "LABEL"
+        description: "Table name"
+    - seq_scan:
+        usage: "COUNTER"
+        description: "Number of sequential scans initiated on this table"
+    - seq_tup_read:
+        usage: "COUNTER"
+        description: "Number of live rows fetched by sequential scans"
+    - idx_scan:
+        usage: "COUNTER"
+        description: "Number of index scans initiated on this table"
+    - idx_tup_fetch:
+        usage: "COUNTER"
+        description: "Number of live rows fetched by index scans"
+    - n_tup_ins:
+        usage: "COUNTER"
+        description: "Number of rows inserted"
+    - n_tup_upd:
+        usage: "COUNTER"
+        description: "Number of rows updated"
+    - n_tup_del:
+        usage: "COUNTER"
+        description: "Number of rows deleted"
+    - n_live_tup:
+        usage: "GAUGE"
+        description: "Estimated number of live rows"
+    - n_dead_tup:
+        usage: "GAUGE"
+        description: "Estimated number of dead rows"
+    - n_mod_since_analyze:
+        usage: "GAUGE"
+        description: "Estimated number of rows changed since last analyze"
+    - last_vacuum:
+        usage: "GAUGE"
+        description: "Last time this table was manually vacuumed"
+    - last_autovacuum:
+        usage: "GAUGE"
+        description: "Last time this table was vacuumed by autovacuum"
+    - last_analyze:
+        usage: "GAUGE"
+        description: "Last time this table was manually analyzed"
+    - last_autoanalyze:
+        usage: "GAUGE"
+        description: "Last time this table was analyzed by autoanalyze"
+    - vacuum_count:
+        usage: "COUNTER"
+        description: "Number of times this table has been manually vacuumed"
+    - autovacuum_count:
+        usage: "COUNTER"
+        description: "Number of times this table has been vacuumed by autovacuum"
+    - analyze_count:
+        usage: "COUNTER"
+        description: "Number of times this table has been manually analyzed"
+    - autoanalyze_count:
+        usage: "COUNTER"
+        description: "Number of times this table has been analyzed by autoanalyze"
+
+pg_stat_database:
+  query: |
+    SELECT 
+      datname,
+      numbackends,
+      xact_commit,
+      xact_rollback,
+      blks_read,
+      blks_hit,
+      tup_returned,
+      tup_fetched,
+      tup_inserted,
+      tup_updated,
+      tup_deleted,
+      conflicts,
+      temp_files,
+      temp_bytes,
+      deadlocks,
+      COALESCE(blk_read_time, 0) as blk_read_time,
+      COALESCE(blk_write_time, 0) as blk_write_time
+    FROM pg_stat_database
+  metrics:
+    - datname:
+        usage: "LABEL"
+        description: "Database name"
+    - numbackends:
+        usage: "GAUGE"
+        description: "Number of backends currently connected to this database"
+    - xact_commit:
+        usage: "COUNTER"
+        description: "Number of transactions committed in this database"
+    - xact_rollback:
+        usage: "COUNTER"
+        description: "Number of transactions rolled back in this database"
+    - blks_read:
+        usage: "COUNTER"
+        description: "Number of disk blocks read in this database"
+    - blks_hit:
+        usage: "COUNTER"
+        description: "Number of buffer hits in this database"
+    - tup_returned:
+        usage: "COUNTER"
+        description: "Number of rows returned by queries in this database"
+    - tup_fetched:
+        usage: "COUNTER"
+        description: "Number of rows fetched by queries in this database"
+    - tup_inserted:
+        usage: "COUNTER"
+        description: "Number of rows inserted by queries in this database"
+    - tup_updated:
+        usage: "COUNTER"
+        description: "Number of rows updated by queries in this database"
+    - tup_deleted:
+        usage: "COUNTER"
+        description: "Number of rows deleted by queries in this database"
+    - conflicts:
+        usage: "COUNTER"
+        description: "Number of queries canceled due to conflicts in this database"
+    - temp_files:
+        usage: "COUNTER"
+        description: "Number of temporary files created by queries in this database"
+    - temp_bytes:
+        usage: "COUNTER"
+        description: "Total amount of data written to temporary files in this database"
+    - deadlocks:
+        usage: "COUNTER"
+        description: "Number of deadlocks detected in this database"
+    - blk_read_time:
+        usage: "COUNTER"
+        description: "Time spent reading data file blocks in this database"
+    - blk_write_time:
+        usage: "COUNTER"
+        description: "Time spent writing data file blocks in this database"
+
+pg_replication:
+  query: |
+    SELECT 
+      EXTRACT(EPOCH FROM (now() - pg_last_xact_replay_timestamp())) as lag
+  master: true
+  metrics:
+    - lag:
+        usage: "GAUGE"
+        description: "Replication lag behind master in seconds"
+
+pg_stat_bgwriter:
+  query: |
+    SELECT 
+      checkpoints_timed,
+      checkpoints_req,
+      checkpoint_write_time,
+      checkpoint_sync_time,
+      buffers_checkpoint,
+      buffers_clean,
+      maxwritten_clean,
+      buffers_backend,
+      buffers_backend_fsync,
+      buffers_alloc,
+      stats_reset
+    FROM pg_stat_bgwriter
+  master: true
+  metrics:
+    - checkpoints_timed:
+        usage: "COUNTER"
+        description: "Number of scheduled checkpoints that have been performed"
+    - checkpoints_req:
+        usage: "COUNTER"
+        description: "Number of requested checkpoints that have been performed"
+    - checkpoint_write_time:
+        usage: "COUNTER"
+        description: "Total amount of time spent in the portion of checkpoint processing where files are written to disk"
+    - checkpoint_sync_time:
+        usage: "COUNTER"
+        description: "Total amount of time spent in the portion of checkpoint processing where files are synchronized to disk"
+    - buffers_checkpoint:
+        usage: "COUNTER"
+        description: "Number of buffers written during checkpoints"
+    - buffers_clean:
+        usage: "COUNTER"
+        description: "Number of buffers written by the background writer"
+    - maxwritten_clean:
+        usage: "COUNTER"
+        description: "Number of times the background writer stopped a cleaning scan"
+    - buffers_backend:
+        usage: "COUNTER"
+        description: "Number of buffers written directly by a backend"
+    - buffers_backend_fsync:
+        usage: "COUNTER"
+        description: "Number of times a backend had to execute its own fsync call"
+    - buffers_alloc:
+        usage: "COUNTER"
+        description: "Number of buffers allocated"
+    - stats_reset:
+        usage: "COUNTER"
+        description: "Time at which these statistics were last reset"
+
+pg_database_size:
+  query: |
+    SELECT 
+      datname,
+      pg_database_size(datname) as size_bytes
+    FROM pg_database
+    WHERE datname NOT LIKE 'template%'
+  metrics:
+    - datname:
+        usage: "LABEL"
+        description: "Database name"
+    - size_bytes:
+        usage: "GAUGE"
+        description: "Database size in bytes"

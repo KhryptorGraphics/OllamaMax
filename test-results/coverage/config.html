@@ -1,0 +1,257 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>config: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/khryptorgraphics/ollamamax/internal/config/config.go (0.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package config
+
+import (
+        "os"
+        "strconv"
+        "time"
+)
+
+// Config holds the application configuration
+type Config struct {
+        JWT  JWTConfig  `json:"jwt"`
+        Auth AuthConfig `json:"auth"`
+        API  APIConfig  `json:"api"`
+        P2P  P2PConfig  `json:"p2p"`
+}
+
+// JWTConfig holds JWT-related configuration
+type JWTConfig struct {
+        SecretKey    string        `json:"secret_key"`
+        ExpiryTime   time.Duration `json:"expiry_time"`
+        RefreshTime  time.Duration `json:"refresh_time"`
+        Issuer       string        `json:"issuer"`
+        Audience     string        `json:"audience"`
+}
+
+// APIConfig holds API server configuration
+type APIConfig struct {
+        Listen      string          `json:"listen"`
+        ListenAddr  string          `json:"listen_addr"`
+        Port        int             `json:"port"`
+        TLSEnabled  bool            `json:"tls_enabled"`
+        CertFile    string          `json:"cert_file"`
+        KeyFile     string          `json:"key_file"`
+        MaxBodySize int64           `json:"max_body_size"`
+        RateLimit   RateLimitConfig `json:"rate_limit"`
+        Cors        CorsConfig      `json:"cors"`
+}
+
+// AuthConfig holds authentication configuration
+type AuthConfig struct {
+        Enabled      bool          `json:"enabled"`
+        Method       string        `json:"method"`
+        TokenExpiry  time.Duration `json:"token_expiry"`
+        SecretKey    string        `json:"secret_key"`
+        RefreshTime  time.Duration `json:"refresh_time"`
+}
+
+// RateLimitConfig holds rate limiting configuration
+type RateLimitConfig struct {
+        Enabled     bool          `json:"enabled"`
+        RequestsPer int           `json:"requests_per"`
+        Duration    time.Duration `json:"duration"`
+        BurstSize   int           `json:"burst_size"`
+        // Legacy fields for backward compatibility
+        RPS       int      `json:"rps"`
+        Burst     int      `json:"burst"`
+        WhiteList []string `json:"whitelist"`
+}
+
+// CorsConfig holds CORS configuration
+type CorsConfig struct {
+        Enabled          bool     `json:"enabled"`
+        AllowedOrigins   []string `json:"allowed_origins"`
+        AllowedMethods   []string `json:"allowed_methods"`
+        AllowedHeaders   []string `json:"allowed_headers"`
+        AllowCredentials bool     `json:"allow_credentials"`
+        MaxAge           int      `json:"max_age"`
+}
+
+// P2PConfig holds P2P networking configuration
+type P2PConfig struct {
+        ListenAddr     string        `json:"listen_addr"`
+        BootstrapPeers []string      `json:"bootstrap_peers"`
+        DialTimeout    time.Duration `json:"dial_timeout"`
+        MaxConnections int           `json:"max_connections"`
+}
+
+// DefaultConfig returns a default configuration
+func DefaultConfig() *Config <span class="cov0" title="0">{
+        return &amp;Config{
+                JWT: JWTConfig{
+                        SecretKey:   getEnvOrDefault("JWT_SECRET_KEY", "your-secret-key-change-this"),
+                        ExpiryTime:  24 * time.Hour,
+                        RefreshTime: 7 * 24 * time.Hour,
+                        Issuer:      "ollamamax",
+                        Audience:    "ollamamax-users",
+                },
+                Auth: AuthConfig{
+                        Enabled:     getEnvBoolOrDefault("AUTH_ENABLED", true),
+                        Method:      getEnvOrDefault("AUTH_METHOD", "jwt"),
+                        TokenExpiry: 24 * time.Hour,
+                        SecretKey:   getEnvOrDefault("AUTH_SECRET_KEY", "your-secret-key-change-this"),
+                        RefreshTime: 7 * 24 * time.Hour,
+                },
+                API: APIConfig{
+                        Listen:      getEnvOrDefault("API_LISTEN", "0.0.0.0:11434"),
+                        ListenAddr:  getEnvOrDefault("API_LISTEN_ADDR", "0.0.0.0"),
+                        Port:        getEnvIntOrDefault("API_PORT", 11434),
+                        TLSEnabled:  getEnvBoolOrDefault("API_TLS_ENABLED", false),
+                        CertFile:    getEnvOrDefault("API_CERT_FILE", ""),
+                        KeyFile:     getEnvOrDefault("API_KEY_FILE", ""),
+                        MaxBodySize: int64(getEnvIntOrDefault("API_MAX_BODY_SIZE", 32*1024*1024)), // 32MB
+                        RateLimit: RateLimitConfig{
+                                Enabled:     getEnvBoolOrDefault("RATE_LIMIT_ENABLED", true),
+                                RequestsPer: getEnvIntOrDefault("RATE_LIMIT_REQUESTS", 100),
+                                Duration:    time.Minute,
+                                BurstSize:   getEnvIntOrDefault("RATE_LIMIT_BURST", 10),
+                        },
+                        Cors: CorsConfig{
+                                Enabled:          getEnvBoolOrDefault("CORS_ENABLED", true),
+                                AllowedOrigins:   []string{"*"},
+                                AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+                                AllowedHeaders:   []string{"*"},
+                                AllowCredentials: false,
+                        },
+                },
+                P2P: P2PConfig{
+                        ListenAddr:     getEnvOrDefault("P2P_LISTEN_ADDR", "/ip4/0.0.0.0/tcp/0"),
+                        BootstrapPeers: []string{},
+                        DialTimeout:    30 * time.Second,
+                        MaxConnections: getEnvIntOrDefault("P2P_MAX_CONNECTIONS", 100),
+                },
+        }
+}</span>
+
+// Helper functions to get environment variables with defaults
+func getEnvOrDefault(key, defaultValue string) string <span class="cov0" title="0">{
+        if value := os.Getenv(key); value != "" </span><span class="cov0" title="0">{
+                return value
+        }</span>
+        <span class="cov0" title="0">return defaultValue</span>
+}
+
+func getEnvIntOrDefault(key string, defaultValue int) int <span class="cov0" title="0">{
+        if value := os.Getenv(key); value != "" </span><span class="cov0" title="0">{
+                if intValue, err := strconv.Atoi(value); err == nil </span><span class="cov0" title="0">{
+                        return intValue
+                }</span>
+        }
+        <span class="cov0" title="0">return defaultValue</span>
+}
+
+func getEnvBoolOrDefault(key string, defaultValue bool) bool <span class="cov0" title="0">{
+        if value := os.Getenv(key); value != "" </span><span class="cov0" title="0">{
+                if boolValue, err := strconv.ParseBool(value); err == nil </span><span class="cov0" title="0">{
+                        return boolValue
+                }</span>
+        }
+        <span class="cov0" title="0">return defaultValue</span>
+}
+
+// LoadConfig loads configuration from environment variables
+func LoadConfig() *Config <span class="cov0" title="0">{
+        return DefaultConfig()
+}</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

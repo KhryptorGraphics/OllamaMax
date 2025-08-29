@@ -1,0 +1,323 @@
+version: '3.8'
+
+# OllamaMax Distributed Training Environment
+# Complete Docker Compose setup for training modules
+
+services:
+  # Primary node - Leader
+  ollama-node-1:
+    image: ollamamax/distributed:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - BUILD_ENV=production
+        - ENABLE_GPU=${ENABLE_GPU:-false}
+    container_name: ollama-node-1
+    hostname: ollama-node-1
+    ports:
+      - "8080:8080"  # API
+      - "8081:8081"  # Web UI
+      - "4001:4001"  # P2P
+      - "9090:9090"  # Metrics
+    environment:
+      - NODE_ID=node-1
+      - NODE_ROLE=leader
+      - CLUSTER_SIZE=3
+      - LOG_LEVEL=info
+      - ENABLE_MONITORING=true
+      - ENABLE_TRACING=true
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET environment variable required}
+    volumes:
+      - ./data/node-1:/data
+      - ./configs/production.yaml:/etc/ollamamax/config.yaml:ro
+      - ./certs:/etc/ollamamax/certs:ro
+      - ./models:/models:ro
+    networks:
+      - ollama-net
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+    restart: unless-stopped
+
+  # Secondary node - Follower
+  ollama-node-2:
+    image: ollamamax/distributed:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ollama-node-2
+    hostname: ollama-node-2
+    ports:
+      - "8082:8080"
+      - "8083:8081"
+      - "4002:4001"
+      - "9091:9090"
+    environment:
+      - NODE_ID=node-2
+      - NODE_ROLE=follower
+      - CLUSTER_SIZE=3
+      - BOOTSTRAP_NODE=ollama-node-1:4001
+      - LOG_LEVEL=info
+      - ENABLE_MONITORING=true
+    volumes:
+      - ./data/node-2:/data
+      - ./configs/production.yaml:/etc/ollamamax/config.yaml:ro
+      - ./certs:/etc/ollamamax/certs:ro
+      - ./models:/models:ro
+    networks:
+      - ollama-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G
+        reservations:
+          cpus: '2'
+          memory: 4G
+    depends_on:
+      - ollama-node-1
+    restart: unless-stopped
+
+  # Tertiary node - Follower
+  ollama-node-3:
+    image: ollamamax/distributed:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ollama-node-3
+    hostname: ollama-node-3
+    ports:
+      - "8084:8080"
+      - "8085:8081"
+      - "4003:4001"
+      - "9092:9090"
+    environment:
+      - NODE_ID=node-3
+      - NODE_ROLE=follower
+      - CLUSTER_SIZE=3
+      - BOOTSTRAP_NODE=ollama-node-1:4001
+      - LOG_LEVEL=info
+      - ENABLE_MONITORING=true
+    volumes:
+      - ./data/node-3:/data
+      - ./configs/production.yaml:/etc/ollamamax/config.yaml:ro
+      - ./certs:/etc/ollamamax/certs:ro
+      - ./models:/models:ro
+    networks:
+      - ollama-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G
+        reservations:
+          cpus: '2'
+          memory: 4G
+    depends_on:
+      - ollama-node-1
+    restart: unless-stopped
+
+  # Load Balancer (NGINX)
+  load-balancer:
+    image: nginx:alpine
+    container_name: ollama-lb
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./certs:/etc/nginx/certs:ro
+    networks:
+      - ollama-net
+    depends_on:
+      - ollama-node-1
+      - ollama-node-2
+      - ollama-node-3
+    restart: unless-stopped
+
+  # Prometheus Monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ollama-prometheus
+    ports:
+      - "9093:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    networks:
+      - ollama-net
+    restart: unless-stopped
+
+  # Grafana Dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ollama-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    volumes:
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - grafana-data:/var/lib/grafana
+    networks:
+      - ollama-net
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  # Jaeger Tracing
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: ollama-jaeger
+    ports:
+      - "5775:5775/udp"
+      - "6831:6831/udp"
+      - "6832:6832/udp"
+      - "5778:5778"
+      - "16686:16686"
+      - "14268:14268"
+      - "14250:14250"
+      - "9411:9411"
+    environment:
+      - COLLECTOR_ZIPKIN_HOST_PORT=:9411
+    networks:
+      - ollama-net
+    restart: unless-stopped
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: ollama-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=ollamamax
+      - POSTGRES_USER=ollama
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-development}
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --locale=C
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - ollama-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ollama"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: ollama-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-development}
+    volumes:
+      - redis-data:/data
+    networks:
+      - ollama-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # MinIO Object Storage (for model storage)
+  minio:
+    image: minio/minio:latest
+    container_name: ollama-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:?MINIO_ROOT_USER environment variable required}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD environment variable required}
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio-data:/data
+    networks:
+      - ollama-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    restart: unless-stopped
+
+  # Development Tools Container
+  dev-tools:
+    image: ollamamax/dev-tools:latest
+    build:
+      context: ./docker
+      dockerfile: Dockerfile.dev
+    container_name: ollama-dev-tools
+    volumes:
+      - ./:/workspace
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WORKSPACE=/workspace
+    networks:
+      - ollama-net
+    tty: true
+    stdin_open: true
+    command: /bin/bash
+
+networks:
+  ollama-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+  minio-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local

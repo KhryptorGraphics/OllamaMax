@@ -7,17 +7,17 @@ services:
     container_name: ollamamax-node1
     hostname: ollamamax-node1
     ports:
-      - "8080:8080"  # API server
-      - "9000:9000"  # P2P networking
-      - "7000:7000"  # Raft consensus
-      - "9090:9090"  # Metrics
+      - "11434:11434"  # API server
+      - "12000:12000"  # P2P networking
+      - "13000:13000"  # Raft consensus
+      - "14090:14090"  # Metrics
     environment:
       - NODE_ID=node-1
       - BOOTSTRAP=true
-      - API_LISTEN=0.0.0.0:8080
-      - P2P_LISTEN=/ip4/0.0.0.0/tcp/9000
-      - RAFT_BIND_ADDR=0.0.0.0:7000
-      - RAFT_ADVERTISE_ADDR=ollamamax-node1:7000
+      - API_LISTEN=0.0.0.0:11434
+      - P2P_LISTEN=/ip4/0.0.0.0/tcp/12000
+      - RAFT_BIND_ADDR=0.0.0.0:13000
+      - RAFT_ADVERTISE_ADDR=ollamamax-node1:13000
       - LOG_LEVEL=info
     volumes:
       - ollamamax-data-1:/app/data
@@ -27,7 +27,7 @@ services:
     networks:
       - ollamamax-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/api/v1/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/v1/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -39,18 +39,18 @@ services:
     container_name: ollamamax-node2
     hostname: ollamamax-node2
     ports:
-      - "8081:8080"  # API server
-      - "9001:9000"  # P2P networking
-      - "7001:7000"  # Raft consensus
-      - "9091:9090"  # Metrics
+      - "11435:11434"  # API server
+      - "12001:12000"  # P2P networking
+      - "13001:13000"  # Raft consensus
+      - "14091:14090"  # Metrics
     environment:
       - NODE_ID=node-2
       - BOOTSTRAP=false
-      - API_LISTEN=0.0.0.0:8080
-      - P2P_LISTEN=/ip4/0.0.0.0/tcp/9000
-      - P2P_BOOTSTRAP_PEERS=/ip4/ollamamax-node1/tcp/9000
-      - RAFT_BIND_ADDR=0.0.0.0:7000
-      - RAFT_ADVERTISE_ADDR=ollamamax-node2:7000
+      - API_LISTEN=0.0.0.0:11434
+      - P2P_LISTEN=/ip4/0.0.0.0/tcp/12000
+      - P2P_BOOTSTRAP_PEERS=/ip4/ollamamax-node1/tcp/12000
+      - RAFT_BIND_ADDR=0.0.0.0:13000
+      - RAFT_ADVERTISE_ADDR=ollamamax-node2:13000
       - LOG_LEVEL=info
     volumes:
       - ollamamax-data-2:/app/data
@@ -63,7 +63,7 @@ services:
       ollamamax-node1:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/api/v1/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/v1/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -75,18 +75,18 @@ services:
     container_name: ollamamax-node3
     hostname: ollamamax-node3
     ports:
-      - "8082:8080"  # API server
-      - "9002:9000"  # P2P networking
-      - "7002:7000"  # Raft consensus
-      - "9092:9090"  # Metrics
+      - "11436:11434"  # API server
+      - "12002:12000"  # P2P networking
+      - "13002:13000"  # Raft consensus
+      - "14092:14090"  # Metrics
     environment:
       - NODE_ID=node-3
       - BOOTSTRAP=false
-      - API_LISTEN=0.0.0.0:8080
-      - P2P_LISTEN=/ip4/0.0.0.0/tcp/9000
-      - P2P_BOOTSTRAP_PEERS=/ip4/ollamamax-node1/tcp/9000
-      - RAFT_BIND_ADDR=0.0.0.0:7000
-      - RAFT_ADVERTISE_ADDR=ollamamax-node3:7000
+      - API_LISTEN=0.0.0.0:11434
+      - P2P_LISTEN=/ip4/0.0.0.0/tcp/12000
+      - P2P_BOOTSTRAP_PEERS=/ip4/ollamamax-node1/tcp/12000
+      - RAFT_BIND_ADDR=0.0.0.0:13000
+      - RAFT_ADVERTISE_ADDR=ollamamax-node3:13000
       - LOG_LEVEL=info
     volumes:
       - ollamamax-data-3:/app/data
@@ -99,10 +99,51 @@ services:
       ollamamax-node1:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/api/v1/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/v1/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 30s
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: ollamamax-postgres
+    ports:
+      - "15432:5432"  # PostgreSQL on non-standard port
+    environment:
+      - POSTGRES_DB=ollamamax
+      - POSTGRES_USER=ollamamax
+      - POSTGRES_PASSWORD=ollamamax_secure_password
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./ollama-distributed/migrations:/docker-entrypoint-initdb.d
+    networks:
+      - ollamamax-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ollamamax -d ollamamax"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: ollamamax-redis
+    ports:
+      - "16379:6379"  # Redis on non-standard port
+    command: redis-server --appendonly yes --requirepass ollamamax_redis_password
+    volumes:
+      - redis-data:/data
+    networks:
+      - ollamamax-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
       start_period: 30s
 
   # Load balancer (HAProxy)
@@ -128,7 +169,7 @@ services:
     image: prom/prometheus:latest
     container_name: ollamamax-prometheus
     ports:
-      - "9093:9090"
+      - "19090:9090"
     volumes:
       - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
@@ -151,7 +192,7 @@ services:
     image: grafana/grafana:latest
     container_name: ollamamax-grafana
     ports:
-      - "3000:3000"
+      - "18000:3000"
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin123
       - GF_USERS_ALLOW_SIGN_UP=false
@@ -189,6 +230,12 @@ volumes:
   ollamamax-logs-3:
     driver: local
   
+  # Database volumes
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+
   # Monitoring volumes
   prometheus-data:
     driver: local

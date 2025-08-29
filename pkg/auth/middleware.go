@@ -135,7 +135,7 @@ func (am *AuthMiddleware) RequireRole(role string) gin.HandlerFunc {
 			return
 		}
 
-		userClaims := claims.(*Claims)
+		_ = claims.(*Claims) // userClaims not needed for role check
 		user, exists := c.Get("user")
 		if !exists {
 			c.JSON(http.StatusInternalServerError, gin.H{

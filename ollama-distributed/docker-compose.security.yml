@@ -1,0 +1,638 @@
+# Docker Compose for Enterprise Security Hardened OllamaMax
+# Production-ready configuration with comprehensive security
+version: '3.8'
+
+x-security-defaults: &security-defaults
+  security_opt:
+    - no-new-privileges:true
+    - seccomp:unconfined
+  read_only: true
+  tmpfs:
+    - /tmp:noexec,nosuid,nodev,size=100m
+  ulimits:
+    nofile:
+      soft: 65536
+      hard: 65536
+    memlock:
+      soft: -1
+      hard: -1
+
+x-resource-limits: &resource-limits
+  deploy:
+    resources:
+      limits:
+        cpus: '2.0'
+        memory: 2G
+        pids: 1000
+      reservations:
+        cpus: '0.5'
+        memory: 512M
+
+services:
+  # Primary OllamaMax Node with Enterprise Security
+  ollamamax-secure-node1:
+    build:
+      context: .
+      dockerfile: Dockerfile.security
+      args:
+        - VERSION=1.0.0-enterprise
+        - BUILD_TIME=${BUILD_TIME}
+        - GIT_COMMIT=${GIT_COMMIT}
+    container_name: ollamamax-secure-node1
+    hostname: ollamamax-secure-node1
+    restart: unless-stopped
+    <<: *security-defaults
+    <<: *resource-limits
+    
+    ports:
+      - "8443:8443/tcp"    # HTTPS API
+      - "9443:9443/tcp"    # HTTPS P2P
+      - "9090:9090/tcp"    # Metrics (internal only)
+    
+    environment:
+      # Security configuration
+      - OLLAMA_SECURITY_MODE=enterprise
+      - OLLAMA_CONFIG_FILE=/etc/ollama/security.yaml
+      - OLLAMA_TLS_ENABLED=true
+      - OLLAMA_TLS_CERT_FILE=/etc/ssl/certs/server.crt
+      - OLLAMA_TLS_KEY_FILE=/etc/ssl/private/server.key
+      - OLLAMA_TLS_CA_FILE=/etc/ssl/certs/ca.crt
+      - OLLAMA_MUTUAL_TLS=true
+      
+      # Authentication & Authorization
+      - OLLAMA_AUTH_ENABLED=true
+      - OLLAMA_AUTH_METHODS=jwt,oauth2,mfa
+      - OLLAMA_JWT_SECRET_FILE=/etc/secrets/jwt-secret
+      - OLLAMA_MFA_ENABLED=true
+      - OLLAMA_RBAC_ENABLED=true
+      
+      # Encryption
+      - OLLAMA_ENCRYPTION_ENABLED=true
+      - OLLAMA_ENCRYPTION_KEY_FILE=/etc/secrets/encryption-key
+      
+      # Security features
+      - OLLAMA_WAF_ENABLED=true
+      - OLLAMA_DLP_ENABLED=true
+      - OLLAMA_RATE_LIMITING_ENABLED=true
+      - OLLAMA_AUDIT_ENABLED=true
+      
+      # Compliance
+      - OLLAMA_COMPLIANCE_MODE=SOC2
+      - OLLAMA_SECURITY_HARDENING=strict
+      
+      # Networking
+      - NODE_ID=secure-node-1
+      - API_LISTEN=0.0.0.0:8443
+      - P2P_LISTEN=/ip4/0.0.0.0/tcp/9443
+      - RAFT_BIND_ADDR=0.0.0.0:7443
+      
+      # Logging
+      - OLLAMA_LOG_LEVEL=info
+      - OLLAMA_LOG_FORMAT=json
+      - OLLAMA_AUDIT_LOG=/var/log/ollama/audit.log
+      - GIN_MODE=release
+    
+    volumes:
+      # Configuration
+      - ./config/security.yaml:/etc/ollama/security.yaml:ro
+      - security-config:/etc/ollama:ro
+      
+      # TLS certificates
+      - tls-certs:/etc/ssl/certs:ro
+      - tls-keys:/etc/ssl/private:ro
+      
+      # Secrets
+      - security-secrets:/etc/secrets:ro
+      
+      # Data (read-write volumes)
+      - ollama-data-secure-1:/app/data
+      - ollama-models-secure-1:/app/models
+      - ollama-logs-secure-1:/var/log/ollama
+      - ollama-quarantine-1:/var/lib/ollama/quarantine
+    
+    networks:
+      - ollama-secure-network
+      - monitoring-network
+    
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/ollama-distributed", "healthcheck", "--secure"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        labels: "service=ollama,node=secure-node-1,security=enterprise"
+    
+    depends_on:
+      vault:
+        condition: service_healthy
+      cert-manager:
+        condition: service_completed_successfully
+
+  # Secondary Secure Node
+  ollamamax-secure-node2:
+    build:
+      context: .
+      dockerfile: Dockerfile.security
+    container_name: ollamamax-secure-node2
+    hostname: ollamamax-secure-node2
+    restart: unless-stopped
+    <<: *security-defaults
+    <<: *resource-limits
+    
+    ports:
+      - "8444:8443/tcp"
+      - "9444:9443/tcp"
+      - "9091:9090/tcp"
+    
+    environment:
+      - OLLAMA_SECURITY_MODE=enterprise
+      - OLLAMA_CONFIG_FILE=/etc/ollama/security.yaml
+      - OLLAMA_TLS_ENABLED=true
+      - OLLAMA_TLS_CERT_FILE=/etc/ssl/certs/server.crt
+      - OLLAMA_TLS_KEY_FILE=/etc/ssl/private/server.key
+      - OLLAMA_TLS_CA_FILE=/etc/ssl/certs/ca.crt
+      - OLLAMA_MUTUAL_TLS=true
+      - OLLAMA_AUTH_ENABLED=true
+      - OLLAMA_AUTH_METHODS=jwt,oauth2,mfa
+      - OLLAMA_JWT_SECRET_FILE=/etc/secrets/jwt-secret
+      - OLLAMA_MFA_ENABLED=true
+      - OLLAMA_RBAC_ENABLED=true
+      - OLLAMA_ENCRYPTION_ENABLED=true
+      - OLLAMA_ENCRYPTION_KEY_FILE=/etc/secrets/encryption-key
+      - OLLAMA_WAF_ENABLED=true
+      - OLLAMA_DLP_ENABLED=true
+      - OLLAMA_RATE_LIMITING_ENABLED=true
+      - OLLAMA_AUDIT_ENABLED=true
+      - OLLAMA_COMPLIANCE_MODE=SOC2
+      - OLLAMA_SECURITY_HARDENING=strict
+      - NODE_ID=secure-node-2
+      - API_LISTEN=0.0.0.0:8443
+      - P2P_LISTEN=/ip4/0.0.0.0/tcp/9443
+      - P2P_BOOTSTRAP_PEERS=/ip4/ollamamax-secure-node1/tcp/9443
+      - RAFT_BIND_ADDR=0.0.0.0:7443
+      - OLLAMA_LOG_LEVEL=info
+      - OLLAMA_LOG_FORMAT=json
+      - OLLAMA_AUDIT_LOG=/var/log/ollama/audit.log
+      - GIN_MODE=release
+    
+    volumes:
+      - ./config/security.yaml:/etc/ollama/security.yaml:ro
+      - security-config:/etc/ollama:ro
+      - tls-certs:/etc/ssl/certs:ro
+      - tls-keys:/etc/ssl/private:ro
+      - security-secrets:/etc/secrets:ro
+      - ollama-data-secure-2:/app/data
+      - ollama-models-secure-2:/app/models
+      - ollama-logs-secure-2:/var/log/ollama
+      - ollama-quarantine-2:/var/lib/ollama/quarantine
+    
+    networks:
+      - ollama-secure-network
+      - monitoring-network
+    
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/ollama-distributed", "healthcheck", "--secure"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        labels: "service=ollama,node=secure-node-2,security=enterprise"
+    
+    depends_on:
+      ollamamax-secure-node1:
+        condition: service_healthy
+      vault:
+        condition: service_healthy
+
+  # Certificate Manager (generates and rotates certificates)
+  cert-manager:
+    image: alpine:3.18
+    container_name: ollama-cert-manager
+    restart: "no"
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,nodev,size=50m
+    
+    volumes:
+      - tls-certs:/certs
+      - tls-keys:/keys
+      - ./scripts/generate-certificates.sh:/scripts/generate-certificates.sh:ro
+    
+    command: ["/scripts/generate-certificates.sh"]
+    
+    environment:
+      - CERT_VALIDITY_DAYS=90
+      - KEY_SIZE=4096
+      - COUNTRY=US
+      - STATE=Security
+      - CITY=Secure
+      - ORG=OllamaMax
+      - OU=Security
+
+  # HashiCorp Vault (Secret Management)
+  vault:
+    image: hashicorp/vault:1.15
+    container_name: ollama-vault
+    hostname: vault
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - IPC_LOCK
+    
+    ports:
+      - "8200:8200/tcp"
+    
+    environment:
+      - VAULT_DEV_ROOT_TOKEN_ID=${VAULT_ROOT_TOKEN:-vault-root-token}
+      - VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8200
+      - VAULT_API_ADDR=https://vault:8200
+      - VAULT_CLUSTER_ADDR=https://vault:8201
+    
+    volumes:
+      - vault-data:/vault/data
+      - vault-logs:/vault/logs
+      - vault-config:/vault/config
+    
+    command:
+      - vault
+      - server
+      - -dev
+      - -dev-tls
+    
+    networks:
+      - ollama-secure-network
+      - monitoring-network
+    
+    healthcheck:
+      test: ["CMD", "vault", "status"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "3"
+
+  # Redis (for distributed sessions and rate limiting)
+  redis:
+    image: redis:7-alpine
+    container_name: ollama-redis
+    hostname: redis
+    restart: unless-stopped
+    <<: *security-defaults
+    
+    ports:
+      - "6379:6379/tcp"
+    
+    command: [
+      "redis-server",
+      "--requirepass", "${REDIS_PASSWORD:-secure-redis-password}",
+      "--appendonly", "yes",
+      "--appendfsync", "everysec",
+      "--auto-aof-rewrite-percentage", "100",
+      "--auto-aof-rewrite-min-size", "64mb",
+      "--maxmemory", "256mb",
+      "--maxmemory-policy", "allkeys-lru",
+      "--timeout", "300",
+      "--tcp-keepalive", "60",
+      "--protected-mode", "yes",
+      "--bind", "0.0.0.0"
+    ]
+    
+    volumes:
+      - redis-data:/data
+      - redis-logs:/var/log/redis
+    
+    networks:
+      - ollama-secure-network
+    
+    healthcheck:
+      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "${REDIS_PASSWORD:-secure-redis-password}", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "3"
+
+  # Secure Load Balancer (HAProxy with TLS termination)
+  secure-loadbalancer:
+    image: haproxy:2.8-alpine
+    container_name: ollama-secure-lb
+    hostname: secure-lb
+    restart: unless-stopped
+    <<: *security-defaults
+    
+    ports:
+      - "443:443/tcp"      # HTTPS
+      - "80:80/tcp"        # HTTP (redirect to HTTPS)
+      - "8404:8404/tcp"    # HAProxy stats (secured)
+    
+    volumes:
+      - ./config/haproxy-secure.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+      - tls-certs:/etc/ssl/certs:ro
+      - tls-keys:/etc/ssl/private:ro
+      - haproxy-logs:/var/log/haproxy
+    
+    networks:
+      - ollama-secure-network
+      - monitoring-network
+    
+    depends_on:
+      - ollamamax-secure-node1
+      - ollamamax-secure-node2
+    
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8404/stats"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Security Monitoring & SIEM
+  security-monitor:
+    build:
+      context: ./monitoring
+      dockerfile: Dockerfile.security-monitor
+    container_name: ollama-security-monitor
+    hostname: security-monitor
+    restart: unless-stopped
+    <<: *security-defaults
+    
+    environment:
+      - MONITOR_INTERVAL=60s
+      - LOG_LEVEL=info
+      - SIEM_ENDPOINT=${SIEM_ENDPOINT:-}
+      - ALERT_WEBHOOK=${ALERT_WEBHOOK:-}
+    
+    volumes:
+      - ollama-logs-secure-1:/logs/node1:ro
+      - ollama-logs-secure-2:/logs/node2:ro
+      - security-monitor-data:/app/data
+      - security-alerts:/app/alerts
+    
+    networks:
+      - ollama-secure-network
+      - monitoring-network
+    
+    depends_on:
+      - ollamamax-secure-node1
+      - ollamamax-secure-node2
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Prometheus with Security Metrics
+  prometheus-secure:
+    image: prom/prometheus:latest
+    container_name: ollama-prometheus-secure
+    hostname: prometheus
+    restart: unless-stopped
+    <<: *security-defaults
+    
+    ports:
+      - "9093:9090/tcp"
+    
+    volumes:
+      - ./config/prometheus-secure.yml:/etc/prometheus/prometheus.yml:ro
+      - tls-certs:/etc/ssl/certs:ro
+      - tls-keys:/etc/ssl/private:ro
+      - prometheus-secure-data:/prometheus
+    
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=90d'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+      - '--web.external-url=https://prometheus.ollamamax.local'
+    
+    networks:
+      - monitoring-network
+      - ollama-secure-network
+    
+    depends_on:
+      - ollamamax-secure-node1
+      - ollamamax-secure-node2
+    
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Grafana with Security Dashboards
+  grafana-secure:
+    image: grafana/grafana:latest
+    container_name: ollama-grafana-secure
+    hostname: grafana
+    restart: unless-stopped
+    <<: *security-defaults
+    
+    ports:
+      - "3000:3000/tcp"
+    
+    environment:
+      # Security settings
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-secure-admin-password}
+      - GF_SECURITY_SECRET_KEY=${GRAFANA_SECRET_KEY:-secure-secret-key}
+      - GF_SECURITY_DISABLE_GRAVATAR=true
+      - GF_SECURITY_COOKIE_SECURE=true
+      - GF_SECURITY_COOKIE_SAMESITE=strict
+      - GF_SECURITY_CONTENT_TYPE_PROTECTION=true
+      - GF_SECURITY_X_CONTENT_TYPE_OPTIONS=nosniff
+      - GF_SECURITY_X_XSS_PROTECTION=true
+      
+      # Authentication
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_USERS_ALLOW_ORG_CREATE=false
+      - GF_USERS_AUTO_ASSIGN_ORG=true
+      - GF_USERS_AUTO_ASSIGN_ORG_ROLE=Viewer
+      
+      # TLS settings
+      - GF_SERVER_PROTOCOL=https
+      - GF_SERVER_CERT_FILE=/etc/ssl/certs/server.crt
+      - GF_SERVER_CERT_KEY=/etc/ssl/private/server.key
+      
+      # Logging
+      - GF_LOG_MODE=console,file
+      - GF_LOG_LEVEL=info
+      - GF_LOG_FILTERS=alerting.notifier.slack:debug
+    
+    volumes:
+      - grafana-secure-data:/var/lib/grafana
+      - tls-certs:/etc/ssl/certs:ro
+      - tls-keys:/etc/ssl/private:ro
+      - ./config/grafana/security-dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./config/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    
+    networks:
+      - monitoring-network
+    
+    depends_on:
+      - prometheus-secure
+    
+    healthcheck:
+      test: ["CMD", "wget", "--no-check-certificate", "--quiet", "--tries=1", "--spider", "https://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+# Networks
+networks:
+  ollama-secure-network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.30.0.0/16
+          gateway: 172.30.0.1
+    driver_opts:
+      com.docker.network.bridge.name: ollama-secure
+      com.docker.network.bridge.enable_icc: "true"
+      com.docker.network.bridge.enable_ip_masquerade: "true"
+      com.docker.network.driver.mtu: 1500
+  
+  monitoring-network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.31.0.0/16
+          gateway: 172.31.0.1
+    driver_opts:
+      com.docker.network.bridge.name: ollama-monitor
+      com.docker.network.bridge.enable_icc: "true"
+
+# Volumes
+volumes:
+  # Application data
+  ollama-data-secure-1:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/data/secure-node-1
+  ollama-data-secure-2:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/data/secure-node-2
+  
+  # Model storage
+  ollama-models-secure-1:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/models/secure-node-1
+  ollama-models-secure-2:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/models/secure-node-2
+  
+  # Logging
+  ollama-logs-secure-1:
+    driver: local
+  ollama-logs-secure-2:
+    driver: local
+  haproxy-logs:
+    driver: local
+  
+  # Security
+  tls-certs:
+    driver: local
+  tls-keys:
+    driver: local
+  security-secrets:
+    driver: local
+  security-config:
+    driver: local
+  ollama-quarantine-1:
+    driver: local
+  ollama-quarantine-2:
+    driver: local
+  
+  # Infrastructure
+  vault-data:
+    driver: local
+  vault-logs:
+    driver: local
+  vault-config:
+    driver: local
+  redis-data:
+    driver: local
+  redis-logs:
+    driver: local
+  
+  # Monitoring
+  prometheus-secure-data:
+    driver: local
+  grafana-secure-data:
+    driver: local
+  security-monitor-data:
+    driver: local
+  security-alerts:
+    driver: local
+
+# Secrets (for production, use external secret management)
+secrets:
+  jwt_secret:
+    file: ./secrets/jwt-secret
+  encryption_key:
+    file: ./secrets/encryption-key
+  api_keys:
+    file: ./secrets/api-keys
+  redis_password:
+    file: ./secrets/redis-password
+  vault_token:
+    file: ./secrets/vault-token
+
+# Configs
+configs:
+  security_yaml:
+    file: ./config/security.yaml
+  haproxy_cfg:
+    file: ./config/haproxy-secure.cfg
+  prometheus_yml:
+    file: ./config/prometheus-secure.yml

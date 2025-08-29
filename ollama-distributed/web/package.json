@@ -1,0 +1,148 @@
+{
+  "name": "ollama-distributed-web",
+  "version": "1.0.0",
+  "description": "Web interface for OllamaMax distributed AI platform",
+  "main": "index.html",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:ci": "jest --ci --coverage --watchAll=false",
+    "test:integration": "jest --testPathPattern=integration",
+    "test:unit": "jest --testPathPattern=unit",
+    "test:services": "jest --testPathPattern=services",
+    "test:components": "jest --testPathPattern=components",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "format": "prettier --write src/",
+    "build": "webpack --mode production",
+    "dev": "webpack serve --mode development",
+    "serve": "http-server . -p 8080",
+    "validate": "npm run lint && npm run test:ci"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-bootstrap": "^2.8.0",
+    "bootstrap": "^5.3.0",
+    "@fortawesome/fontawesome-free": "^6.4.0",
+    "@fortawesome/react-fontawesome": "^0.2.0",
+    "@fortawesome/free-solid-svg-icons": "^6.4.0",
+    "chart.js": "^4.4.0",
+    "react-chartjs-2": "^5.2.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.22.0",
+    "@babel/preset-env": "^7.22.0",
+    "@babel/preset-react": "^7.22.0",
+    "@testing-library/react": "^13.4.0",
+    "@testing-library/jest-dom": "^5.16.5",
+    "@testing-library/user-event": "^14.4.3",
+    "jest": "^29.6.0",
+    "jest-environment-jsdom": "^29.6.0",
+    "babel-jest": "^29.6.0",
+    "identity-obj-proxy": "^3.0.0",
+    "eslint": "^8.45.0",
+    "eslint-plugin-react": "^7.33.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "prettier": "^3.0.0",
+    "webpack": "^5.88.0",
+    "webpack-cli": "^5.1.0",
+    "webpack-dev-server": "^4.15.0",
+    "babel-loader": "^9.1.0",
+    "css-loader": "^6.8.0",
+    "style-loader": "^3.3.0",
+    "html-webpack-plugin": "^5.5.0",
+    "http-server": "^14.1.1"
+  },
+  "jest": {
+    "testEnvironment": "jsdom",
+    "setupFilesAfterEnv": ["<rootDir>/src/tests/setup.js"],
+    "moduleNameMapper": {
+      "\\.(css|less|scss|sass)$": "identity-obj-proxy"
+    },
+    "collectCoverageFrom": [
+      "src/**/*.{js,jsx}",
+      "!src/tests/**",
+      "!src/**/*.test.{js,jsx}",
+      "!src/index.js"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 70,
+        "functions": 70,
+        "lines": 70,
+        "statements": 70
+      }
+    },
+    "testMatch": [
+      "<rootDir>/src/tests/**/*.test.{js,jsx}",
+      "<rootDir>/src/**/*.test.{js,jsx}"
+    ],
+    "moduleFileExtensions": ["js", "jsx", "json"],
+    "transform": {
+      "^.+\\.(js|jsx)$": "babel-jest"
+    }
+  },
+  "babel": {
+    "presets": [
+      ["@babel/preset-env", { "targets": { "node": "current" } }],
+      ["@babel/preset-react", { "runtime": "automatic" }]
+    ]
+  },
+  "eslintConfig": {
+    "extends": [
+      "eslint:recommended",
+      "plugin:react/recommended",
+      "plugin:react-hooks/recommended"
+    ],
+    "parserOptions": {
+      "ecmaVersion": 2022,
+      "sourceType": "module",
+      "ecmaFeatures": {
+        "jsx": true
+      }
+    },
+    "env": {
+      "browser": true,
+      "es2022": true,
+      "jest": true
+    },
+    "settings": {
+      "react": {
+        "version": "detect"
+      }
+    },
+    "rules": {
+      "react/prop-types": "warn",
+      "react/react-in-jsx-scope": "off",
+      "no-unused-vars": "warn",
+      "no-console": "warn"
+    }
+  },
+  "prettier": {
+    "semi": true,
+    "trailingComma": "es5",
+    "singleQuote": true,
+    "printWidth": 80,
+    "tabWidth": 2
+  },
+  "keywords": [
+    "ollama",
+    "distributed",
+    "ai",
+    "machine-learning",
+    "react",
+    "web-interface"
+  ],
+  "author": "OllamaMax Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/KhryptorGraphics/ollamamax.git"
+  },
+  "bugs": {
+    "url": "https://github.com/KhryptorGraphics/ollamamax/issues"
+  },
+  "homepage": "https://github.com/KhryptorGraphics/ollamamax#readme"
+}

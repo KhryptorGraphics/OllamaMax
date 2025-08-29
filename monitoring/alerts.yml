@@ -1,0 +1,112 @@
+groups:
+- name: ollamamax-performance
+  rules:
+  
+  # Startup Time Alerts
+  - alert: SlowStartup
+    expr: startup_duration_seconds > 130
+    for: 0m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Cluster startup time exceeded target"
+      description: "Cluster took {{ $value }}s to start (target: ≤110s)"
+      
+  - alert: CriticalStartupFailure
+    expr: startup_duration_seconds > 200
+    for: 0m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Cluster startup critically slow"
+      description: "Cluster took {{ $value }}s to start (critical threshold: 200s)"
+      
+  # Resource Efficiency Alerts
+  - alert: LowResourceUtilization
+    expr: resource_efficiency_percent < 70
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Resource utilization below target"
+      description: "Resource efficiency is {{ $value }}% (target: ≥85%)"
+      
+  - alert: HighMemoryUsage
+    expr: (node_memory_used / node_memory_total) * 100 > 90
+    for: 2m
+    labels:
+      severity: critical
+    annotations:
+      summary: "High memory usage on node"
+      description: "Memory usage is {{ $value }}% on {{ $labels.instance }}"
+      
+  # Network Performance Alerts
+  - alert: HighNetworkLatency
+    expr: network_latency_ms > 20
+    for: 1m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Network latency above target"
+      description: "Network latency is {{ $value }}ms (target: ≤12ms)"
+      
+  # Training Module Performance
+  - alert: TrainingModuleFailure
+    expr: training_module_success_rate < 0.95
+    for: 0m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Training module success rate low"
+      description: "Success rate is {{ $value }} (target: ≥95%)"
+      
+  - alert: TrainingFlowSlow
+    expr: training_flow_duration_seconds > 1800
+    for: 0m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Training flow slower than expected"
+      description: "Training took {{ $value }}s (target: ≤1500s)"
+
+- name: ollamamax-system
+  rules:
+  
+  # Service Health Alerts
+  - alert: ServiceDown
+    expr: up == 0
+    for: 30s
+    labels:
+      severity: critical
+    annotations:
+      summary: "Service is down"
+      description: "{{ $labels.job }} service is down on {{ $labels.instance }}"
+      
+  - alert: HighCPUUsage
+    expr: (100 - (avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)) > 80
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High CPU usage"
+      description: "CPU usage is {{ $value }}% on {{ $labels.instance }}"
+      
+  # Database Performance
+  - alert: PostgresConnectionsHigh
+    expr: postgres_connections_active / postgres_connections_max > 0.8
+    for: 1m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High PostgreSQL connection usage"
+      description: "{{ $value }}% of max connections in use"
+      
+  # Load Balancer Health
+  - alert: LoadBalancerUnhealthyUpstreams
+    expr: nginx_upstream_servers{state!="up"} > 0
+    for: 30s
+    labels:
+      severity: critical
+    annotations:
+      summary: "Load balancer has unhealthy upstreams"
+      description: "{{ $value }} upstream servers are unhealthy"

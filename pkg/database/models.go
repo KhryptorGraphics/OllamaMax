@@ -1,7 +1,6 @@
 package database
 
 import (
-	"context"
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
@@ -230,7 +229,7 @@ func (j *JSONArray) Scan(value interface{}) error {
 }
 
 // JSONValue represents any JSON value stored as JSONB in PostgreSQL
-type JSONValue interface{}
+type JSONValue map[string]interface{}
 
 func (j JSONValue) Value() (driver.Value, error) {
 	if j == nil {

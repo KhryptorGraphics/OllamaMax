@@ -14,8 +14,8 @@ type NetworkManager interface {
 	BroadcastMessage(data []byte) error
 }
 
-// PeerInfo represents information about a peer
-type PeerInfo struct {
+// BasicPeerInfo represents basic information about a peer
+type BasicPeerInfo struct {
 	ID       string    `json:"id"`
 	Address  string    `json:"address"`
 	LastSeen time.Time `json:"last_seen"`

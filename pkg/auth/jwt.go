@@ -56,8 +56,8 @@ func NewJWTService(config *config.AuthConfig) (*JWTService, error) {
 
 	// Override with config values if provided
 	if config != nil {
-		if config.JWTSecret != "" {
-			service.issuer = config.JWTSecret
+		if config.SecretKey != "" {
+			service.issuer = config.SecretKey
 		}
 		if config.TokenExpiry > 0 {
 			service.expiration = config.TokenExpiry
@@ -65,6 +65,21 @@ func NewJWTService(config *config.AuthConfig) (*JWTService, error) {
 	}
 
 	return service, nil
+}
+
+// GenerateTokens creates access and refresh tokens (API compatibility method)
+func (j *JWTService) GenerateTokens(userID, username string, roles []string) (accessToken, refreshToken string, err error) {
+	role := "user" // default role
+	if len(roles) > 0 {
+		role = roles[0] // use first role
+	}
+	
+	tokens, err := j.GenerateToken(userID, username, role, nil)
+	if err != nil {
+		return "", "", err
+	}
+	
+	return tokens.AccessToken, tokens.RefreshToken, nil
 }
 
 // GenerateToken creates a new JWT token for the given user
@@ -148,140 +163,36 @@ func (j *JWTService) ValidateToken(tokenString string) (*Claims, error) {
 		return nil, errors.New("invalid token claims")
 	}
 
-	// Additional validation
-	if claims.ExpiresAt != nil && claims.ExpiresAt.Time.Before(time.Now()) {
-		return nil, errors.New("token has expired")
+	return claims, nil
+}
+
+// ValidateRefreshToken validates a refresh token and returns user info
+func (j *JWTService) ValidateRefreshToken(tokenString string) (*Claims, error) {
+	claims, err := j.ValidateToken(tokenString)
+	if err != nil {
+		return nil, fmt.Errorf("invalid refresh token: %w", err)
+	}
+
+	// Additional validation for refresh tokens
+	if len(claims.Audience) == 0 || claims.Audience[0] != "ollamamax-refresh" {
+		return nil, errors.New("token is not a valid refresh token")
 	}
 
 	return claims, nil
 }
 
-// RefreshToken creates a new access token from a valid refresh token
-func (j *JWTService) RefreshToken(refreshTokenString string) (*TokenPair, error) {
-	// Validate refresh token
-	claims, err := j.ValidateToken(refreshTokenString)
+// RefreshTokens creates new tokens from a valid refresh token
+func (j *JWTService) RefreshTokens(refreshToken string) (string, string, error) {
+	claims, err := j.ValidateRefreshToken(refreshToken)
 	if err != nil {
-		return nil, fmt.Errorf("invalid refresh token: %w", err)
-	}
-
-	// Check if it's actually a refresh token
-	if len(claims.Audience) == 0 || claims.Audience[0] != "ollamamax-refresh" {
-		return nil, errors.New("not a refresh token")
+		return "", "", err
 	}
 
 	// Generate new token pair
-	return j.GenerateToken(claims.UserID, claims.Username, claims.Role, claims.Permissions)
+	return j.GenerateTokens(claims.UserID, claims.Username, []string{claims.Role})
 }
 
-// RevokeToken adds a token to the revocation list (blacklist)
-func (j *JWTService) RevokeToken(tokenString string) error {
-	claims, err := j.ValidateToken(tokenString)
-	if err != nil {
-		return fmt.Errorf("cannot revoke invalid token: %w", err)
-	}
-
-	// In a production system, you would store this in a database or cache
-	// For now, we'll just validate that the token is parseable
-	_ = claims
-	return nil
-}
-
-// GetPublicKey returns the public key for token verification
-func (j *JWTService) GetPublicKey() *rsa.PublicKey {
-	return j.publicKey
-}
-
-// SetPrivateKey sets a custom private key (for testing or custom key management)
-func (j *JWTService) SetPrivateKey(key *rsa.PrivateKey) {
-	j.privateKey = key
-	j.publicKey = &key.PublicKey
-}
-
-// HasPermission checks if the claims contain a specific permission
-func (c *Claims) HasPermission(permission string) bool {
-	for _, p := range c.Permissions {
-		if p == permission {
-			return true
-		}
-	}
-	return false
-}
-
-// IsAdmin checks if the user has admin role
-func (c *Claims) IsAdmin() bool {
-	return c.Role == "admin"
-}
-
-// IsOperator checks if the user has operator role or higher
-func (c *Claims) IsOperator() bool {
-	return c.Role == "admin" || c.Role == "operator"
-}
-
-// GetMetadata safely retrieves metadata value
-func (c *Claims) GetMetadata(key string) (string, bool) {
-	if c.Metadata == nil {
-		return "", false
-	}
-	value, exists := c.Metadata[key]
-	return value, exists
-}
-
-// SetMetadata safely sets metadata value
-func (c *Claims) SetMetadata(key, value string) {
-	if c.Metadata == nil {
-		c.Metadata = make(map[string]string)
-	}
-	c.Metadata[key] = value
-}
-
-// Predefined roles and permissions
-const (
-	RoleAdmin    = "admin"
-	RoleOperator = "operator"
-	RoleUser     = "user"
-	RoleReadonly = "readonly"
-)
-
-// Predefined permissions
-const (
-	PermissionModelManage    = "model:manage"
-	PermissionModelRead      = "model:read"
-	PermissionClusterManage  = "cluster:manage"
-	PermissionClusterRead    = "cluster:read"
-	PermissionNodeManage     = "node:manage"
-	PermissionNodeRead       = "node:read"
-	PermissionInferenceRun   = "inference:run"
-	PermissionMetricsRead    = "metrics:read"
-	PermissionSystemManage   = "system:manage"
-)
-
-// GetRolePermissions returns default permissions for a role
-func GetRolePermissions(role string) []string {
-	switch role {
-	case RoleAdmin:
-		return []string{
-			PermissionModelManage, PermissionModelRead,
-			PermissionClusterManage, PermissionClusterRead,
-			PermissionNodeManage, PermissionNodeRead,
-			PermissionInferenceRun, PermissionMetricsRead,
-			PermissionSystemManage,
-		}
-	case RoleOperator:
-		return []string{
-			PermissionModelRead, PermissionClusterRead,
-			PermissionNodeRead, PermissionInferenceRun,
-			PermissionMetricsRead,
-		}
-	case RoleUser:
-		return []string{
-			PermissionModelRead, PermissionInferenceRun,
-		}
-	case RoleReadonly:
-		return []string{
-			PermissionModelRead, PermissionClusterRead,
-			PermissionNodeRead, PermissionMetricsRead,
-		}
-	default:
-		return []string{}
-	}
+// GetUserFromToken extracts user information from a valid token
+func (j *JWTService) GetUserFromToken(tokenString string) (*Claims, error) {
+	return j.ValidateToken(tokenString)
 }

@@ -1,0 +1,501 @@
+name: Production Deployment with Zero-Downtime
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+        - staging
+        - production
+      deployment_strategy:
+        description: 'Deployment strategy'
+        required: true
+        default: 'blue-green'
+        type: choice
+        options:
+        - blue-green
+        - canary
+        - rolling
+      force_deploy:
+        description: 'Force deployment (skip validation gates)'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: khryptorgraphics/ollamamax
+  AWS_REGION: us-west-2
+  
+jobs:
+  # Pre-deployment validation
+  pre-deployment:
+    runs-on: ubuntu-latest
+    outputs:
+      should_deploy: ${{ steps.validation.outputs.should_deploy }}
+      image_tag: ${{ steps.version.outputs.image_tag }}
+      deployment_strategy: ${{ steps.strategy.outputs.strategy }}
+      target_environment: ${{ steps.environment.outputs.environment }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Determine version and image tag
+      id: version
+      run: |
+        if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+          IMAGE_TAG="${{ github.ref_name }}"
+        else
+          IMAGE_TAG="main-$(git rev-parse --short HEAD)"
+        fi
+        
+        echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+        echo "🏷️  Image tag: $IMAGE_TAG"
+
+    - name: Determine target environment
+      id: environment
+      run: |
+        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          ENVIRONMENT="${{ github.event.inputs.environment }}"
+        elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+          ENVIRONMENT="production"
+        else
+          ENVIRONMENT="staging"
+        fi
+        
+        echo "environment=$ENVIRONMENT" >> $GITHUB_OUTPUT
+        echo "🎯 Target environment: $ENVIRONMENT"
+
+    - name: Determine deployment strategy
+      id: strategy
+      run: |
+        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          STRATEGY="${{ github.event.inputs.deployment_strategy }}"
+        elif [[ "${{ steps.environment.outputs.environment }}" == "production" ]]; then
+          STRATEGY="blue-green"
+        else
+          STRATEGY="rolling"
+        fi
+        
+        echo "strategy=$STRATEGY" >> $GITHUB_OUTPUT
+        echo "🚀 Deployment strategy: $STRATEGY"
+
+    - name: Validate deployment prerequisites
+      id: validation
+      run: |
+        SHOULD_DEPLOY="true"
+        
+        # Check if this is a production deployment on non-main branch
+        if [[ "${{ steps.environment.outputs.environment }}" == "production" && "${{ github.ref }}" != "refs/heads/main" && "${{ github.ref }}" != refs/tags/v* ]]; then
+          if [[ "${{ github.event.inputs.force_deploy }}" != "true" ]]; then
+            echo "❌ Production deployments only allowed from main branch or version tags"
+            SHOULD_DEPLOY="false"
+          fi
+        fi
+        
+        # Check if image exists
+        echo "🔍 Validating image exists: $REGISTRY/$IMAGE_NAME:${{ steps.version.outputs.image_tag }}"
+        if docker manifest inspect $REGISTRY/$IMAGE_NAME:${{ steps.version.outputs.image_tag }} >/dev/null 2>&1; then
+          echo "✅ Docker image found"
+        else
+          echo "❌ Docker image not found"
+          SHOULD_DEPLOY="false"
+        fi
+        
+        echo "should_deploy=$SHOULD_DEPLOY" >> $GITHUB_OUTPUT
+
+  # Build and push image if needed
+  build-image:
+    needs: pre-deployment
+    if: needs.pre-deployment.outputs.should_deploy == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: |
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.pre-deployment.outputs.image_tag }}
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        build-args: |
+          VERSION=${{ needs.pre-deployment.outputs.image_tag }}
+          BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+          VCS_REF=${{ github.sha }}
+
+  # Security scanning
+  security-scan:
+    needs: [pre-deployment, build-image]
+    if: needs.pre-deployment.outputs.should_deploy == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    
+    steps:
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.pre-deployment.outputs.image_tag }}
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+    - name: Check for high/critical vulnerabilities
+      run: |
+        if trivy image --severity HIGH,CRITICAL --exit-code 1 ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.pre-deployment.outputs.image_tag }}; then
+          echo "✅ No high/critical vulnerabilities found"
+        else
+          if [[ "${{ github.event.inputs.force_deploy }}" == "true" ]]; then
+            echo "⚠️ Vulnerabilities found but force deploy enabled"
+          else
+            echo "❌ High/critical vulnerabilities found, blocking deployment"
+            exit 1
+          fi
+        fi
+
+  # Deploy to staging first (for production deployments)
+  deploy-staging:
+    needs: [pre-deployment, build-image, security-scan]
+    if: needs.pre-deployment.outputs.should_deploy == 'true' && needs.pre-deployment.outputs.target_environment == 'production'
+    runs-on: ubuntu-latest
+    environment: staging
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Update kubeconfig
+      run: |
+        aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ollama-staging
+
+    - name: Deploy to staging
+      run: |
+        chmod +x deploy/scripts/production-deploy.sh
+        ./deploy/scripts/production-deploy.sh \
+          --environment staging \
+          --strategy rolling \
+          --image-tag ${{ needs.pre-deployment.outputs.image_tag }} \
+          --timeout 900
+
+    - name: Run staging validation tests
+      run: |
+        chmod +x deploy/scripts/health-check.sh
+        ./deploy/scripts/health-check.sh --namespace ollama-system --output json
+        
+        # Wait for metrics to stabilize
+        sleep 120
+        
+        # Run comprehensive health check
+        ./deploy/scripts/health-check.sh --verbose
+
+    - name: Staging deployment summary
+      run: |
+        echo "## 🎯 Staging Deployment Complete" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- **Image**: \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.pre-deployment.outputs.image_tag }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **Strategy**: Rolling update" >> $GITHUB_STEP_SUMMARY
+        echo "- **Environment**: Staging" >> $GITHUB_STEP_SUMMARY
+        echo "- **Status**: ✅ Success" >> $GITHUB_STEP_SUMMARY
+
+  # Production deployment
+  deploy-production:
+    needs: [pre-deployment, build-image, security-scan, deploy-staging]
+    if: always() && needs.pre-deployment.outputs.should_deploy == 'true' && (needs.pre-deployment.outputs.target_environment == 'production' && needs.deploy-staging.result == 'success' || needs.pre-deployment.outputs.target_environment == 'staging')
+    runs-on: ubuntu-latest
+    environment: ${{ needs.pre-deployment.outputs.target_environment }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Update kubeconfig
+      run: |
+        CLUSTER_NAME="ollama-${{ needs.pre-deployment.outputs.target_environment }}"
+        aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name $CLUSTER_NAME
+
+    - name: Pre-deployment health check
+      run: |
+        chmod +x deploy/scripts/health-check.sh
+        echo "🏥 Running pre-deployment health check..."
+        ./deploy/scripts/health-check.sh --output json | tee pre-deployment-health.json
+        
+        # Ensure system is healthy before deployment
+        HEALTH_STATUS=$(jq -r '.overall_health' pre-deployment-health.json)
+        if [[ "$HEALTH_STATUS" == "unhealthy" ]]; then
+          echo "❌ System is unhealthy, aborting deployment"
+          exit 1
+        elif [[ "$HEALTH_STATUS" == "warning" && "${{ github.event.inputs.force_deploy }}" != "true" ]]; then
+          echo "⚠️ System has warnings, use force deploy to override"
+          exit 1
+        fi
+
+    - name: Create deployment backup
+      run: |
+        echo "📦 Creating deployment backup..."
+        BACKUP_NAME="pre-deploy-backup-$(date +%Y%m%d-%H%M%S)"
+        
+        # Backup current deployment
+        kubectl get deployment ollama-distributed -n ollama-system -o yaml > "${BACKUP_NAME}-deployment.yaml"
+        kubectl get configmap ollama-config -n ollama-system -o yaml > "${BACKUP_NAME}-config.yaml"
+        kubectl get secret ollama-secrets -n ollama-system -o yaml > "${BACKUP_NAME}-secrets.yaml"
+        
+        # Upload to S3
+        aws s3 cp "${BACKUP_NAME}-deployment.yaml" "s3://ollama-production-backups/deployments/"
+        aws s3 cp "${BACKUP_NAME}-config.yaml" "s3://ollama-production-backups/deployments/"
+        aws s3 cp "${BACKUP_NAME}-secrets.yaml" "s3://ollama-production-backups/deployments/"
+        
+        echo "BACKUP_NAME=$BACKUP_NAME" >> $GITHUB_ENV
+
+    - name: Execute deployment
+      id: deployment
+      run: |
+        echo "🚀 Starting ${{ needs.pre-deployment.outputs.deployment_strategy }} deployment..."
+        
+        chmod +x deploy/scripts/production-deploy.sh
+        
+        if ./deploy/scripts/production-deploy.sh \
+          --environment ${{ needs.pre-deployment.outputs.target_environment }} \
+          --strategy ${{ needs.pre-deployment.outputs.deployment_strategy }} \
+          --image-tag ${{ needs.pre-deployment.outputs.image_tag }} \
+          --timeout 1800; then
+          echo "deployment_status=success" >> $GITHUB_OUTPUT
+          echo "✅ Deployment completed successfully"
+        else
+          echo "deployment_status=failed" >> $GITHUB_OUTPUT
+          echo "❌ Deployment failed"
+          exit 1
+        fi
+
+    - name: Post-deployment validation
+      if: steps.deployment.outputs.deployment_status == 'success'
+      run: |
+        echo "🔍 Running post-deployment validation..."
+        
+        # Wait for systems to stabilize
+        sleep 180
+        
+        # Comprehensive health check
+        ./deploy/scripts/health-check.sh --verbose --output json | tee post-deployment-health.json
+        
+        # Validate deployment metrics
+        HEALTH_STATUS=$(jq -r '.overall_health' post-deployment-health.json)
+        if [[ "$HEALTH_STATUS" != "healthy" ]]; then
+          echo "❌ Post-deployment validation failed"
+          echo "🔄 Initiating automatic rollback..."
+          
+          # Trigger rollback
+          if [[ "${{ needs.pre-deployment.outputs.deployment_strategy }}" == "blue-green" ]]; then
+            kubectl argo rollouts abort ollama-distributed-rollout -n ollama-system
+            kubectl argo rollouts undo ollama-distributed-rollout -n ollama-system
+          else
+            kubectl rollout undo deployment/ollama-distributed -n ollama-system
+          fi
+          
+          exit 1
+        fi
+
+    - name: Update deployment status
+      if: always()
+      run: |
+        if [[ "${{ steps.deployment.outputs.deployment_status }}" == "success" ]]; then
+          # Update deployment annotation
+          kubectl annotate deployment ollama-distributed -n ollama-system \
+            "deployment.ollama.io/last-successful-deploy=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            "deployment.ollama.io/image-tag=${{ needs.pre-deployment.outputs.image_tag }}" \
+            "deployment.ollama.io/strategy=${{ needs.pre-deployment.outputs.deployment_strategy }}" \
+            "deployment.ollama.io/github-run-id=${{ github.run_id }}" \
+            --overwrite
+        fi
+
+    - name: Notify Slack
+      if: always()
+      uses: 8398a7/action-slack@v3
+      with:
+        status: ${{ job.status }}
+        channel: '#deployments'
+        webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+        fields: repo,message,commit,author,action,eventName,ref,workflow
+        custom_payload: |
+          {
+            username: 'OllamaMax Deploy Bot',
+            icon_emoji: ':rocket:',
+            attachments: [{
+              color: '${{ job.status }}' === 'success' ? 'good' : '${{ job.status }}' === 'failure' ? 'danger' : 'warning',
+              title: 'OllamaMax Production Deployment',
+              fields: [
+                {
+                  title: 'Environment',
+                  value: '${{ needs.pre-deployment.outputs.target_environment }}',
+                  short: true
+                },
+                {
+                  title: 'Strategy',
+                  value: '${{ needs.pre-deployment.outputs.deployment_strategy }}',
+                  short: true
+                },
+                {
+                  title: 'Image Tag',
+                  value: '${{ needs.pre-deployment.outputs.image_tag }}',
+                  short: true
+                },
+                {
+                  title: 'Status',
+                  value: '${{ job.status }}' === 'success' ? '✅ Success' : '${{ job.status }}' === 'failure' ? '❌ Failed' : '⚠️ Warning',
+                  short: true
+                }
+              ],
+              footer: 'GitHub Actions',
+              ts: Math.floor(Date.now() / 1000)
+            }]
+          }
+
+    - name: Generate deployment report
+      if: always()
+      run: |
+        echo "## 🚀 Production Deployment Report" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Deployment Details" >> $GITHUB_STEP_SUMMARY
+        echo "- **Environment**: ${{ needs.pre-deployment.outputs.target_environment }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Strategy**: ${{ needs.pre-deployment.outputs.deployment_strategy }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Image**: \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.pre-deployment.outputs.image_tag }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **Status**: ${{ steps.deployment.outputs.deployment_status == 'success' && '✅ Success' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Backup**: ${{ env.BACKUP_NAME }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [[ -f "post-deployment-health.json" ]]; then
+          echo "### Health Check Results" >> $GITHUB_STEP_SUMMARY
+          echo '```json' >> $GITHUB_STEP_SUMMARY
+          cat post-deployment-health.json >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+        fi
+
+    - name: Upload deployment artifacts
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: deployment-artifacts-${{ needs.pre-deployment.outputs.target_environment }}
+        path: |
+          pre-deployment-health.json
+          post-deployment-health.json
+          ${{ env.BACKUP_NAME }}-*.yaml
+        retention-days: 30
+
+  # Cleanup and monitoring setup
+  post-deployment:
+    needs: [pre-deployment, deploy-production]
+    if: always() && needs.deploy-production.result == 'success'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Update kubeconfig
+      run: |
+        CLUSTER_NAME="ollama-${{ needs.pre-deployment.outputs.target_environment }}"
+        aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name $CLUSTER_NAME
+
+    - name: Setup monitoring alerts
+      run: |
+        echo "📊 Setting up post-deployment monitoring..."
+        
+        # Ensure monitoring stack is healthy
+        kubectl get pods -n monitoring
+        
+        # Restart Prometheus to pick up any new metrics
+        kubectl rollout restart deployment/prometheus -n monitoring
+
+    - name: Cleanup old deployments
+      run: |
+        echo "🧹 Cleaning up old deployments..."
+        
+        # Keep only last 5 replica sets
+        kubectl get rs -n ollama-system --sort-by='.metadata.creationTimestamp' -o name | head -n -5 | xargs -r kubectl delete -n ollama-system
+
+    - name: Update status page
+      if: needs.pre-deployment.outputs.target_environment == 'production'
+      run: |
+        echo "📢 Updating status page..."
+        # This would typically call your status page API
+        # curl -X POST -H "Authorization: Bearer $STATUS_PAGE_TOKEN" \
+        #   -d '{"status": "operational", "message": "Deployment completed successfully"}' \
+        #   https://api.statuspage.io/v1/pages/$PAGE_ID/incidents
+
+    - name: Final summary
+      run: |
+        echo "## 🎉 Deployment Complete!" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "✅ OllamaMax has been successfully deployed to **${{ needs.pre-deployment.outputs.target_environment }}**" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
+        echo "1. Monitor system health in Grafana" >> $GITHUB_STEP_SUMMARY
+        echo "2. Check application logs for any issues" >> $GITHUB_STEP_SUMMARY
+        echo "3. Verify all integrations are working" >> $GITHUB_STEP_SUMMARY
+        echo "4. Update documentation if needed" >> $GITHUB_STEP_SUMMARY

@@ -22,7 +22,7 @@ import (
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p/messaging"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p/monitoring"
-	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/performance"
+	_ "github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/performance"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/scheduler"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/web"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -89,9 +89,10 @@ Documentation: https://github.com/KhryptorGraphics/OllamaMax`,
 	rootCmd.AddCommand(proxyCmd())
 
 	// Initialize user experience commands
-	// TODO: Implement these functions for enhanced user experience
-	// initHelpCommands()
-	// initSetupCommands()
+	initHelpCommands()
+	// initSetupCommands() // TODO: implement setup commands
+	initQuickStartCommands()
+	// initValidateCommands() // TODO: implement validate commands
 
 	if err := rootCmd.Execute(); err != nil {
 		log.Printf("Error executing command: %v", err)
@@ -255,11 +256,12 @@ func runStart(cmd *cobra.Command, args []string) error {
 	log.Printf("📊 Initializing performance monitoring...")
 
 	// Create performance optimization engine
-	perfOptConfig := performance.DefaultOptimizationConfig()
-	perfOptConfig.Enabled = true
-	perfOptConfig.OptimizationLevel = "balanced"
-	perfOptConfig.OptimizationInterval = 5 * time.Minute
-	perfOptEngine := performance.NewPerformanceOptimizationEngine(perfOptConfig)
+	// TODO: implement performance optimization
+	// perfOptConfig := performance.DefaultOptimizationConfig()
+	// perfOptConfig.Enabled = true
+	// perfOptConfig.OptimizationLevel = "balanced"
+	// perfOptConfig.OptimizationInterval = 5 * time.Minute
+	// perfOptEngine := performance.NewPerformanceOptimizationEngine(perfOptConfig)
 
 	// Create Prometheus exporter for metrics
 	prometheusConfig := observability.DefaultPrometheusConfig()
@@ -315,11 +317,12 @@ func runStart(cmd *cobra.Command, args []string) error {
 
 	// Start performance monitoring
 	log.Printf("📊 Starting performance monitoring...")
-	if err := perfOptEngine.Start(); err != nil {
-		log.Printf("⚠️  Failed to start performance optimization engine: %v", err)
-	} else {
-		log.Printf("✅ Performance optimization engine started")
-	}
+	// TODO: implement performance optimization
+	// if err := perfOptEngine.Start(); err != nil {
+	//	log.Printf("⚠️  Failed to start performance optimization engine: %v", err)
+	// } else {
+	//	log.Printf("✅ Performance optimization engine started")
+	// }
 
 	// Start Prometheus metrics exporter
 	monitoringCtx := context.Background()

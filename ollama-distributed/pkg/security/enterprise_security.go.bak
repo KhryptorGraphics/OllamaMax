@@ -1,0 +1,926 @@
+package security
+
+import (
+	"context"
+	"crypto/rand"
+	"crypto/tls"
+	"crypto/x509"
+	"fmt"
+	"net/http"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/dgrijalva/jwt-go"
+	"github.com/gin-gonic/gin"
+	"github.com/go-redis/redis/v8"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/auth"
+	"github.com/rs/zerolog/log"
+	"golang.org/x/crypto/bcrypt"
+	"golang.org/x/time/rate"
+)
+
+// EnterpriseSecurityManager provides enterprise-grade security features
+type EnterpriseSecurityManager struct {
+	config              *EnterpriseSecurityConfig
+	authManager         *auth.Manager
+	rbacManager         *RBACManager
+	mfaManager          *MFAManager
+	sessionManager      *SessionManager
+	auditLogger         *AuditLogger
+	encryptionManager   *EncryptionManager
+	certificateManager  *CertificateManager
+	rateLimiter         *RateLimitManager
+	wafManager          *WAFManager
+	dlpManager          *DLPManager
+	threatDetector      *ThreatDetector
+	complianceChecker   *ComplianceChecker
+	vaultManager        *VaultManager
+	siemCollector       *SIEMCollector
+
+	// Redis for distributed session management
+	redis *redis.Client
+
+	// Metrics and monitoring
+	metrics *EnterpriseSecurityMetrics
+	mu      sync.RWMutex
+}
+
+// EnterpriseSecurityConfig configures enterprise security features
+type EnterpriseSecurityConfig struct {
+	// Authentication & Authorization
+	EnableOAuth2        bool   `json:"enable_oauth2"`
+	EnableOIDC          bool   `json:"enable_oidc"`
+	EnableSAML          bool   `json:"enable_saml"`
+	EnableLDAP          bool   `json:"enable_ldap"`
+	EnableMFA           bool   `json:"enable_mfa"`
+	MFAMethods          []string `json:"mfa_methods"` // totp, sms, email, hardware_key
+	
+	// Session Management
+	SessionTimeout      time.Duration `json:"session_timeout"`
+	MaxConcurrentSessions int         `json:"max_concurrent_sessions"`
+	EnableDistributedSessions bool    `json:"enable_distributed_sessions"`
+	RedisURL            string        `json:"redis_url"`
+	
+	// TLS Configuration
+	MinTLSVersion       uint16        `json:"min_tls_version"`
+	EnableMutualTLS     bool          `json:"enable_mutual_tls"`
+	CertificateRotation time.Duration `json:"certificate_rotation"`
+	EnableOCSP          bool          `json:"enable_ocsp"`
+	
+	// Rate Limiting & DDoS Protection
+	GlobalRateLimit     int           `json:"global_rate_limit"`
+	UserRateLimit       int           `json:"user_rate_limit"`
+	BurstLimit          int           `json:"burst_limit"`
+	BanDuration         time.Duration `json:"ban_duration"`
+	EnableGeoBlocking   bool          `json:"enable_geo_blocking"`
+	BlockedCountries    []string      `json:"blocked_countries"`
+	
+	// Web Application Firewall
+	EnableWAF           bool          `json:"enable_waf"`
+	WAFRules            []WAFRule     `json:"waf_rules"`
+	BlockSQLInjection   bool          `json:"block_sql_injection"`
+	BlockXSS            bool          `json:"block_xss"`
+	BlockCSRF           bool          `json:"block_csrf"`
+	
+	// Data Loss Prevention
+	EnableDLP           bool          `json:"enable_dlp"`
+	DLPRules            []DLPRule     `json:"dlp_rules"`
+	ScanFileUploads     bool          `json:"scan_file_uploads"`
+	BlockSensitiveData  bool          `json:"block_sensitive_data"`
+	
+	// Encryption
+	EnableAESGCM        bool          `json:"enable_aes_gcm"`
+	EnableChaCha20      bool          `json:"enable_chacha20"`
+	KeyRotationInterval time.Duration `json:"key_rotation_interval"`
+	EnableHSM           bool          `json:"enable_hsm"`
+	HSMConfig           *HSMConfig    `json:"hsm_config"`
+	
+	// Audit & Compliance
+	EnableAuditLogging  bool          `json:"enable_audit_logging"`
+	AuditLogLevel       string        `json:"audit_log_level"`
+	ComplianceMode      string        `json:"compliance_mode"` // PCI_DSS, HIPAA, SOC2, ISO27001
+	EnableSIEM          bool          `json:"enable_siem"`
+	SIEMEndpoint        string        `json:"siem_endpoint"`
+	
+	// Threat Detection
+	EnableThreatDetection bool        `json:"enable_threat_detection"`
+	EnableMLDetection     bool        `json:"enable_ml_detection"`
+	ThreatThreshold       float64     `json:"threat_threshold"`
+	
+	// Secret Management
+	EnableVault         bool          `json:"enable_vault"`
+	VaultConfig         *VaultConfig  `json:"vault_config"`
+	
+	// Security Headers
+	EnableSecurityHeaders bool        `json:"enable_security_headers"`
+	CSPPolicy            string       `json:"csp_policy"`
+	HSTSMaxAge           int          `json:"hsts_max_age"`
+}
+
+// RBACManager handles Role-Based Access Control
+type RBACManager struct {
+	roles       map[string]*Role
+	permissions map[string]*Permission
+	policies    map[string]*Policy
+	mu          sync.RWMutex
+}
+
+// MFAManager handles Multi-Factor Authentication
+type MFAManager struct {
+	totpManager      *TOTPManager
+	smsManager       *SMSManager
+	emailManager     *EmailManager
+	hardwareManager  *HardwareKeyManager
+	backupCodes      map[string][]string // user -> backup codes
+	mu               sync.RWMutex
+}
+
+// SessionManager handles secure session management
+type SessionManager struct {
+	sessions         map[string]*SecureSession
+	redis            *redis.Client
+	encryptionKey    []byte
+	maxSessions      int
+	sessionTimeout   time.Duration
+	mu               sync.RWMutex
+}
+
+// AuditLogger provides comprehensive audit logging
+type AuditLogger struct {
+	config     *AuditConfig
+	logChannel chan *AuditEvent
+	siemClient *SIEMClient
+	mu         sync.RWMutex
+}
+
+// WAFManager provides Web Application Firewall functionality
+type WAFManager struct {
+	rules           []WAFRule
+	ruleEngine      *RuleEngine
+	enabled         bool
+	logBlocked      bool
+	mu              sync.RWMutex
+}
+
+// EnterpriseDLPManager provides Data Loss Prevention
+type EnterpriseDLPManager struct {
+	rules           []EnterpriseDLPRule
+	scanners        map[string]DataScanner
+	enabled         bool
+	quarantine      map[string]*QuarantinedData
+	mu              sync.RWMutex
+}
+
+// ThreatDetector provides advanced threat detection
+type ThreatDetector struct {
+	behaviorAnalyzer    *BehaviorAnalyzer
+	anomalyDetector     *AnomalyDetector
+	mlModel             *MLThreatModel
+	threatDatabase      *ThreatDatabase
+	alertThreshold      float64
+	mu                  sync.RWMutex
+}
+
+// CertificateManager handles X.509 certificate lifecycle
+type CertificateManager struct {
+	caCert              *x509.Certificate
+	serverCerts         map[string]*x509.Certificate
+	clientCerts         map[string]*x509.Certificate
+	rotationTimer       *time.Timer
+	ocspResponder       *OCSPResponder
+	autoRotation        bool
+	rotationInterval    time.Duration
+	mu                  sync.RWMutex
+}
+
+// RateLimitManager provides advanced rate limiting
+type RateLimitManager struct {
+	globalLimiter       *rate.Limiter
+	userLimiters        map[string]*rate.Limiter
+	ipLimiters          map[string]*rate.Limiter
+	bannedIPs           map[string]time.Time
+	geoBlocker          *GeoBlocker
+	mu                  sync.RWMutex
+}
+
+// VaultManager integrates with HashiCorp Vault
+type VaultManager struct {
+	client      *VaultClient
+	config      *VaultConfig
+	secrets     map[string]*SecretMetadata
+	leases      map[string]*LeaseInfo
+	mu          sync.RWMutex
+}
+
+// SIEMCollector sends security events to SIEM systems
+type SIEMCollector struct {
+	endpoint        string
+	client          *http.Client
+	eventQueue      chan *SecurityEvent
+	batchSize       int
+	flushInterval   time.Duration
+	mu              sync.RWMutex
+}
+
+// Types and structs for various security components
+
+type Role struct {
+	ID          string      `json:"id"`
+	Name        string      `json:"name"`
+	Permissions []string    `json:"permissions"`
+	Metadata    interface{} `json:"metadata"`
+}
+
+type Permission struct {
+	ID          string `json:"id"`
+	Resource    string `json:"resource"`
+	Action      string `json:"action"`
+	Conditions  []string `json:"conditions"`
+}
+
+type Policy struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Rules       []PolicyRule `json:"rules"`
+	Effect      string `json:"effect"` // allow, deny
+}
+
+type SecureSession struct {
+	ID              string            `json:"id"`
+	UserID          string            `json:"user_id"`
+	IPAddress       string            `json:"ip_address"`
+	UserAgent       string            `json:"user_agent"`
+	CreatedAt       time.Time         `json:"created_at"`
+	LastAccessAt    time.Time         `json:"last_access_at"`
+	ExpiresAt       time.Time         `json:"expires_at"`
+	MFAVerified     bool              `json:"mfa_verified"`
+	TrustedDevice   bool              `json:"trusted_device"`
+	SecurityContext map[string]string `json:"security_context"`
+	EncryptedData   []byte            `json:"encrypted_data"`
+}
+
+type AuditEvent struct {
+	ID          string                 `json:"id"`
+	Timestamp   time.Time              `json:"timestamp"`
+	UserID      string                 `json:"user_id"`
+	Action      string                 `json:"action"`
+	Resource    string                 `json:"resource"`
+	Result      string                 `json:"result"` // success, failure, denied
+	IPAddress   string                 `json:"ip_address"`
+	UserAgent   string                 `json:"user_agent"`
+	Details     map[string]interface{} `json:"details"`
+	RiskScore   float64                `json:"risk_score"`
+	Severity    string                 `json:"severity"`
+}
+
+type WAFRule struct {
+	ID          string   `json:"id"`
+	Name        string   `json:"name"`
+	Pattern     string   `json:"pattern"`
+	Type        string   `json:"type"` // regex, signature, behavioral
+	Action      string   `json:"action"` // block, log, challenge
+	Severity    string   `json:"severity"`
+	Categories  []string `json:"categories"`
+	Enabled     bool     `json:"enabled"`
+}
+
+type DLPRule struct {
+	ID          string   `json:"id"`
+	Name        string   `json:"name"`
+	Pattern     string   `json:"pattern"`
+	DataType    string   `json:"data_type"` // credit_card, ssn, api_key, email
+	Action      string   `json:"action"` // block, quarantine, mask, alert
+	Confidence  float64  `json:"confidence"`
+	Enabled     bool     `json:"enabled"`
+}
+
+type HSMConfig struct {
+	Provider    string `json:"provider"`
+	Endpoint    string `json:"endpoint"`
+	TokenLabel  string `json:"token_label"`
+	PIN         string `json:"pin"`
+}
+
+type VaultConfig struct {
+	Address     string `json:"address"`
+	Token       string `json:"token"`
+	Namespace   string `json:"namespace"`
+	MountPath   string `json:"mount_path"`
+}
+
+type SecurityEvent struct {
+	Type        string                 `json:"type"`
+	Timestamp   time.Time              `json:"timestamp"`
+	Source      string                 `json:"source"`
+	Details     map[string]interface{} `json:"details"`
+	Severity    string                 `json:"severity"`
+	RiskScore   float64                `json:"risk_score"`
+}
+
+type EnterpriseSecurityMetrics struct {
+	AuthenticationAttempts   int64     `json:"authentication_attempts"`
+	AuthenticationFailures   int64     `json:"authentication_failures"`
+	MFAAttempts             int64     `json:"mfa_attempts"`
+	MFAFailures             int64     `json:"mfa_failures"`
+	SessionsCreated         int64     `json:"sessions_created"`
+	SessionsRevoked         int64     `json:"sessions_revoked"`
+	WAFBlocks               int64     `json:"waf_blocks"`
+	DLPViolations           int64     `json:"dlp_violations"`
+	RateLimitHits           int64     `json:"rate_limit_hits"`
+	ThreatDetections        int64     `json:"threat_detections"`
+	AuditEventsGenerated    int64     `json:"audit_events_generated"`
+	CertificatesRotated     int64     `json:"certificates_rotated"`
+	EncryptionOperations    int64     `json:"encryption_operations"`
+	VaultOperations         int64     `json:"vault_operations"`
+	ComplianceViolations    int64     `json:"compliance_violations"`
+	LastSecurityScan        time.Time `json:"last_security_scan"`
+	SecurityScore           float64   `json:"security_score"`
+}
+
+// NewEnterpriseSecurityManager creates a new enterprise security manager
+func NewEnterpriseSecurityManager(config *EnterpriseSecurityConfig) (*EnterpriseSecurityManager, error) {
+	if config == nil {
+		config = DefaultEnterpriseSecurityConfig()
+	}
+
+	esm := &EnterpriseSecurityManager{
+		config:  config,
+		metrics: &EnterpriseSecurityMetrics{},
+	}
+
+	// Initialize Redis client for distributed sessions
+	if config.EnableDistributedSessions && config.RedisURL != "" {
+		esm.redis = redis.NewClient(&redis.Options{
+			Addr: config.RedisURL,
+		})
+	}
+
+	// Initialize authentication manager
+	authConfig := &auth.Config{
+		JWTSecret:    generateSecureSecret(),
+		TokenExpiry:  config.SessionTimeout,
+		Issuer:       "ollamamax-enterprise",
+		Audience:     "ollamamax-platform",
+	}
+	
+	var err error
+	esm.authManager, err = auth.NewManager(authConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize auth manager: %w", err)
+	}
+
+	// Initialize RBAC manager
+	esm.rbacManager = NewRBACManager()
+
+	// Initialize MFA manager if enabled
+	if config.EnableMFA {
+		esm.mfaManager = NewMFAManager(config.MFAMethods)
+	}
+
+	// Initialize session manager
+	esm.sessionManager = NewSessionManager(config, esm.redis)
+
+	// Initialize audit logger
+	if config.EnableAuditLogging {
+		esm.auditLogger = NewAuditLogger(&AuditConfig{
+			Level:        config.AuditLogLevel,
+			EnableSIEM:   config.EnableSIEM,
+			SIEMEndpoint: config.SIEMEndpoint,
+		})
+	}
+
+	// Initialize encryption manager
+	esm.encryptionManager = NewEnterpriseEncryptionManager(config)
+
+	// Initialize certificate manager
+	esm.certificateManager = NewCertificateManager(config)
+
+	// Initialize rate limiter
+	esm.rateLimiter = NewRateLimitManager(config)
+
+	// Initialize WAF if enabled
+	if config.EnableWAF {
+		esm.wafManager = NewWAFManager(config.WAFRules)
+	}
+
+	// Initialize DLP if enabled
+	if config.EnableDLP {
+		esm.dlpManager = NewDLPManager(config.DLPRules)
+	}
+
+	// Initialize threat detector if enabled
+	if config.EnableThreatDetection {
+		esm.threatDetector = NewThreatDetector(config)
+	}
+
+	// Initialize compliance checker
+	esm.complianceChecker = NewEnterpriseComplianceChecker(config.ComplianceMode)
+
+	// Initialize Vault manager if enabled
+	if config.EnableVault {
+		esm.vaultManager = NewVaultManager(config.VaultConfig)
+	}
+
+	// Initialize SIEM collector if enabled
+	if config.EnableSIEM {
+		esm.siemCollector = NewSIEMCollector(config.SIEMEndpoint)
+	}
+
+	log.Info().Msg("Enterprise security manager initialized successfully")
+	return esm, nil
+}
+
+// SecurityMiddleware provides comprehensive security middleware
+func (esm *EnterpriseSecurityManager) SecurityMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Add security headers
+		esm.addSecurityHeaders(c)
+
+		// Rate limiting
+		if esm.rateLimiter != nil {
+			if blocked := esm.rateLimiter.CheckRateLimit(c); blocked {
+				esm.metrics.RateLimitHits++
+				c.JSON(http.StatusTooManyRequests, gin.H{"error": "Rate limit exceeded"})
+				c.Abort()
+				return
+			}
+		}
+
+		// WAF protection
+		if esm.wafManager != nil && esm.wafManager.enabled {
+			if blocked, rule := esm.wafManager.CheckRequest(c.Request); blocked {
+				esm.metrics.WAFBlocks++
+				esm.logSecurityEvent("waf_block", c, map[string]interface{}{
+					"rule": rule,
+					"uri":  c.Request.RequestURI,
+				})
+				c.JSON(http.StatusForbidden, gin.H{"error": "Request blocked by WAF"})
+				c.Abort()
+				return
+			}
+		}
+
+		// Threat detection
+		if esm.threatDetector != nil {
+			riskScore := esm.threatDetector.AnalyzeRequest(c.Request)
+			if riskScore > esm.config.ThreatThreshold {
+				esm.metrics.ThreatDetections++
+				esm.logSecurityEvent("threat_detected", c, map[string]interface{}{
+					"risk_score": riskScore,
+				})
+			}
+		}
+
+		c.Next()
+	}
+}
+
+// addSecurityHeaders adds comprehensive security headers
+func (esm *EnterpriseSecurityManager) addSecurityHeaders(c *gin.Context) {
+	if !esm.config.EnableSecurityHeaders {
+		return
+	}
+
+	// HSTS (HTTP Strict Transport Security)
+	if esm.config.HSTSMaxAge > 0 {
+		c.Header("Strict-Transport-Security", fmt.Sprintf("max-age=%d; includeSubDomains; preload", esm.config.HSTSMaxAge))
+	}
+
+	// Content Security Policy
+	if esm.config.CSPPolicy != "" {
+		c.Header("Content-Security-Policy", esm.config.CSPPolicy)
+	}
+
+	// X-Frame-Options
+	c.Header("X-Frame-Options", "DENY")
+
+	// X-Content-Type-Options
+	c.Header("X-Content-Type-Options", "nosniff")
+
+	// X-XSS-Protection
+	c.Header("X-XSS-Protection", "1; mode=block")
+
+	// Referrer Policy
+	c.Header("Referrer-Policy", "strict-origin-when-cross-origin")
+
+	// Permissions Policy
+	c.Header("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+
+	// Remove server information
+	c.Header("Server", "")
+	c.Header("X-Powered-By", "")
+}
+
+// AuthenticateRequest provides comprehensive request authentication
+func (esm *EnterpriseSecurityManager) AuthenticateRequest(c *gin.Context) (*auth.AuthContext, error) {
+	esm.metrics.AuthenticationAttempts++
+
+	// Try different authentication methods
+	authContext, err := esm.tryJWTAuthentication(c)
+	if err == nil {
+		return authContext, nil
+	}
+
+	authContext, err = esm.tryAPIKeyAuthentication(c)
+	if err == nil {
+		return authContext, nil
+	}
+
+	authContext, err = esm.tryBasicAuthentication(c)
+	if err == nil {
+		return authContext, nil
+	}
+
+	// Try OAuth2/OIDC if enabled
+	if esm.config.EnableOAuth2 || esm.config.EnableOIDC {
+		authContext, err = esm.tryOAuthAuthentication(c)
+		if err == nil {
+			return authContext, nil
+		}
+	}
+
+	esm.metrics.AuthenticationFailures++
+	return nil, fmt.Errorf("authentication required")
+}
+
+// Various authentication methods implementation...
+
+// tryJWTAuthentication attempts JWT token authentication
+func (esm *EnterpriseSecurityManager) tryJWTAuthentication(c *gin.Context) (*auth.AuthContext, error) {
+	authHeader := c.GetHeader("Authorization")
+	if !strings.HasPrefix(authHeader, "Bearer ") {
+		return nil, fmt.Errorf("no bearer token found")
+	}
+
+	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+	return esm.authManager.ValidateToken(tokenString)
+}
+
+// tryAPIKeyAuthentication attempts API key authentication
+func (esm *EnterpriseSecurityManager) tryAPIKeyAuthentication(c *gin.Context) (*auth.AuthContext, error) {
+	apiKey := c.GetHeader("X-API-Key")
+	if apiKey == "" {
+		apiKey = c.Query("api_key")
+	}
+
+	if apiKey == "" {
+		return nil, fmt.Errorf("no API key found")
+	}
+
+	return esm.authManager.ValidateAPIKey(apiKey)
+}
+
+// tryBasicAuthentication attempts basic authentication
+func (esm *EnterpriseSecurityManager) tryBasicAuthentication(c *gin.Context) (*auth.AuthContext, error) {
+	username, password, ok := c.Request.BasicAuth()
+	if !ok {
+		return nil, fmt.Errorf("no basic auth credentials")
+	}
+
+	return esm.authManager.Authenticate(username, password, map[string]string{
+		"ip_address": c.ClientIP(),
+		"user_agent": c.GetHeader("User-Agent"),
+	})
+}
+
+// tryOAuthAuthentication attempts OAuth2/OIDC authentication
+func (esm *EnterpriseSecurityManager) tryOAuthAuthentication(c *gin.Context) (*auth.AuthContext, error) {
+	// Implementation for OAuth2/OIDC authentication
+	// This would integrate with external identity providers
+	return nil, fmt.Errorf("OAuth authentication not implemented")
+}
+
+// VerifyMFA verifies multi-factor authentication
+func (esm *EnterpriseSecurityManager) VerifyMFA(userID, method, token string) (bool, error) {
+	if !esm.config.EnableMFA || esm.mfaManager == nil {
+		return true, nil // MFA not required
+	}
+
+	esm.metrics.MFAAttempts++
+
+	verified, err := esm.mfaManager.VerifyToken(userID, method, token)
+	if err != nil || !verified {
+		esm.metrics.MFAFailures++
+		return false, err
+	}
+
+	return true, nil
+}
+
+// EncryptSensitiveData encrypts sensitive data using enterprise encryption
+func (esm *EnterpriseSecurityManager) EncryptSensitiveData(data []byte) ([]byte, error) {
+	esm.metrics.EncryptionOperations++
+	return esm.encryptionManager.Encrypt(data)
+}
+
+// DecryptSensitiveData decrypts sensitive data
+func (esm *EnterpriseSecurityManager) DecryptSensitiveData(encryptedData []byte) ([]byte, error) {
+	return esm.encryptionManager.Decrypt(encryptedData)
+}
+
+// CreateSecureSession creates a new secure session
+func (esm *EnterpriseSecurityManager) CreateSecureSession(userID, ipAddress, userAgent string) (*SecureSession, error) {
+	esm.metrics.SessionsCreated++
+	return esm.sessionManager.CreateSession(userID, ipAddress, userAgent)
+}
+
+// ValidateSession validates an existing session
+func (esm *EnterpriseSecurityManager) ValidateSession(sessionID string) (*SecureSession, error) {
+	return esm.sessionManager.ValidateSession(sessionID)
+}
+
+// RevokeSession revokes a session
+func (esm *EnterpriseSecurityManager) RevokeSession(sessionID string) error {
+	esm.metrics.SessionsRevoked++
+	return esm.sessionManager.RevokeSession(sessionID)
+}
+
+// LogAuditEvent logs a security audit event
+func (esm *EnterpriseSecurityManager) LogAuditEvent(event *AuditEvent) {
+	if esm.auditLogger != nil {
+		esm.metrics.AuditEventsGenerated++
+		esm.auditLogger.LogEvent(event)
+	}
+}
+
+// logSecurityEvent logs a security event with context
+func (esm *EnterpriseSecurityManager) logSecurityEvent(eventType string, c *gin.Context, details map[string]interface{}) {
+	event := &AuditEvent{
+		ID:        generateEventID(),
+		Timestamp: time.Now(),
+		Action:    eventType,
+		IPAddress: c.ClientIP(),
+		UserAgent: c.GetHeader("User-Agent"),
+		Details:   details,
+	}
+
+	esm.LogAuditEvent(event)
+
+	// Send to SIEM if enabled
+	if esm.siemCollector != nil {
+		securityEvent := &SecurityEvent{
+			Type:      eventType,
+			Timestamp: time.Now(),
+			Source:    "ollamamax-platform",
+			Details:   details,
+			Severity:  "medium",
+		}
+		esm.siemCollector.SendEvent(securityEvent)
+	}
+}
+
+// GetTLSConfig returns enterprise-grade TLS configuration
+func (esm *EnterpriseSecurityManager) GetTLSConfig() *tls.Config {
+	if esm.certificateManager == nil {
+		return nil
+	}
+
+	config := &tls.Config{
+		MinVersion:               esm.config.MinTLSVersion,
+		CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
+		PreferServerCipherSuites: true,
+		CipherSuites: []uint16{
+			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
+			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+		},
+	}
+
+	// Add certificates
+	if cert := esm.certificateManager.GetServerCertificate(); cert != nil {
+		config.Certificates = []tls.Certificate{*cert}
+	}
+
+	// Enable mutual TLS if configured
+	if esm.config.EnableMutualTLS {
+		config.ClientAuth = tls.RequireAndVerifyClientCert
+		if caCert := esm.certificateManager.GetCACertPool(); caCert != nil {
+			config.ClientCAs = caCert
+		}
+	}
+
+	return config
+}
+
+// RotateCertificates rotates X.509 certificates
+func (esm *EnterpriseSecurityManager) RotateCertificates() error {
+	if esm.certificateManager == nil {
+		return fmt.Errorf("certificate manager not initialized")
+	}
+
+	esm.metrics.CertificatesRotated++
+	return esm.certificateManager.RotateCertificates()
+}
+
+// GetSecurityMetrics returns current security metrics
+func (esm *EnterpriseSecurityManager) GetSecurityMetrics() *EnterpriseSecurityMetrics {
+	esm.mu.RLock()
+	defer esm.mu.RUnlock()
+
+	// Create a copy to avoid race conditions
+	metrics := *esm.metrics
+	metrics.SecurityScore = esm.calculateSecurityScore()
+	return &metrics
+}
+
+// calculateSecurityScore calculates overall security score (0-100)
+func (esm *EnterpriseSecurityManager) calculateSecurityScore() float64 {
+	score := 100.0
+
+	// Deduct points for security violations
+	if esm.metrics.AuthenticationFailures > 0 {
+		failureRate := float64(esm.metrics.AuthenticationFailures) / float64(esm.metrics.AuthenticationAttempts)
+		score -= failureRate * 20.0
+	}
+
+	if esm.metrics.ThreatDetections > 0 {
+		score -= float64(esm.metrics.ThreatDetections) * 0.1
+	}
+
+	if esm.metrics.WAFBlocks > 0 {
+		score -= float64(esm.metrics.WAFBlocks) * 0.05
+	}
+
+	if esm.metrics.DLPViolations > 0 {
+		score -= float64(esm.metrics.DLPViolations) * 0.2
+	}
+
+	if score < 0 {
+		score = 0
+	}
+
+	return score
+}
+
+// RunSecurityScan performs a comprehensive security scan
+func (esm *EnterpriseSecurityManager) RunSecurityScan(ctx context.Context) (*SecurityScanResult, error) {
+	esm.metrics.LastSecurityScan = time.Now()
+
+	// Run compliance check
+	complianceResult, err := esm.complianceChecker.RunComplianceCheck(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("compliance check failed: %w", err)
+	}
+
+	// Additional security checks...
+	result := &SecurityScanResult{
+		Timestamp:        time.Now(),
+		OverallScore:     esm.calculateSecurityScore(),
+		ComplianceResult: complianceResult,
+		SecurityMetrics:  esm.GetSecurityMetrics(),
+	}
+
+	return result, nil
+}
+
+// Cleanup performs cleanup of expired sessions, tokens, etc.
+func (esm *EnterpriseSecurityManager) Cleanup() error {
+	var errs []error
+
+	if esm.sessionManager != nil {
+		if err := esm.sessionManager.CleanupExpiredSessions(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	if esm.authManager != nil {
+		if err := esm.authManager.CleanupExpiredSessions(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("cleanup errors: %v", errs)
+	}
+
+	return nil
+}
+
+// Shutdown gracefully shuts down the enterprise security manager
+func (esm *EnterpriseSecurityManager) Shutdown(ctx context.Context) error {
+	log.Info().Msg("Shutting down enterprise security manager")
+
+	// Close Redis connection
+	if esm.redis != nil {
+		if err := esm.redis.Close(); err != nil {
+			log.Error().Err(err).Msg("Failed to close Redis connection")
+		}
+	}
+
+	// Stop audit logger
+	if esm.auditLogger != nil {
+		esm.auditLogger.Stop()
+	}
+
+	// Stop SIEM collector
+	if esm.siemCollector != nil {
+		esm.siemCollector.Stop()
+	}
+
+	// Close auth manager
+	if esm.authManager != nil {
+		esm.authManager.Close()
+	}
+
+	log.Info().Msg("Enterprise security manager shutdown complete")
+	return nil
+}
+
+// Utility functions
+
+func generateSecureSecret() string {
+	bytes := make([]byte, 32)
+	rand.Read(bytes)
+	return fmt.Sprintf("%x", bytes)
+}
+
+func generateEventID() string {
+	bytes := make([]byte, 16)
+	rand.Read(bytes)
+	return fmt.Sprintf("%x", bytes)
+}
+
+// DefaultEnterpriseSecurityConfig returns default enterprise security configuration
+func DefaultEnterpriseSecurityConfig() *EnterpriseSecurityConfig {
+	return &EnterpriseSecurityConfig{
+		// Authentication & Authorization
+		EnableOAuth2:              true,
+		EnableOIDC:                true,
+		EnableSAML:                false,
+		EnableLDAP:                false,
+		EnableMFA:                 true,
+		MFAMethods:               []string{"totp", "backup_codes"},
+		
+		// Session Management
+		SessionTimeout:            24 * time.Hour,
+		MaxConcurrentSessions:     5,
+		EnableDistributedSessions: true,
+		
+		// TLS Configuration
+		MinTLSVersion:             tls.VersionTLS13,
+		EnableMutualTLS:           true,
+		CertificateRotation:       90 * 24 * time.Hour,
+		EnableOCSP:                true,
+		
+		// Rate Limiting
+		GlobalRateLimit:           10000,
+		UserRateLimit:             1000,
+		BurstLimit:                100,
+		BanDuration:               time.Hour,
+		EnableGeoBlocking:         false,
+		
+		// WAF
+		EnableWAF:                 true,
+		BlockSQLInjection:         true,
+		BlockXSS:                  true,
+		BlockCSRF:                 true,
+		
+		// DLP
+		EnableDLP:                 true,
+		ScanFileUploads:           true,
+		BlockSensitiveData:        true,
+		
+		// Encryption
+		EnableAESGCM:              true,
+		EnableChaCha20:            true,
+		KeyRotationInterval:       30 * 24 * time.Hour,
+		EnableHSM:                 false,
+		
+		// Audit & Compliance
+		EnableAuditLogging:        true,
+		AuditLogLevel:             "INFO",
+		ComplianceMode:            "SOC2",
+		EnableSIEM:                false,
+		
+		// Threat Detection
+		EnableThreatDetection:     true,
+		EnableMLDetection:         false,
+		ThreatThreshold:           0.7,
+		
+		// Security Headers
+		EnableSecurityHeaders:     true,
+		CSPPolicy:                "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'",
+		HSTSMaxAge:                31536000, // 1 year
+		
+		// Secret Management
+		EnableVault:               false,
+	}
+}
+
+// Additional types for the security scan result
+type SecurityScanResult struct {
+	Timestamp        time.Time                    `json:"timestamp"`
+	OverallScore     float64                      `json:"overall_score"`
+	ComplianceResult *ComplianceCheckResult       `json:"compliance_result"`
+	SecurityMetrics  *EnterpriseSecurityMetrics   `json:"security_metrics"`
+	Recommendations  []string                     `json:"recommendations"`
+}
+
+type ComplianceCheckResult struct {
+	Framework    string    `json:"framework"`
+	Score        float64   `json:"score"`
+	Passed       bool      `json:"passed"`
+	Violations   []string  `json:"violations"`
+	CheckedAt    time.Time `json:"checked_at"`
+}

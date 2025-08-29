@@ -32,7 +32,7 @@ type AuditConfig struct {
 // SecurityScanner interface for different types of security scans
 type SecurityScanner interface {
 	GetName() string
-	Scan(ctx context.Context) (*ScanResult, error)
+	Scan(ctx context.Context) (*SecurityScanResult, error)
 	GetSeverity() SeverityLevel
 	IsEnabled() bool
 }
@@ -66,8 +66,8 @@ func (s SeverityLevel) String() string {
 	}
 }
 
-// ScanResult represents the result of a security scan
-type ScanResult struct {
+// SecurityScanResult represents the result of a security scan
+type SecurityScanResult struct {
 	ScannerName     string                 `json:"scanner_name"`
 	Timestamp       time.Time              `json:"timestamp"`
 	Severity        SeverityLevel          `json:"severity"`
@@ -95,7 +95,7 @@ type AuditResults struct {
 	OverallScore       float64               `json:"overall_score"`
 	TotalFindings      int                   `json:"total_findings"`
 	FindingsBySeverity map[SeverityLevel]int `json:"findings_by_severity"`
-	ScanResults        []*ScanResult         `json:"scan_results"`
+	ScanResults        []*SecurityScanResult         `json:"scan_results"`
 	Compliance         map[string]bool       `json:"compliance"`
 	Summary            string                `json:"summary"`
 }
@@ -183,7 +183,7 @@ func (sa *SecurityAuditor) RunAudit(ctx context.Context) (*AuditResults, error) 
 		Timestamp:          time.Now(),
 		FindingsBySeverity: make(map[SeverityLevel]int),
 		Compliance:         make(map[string]bool),
-		ScanResults:        make([]*ScanResult, 0),
+		ScanResults:        make([]*SecurityScanResult, 0),
 	}
 
 	// Run all enabled scanners

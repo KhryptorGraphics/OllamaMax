@@ -1,0 +1,46 @@
+{
+  "name": "claude-flow-bottleneck-detect",
+  "version": "1.0.0",
+  "description": "Analyze performance bottlenecks in swarm operations and suggest optimizations",
+  "main": "index.js",
+  "bin": {
+    "bottleneck-detect": "./index.js"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "test": "node test-runner.js",
+    "install-global": "npm install -g .",
+    "validate": "node validate-setup.js"
+  },
+  "keywords": [
+    "bottleneck-detection",
+    "performance-analysis",
+    "swarm-optimization",
+    "ai",
+    "automation",
+    "claude-flow"
+  ],
+  "author": "Claude Flow",
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^9.0.0",
+    "chalk": "^4.1.2",
+    "inquirer": "^8.2.0",
+    "ora": "^5.4.1"
+  },
+  "devDependencies": {
+    "jest": "^28.0.0",
+    "eslint": "^8.0.0"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/claude-flow.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-org/claude-flow/issues"
+  },
+  "homepage": "https://github.com/your-org/claude-flow#readme"
+}

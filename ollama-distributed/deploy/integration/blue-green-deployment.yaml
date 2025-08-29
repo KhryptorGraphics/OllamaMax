@@ -1,0 +1,613 @@
+# Blue-Green Deployment Strategy for Zero-Downtime Updates
+# Complete blue-green deployment with automated rollback capabilities
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: ollama-distributed-rollout
+  namespace: ollama-system
+  labels:
+    app.kubernetes.io/name: ollama-distributed
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/component: rollout
+spec:
+  replicas: 6
+  strategy:
+    blueGreen:
+      # Blue-green deployment configuration
+      activeService: ollama-api-active
+      previewService: ollama-api-preview
+      autoPromotionEnabled: false
+      scaleDownDelaySeconds: 30
+      prePromotionAnalysis:
+        templates:
+        - templateName: success-rate-analysis
+        - templateName: response-time-analysis
+        args:
+        - name: service-name
+          value: ollama-api-preview
+      postPromotionAnalysis:
+        templates:
+        - templateName: success-rate-analysis
+        - templateName: response-time-analysis
+        args:
+        - name: service-name
+          value: ollama-api-active
+      previewReplicaCount: 3
+      promotionPolicy:
+        timeoutSeconds: 1800  # 30 minutes timeout
+      abortScaleDownDelaySeconds: 600  # 10 minutes
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ollama-distributed
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ollama-distributed
+        app.kubernetes.io/version: "1.0.0"
+        app.kubernetes.io/component: api-server
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: ollama-service-account
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+      - name: ollama-distributed
+        image: ghcr.io/khryptorgraphics/ollamamax:latest
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+        - name: p2p
+          containerPort: 9000
+          protocol: TCP
+        - name: metrics
+          containerPort: 9090
+          protocol: TCP
+        env:
+        - name: OLLAMA_NODE_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: OLLAMA_CLUSTER_MODE
+          value: "kubernetes"
+        - name: OLLAMA_DEPLOYMENT_MODE
+          value: "blue-green"
+        - name: OLLAMA_DEPLOYMENT_COLOR
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.labels['rollouts-pod-template-hash']
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: ollama-secrets
+              key: jwt-secret
+        - name: DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: ollama-secrets
+              key: database-password
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: ollama-secrets
+              key: redis-password
+        - name: VERSION
+          value: "1.0.0"
+        - name: GOMAXPROCS
+          valueFrom:
+            resourceFieldRef:
+              resource: limits.cpu
+        volumeMounts:
+        - name: config
+          mountPath: /app/config
+          readOnly: true
+        - name: data
+          mountPath: /app/data
+        - name: models
+          mountPath: /app/models
+        - name: tls-certs
+          mountPath: /app/certs
+          readOnly: true
+        resources:
+          requests:
+            cpu: "1000m"
+            memory: "2Gi"
+            ephemeral-storage: "10Gi"
+          limits:
+            cpu: "4000m"
+            memory: "8Gi"
+            ephemeral-storage: "20Gi"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+          successThreshold: 1
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+          successThreshold: 1
+        startupProbe:
+          httpGet:
+            path: /health
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 30
+          successThreshold: 1
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+            add:
+            - NET_BIND_SERVICE
+      volumes:
+      - name: config
+        configMap:
+          name: ollama-config
+      - name: tls-certs
+        secret:
+          secretName: ollama-tls
+          defaultMode: 0400
+      - name: data
+        persistentVolumeClaim:
+          claimName: ollama-data
+      - name: models
+        persistentVolumeClaim:
+          claimName: ollama-models
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - ollama-distributed
+              topologyKey: kubernetes.io/hostname
+      tolerations: []
+      nodeSelector: {}
+
+---
+# Active Service (Live Traffic)
+apiVersion: v1
+kind: Service
+metadata:
+  name: ollama-api-active
+  namespace: ollama-system
+  labels:
+    app.kubernetes.io/name: ollama-distributed
+    app.kubernetes.io/component: api-active
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 8080
+    targetPort: http
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: ollama-distributed
+
+---
+# Preview Service (Testing/Staging Traffic)
+apiVersion: v1
+kind: Service
+metadata:
+  name: ollama-api-preview
+  namespace: ollama-system
+  labels:
+    app.kubernetes.io/name: ollama-distributed
+    app.kubernetes.io/component: api-preview
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 8080
+    targetPort: http
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: ollama-distributed
+
+---
+# Analysis Templates for Automated Quality Gates
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: success-rate-analysis
+  namespace: ollama-system
+spec:
+  metrics:
+  - name: success-rate
+    # Success rate should be > 99%
+    successCondition: result[0] > 0.99
+    failureLimit: 3
+    interval: 30s
+    count: 10
+    provider:
+      prometheus:
+        address: http://prometheus.monitoring:9090
+        query: |
+          sum(rate(ollama_http_requests_total{service="{{args.service-name}}",status!~"5.."}[5m])) /
+          sum(rate(ollama_http_requests_total{service="{{args.service-name}}"}[5m]))
+  args:
+  - name: service-name
+
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: response-time-analysis
+  namespace: ollama-system
+spec:
+  metrics:
+  - name: response-time-p95
+    # 95th percentile response time should be < 2s
+    successCondition: result[0] < 2
+    failureLimit: 3
+    interval: 30s
+    count: 10
+    provider:
+      prometheus:
+        address: http://prometheus.monitoring:9090
+        query: |
+          histogram_quantile(0.95,
+            sum(rate(ollama_http_request_duration_seconds_bucket{service="{{args.service-name}}"}[5m]))
+            by (le)
+          )
+  - name: response-time-p99
+    # 99th percentile response time should be < 5s
+    successCondition: result[0] < 5
+    failureLimit: 2
+    interval: 30s
+    count: 10
+    provider:
+      prometheus:
+        address: http://prometheus.monitoring:9090
+        query: |
+          histogram_quantile(0.99,
+            sum(rate(ollama_http_request_duration_seconds_bucket{service="{{args.service-name}}"}[5m]))
+            by (le)
+          )
+  args:
+  - name: service-name
+
+---
+# Ingress for Blue-Green deployment
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ollama-blue-green-ingress
+  namespace: ollama-system
+  labels:
+    app.kubernetes.io/name: ollama-distributed
+    app.kubernetes.io/component: blue-green-ingress
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    kubernetes.io/tls-acme: "true"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-burst: "200"
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "https://app.ollama-distributed.com"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/upstream-hash-by: "$binary_remote_addr"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    # Canary deployment annotations (for gradual rollout)
+    nginx.ingress.kubernetes.io/canary: "false"
+    nginx.ingress.kubernetes.io/canary-weight: "0"
+    nginx.ingress.kubernetes.io/canary-by-header: "X-Canary"
+    nginx.ingress.kubernetes.io/canary-by-header-value: "true"
+spec:
+  tls:
+  - hosts:
+    - ollama-distributed.com
+    - api.ollama-distributed.com
+    - preview.ollama-distributed.com
+    secretName: ollama-tls
+  rules:
+  # Production traffic (Blue/Active)
+  - host: ollama-distributed.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: ollama-api-active
+            port:
+              number: 8080
+  - host: api.ollama-distributed.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: ollama-api-active
+            port:
+              number: 8080
+  # Preview traffic (Green/Preview)
+  - host: preview.ollama-distributed.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: ollama-api-preview
+            port:
+              number: 8080
+
+---
+# Canary Ingress for gradual traffic shifting
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ollama-canary-ingress
+  namespace: ollama-system
+  labels:
+    app.kubernetes.io/name: ollama-distributed
+    app.kubernetes.io/component: canary-ingress
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/canary: "true"
+    nginx.ingress.kubernetes.io/canary-weight: "0"  # Start with 0% traffic
+    nginx.ingress.kubernetes.io/canary-by-header: "X-Canary"
+    nginx.ingress.kubernetes.io/canary-by-header-value: "true"
+    nginx.ingress.kubernetes.io/canary-by-cookie: "canary"
+spec:
+  tls:
+  - hosts:
+    - ollama-distributed.com
+    - api.ollama-distributed.com
+    secretName: ollama-tls
+  rules:
+  - host: ollama-distributed.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: ollama-api-preview
+            port:
+              number: 8080
+  - host: api.ollama-distributed.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: ollama-api-preview
+            port:
+              number: 8080
+
+---
+# ServiceMonitor for Prometheus metrics scraping
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: ollama-blue-green-metrics
+  namespace: ollama-system
+  labels:
+    app.kubernetes.io/name: ollama-distributed
+    app.kubernetes.io/component: metrics
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ollama-distributed
+  endpoints:
+  - port: metrics
+    interval: 30s
+    path: /metrics
+    scheme: http
+    scrapeTimeout: 10s
+  namespaceSelector:
+    matchNames:
+    - ollama-system
+
+---
+# PrometheusRule for Blue-Green deployment alerts
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: ollama-blue-green-alerts
+  namespace: ollama-system
+  labels:
+    app.kubernetes.io/name: ollama-distributed
+    app.kubernetes.io/component: alerts
+spec:
+  groups:
+  - name: ollama-blue-green-deployment
+    rules:
+    - alert: BlueGreenDeploymentStuck
+      expr: increase(rollout_phase_duration_seconds{name="ollama-distributed-rollout",phase="BlueGreenPause"}[10m]) > 1800
+      for: 5m
+      labels:
+        severity: warning
+        deployment: blue-green
+      annotations:
+        summary: "Blue-Green deployment is stuck in pause phase"
+        description: "The blue-green deployment for ollama-distributed has been paused for more than 30 minutes"
+    
+    - alert: BlueGreenAnalysisFailed
+      expr: increase(rollout_analysis_run_phase_duration_seconds{name="ollama-distributed-rollout",phase="Failed"}[5m]) > 0
+      for: 1m
+      labels:
+        severity: critical
+        deployment: blue-green
+      annotations:
+        summary: "Blue-Green deployment analysis failed"
+        description: "The analysis phase of blue-green deployment failed, automatic rollback should be triggered"
+    
+    - alert: HighErrorRateInPreview
+      expr: |
+        (
+          sum(rate(ollama_http_requests_total{service="ollama-api-preview",status=~"5.."}[5m])) /
+          sum(rate(ollama_http_requests_total{service="ollama-api-preview"}[5m]))
+        ) > 0.01
+      for: 3m
+      labels:
+        severity: critical
+        deployment: blue-green
+        environment: preview
+      annotations:
+        summary: "High error rate detected in preview environment"
+        description: "Preview environment has error rate of {{ $value | humanizePercentage }}, blocking promotion"
+    
+    - alert: HighLatencyInPreview
+      expr: |
+        histogram_quantile(0.95,
+          sum(rate(ollama_http_request_duration_seconds_bucket{service="ollama-api-preview"}[5m]))
+          by (le)
+        ) > 2
+      for: 3m
+      labels:
+        severity: warning
+        deployment: blue-green
+        environment: preview
+      annotations:
+        summary: "High latency detected in preview environment"
+        description: "Preview environment has 95th percentile latency of {{ $value }}s"
+
+---
+# ConfigMap for deployment automation scripts
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: blue-green-scripts
+  namespace: ollama-system
+data:
+  promote.sh: |
+    #!/bin/bash
+    set -e
+    
+    echo "Promoting blue-green deployment..."
+    kubectl argo rollouts promote ollama-distributed-rollout -n ollama-system
+    
+    echo "Waiting for rollout to complete..."
+    kubectl argo rollouts status ollama-distributed-rollout -n ollama-system --timeout=1800s
+    
+    if [ $? -eq 0 ]; then
+      echo "✅ Blue-green deployment promoted successfully"
+    else
+      echo "❌ Blue-green deployment promotion failed"
+      exit 1
+    fi
+  
+  abort.sh: |
+    #!/bin/bash
+    set -e
+    
+    echo "Aborting blue-green deployment..."
+    kubectl argo rollouts abort ollama-distributed-rollout -n ollama-system
+    
+    echo "Rolling back to previous stable version..."
+    kubectl argo rollouts undo ollama-distributed-rollout -n ollama-system
+    
+    echo "Waiting for rollback to complete..."
+    kubectl argo rollouts status ollama-distributed-rollout -n ollama-system --timeout=600s
+    
+    if [ $? -eq 0 ]; then
+      echo "✅ Blue-green deployment aborted and rolled back successfully"
+    else
+      echo "❌ Rollback failed"
+      exit 1
+    fi
+  
+  canary-enable.sh: |
+    #!/bin/bash
+    set -e
+    
+    WEIGHT=${1:-5}  # Default to 5% traffic
+    
+    echo "Enabling canary deployment with ${WEIGHT}% traffic..."
+    
+    kubectl patch ingress ollama-canary-ingress -n ollama-system --type='json' \
+      -p="[{'op': 'replace', 'path': '/metadata/annotations/nginx.ingress.kubernetes.io~1canary-weight', 'value': '${WEIGHT}'}]"
+    
+    echo "✅ Canary deployment enabled with ${WEIGHT}% traffic"
+  
+  canary-disable.sh: |
+    #!/bin/bash
+    set -e
+    
+    echo "Disabling canary deployment..."
+    
+    kubectl patch ingress ollama-canary-ingress -n ollama-system --type='json' \
+      -p="[{'op': 'replace', 'path': '/metadata/annotations/nginx.ingress.kubernetes.io~1canary-weight', 'value': '0'}]"
+    
+    echo "✅ Canary deployment disabled"
+
+---
+# Job for automated deployment validation
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: blue-green-validation
+  namespace: ollama-system
+  labels:
+    app.kubernetes.io/name: ollama-distributed
+    app.kubernetes.io/component: validation
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: validation
+        image: curlimages/curl:latest
+        command: ["/bin/sh"]
+        args:
+        - -c
+        - |
+          set -e
+          echo "Starting blue-green deployment validation..."
+          
+          # Test active service
+          echo "Testing active service..."
+          curl -f http://ollama-api-active:8080/health || exit 1
+          
+          # Test preview service
+          echo "Testing preview service..."
+          curl -f http://ollama-api-preview:8080/health || exit 1
+          
+          # Test API endpoints
+          echo "Testing API endpoints..."
+          curl -f http://ollama-api-active:8080/api/v1/models || exit 1
+          curl -f http://ollama-api-preview:8080/api/v1/models || exit 1
+          
+          # Test metrics endpoints
+          echo "Testing metrics endpoints..."
+          curl -f http://ollama-api-active:8080/metrics || exit 1
+          curl -f http://ollama-api-preview:8080/metrics || exit 1
+          
+          echo "✅ All validation tests passed"
+      backoffLimit: 3
+      activeDeadlineSeconds: 300

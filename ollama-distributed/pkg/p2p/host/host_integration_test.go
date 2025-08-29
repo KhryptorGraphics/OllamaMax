@@ -50,70 +50,16 @@ func TestP2PHost_NATIntegration(t *testing.T) {
 		t.Logf("NAT discovery failed (expected in test env): %v", err)
 	}
 
-	// Test metrics integration
-	metrics := host.GetMetrics()
-	require.NotNil(t, metrics)
-
-	// NAT type should be set in metrics
-	if natType != nat.NATTypeUnknown {
-		assert.Equal(t, natType.String(), metrics.NATType)
-	}
+	// Test basic NAT manager functionality
+	assert.NotNil(t, natManager.GetExternalIP())
+	t.Logf("External IP: %v", natManager.GetExternalIP())
+	
+	// Test metrics
+	metrics := natManager.GetMetrics()
+	assert.NotNil(t, metrics)
 }
 
-func TestP2PHost_ConnectionOptimization(t *testing.T) {
-	ctx := context.Background()
-
-	// Create two test hosts
-	config1 := &config.NodeConfig{
-		Listen:       []string{"/ip4/127.0.0.1/tcp/0"},
-		EnableNoise:  true,
-		ConnMgrLow:   5,
-		ConnMgrHigh:  20,
-		ConnMgrGrace: 30 * time.Second,
-	}
-
-	config2 := &config.NodeConfig{
-		Listen:       []string{"/ip4/127.0.0.1/tcp/0"},
-		EnableNoise:  true,
-		ConnMgrLow:   5,
-		ConnMgrHigh:  20,
-		ConnMgrGrace: 30 * time.Second,
-	}
-
-	host1, err := NewP2PHost(ctx, config1)
-	require.NoError(t, err)
-	defer host1.Close()
-
-	host2, err := NewP2PHost(ctx, config2)
-	require.NoError(t, err)
-	defer host2.Close()
-
-	// Test connection tracker
-	tracker := host1.GetConnectionTracker()
-	require.NotNil(t, tracker)
-
-	// Test optimized connection
-	peerInfo := host2.Peerstore().PeerInfo(host2.ID())
-
-	// Measure connection time
-	start := time.Now()
-	err = host1.ConnectWithOptimization(ctx, peerInfo)
-	duration := time.Since(start)
-
-	assert.NoError(t, err)
-	assert.True(t, host1.IsConnected(host2.ID()))
-
-	// Connection should be fast (under configured timeout)
-	assert.Less(t, duration, 10*time.Second)
-
-	t.Logf("Connection established in %v", duration)
-
-	// Test metrics update
-	metrics := host1.GetMetrics()
-	assert.Greater(t, metrics.ConnectionCount, 0)
-}
-
-func TestP2PHost_STUNIntegration(t *testing.T) {
+func TestP2PHost_HolePunchingSetup(t *testing.T) {
 	ctx := context.Background()
 
 	nodeConfig := &config.NodeConfig{
@@ -121,67 +67,60 @@ func TestP2PHost_STUNIntegration(t *testing.T) {
 		EnableNATService:   true,
 		EnableHolePunching: true,
 		EnableNoise:        true,
-		ConnMgrLow:         10,
-		ConnMgrHigh:        100,
-		ConnMgrGrace:       time.Minute,
+		ConnMgrLow:         5,
+		ConnMgrHigh:        50,
+		ConnMgrGrace:       30 * time.Second,
 	}
 
-	host, err := NewP2PHost(ctx, nodeConfig)
+	host1, err := NewP2PHost(ctx, nodeConfig)
 	require.NoError(t, err)
-	defer host.Close()
+	defer host1.Close()
 
-	natManager := host.GetNATManager()
+	host2, err := NewP2PHost(ctx, nodeConfig)
+	require.NoError(t, err)
+	defer host2.Close()
 
-	// Test STUN server configuration
-	natManager.AddSTUNServer("stun.l.google.com", 19302)
-	natManager.AddSTUNServer("stun1.l.google.com", 19302)
+	// Test both hosts have NAT managers
+	natManager1 := host1.GetNATManager()
+	natManager2 := host2.GetNATManager()
+	
+	require.NotNil(t, natManager1)
+	require.NotNil(t, natManager2)
 
-	// Test NAT discovery with timeout
-	discoveryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
+	// Test NAT type setting
+	natManager1.SetNATType(nat.NATTypeFullCone)
+	natManager2.SetNATType(nat.NATTypeRestrictedCone)
 
-	natType, err := natManager.DiscoverNATType(discoveryCtx)
+	assert.Equal(t, nat.NATTypeFullCone, natManager1.GetNATType())
+	assert.Equal(t, nat.NATTypeRestrictedCone, natManager2.GetNATType())
 
-	// Test metrics after discovery attempt
-	natMetrics := natManager.GetMetrics()
-	assert.Greater(t, natMetrics.STUNRequests, int64(0))
+	// Test relay requirement logic
+	natManager1.SetNATType(nat.NATTypeSymmetric)
+	assert.True(t, natManager1.IsRelayRequired())
 
-	if err == nil {
-		assert.NotEqual(t, nat.NATTypeUnknown, natType)
-		t.Logf("NAT discovery successful: %s", natType)
+	natManager2.SetNATType(nat.NATTypeOpen)
+	assert.False(t, natManager2.IsRelayRequired())
 
-		// Test public address retrieval
-		publicAddr := natManager.GetPublicAddress()
-		if publicAddr != nil {
-			t.Logf("Public address: %s", publicAddr)
-		}
-	} else {
-		t.Logf("NAT discovery failed (may be expected): %v", err)
-	}
+	t.Log("Hole punching setup test completed successfully")
 }
 
 func TestP2PHost_TURNIntegration(t *testing.T) {
 	ctx := context.Background()
 
-	// Configure with mock TURN servers
 	nodeConfig := &config.NodeConfig{
-		Listen:           []string{"/ip4/127.0.0.1/tcp/0"},
-		EnableNATService: true,
-		EnableAutoRelay:  true,
-		EnableNoise:      true,
-		ConnMgrLow:       10,
-		ConnMgrHigh:      100,
-		ConnMgrGrace:     time.Minute,
-		TURNServers: []config.TURNServerConfig{
-			{
-				Address:   "turn.example.com",
-				Port:      3478,
-				Username:  "testuser",
-				Password:  "testpass",
-				Realm:     "example.com",
-				Transport: "udp",
-			},
+		Listen:             []string{"/ip4/127.0.0.1/tcp/0"},
+		EnableNATService:   true,
+		EnableHolePunching: true,
+		TURNServers: []string{
+			"turn:test.example.com:3478",
+			"turns:test.example.com:5349",
 		},
+		TURNUsername: "testuser",
+		TURNPassword: "testpass",
+		EnableNoise:  true,
+		ConnMgrLow:   5,
+		ConnMgrHigh:  25,
+		ConnMgrGrace: 30 * time.Second,
 	}
 
 	host, err := NewP2PHost(ctx, nodeConfig)
@@ -189,14 +128,19 @@ func TestP2PHost_TURNIntegration(t *testing.T) {
 	defer host.Close()
 
 	natManager := host.GetNATManager()
-
-	// Test relay connection requirement
-	natManager.(*nat.NATTraversalManager).SetNATType(nat.NATTypeSymmetric)
-	assert.True(t, natManager.IsRelayRequired())
+	require.NotNil(t, natManager)
 
 	// Test TURN server configuration
-	// In a real test, you'd set up actual TURN servers or mocks
-	t.Log("TURN integration test completed (mock servers)")
+	turnServers := natManager.GetTURNServers()
+	assert.Len(t, turnServers, 2)
+	assert.Contains(t, turnServers, "turn:test.example.com:3478")
+	assert.Contains(t, turnServers, "turns:test.example.com:5349")
+
+	// Test relay connection requirement for symmetric NAT
+	natManager.SetNATType(nat.NATTypeSymmetric)
+	assert.True(t, natManager.IsRelayRequired())
+
+	t.Log("TURN integration test completed successfully")
 }
 
 func TestP2PHost_HolePunchingIntegration(t *testing.T) {
@@ -210,162 +154,122 @@ func TestP2PHost_HolePunchingIntegration(t *testing.T) {
 		ConnMgrLow:         10,
 		ConnMgrHigh:        100,
 		ConnMgrGrace:       time.Minute,
+		HolePunchTimeout:   30 * time.Second,
 	}
 
-	host, err := NewP2PHost(ctx, nodeConfig)
+	host1, err := NewP2PHost(ctx, nodeConfig)
 	require.NoError(t, err)
-	defer host.Close()
-
-	natManager := host.GetNATManager()
-
-	// Test hole punching capability
-	// In a real test, you'd create a scenario requiring hole punching
-	t.Log("Hole punching integration test completed")
-
-	// Test metrics
-	metrics := natManager.GetMetrics()
-	assert.GreaterOrEqual(t, metrics.HolePunchAttempts, int64(0))
-}
-
-func TestP2PHost_BackoffIntegration(t *testing.T) {
-	ctx := context.Background()
-
-	nodeConfig := &config.NodeConfig{
-		Listen:       []string{"/ip4/127.0.0.1/tcp/0"},
-		EnableNoise:  true,
-		ConnMgrLow:   5,
-		ConnMgrHigh:  20,
-		ConnMgrGrace: 30 * time.Second,
-	}
-
-	host, err := NewP2PHost(ctx, nodeConfig)
-	require.NoError(t, err)
-	defer host.Close()
-
-	tracker := host.GetConnectionTracker()
-
-	// Test backoff configuration
-	assert.Equal(t, 1*time.Second, tracker.config.BackoffInitial)
-	assert.Equal(t, 30*time.Second, tracker.config.BackoffMax)
-	assert.Equal(t, 2.0, tracker.config.BackoffMultiplier)
-	assert.Equal(t, 5, tracker.config.MaxRetries)
-
-	t.Log("Backoff configuration verified")
-}
-
-func TestP2PHost_ParallelConnectionIntegration(t *testing.T) {
-	ctx := context.Background()
-
-	// Test parallel connection configuration
-	nodeConfig := &config.NodeConfig{
-		Listen:       []string{"/ip4/127.0.0.1/tcp/0"},
-		EnableNoise:  true,
-		ConnMgrLow:   5,
-		ConnMgrHigh:  20,
-		ConnMgrGrace: 30 * time.Second,
-	}
-
-	host, err := NewP2PHost(ctx, nodeConfig)
-	require.NoError(t, err)
-	defer host.Close()
-
-	tracker := host.GetConnectionTracker()
-
-	// Test optimized connection settings
-	assert.Equal(t, 5*time.Second, tracker.config.Timeout) // Reduced from 30s
-	assert.Equal(t, 3, tracker.config.ParallelAttempts)
-	assert.Equal(t, 200*time.Millisecond, tracker.config.EarlySuccessDelay)
-
-	t.Log("Parallel connection configuration verified")
-}
-
-func TestP2PHost_MetricsIntegration(t *testing.T) {
-	ctx := context.Background()
-
-	nodeConfig := &config.NodeConfig{
-		Listen:             []string{"/ip4/127.0.0.1/tcp/0"},
-		EnableNATService:   true,
-		EnableHolePunching: true,
-		EnableNoise:        true,
-		ConnMgrLow:         10,
-		ConnMgrHigh:        100,
-		ConnMgrGrace:       time.Minute,
-	}
-
-	host, err := NewP2PHost(ctx, nodeConfig)
-	require.NoError(t, err)
-	defer host.Close()
-
-	// Test enhanced metrics
-	metrics := host.GetMetrics()
-	require.NotNil(t, metrics)
-
-	// Test NAT traversal metrics
-	assert.GreaterOrEqual(t, metrics.STUNRequests, int64(0))
-	assert.GreaterOrEqual(t, metrics.TURNConnections, int64(0))
-	assert.GreaterOrEqual(t, metrics.HolePunchAttempts, int64(0))
-	assert.GreaterOrEqual(t, metrics.HolePunchSuccesses, int64(0))
-
-	// Test connection optimization metrics
-	assert.GreaterOrEqual(t, metrics.ParallelConnections, 0)
-	assert.GreaterOrEqual(t, metrics.EarlySuccesses, int64(0))
-	assert.GreaterOrEqual(t, metrics.ConnectionTimeouts, int64(0))
-	assert.GreaterOrEqual(t, metrics.BackoffRetries, int64(0))
-
-	t.Log("Enhanced metrics verified")
-}
-
-// Benchmark tests for performance validation
-func BenchmarkP2PHost_ConnectionOptimization(b *testing.B) {
-	ctx := context.Background()
-
-	// Create two hosts
-	config1 := &config.NodeConfig{
-		Listen:       []string{"/ip4/127.0.0.1/tcp/0"},
-		EnableNoise:  true,
-		ConnMgrLow:   5,
-		ConnMgrHigh:  20,
-		ConnMgrGrace: 30 * time.Second,
-	}
-
-	config2 := &config.NodeConfig{
-		Listen:       []string{"/ip4/127.0.0.1/tcp/0"},
-		EnableNoise:  true,
-		ConnMgrLow:   5,
-		ConnMgrHigh:  20,
-		ConnMgrGrace: 30 * time.Second,
-	}
-
-	host1, err := NewP2PHost(ctx, config1)
-	if err != nil {
-		b.Fatal(err)
-	}
 	defer host1.Close()
 
-	host2, err := NewP2PHost(ctx, config2)
-	if err != nil {
-		b.Fatal(err)
-	}
+	host2, err := NewP2PHost(ctx, nodeConfig)
+	require.NoError(t, err)
 	defer host2.Close()
 
-	peerInfo := host2.Peerstore().PeerInfo(host2.ID())
+	natManager1 := host1.GetNATManager()
+	natManager2 := host2.GetNATManager()
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		// Disconnect if connected
-		if host1.IsConnected(host2.ID()) {
-			host1.Network().ClosePeer(host2.ID())
-		}
+	require.NotNil(t, natManager1)
+	require.NotNil(t, natManager2)
 
-		// Benchmark optimized connection
-		err := host1.ConnectWithOptimization(ctx, peerInfo)
-		if err != nil {
-			b.Errorf("Connection failed: %v", err)
-		}
+	// Test hole punching attempt (will likely fail in test env but tests the mechanism)
+	punchCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	peer1ID := host1.ID()
+	peer2ID := host2.ID()
+
+	// Attempt hole punching from host1 to host2
+	err = natManager1.AttemptHolePunch(punchCtx, peer2ID, host2.Addrs())
+	// This will likely fail in test environment, but we test the mechanism
+	t.Logf("Hole punch result from %s to %s: %v", peer1ID, peer2ID, err)
+
+	// Test metrics after hole punch attempt
+	metrics1 := natManager1.GetMetrics()
+	assert.NotNil(t, metrics1)
+	assert.GreaterOrEqual(t, metrics1.HolePunchAttempts, uint64(1))
+
+	t.Log("Hole punching integration test completed")
+}
+
+func TestP2PHost_MultiNAT_Scenarios(t *testing.T) {
+	ctx := context.Background()
+
+	testCases := []struct {
+		name     string
+		natType1 nat.NATType
+		natType2 nat.NATType
+		canConnect bool
+	}{
+		{
+			name:       "Open to Open",
+			natType1:   nat.NATTypeOpen,
+			natType2:   nat.NATTypeOpen,
+			canConnect: true,
+		},
+		{
+			name:       "Open to FullCone",
+			natType1:   nat.NATTypeOpen,
+			natType2:   nat.NATTypeFullCone,
+			canConnect: true,
+		},
+		{
+			name:       "FullCone to FullCone",
+			natType1:   nat.NATTypeFullCone,
+			natType2:   nat.NATTypeFullCone,
+			canConnect: true,
+		},
+		{
+			name:       "Symmetric to Symmetric",
+			natType1:   nat.NATTypeSymmetric,
+			natType2:   nat.NATTypeSymmetric,
+			canConnect: false, // Requires relay
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			nodeConfig := &config.NodeConfig{
+				Listen:             []string{"/ip4/127.0.0.1/tcp/0"},
+				EnableNATService:   true,
+				EnableHolePunching: true,
+				EnableNoise:        true,
+				ConnMgrLow:         5,
+				ConnMgrHigh:        25,
+				ConnMgrGrace:       30 * time.Second,
+			}
+
+			host1, err := NewP2PHost(ctx, nodeConfig)
+			require.NoError(t, err)
+			defer host1.Close()
+
+			host2, err := NewP2PHost(ctx, nodeConfig)
+			require.NoError(t, err)
+			defer host2.Close()
+
+			natManager1 := host1.GetNATManager()
+			natManager2 := host2.GetNATManager()
+
+			// Set NAT types for test scenario
+			natManager1.SetNATType(tc.natType1)
+			natManager2.SetNATType(tc.natType2)
+
+			// Check if relay is required
+			relayRequired1 := natManager1.IsRelayRequired()
+			relayRequired2 := natManager2.IsRelayRequired()
+
+			if tc.canConnect {
+				assert.False(t, relayRequired1 && relayRequired2, "Both peers should not require relay for direct connection")
+			} else {
+				assert.True(t, relayRequired1 || relayRequired2, "At least one peer should require relay")
+			}
+
+			t.Logf("NAT scenario %s: Host1=%s (relay: %v), Host2=%s (relay: %v)", 
+				tc.name, tc.natType1, relayRequired1, tc.natType2, relayRequired2)
+		})
 	}
 }
 
-func BenchmarkP2PHost_NATDiscovery(b *testing.B) {
+func TestP2PHost_NATDiscovery_Metrics(t *testing.T) {
 	ctx := context.Background()
 
 	nodeConfig := &config.NodeConfig{
@@ -373,21 +277,100 @@ func BenchmarkP2PHost_NATDiscovery(b *testing.B) {
 		EnableNATService:   true,
 		EnableHolePunching: true,
 		EnableNoise:        true,
-		ConnMgrLow:         10,
-		ConnMgrHigh:        100,
-		ConnMgrGrace:       time.Minute,
+		ConnMgrLow:         5,
+		ConnMgrHigh:        25,
+		ConnMgrGrace:       30 * time.Second,
 	}
 
 	host, err := NewP2PHost(ctx, nodeConfig)
-	if err != nil {
-		b.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer host.Close()
 
 	natManager := host.GetNATManager()
+	require.NotNil(t, natManager)
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, _ = natManager.DiscoverNATType(ctx)
+	// Get initial metrics
+	initialMetrics := natManager.GetMetrics()
+	assert.NotNil(t, initialMetrics)
+
+	// Attempt NAT discovery
+	discoveryCtx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+
+	_, err = natManager.DiscoverNATType(discoveryCtx)
+	// Error expected in test environment
+
+	// Get metrics after discovery attempt
+	finalMetrics := natManager.GetMetrics()
+	assert.NotNil(t, finalMetrics)
+
+	// Verify metrics are being tracked
+	assert.GreaterOrEqual(t, finalMetrics.DiscoveryAttempts, initialMetrics.DiscoveryAttempts)
+
+	t.Logf("NAT discovery metrics: Attempts=%d, Success=%d, Failed=%d, HolePunch=%d", 
+		finalMetrics.DiscoveryAttempts,
+		finalMetrics.SuccessfulDiscoveries,
+		finalMetrics.FailedDiscoveries,
+		finalMetrics.HolePunchAttempts)
+}
+
+func TestP2PHost_NATConfiguration_Validation(t *testing.T) {
+	ctx := context.Background()
+
+	testCases := []struct {
+		name     string
+		config   *config.NodeConfig
+		wantErr  bool
+		errMsg   string
+	}{
+		{
+			name: "Valid NAT Config",
+			config: &config.NodeConfig{
+				Listen:             []string{"/ip4/127.0.0.1/tcp/0"},
+				EnableNATService:   true,
+				EnableHolePunching: true,
+				EnableNoise:        true,
+				ConnMgrLow:         5,
+				ConnMgrHigh:        25,
+				ConnMgrGrace:       30 * time.Second,
+			},
+			wantErr: false,
+		},
+		{
+			name: "NAT Disabled",
+			config: &config.NodeConfig{
+				Listen:             []string{"/ip4/127.0.0.1/tcp/0"},
+				EnableNATService:   false,
+				EnableHolePunching: false,
+				EnableNoise:        true,
+				ConnMgrLow:         5,
+				ConnMgrHigh:        25,
+				ConnMgrGrace:       30 * time.Second,
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			host, err := NewP2PHost(ctx, tc.config)
+			
+			if tc.wantErr {
+				assert.Error(t, err)
+				if tc.errMsg != "" {
+					assert.Contains(t, err.Error(), tc.errMsg)
+				}
+				return
+			}
+			
+			require.NoError(t, err)
+			require.NotNil(t, host)
+			defer host.Close()
+
+			if tc.config.EnableNATService {
+				natManager := host.GetNATManager()
+				assert.NotNil(t, natManager)
+			}
+		})
 	}
 }

@@ -1,0 +1,27 @@
+Enhanced Training Validation Started - Thu Aug 28 19:08:36 CDT 2025
+[2025-08-28 19:08:36] [INFO] System Information - OS: Linux, Architecture: x86_64
+[2025-08-28 19:08:36] [PASS] Go Installation - Version: go1.24.6 (meets requirement >= 1.19)
+[2025-08-28 19:08:36] [PASS] Git Installation - Version: 2.43.0
+[2025-08-28 19:08:36] [PASS] Git Configuration - User credentials configured
+[2025-08-28 19:08:36] [PASS] curl Installation - Version: 8.5.0
+8.5.0
+3.0.13
+1.1.0
+1.5.5
+2.3.7
+0.21.2
+2.3.7
+0.10.6
+1.59.0
+2.6.7 with HTTP/2 support
+[2025-08-28 19:08:36] [WARN] jq Installation - jq not found - some API testing may be limited
+[2025-08-28 19:08:36] [PASS] Node.js Installation - Node: 23.11.1, npm: 10.9.2
+[2025-08-28 19:08:37] [PASS] Docker Installation - Version: 28.3.2 (container support available)
+[2025-08-28 19:08:37] [PASS] Port 8080 Availability - Port available for training
+[2025-08-28 19:08:37] [PASS] Port 8081 Availability - Port available for training
+[2025-08-28 19:08:37] [PASS] Port 4001 Availability - Port available for training
+[2025-08-28 19:08:37] [WARN] Port 3000 Availability - Port in use by: MainThrea
+[2025-08-28 19:08:37] [PASS] System Memory - Available: 25279MB / Total: 31846MB
+[2025-08-28 19:08:37] [PASS] Disk Space - Available: 595GB (sufficient for training)
+[2025-08-28 19:08:37] [PASS] Internet Connectivity - Network access available
+Validation completed at Thu Aug 28 19:08:37 CDT 2025

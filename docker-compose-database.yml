@@ -1,0 +1,364 @@
+# Database-optimized Docker Compose configuration for OllamaMax
+# This configuration focuses on database performance and monitoring
+
+version: '3.8'
+
+services:
+  # PostgreSQL with optimized configuration
+  postgres:
+    image: postgres:15-alpine
+    container_name: ollamamax_postgres
+    ports:
+      - "11432:5432"  # External port above 11111
+    environment:
+      POSTGRES_DB: ollamamax
+      POSTGRES_USER: ollama
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secure_ollama_db_password_2024}
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+      # Performance tuning environment variables
+      POSTGRES_SHARED_BUFFERS: 256MB
+      POSTGRES_EFFECTIVE_CACHE_SIZE: 1GB
+      POSTGRES_MAINTENANCE_WORK_MEM: 64MB
+      POSTGRES_CHECKPOINT_COMPLETION_TARGET: 0.9
+      POSTGRES_WAL_BUFFERS: 16MB
+      POSTGRES_DEFAULT_STATISTICS_TARGET: 100
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/01_init.sql
+      - ./scripts/db-optimization.sql:/docker-entrypoint-initdb.d/02_optimization.sql
+      - ./backups:/backups
+    command: |
+      postgres
+      -c shared_buffers=256MB
+      -c effective_cache_size=1GB
+      -c maintenance_work_mem=64MB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=16MB
+      -c default_statistics_target=100
+      -c random_page_cost=1.1
+      -c effective_io_concurrency=200
+      -c work_mem=4MB
+      -c min_wal_size=1GB
+      -c max_wal_size=4GB
+      -c max_worker_processes=8
+      -c max_parallel_workers_per_gather=4
+      -c max_parallel_workers=8
+      -c max_parallel_maintenance_workers=4
+      -c log_statement=all
+      -c log_duration=on
+      -c log_checkpoints=on
+      -c log_connections=on
+      -c log_disconnections=on
+      -c log_lock_waits=on
+      -c deadlock_timeout=1s
+    networks:
+      - ollama_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ollama -d ollamamax"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2.0'
+        reservations:
+          memory: 1G
+          cpus: '1.0'
+
+  # Redis with persistent configuration and clustering support
+  redis:
+    image: redis:7-alpine
+    container_name: ollamamax_redis
+    ports:
+      - "11379:6379"  # External port above 11111
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-secure_redis_password_2024}
+    command: |
+      redis-server
+      --appendonly yes
+      --requirepass ${REDIS_PASSWORD:-secure_redis_password_2024}
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --tcp-keepalive 300
+      --timeout 0
+      --tcp-backlog 511
+      --databases 16
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+      --rdbcompression yes
+      --rdbchecksum yes
+      --stop-writes-on-bgsave-error yes
+      --lazyfree-lazy-eviction yes
+      --lazyfree-lazy-expire yes
+      --lazyfree-lazy-server-del yes
+      --replica-lazy-flush yes
+      --dir /data
+    volumes:
+      - redis_data:/data
+      - ./redis/redis.conf:/etc/redis/redis.conf:ro
+    networks:
+      - ollama_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-secure_redis_password_2024}", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+          cpus: '1.0'
+        reservations:
+          memory: 256M
+          cpus: '0.5'
+
+  # Redis Cluster (optional, for high availability)
+  redis-cluster:
+    image: redis:7-alpine
+    container_name: ollamamax_redis_cluster
+    ports:
+      - "11380:6380"
+      - "11381:6381"
+      - "11382:6382"
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-secure_redis_password_2024}
+    command: |
+      redis-server
+      --port 6380
+      --cluster-enabled yes
+      --cluster-config-file nodes.conf
+      --cluster-node-timeout 5000
+      --appendonly yes
+      --requirepass ${REDIS_PASSWORD:-secure_redis_password_2024}
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_cluster_data:/data
+    networks:
+      - ollama_network
+    restart: unless-stopped
+    profiles: ["cluster"]
+
+  # PostgreSQL connection pooler (PgBouncer)
+  pgbouncer:
+    image: pgbouncer/pgbouncer:latest
+    container_name: ollamamax_pgbouncer
+    ports:
+      - "11433:5432"  # Connection pool port
+    environment:
+      DATABASES_HOST: postgres
+      DATABASES_PORT: 5432
+      DATABASES_USER: ollama
+      DATABASES_PASSWORD: ${DB_PASSWORD:-secure_ollama_db_password_2024}
+      DATABASES_DBNAME: ollamamax
+      POOL_MODE: transaction
+      SERVER_RESET_QUERY: DISCARD ALL
+      MAX_CLIENT_CONN: 100
+      DEFAULT_POOL_SIZE: 20
+      MIN_POOL_SIZE: 5
+      RESERVE_POOL_SIZE: 5
+      RESERVE_POOL_TIMEOUT: 5.0
+      SERVER_LIFETIME: 3600
+      SERVER_IDLE_TIMEOUT: 600
+      LOG_CONNECTIONS: 1
+      LOG_DISCONNECTIONS: 1
+      LOG_POOLER_ERRORS: 1
+    volumes:
+      - ./config/pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
+    networks:
+      - ollama_network
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "psql -h localhost -U ollama -d ollamamax -c 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Database monitoring with Prometheus PostgreSQL Exporter
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: ollamamax_postgres_exporter
+    ports:
+      - "11434:9187"  # Metrics port
+    environment:
+      DATA_SOURCE_NAME: "postgresql://ollama:${DB_PASSWORD:-secure_ollama_db_password_2024}@postgres:5432/ollamamax?sslmode=disable"
+      PG_EXPORTER_EXTEND_QUERY_PATH: /etc/postgres_exporter/queries.yaml
+    volumes:
+      - ./monitoring/postgres-queries.yaml:/etc/postgres_exporter/queries.yaml:ro
+    networks:
+      - ollama_network
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Redis monitoring with Prometheus Redis Exporter
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    container_name: ollamamax_redis_exporter
+    ports:
+      - "11435:9121"  # Redis metrics port
+    environment:
+      REDIS_ADDR: "redis://redis:6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-secure_redis_password_2024}
+      REDIS_EXPORTER_LOG_FORMAT: json
+    networks:
+      - ollama_network
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # Database backup service
+  db-backup:
+    image: prodrigestivill/postgres-backup-local:latest
+    container_name: ollamamax_db_backup
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: ollamamax
+      POSTGRES_USER: ollama
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secure_ollama_db_password_2024}
+      POSTGRES_EXTRA_OPTS: "-Z6 --schema=public --blobs"
+      SCHEDULE: "@daily"  # Daily backups
+      BACKUP_KEEP_DAYS: 30
+      BACKUP_KEEP_WEEKS: 8
+      BACKUP_KEEP_MONTHS: 6
+      HEALTHCHECK_PORT: 8080
+    volumes:
+      - ./backups:/backups
+    networks:
+      - ollama_network
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles: ["backup"]
+
+  # Database administration tool (pgAdmin)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: ollamamax_pgadmin
+    ports:
+      - "11436:80"  # pgAdmin web interface
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@ollamamax.com
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin_panel_password_2024}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+      - ./config/pgadmin-servers.json:/pgadmin4/servers.json:ro
+    networks:
+      - ollama_network
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles: ["admin"]
+
+  # Redis administration tool (Redis Insight)
+  redis-insight:
+    image: redislabs/redisinsight:latest
+    container_name: ollamamax_redis_insight
+    ports:
+      - "11437:8001"  # Redis Insight web interface
+    environment:
+      RIPORT: 8001
+      RIHOMEDIR: /db
+    volumes:
+      - redis_insight_data:/db
+    networks:
+      - ollama_network
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    profiles: ["admin"]
+
+  # Database migration tool
+  db-migrate:
+    image: migrate/migrate:latest
+    container_name: ollamamax_db_migrate
+    volumes:
+      - ./migrations:/migrations
+    networks:
+      - ollama_network
+    command: |
+      -path=/migrations
+      -database=postgres://ollama:${DB_PASSWORD:-secure_ollama_db_password_2024}@postgres:5432/ollamamax?sslmode=disable
+      up
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles: ["migration"]
+
+  # Performance testing tool
+  db-benchmarks:
+    image: postgres:15-alpine
+    container_name: ollamamax_db_benchmarks
+    environment:
+      PGUSER: ollama
+      PGPASSWORD: ${DB_PASSWORD:-secure_ollama_db_password_2024}
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: ollamamax
+    volumes:
+      - ./scripts/benchmarks:/benchmarks
+    networks:
+      - ollama_network
+    command: |
+      sh -c '
+        echo "Starting database performance benchmarks..."
+        /benchmarks/run_benchmarks.sh
+      '
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles: ["benchmark"]
+
+volumes:
+  postgres_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/postgres
+  redis_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/redis
+  redis_cluster_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+  redis_insight_data:
+    driver: local
+
+networks:
+  ollama_network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.20.0.0/16
+          gateway: 172.20.0.1
+
+# Compose profiles usage:
+# docker-compose -f docker-compose-database.yml up              # Basic setup
+# docker-compose -f docker-compose-database.yml --profile admin up       # With admin tools
+# docker-compose -f docker-compose-database.yml --profile backup up      # With backup service
+# docker-compose -f docker-compose-database.yml --profile cluster up     # With Redis cluster
+# docker-compose -f docker-compose-database.yml --profile benchmark up   # Run benchmarks
+# docker-compose -f docker-compose-database.yml --profile migration up   # Run migrations

@@ -51,6 +51,10 @@ type RateLimitConfig struct {
 	RequestsPer int           `json:"requests_per"`
 	Duration    time.Duration `json:"duration"`
 	BurstSize   int           `json:"burst_size"`
+	// Legacy fields for backward compatibility
+	RPS       int      `json:"rps"`
+	Burst     int      `json:"burst"`
+	WhiteList []string `json:"whitelist"`
 }
 
 // CorsConfig holds CORS configuration
@@ -60,6 +64,7 @@ type CorsConfig struct {
 	AllowedMethods   []string `json:"allowed_methods"`
 	AllowedHeaders   []string `json:"allowed_headers"`
 	AllowCredentials bool     `json:"allow_credentials"`
+	MaxAge           int      `json:"max_age"`
 }
 
 // P2PConfig holds P2P networking configuration

@@ -1,0 +1,22 @@
+{
+  "timestamp": "2025-08-29T08:31:41.985Z",
+  "duration": "56.284s",
+  "results": {
+    "unit": null,
+    "integration": null,
+    "services": {
+      "success": false,
+      "error": "Command failed: npm run test:services -- --verbose\n● Validation Warning:\n\n  Unknown option \"moduleNameMapping\" with value {\"\\\\.(css|less|scss|sass)$\": \"identity-obj-proxy\"} was found.\n  This is probably a typing mistake. Fixing it will remove this message.\n\n  Configuration Documentation:\n  https://jestjs.io/docs/configuration\n\n● Validation Warning:\n\n  Unknown option \"moduleNameMapping\" with value {\"\\\\.(css|less|scss|sass)$\": \"identity-obj-proxy\"} was found.\n  This is probably a typing mistake. Fixing it will remove this message.\n\n  Configuration Documentation:\n  https://jestjs.io/docs/configuration\n\nTest Suites: 0 of 3 total\nTests:       0 total\nSnapshots:   0 total\nTime:        0.051 s\nRan all test suites matching /services/i.\nError: ● Invalid transformer module:\n  \"/home/kp/ollamamax/ollama-distributed/web/node_modules/babel-loader/lib/index.js\" specified in the \"transform\" object of Jest configuration\n  must export a `process` or `processAsync` or `createTransformer` function.\n  Code Transformation Documentation:\n  https://jestjs.io/docs/code-transformation\n\n    at /home/kp/ollamamax/ollama-distributed/web/node_modules/@jest/transform/build/ScriptTransformer.js:339:19\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async Promise.all (index 0)\n    at async ScriptTransformer.loadTransformers (/home/kp/ollamamax/ollama-distributed/web/node_modules/@jest/transform/build/ScriptTransformer.js:317:5)\n    at async createScriptTransformer (/home/kp/ollamamax/ollama-distributed/web/node_modules/@jest/transform/build/ScriptTransformer.js:998:3)\n    at async /home/kp/ollamamax/ollama-distributed/web/node_modules/@jest/core/build/TestScheduler.js:221:33\n    at async Promise.all (index 0)\n    at async TestScheduler.scheduleTests (/home/kp/ollamamax/ollama-distributed/web/node_modules/@jest/core/build/TestScheduler.js:217:7)\n    at async runJest (/home/kp/ollamamax/ollama-distributed/web/node_modules/@jest/core/build/runJest.js:367:19)\n    at async _run10000 (/home/kp/ollamamax/ollama-distributed/web/node_modules/@jest/core/build/cli/index.js:343:7)\n",
+      "output": "\n> ollama-distributed-web@1.0.0 test:services\n> jest --testPathPattern=services --verbose\n\n"
+    },
+    "components": null,
+    "coverage": null,
+    "lint": null
+  },
+  "summary": {
+    "total": 6,
+    "passed": 0,
+    "failed": 1,
+    "skipped": 5
+  }
+}

@@ -27,8 +27,8 @@ func (cs *ConfigurationScanner) IsEnabled() bool {
 	return cs.enabled
 }
 
-func (cs *ConfigurationScanner) Scan(ctx context.Context) (*ScanResult, error) {
-	result := &ScanResult{
+func (cs *ConfigurationScanner) Scan(ctx context.Context) (*SecurityScanResult, error) {
+	result := &SecurityScanResult{
 		ScannerName: cs.GetName(),
 		Timestamp:   time.Now(),
 		Severity:    SeverityInfo,
@@ -147,8 +147,8 @@ func (ts *TLSScanner) IsEnabled() bool {
 	return ts.enabled
 }
 
-func (ts *TLSScanner) Scan(ctx context.Context) (*ScanResult, error) {
-	result := &ScanResult{
+func (ts *TLSScanner) Scan(ctx context.Context) (*SecurityScanResult, error) {
+	result := &SecurityScanResult{
 		ScannerName: ts.GetName(),
 		Timestamp:   time.Now(),
 		Severity:    SeverityInfo,
@@ -254,8 +254,8 @@ func (as *AuthenticationScanner) IsEnabled() bool {
 	return as.enabled
 }
 
-func (as *AuthenticationScanner) Scan(ctx context.Context) (*ScanResult, error) {
-	result := &ScanResult{
+func (as *AuthenticationScanner) Scan(ctx context.Context) (*SecurityScanResult, error) {
+	result := &SecurityScanResult{
 		ScannerName: as.GetName(),
 		Timestamp:   time.Now(),
 		Severity:    SeverityInfo,
@@ -352,8 +352,8 @@ func (fps *FilePermissionsScanner) IsEnabled() bool {
 	return fps.enabled
 }
 
-func (fps *FilePermissionsScanner) Scan(ctx context.Context) (*ScanResult, error) {
-	result := &ScanResult{
+func (fps *FilePermissionsScanner) Scan(ctx context.Context) (*SecurityScanResult, error) {
+	result := &SecurityScanResult{
 		ScannerName: fps.GetName(),
 		Timestamp:   time.Now(),
 		Severity:    SeverityInfo,
@@ -432,8 +432,8 @@ func (nss *NetworkSecurityScanner) IsEnabled() bool {
 	return nss.enabled
 }
 
-func (nss *NetworkSecurityScanner) Scan(ctx context.Context) (*ScanResult, error) {
-	result := &ScanResult{
+func (nss *NetworkSecurityScanner) Scan(ctx context.Context) (*SecurityScanResult, error) {
+	result := &SecurityScanResult{
 		ScannerName: nss.GetName(),
 		Timestamp:   time.Now(),
 		Severity:    SeverityInfo,
@@ -506,8 +506,8 @@ func (ds *DependencyScanner) IsEnabled() bool {
 	return ds.enabled
 }
 
-func (ds *DependencyScanner) Scan(ctx context.Context) (*ScanResult, error) {
-	result := &ScanResult{
+func (ds *DependencyScanner) Scan(ctx context.Context) (*SecurityScanResult, error) {
+	result := &SecurityScanResult{
 		ScannerName: ds.GetName(),
 		Timestamp:   time.Now(),
 		Severity:    SeverityInfo,
