@@ -1,0 +1,189 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "OllamaMax - Worker Nodes Detailed Monitoring",
+    "tags": ["ollamamax", "workers", "detailed"],
+    "style": "dark",
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Worker Node Status",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "up{job=\"ollama-workers\"}",
+            "legendFormat": "{{instance}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {"options": {"0": {"text": "DOWN", "color": "red"}}, "type": "value"},
+              {"options": {"1": {"text": "UP", "color": "green"}}, "type": "value"}
+            ]
+          }
+        },
+        "gridPos": {"h": 4, "w": 24, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "Model Loading Performance",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(ollama_model_loads_total[5m])",
+            "legendFormat": "Model Loads/sec - {{instance}}"
+          },
+          {
+            "expr": "ollama_model_load_duration_seconds",
+            "legendFormat": "Load Duration - {{instance}} - {{model}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Count/Duration",
+            "min": 0
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4}
+      },
+      {
+        "id": 3,
+        "title": "Inference Performance",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(ollama_inference_requests_total[5m])",
+            "legendFormat": "Requests/sec - {{instance}}"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(ollama_inference_duration_seconds_bucket[5m]))",
+            "legendFormat": "95th Percentile Duration - {{instance}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Rate/Duration",
+            "min": 0
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4}
+      },
+      {
+        "id": 4,
+        "title": "GPU Memory Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "ollama_gpu_memory_used_bytes / ollama_gpu_memory_total_bytes * 100",
+            "legendFormat": "GPU Memory % - {{instance}}"
+          },
+          {
+            "expr": "ollama_gpu_utilization_percent",
+            "legendFormat": "GPU Utilization % - {{instance}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Percentage",
+            "min": 0,
+            "max": 100
+          }
+        ],
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 12}
+      },
+      {
+        "id": 5,
+        "title": "Model Memory Usage by Worker",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "ollama_model_memory_usage_bytes",
+            "legendFormat": "{{instance}} - {{model}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Memory Usage (Bytes)",
+            "min": 0
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 20}
+      },
+      {
+        "id": 6,
+        "title": "Concurrent Requests by Worker",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "ollama_concurrent_requests",
+            "legendFormat": "Active Requests - {{instance}}"
+          },
+          {
+            "expr": "ollama_max_concurrent_requests",
+            "legendFormat": "Max Capacity - {{instance}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Requests",
+            "min": 0
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 20}
+      },
+      {
+        "id": 7,
+        "title": "Error Rates by Worker",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(ollama_inference_errors_total[5m])",
+            "legendFormat": "Errors/sec - {{instance}} - {{error_type}}"
+          },
+          {
+            "expr": "rate(ollama_model_load_failures_total[5m])",
+            "legendFormat": "Model Load Failures/sec - {{instance}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Errors/sec",
+            "min": 0
+          }
+        ],
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 28}
+      },
+      {
+        "id": 8,
+        "title": "Network I/O by Worker",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(node_network_receive_bytes_total{device!=\"lo\"}[5m])",
+            "legendFormat": "RX Bytes/sec - {{instance}} - {{device}}"
+          },
+          {
+            "expr": "rate(node_network_transmit_bytes_total{device!=\"lo\"}[5m])",
+            "legendFormat": "TX Bytes/sec - {{instance}} - {{device}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Bytes/sec",
+            "min": 0
+          }
+        ],
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 36}
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "5s",
+    "schemaVersion": 27,
+    "version": 1
+  }
+}

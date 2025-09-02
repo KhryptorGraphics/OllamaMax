@@ -1,0 +1,113 @@
+# Prometheus Configuration for OllamaMax Distributed AI Platform
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'ollamamax'
+    environment: 'production'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+# Load alerting rules
+rule_files:
+  - "alerts/*.yml"
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    metrics_path: /metrics
+    scrape_interval: 15s
+
+  # OllamaMax Distributed API Servers
+  - job_name: 'ollamamax-api'
+    static_configs:
+      - targets:
+          - 'distributed-api:9090'
+          - 'distributed-api-2:9090'
+          - 'distributed-api-3:9090'
+    metrics_path: /metrics
+    scrape_interval: 10s
+    scrape_timeout: 5s
+    honor_labels: true
+
+  # Ollama Worker Nodes
+  - job_name: 'ollama-workers'
+    static_configs:
+      - targets:
+          - 'ollama-primary:11434'
+          - 'ollama-worker-2:11434'
+          - 'ollama-worker-3:11434'
+    metrics_path: /metrics
+    scrape_interval: 15s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+      - source_labels: [__address__]
+        regex: '(.+):.*'
+        target_label: node
+        replacement: '${1}'
+
+  # Redis Metrics
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:9121']
+    metrics_path: /metrics
+    scrape_interval: 30s
+
+  # MinIO Object Storage
+  - job_name: 'minio'
+    static_configs:
+      - targets: ['minio:9000']
+    metrics_path: /minio/v2/metrics/cluster
+    scrape_interval: 30s
+
+  # Node Exporter for system metrics
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets:
+          - 'node-exporter:9100'
+    scrape_interval: 15s
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: '(.+):.*'
+        target_label: node
+        replacement: '${1}'
+
+  # Docker container metrics
+  - job_name: 'docker'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    metrics_path: /metrics
+    scrape_interval: 30s
+
+  # Custom application metrics
+  - job_name: 'ollamamax-custom'
+    static_configs:
+      - targets: ['distributed-api:13100']
+    metrics_path: /api/metrics
+    scrape_interval: 10s
+    honor_timestamps: true
+    params:
+      format: ['prometheus']
+
+# Remote storage configuration (optional)
+# remote_write:
+#   - url: "https://prometheus-remote-write-endpoint"
+#     headers:
+#       Authorization: "Bearer YOUR_TOKEN"
+
+# Storage configuration
+storage:
+  tsdb:
+    path: /prometheus/data
+    retention.time: 30d
+    retention.size: 50GB
+    wal-compression: true

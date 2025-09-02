@@ -20,10 +20,17 @@
     "agents:status": "node .claude-flow/commands/smart-agents/index.js status",
     "agents:test": "node .claude-flow/commands/smart-agents/test-runner.js"
   },
-  "keywords": ["ai", "ollama", "distributed", "kubernetes", "microservices"],
+  "keywords": [
+    "ai",
+    "ollama",
+    "distributed",
+    "kubernetes",
+    "microservices"
+  ],
   "author": "OllamaMax Team",
   "license": "MIT",
   "devDependencies": {
+    "@playwright/test": "^1.55.0",
     "concurrently": "^8.2.2"
   },
   "engines": {
@@ -36,5 +43,8 @@
   "bugs": {
     "url": "https://github.com/khryptorgraphics/ollamamax/issues"
   },
-  "homepage": "https://github.com/khryptorgraphics/ollamamax#readme"
+  "homepage": "https://github.com/khryptorgraphics/ollamamax#readme",
+  "dependencies": {
+    "playwright": "^1.55.0"
+  }
 }

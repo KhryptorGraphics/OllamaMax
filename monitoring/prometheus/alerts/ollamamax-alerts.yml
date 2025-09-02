@@ -1,0 +1,200 @@
+# OllamaMax Distributed AI Platform Alert Rules
+
+groups:
+  # System Health Alerts
+  - name: system-health
+    rules:
+      - alert: HighCPUUsage
+        expr: (100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)) > 85
+        for: 5m
+        labels:
+          severity: warning
+          service: system
+        annotations:
+          summary: "High CPU usage detected on {{ $labels.instance }}"
+          description: "CPU usage is {{ $value }}% on {{ $labels.instance }}"
+
+      - alert: HighMemoryUsage  
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 90
+        for: 3m
+        labels:
+          severity: critical
+          service: system
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}"
+          description: "Memory usage is {{ $value }}% on {{ $labels.instance }}"
+
+      - alert: DiskSpaceLow
+        expr: (1 - (node_filesystem_avail_bytes / node_filesystem_size_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          service: system
+        annotations:
+          summary: "Low disk space on {{ $labels.instance }}"
+          description: "Disk usage is {{ $value }}% on {{ $labels.instance }} {{ $labels.mountpoint }}"
+
+  # OllamaMax API Health Alerts  
+  - name: ollamamax-api
+    rules:
+      - alert: APIServerDown
+        expr: up{job="ollamamax-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: api
+        annotations:
+          summary: "OllamaMax API server is down"
+          description: "API server {{ $labels.instance }} has been down for more than 1 minute"
+
+      - alert: HighAPILatency
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="ollamamax-api"}[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+          service: api
+        annotations:
+          summary: "High API latency detected"
+          description: "95th percentile latency is {{ $value }}s on {{ $labels.instance }}"
+
+      - alert: HighAPIErrorRate
+        expr: rate(http_requests_total{job="ollamamax-api",status=~"5.."}[5m]) / rate(http_requests_total{job="ollamamax-api"}[5m]) > 0.05
+        for: 3m
+        labels:
+          severity: critical
+          service: api
+        annotations:
+          summary: "High API error rate"
+          description: "Error rate is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+
+  # Ollama Worker Alerts
+  - name: ollama-workers
+    rules:
+      - alert: OllamaWorkerDown
+        expr: up{job="ollama-workers"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: ollama
+        annotations:
+          summary: "Ollama worker is down"
+          description: "Ollama worker {{ $labels.instance }} has been unreachable for more than 2 minutes"
+
+      - alert: HighModelLoadTime
+        expr: ollama_model_load_duration_seconds > 300
+        for: 1m
+        labels:
+          severity: warning
+          service: ollama
+        annotations:
+          summary: "Slow model loading detected"
+          description: "Model loading took {{ $value }}s on {{ $labels.instance }}"
+
+      - alert: ModelMemoryExhaustion
+        expr: ollama_model_memory_usage_bytes / ollama_model_memory_total_bytes > 0.95
+        for: 2m
+        labels:
+          severity: critical
+          service: ollama
+        annotations:
+          summary: "Model memory exhaustion"
+          description: "Model memory usage is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+
+      - alert: HighInferenceQueueLength
+        expr: ollama_inference_queue_length > 10
+        for: 5m
+        labels:
+          severity: warning
+          service: ollama
+        annotations:
+          summary: "High inference queue length"
+          description: "Queue length is {{ $value }} on {{ $labels.instance }}"
+
+  # Distributed System Alerts
+  - name: distributed-system
+    rules:
+      - alert: ClusterPartition
+        expr: count(up{job="ollamamax-api"}) < 2
+        for: 1m
+        labels:
+          severity: critical
+          service: cluster
+        annotations:
+          summary: "Cluster partition detected"
+          description: "Only {{ $value }} API servers are reachable"
+
+      - alert: ModelReplicationFailure
+        expr: increase(ollama_model_replication_failures_total[10m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+          service: replication
+        annotations:
+          summary: "Model replication failures detected"
+          description: "{{ $value }} model replication failures in the last 10 minutes"
+
+      - alert: P2PNetworkPartition
+        expr: ollama_p2p_connected_peers < 2
+        for: 5m
+        labels:
+          severity: warning
+          service: p2p
+        annotations:
+          summary: "P2P network partition"
+          description: "Only {{ $value }} P2P peers connected on {{ $labels.instance }}"
+
+  # Redis Alerts
+  - name: redis
+    rules:
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: redis
+        annotations:
+          summary: "Redis is down"
+          description: "Redis instance {{ $labels.instance }} is unreachable"
+
+      - alert: RedisHighMemoryUsage
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          service: redis
+        annotations:
+          summary: "Redis high memory usage"
+          description: "Redis memory usage is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+
+      - alert: RedisConnectionSpike
+        expr: rate(redis_connected_clients[5m]) > 100
+        for: 2m
+        labels:
+          severity: warning
+          service: redis
+        annotations:
+          summary: "Redis connection spike"
+          description: "Redis connections increasing rapidly on {{ $labels.instance }}"
+
+  # MinIO Storage Alerts
+  - name: minio-storage
+    rules:
+      - alert: MinIODown
+        expr: up{job="minio"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: storage
+        annotations:
+          summary: "MinIO storage is down"
+          description: "MinIO instance {{ $labels.instance }} is unreachable"
+
+      - alert: MinIOHighDiskUsage
+        expr: minio_disk_storage_used_bytes / minio_disk_storage_total_bytes > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          service: storage
+        annotations:
+          summary: "MinIO high disk usage"
+          description: "MinIO disk usage is {{ $value | humanizePercentage }} on {{ $labels.instance }}"

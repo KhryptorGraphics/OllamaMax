@@ -1,0 +1,55 @@
+# Enhanced Node.js Distributed Inference API Server
+FROM node:20-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apk add --no-cache \
+    ca-certificates \
+    tzdata \
+    curl \
+    wget
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodeuser && \
+    adduser -S -D -H -u 1001 -s /sbin/nologin -G nodeuser nodeuser
+
+# Copy package files
+COPY api-server/package*.json ./
+
+# Install Node.js dependencies
+RUN npm install --only=production && \
+    npm cache clean --force
+
+# Copy application source
+COPY api-server/distributed-inference.js ./
+COPY web-interface/ ./web-interface/
+
+# Create necessary directories with proper permissions
+RUN mkdir -p logs data && \
+    chmod 755 logs data && \
+    chown -R nodeuser:nodeuser /app
+
+# Switch to non-root user
+USER nodeuser
+
+# Create additional directories that might be mounted
+RUN mkdir -p /app/logs /app/data
+
+# Expose ports
+EXPOSE 13100
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:13100/api/health || exit 1
+
+# Environment variables
+ENV NODE_ENV=production
+ENV PORT=13100
+ENV REDIS_HOST=redis
+ENV REDIS_PORT=6379
+ENV REDIS_PASSWORD=
+
+# Start the application
+CMD ["node", "distributed-inference.js"]

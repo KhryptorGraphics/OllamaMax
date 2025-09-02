@@ -1,0 +1,83 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+README.md
+*.md
+docs/
+
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing
+coverage/
+.nyc_output/
+test/
+tests/
+*.test.js
+*.spec.js
+
+# Environment files
+.env
+.env.*
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Build artifacts
+build/
+dist/
+*.tgz
+*.tar.gz
+
+# Cache
+.cache/
+.npm/
+.yarn/
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+
+# Development
+*.dev.yml
+docker-compose.override.yml
+
+# Monitoring data
+monitoring/data/
+grafana_data/
+prometheus_data/
+
+# Claude specific
+.claude/
+claudedocs/
+.bmad*/
+.clinerules/
+.crush/
+.gemini/
+.qwen/
+.roomodes
+web-bundles/

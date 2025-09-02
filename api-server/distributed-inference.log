@@ -1,0 +1,18 @@
+
+╔════════════════════════════════════════════════════╗
+║     🦙 Distributed Llama Inference System          ║
+╚════════════════════════════════════════════════════╝
+
+📡 WebSocket: ws://localhost:13100/chat
+🌐 REST API:  http://localhost:13100/api
+📊 Health:    http://localhost:13100/api/health
+👷 Workers:   http://localhost:13100/api/workers
+
+🚀 System ready for distributed inference!
+    
+Added worker: ollama-worker-2 on port 13010
+Added worker: ollama-worker-3 on port 13020
+Health check failed for ollama-worker-4: request to http://localhost:13030/api/tags failed, reason: connect ECONNREFUSED 127.0.0.1:13030
+Initialized 3 worker(s)
+New client connected
+New client connected

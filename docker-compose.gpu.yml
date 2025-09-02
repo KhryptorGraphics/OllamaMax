@@ -1,0 +1,244 @@
+# Modern Docker Compose configuration - GPU-enabled deployment
+
+services:
+  # Enhanced Distributed Inference API Server
+  distributed-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    ports:
+      - "13100:13100"  # API and Web Interface port
+    environment:
+      - NODE_ENV=production
+      - PORT=13100
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - OLLAMA_PRIMARY=http://ollama-primary:11434
+      - OLLAMA_WORKER_2=http://ollama-worker-2:11434
+      - OLLAMA_WORKER_3=http://ollama-worker-3:11434
+    depends_on:
+      redis:
+        condition: service_healthy
+      ollama-primary:
+        condition: service_healthy
+      ollama-worker-2:
+        condition: service_healthy
+      ollama-worker-3:
+        condition: service_healthy
+    volumes:
+      - api_logs:/app/logs
+      - api_data:/app/data
+    networks:
+      - ollama_distributed
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:13100/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Primary Ollama Node (GPU)
+  ollama-primary:
+    build:
+      context: .
+      dockerfile: Dockerfile.ollama-gpu
+    ports:
+      - "13000:11434"  # Primary Ollama API
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+      - OLLAMA_PORT=11434
+      - CUDA_VISIBLE_DEVICES=0
+    volumes:
+      - ollama_primary_models:/usr/share/ollama/.ollama
+    networks:
+      - ollama_distributed
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Ollama Worker Node 2 (GPU)
+  ollama-worker-2:
+    build:
+      context: .
+      dockerfile: Dockerfile.ollama-gpu
+    ports:
+      - "13001:11434"  # Worker 2 Ollama API
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+      - OLLAMA_PORT=11434
+      - CUDA_VISIBLE_DEVICES=1
+    volumes:
+      - ollama_worker2_models:/usr/share/ollama/.ollama
+    networks:
+      - ollama_distributed
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Ollama Worker Node 3 (GPU)
+  ollama-worker-3:
+    build:
+      context: .
+      dockerfile: Dockerfile.ollama-gpu
+    ports:
+      - "13002:11434"  # Worker 3 Ollama API
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+      - OLLAMA_PORT=11434
+      - CUDA_VISIBLE_DEVICES=2
+    volumes:
+      - ollama_worker3_models:/usr/share/ollama/.ollama
+    networks:
+      - ollama_distributed
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Redis for distributed state management
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "13101:6379"  # Redis port
+    command: redis-server --appendonly yes --requirepass ollama_redis_pass
+    volumes:
+      - redis_distributed_data:/data
+    networks:
+      - ollama_distributed
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MinIO for distributed model storage
+  minio:
+    image: minio/minio:latest
+    ports:
+      - "13090:9000"  # MinIO API
+      - "13091:9001"  # MinIO Console
+    environment:
+      - MINIO_ROOT_USER=ollama
+      - MINIO_ROOT_PASSWORD=ollama_minio_pass
+      - MINIO_DOMAIN=minio
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - ollama_distributed
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "13092:9090"  # Prometheus port
+    volumes:
+      - ./monitoring/prometheus-distributed.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/alerts:/etc/prometheus/alerts:ro
+      - prometheus_distributed_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - ollama_distributed
+    restart: unless-stopped
+    depends_on:
+      - distributed-api
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "13093:3000"  # Grafana port
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=ollama_grafana_pass
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_distributed_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+    depends_on:
+      - prometheus
+    networks:
+      - ollama_distributed
+    restart: unless-stopped
+
+  # Alertmanager for notifications
+  alertmanager:
+    image: prom/alertmanager:latest
+    ports:
+      - "13094:9093"  # Alertmanager port
+    volumes:
+      - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=http://localhost:13094'
+    networks:
+      - ollama_distributed
+    restart: unless-stopped
+
+volumes:
+  redis_distributed_data:
+  ollama_primary_models:
+  ollama_worker2_models:
+  ollama_worker3_models:
+  minio_data:
+  api_logs:
+  api_data:
+  prometheus_distributed_data:
+  grafana_distributed_data:
+  alertmanager_data:
+
+networks:
+  ollama_distributed:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

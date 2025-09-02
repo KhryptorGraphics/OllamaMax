@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Distributed Llama Chat - OllamaMax</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body><a href="#main-content" class="skip-link visually-hidden">Skip to main content</a>
+    <div id="app">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-content">
+                <h1>🦙 Distributed Llama Chat</h1>
+                <div class="nav-tabs">
+                    <button class="tab-button active" data-tab="chat" aria-label="Chat tab" role="tab" aria-selected="true">Chat</button>
+                    <button class="tab-button" data-tab="nodes" aria-label="Nodes management tab" role="tab" aria-selected="false">Nodes</button>
+                    <button class="tab-button" data-tab="models" aria-label="Model management tab" role="tab" aria-selected="false">Models</button>
+                    <button class="tab-button" data-tab="settings" aria-label="Settings tab" role="tab" aria-selected="false">Settings</button>
+                </div>
+                <div class="connection-status">
+                    <span class="status-indicator" id="connectionStatus"></span>
+                    <span id="connectionText">Connecting...</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="app-main" id="main-content" role="main">
+            <!-- Chat Tab -->
+            <div class="tab-content active" id="chatTab">
+                <div class="chat-container">
+                    <!-- Messages Area -->
+                    <div class="messages-area" id="messagesArea">
+                        <div class="welcome-message">
+                            <h2>Welcome to Distributed Llama Chat</h2>
+                            <p>Connected to <span id="nodeCount">0</span> inference nodes</p>
+                            <p>Start a conversation below!</p>
+                        </div>
+                    </div>
+
+                    <!-- Status Bar -->
+                    <div class="status-bar">
+                        <div class="status-item">
+                            <span class="status-label">Active Node:</span>
+                            <span class="status-value" id="activeNode">-</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Queue:</span>
+                            <span class="status-value" id="queueLength">0</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Latency:</span>
+                            <span class="status-value" id="latency">-</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Model:</span>
+                            <select id="modelSelector" class="model-selector">
+                                <option value="tinyllama">TinyLlama</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Input Area -->
+                    <div class="input-area">
+                        <textarea 
+                            id="messageInput" 
+                            class="message-input" 
+                            placeholder="Type your message... (Shift+Enter for new line)"
+                            rows="3"
+                        ></textarea>
+                        <div class="input-controls">
+                            <button id="attachButton" class="icon-button" title="Attach file">
+                                📎
+                            </button>
+                            <button id="sendButton" class="send-button">
+                                Send
+                            </button>
+                        </div>
+                        <div id="message-help" class="visually-hidden">Press Enter to send, Shift+Enter for new line</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Enhanced Nodes Tab -->
+            <div class="tab-content" id="nodesTab">
+                <div class="enhanced-nodes-container">
+                    <div class="nodes-header">
+                        <h2>Distributed Nodes Dashboard</h2>
+                        <div class="header-controls">
+                            <div class="view-toggles">
+                                <button id="compactView" class="view-toggle active" data-view="compact">📋 Compact</button>
+                                <button id="detailedView" class="view-toggle" data-view="detailed">📊 Detailed</button>
+                            </div>
+                            <div class="refresh-controls">
+                                <button id="pauseRefresh" class="control-button">⏸️ Pause</button>
+                                <button id="refreshNodes" class="refresh-button">🔄 Refresh</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="cluster-overview">
+                        <div class="cluster-stat">
+                            <span class="stat-label">Total Nodes</span>
+                            <span class="stat-value" id="totalNodes">0</span>
+                        </div>
+                        <div class="cluster-stat">
+                            <span class="stat-label">Healthy</span>
+                            <span class="stat-value" id="healthyNodes">0</span>
+                        </div>
+                        <div class="cluster-stat">
+                            <span class="stat-label">CPU Cores</span>
+                            <span class="stat-value" id="totalCores">0</span>
+                        </div>
+                        <div class="cluster-stat">
+                            <span class="stat-label">Total RAM</span>
+                            <span class="stat-value" id="totalMemory">0 GB</span>
+                        </div>
+                        <div class="cluster-stat">
+                            <span class="stat-label">Active Requests</span>
+                            <span class="stat-value" id="totalRequests">0</span>
+                        </div>
+                    </div>
+                    
+                    <div class="nodes-filters">
+                        <div class="filter-group">
+                            <label for="statusFilter">Status:</label>
+                            <select id="statusFilter">
+                                <option value="all">All</option>
+                                <option value="healthy">Healthy</option>
+                                <option value="warning">Warning</option>
+                                <option value="error">Error</option>
+                                <option value="offline">Offline</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="sortBy">Sort by:</label>
+                            <select id="sortBy">
+                                <option value="name">Name</option>
+                                <option value="cpu">CPU Usage</option>
+                                <option value="memory">Memory Usage</option>
+                                <option value="requests">Requests</option>
+                                <option value="uptime">Uptime</option>
+                            </select>
+                        </div>
+                        <div class="search-group">
+                            <input type="text" id="nodeSearch" placeholder="Search nodes...">
+                        </div>
+                    </div>
+                    
+                    <div class="enhanced-nodes-grid" id="enhancedNodesContainer">
+                        <!-- Enhanced node cards will be inserted here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Models Tab -->
+            <div class="tab-content" id="modelsTab">
+                <div class="models-container">
+                    <div class="models-header">
+                        <h2>Model Management</h2>
+                        <button id="refreshModels" class="refresh-button">🔄 Refresh Models</button>
+                    </div>
+                    
+                    <div class="models-section">
+                        <h3>Available Models</h3>
+                        <div class="model-grid" id="modelGrid">
+                            <!-- Model cards will be inserted here -->
+                        </div>
+                    </div>
+                    
+                    <div class="models-section">
+                        <h3>Download New Model</h3>
+                        <div class="model-download-form">
+                            <div class="form-group">
+                                <label for="newModelName">Model Name:</label>
+                                <input type="text" id="newModelName" placeholder="e.g., llama2, codellama, mistral">
+                            </div>
+                            <div class="form-group">
+                                <label for="downloadTargets">Target Workers:</label>
+                                <div class="worker-checkboxes" id="downloadTargets">
+                                    <!-- Worker checkboxes will be populated dynamically -->
+                                </div>
+                            </div>
+                            <button id="downloadModel" class="primary-button">Download Model</button>
+                        </div>
+                    </div>
+                    
+                    <div class="models-section">
+                        <h3>Model Propagation Settings</h3>
+                        <div class="propagation-settings">
+                            <div class="setting-item">
+                                <label for="autoPropagation">
+                                    <input type="checkbox" id="autoPropagation" checked>
+                                    Enable automatic model propagation to new nodes
+                                </label>
+                            </div>
+                            <div class="setting-item">
+                                <label for="p2pEnabled">
+                                    <input type="checkbox" id="p2pEnabled" checked>
+                                    Accept model migration from peer nodes
+                                </label>
+                            </div>
+                            <div class="setting-item">
+                                <label for="propagationStrategy">Propagation Strategy:</label>
+                                <select id="propagationStrategy">
+                                    <option value="immediate">Immediate (fastest)</option>
+                                    <option value="scheduled">Scheduled (during low usage)</option>
+                                    <option value="manual">Manual only</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Tab -->
+            <div class="tab-content" id="settingsTab">
+                <div class="settings-container">
+                    <h2>Settings</h2>
+                    
+                    <div class="settings-section">
+                        <h3>API Configuration</h3>
+                        <div class="setting-item">
+                            <label for="apiEndpoint">API Endpoint:</label>
+                            <input type="text" id="apiEndpoint" value="ws://localhost:13100/chat">
+                        </div>
+                        <div class="setting-item">
+                            <label for="apiKey">API Key (optional):</label>
+                            <input type="password" id="apiKey" placeholder="Enter API key if required">
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <h3>Chat Settings</h3>
+                        <div class="setting-item">
+                            <label for="streamingEnabled">
+                                <input type="checkbox" id="streamingEnabled" checked>
+                                Enable streaming responses
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <label for="autoScroll">
+                                <input type="checkbox" id="autoScroll" checked>
+                                Auto-scroll to new messages
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <label for="maxTokens">Max Tokens:</label>
+                            <input type="number" id="maxTokens" value="2048" min="128" max="4096">
+                        </div>
+                        <div class="setting-item">
+                            <label for="temperature">Temperature:</label>
+                            <input type="range" id="temperature" min="0" max="2" step="0.1" value="0.7">
+                            <span id="temperatureValue">0.7</span>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <h3>Node Management</h3>
+                        <div class="setting-item">
+                            <label for="loadBalancing">Load Balancing Strategy:</label>
+                            <select id="loadBalancing">
+                                <option value="round-robin">Round Robin</option>
+                                <option value="least-loaded">Least Loaded</option>
+                                <option value="fastest">Fastest Response</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <button id="addNodeButton" class="primary-button">Add New Node</button>
+                        </div>
+                    </div>
+
+                    <div class="settings-actions">
+                        <button id="saveSettings" class="primary-button">Save Settings</button>
+                        <button id="resetSettings" class="secondary-button">Reset to Defaults</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Message Template -->
+    <template id="messageTemplate">
+        <div class="message">
+            <div class="message-header">
+                <span class="message-sender"></span>
+                <span class="message-node"></span>
+                <span class="message-time"></span>
+            </div>
+            <div class="message-content"></div>
+            <div class="message-actions">
+                <button class="action-button copy-button" title="Copy">📋</button>
+                <button class="action-button retry-button" title="Retry">🔄</button>
+            </div>
+        </div>
+    </template>
+
+    <!-- Node Card Template -->
+    <template id="nodeCardTemplate">
+        <div class="node-card">
+            <div class="node-header">
+                <h3 class="node-name"></h3>
+                <span class="node-status"></span>
+            </div>
+            <div class="node-metrics">
+                <div class="metric">
+                    <span class="metric-label">Load:</span>
+                    <span class="metric-value load-value">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Memory:</span>
+                    <span class="metric-value memory-value">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Req/s:</span>
+                    <span class="metric-value requests-value">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Queue:</span>
+                    <span class="metric-value queue-value">-</span>
+                </div>
+            </div>
+            <div class="node-sparkline">
+                <canvas width="200" height="40"></canvas>
+            </div>
+            <div class="node-actions">
+                <button class="node-action-button" data-action="details">Details</button>
+                <button class="node-action-button" data-action="remove">Remove</button>
+            </div>
+        </div>
+    </template>
+
+    <!-- Enhanced Node Card Template -->
+    <template id="enhancedNodeCardTemplate">
+        <div class="enhanced-node-card">
+            <div class="node-card-header">
+                <div class="node-title">
+                    <h3 class="node-name"></h3>
+                    <span class="node-status-badge"></span>
+                </div>
+                <div class="node-quick-actions">
+                    <button class="quick-action-btn restart-btn" title="Restart Node">🔄</button>
+                    <button class="quick-action-btn config-btn" title="Configure">⚙️</button>
+                    <button class="quick-action-btn expand-btn" title="Expand Details">📊</button>
+                </div>
+            </div>
+            
+            <div class="node-overview">
+                <div class="system-metrics">
+                    <div class="metric-item">
+                        <span class="metric-label">CPU</span>
+                        <div class="metric-bar">
+                            <div class="metric-fill cpu-fill"></div>
+                        </div>
+                        <span class="metric-value cpu-value">0%</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">Memory</span>
+                        <div class="metric-bar">
+                            <div class="metric-fill memory-fill"></div>
+                        </div>
+                        <span class="metric-value memory-value">0%</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">Disk</span>
+                        <div class="metric-bar">
+                            <div class="metric-fill disk-fill"></div>
+                        </div>
+                        <span class="metric-value disk-value">0%</span>
+                    </div>
+                </div>
+                
+                <div class="node-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">Requests/sec</span>
+                        <span class="stat-value requests-per-sec">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Avg Response</span>
+                        <span class="stat-value avg-response">0ms</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Uptime</span>
+                        <span class="stat-value node-uptime">0%</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="node-models-summary">
+                <div class="models-header">
+                    <span class="models-count">0 models loaded</span>
+                    <button class="models-manage-btn">Manage</button>
+                </div>
+                <div class="models-list">
+                    <!-- Model badges will be inserted here -->
+                </div>
+            </div>
+            
+            <div class="node-details-section" style="display: none;">
+                <div class="details-tabs">
+                    <button class="detail-tab active" data-tab="performance">Performance</button>
+                    <button class="detail-tab" data-tab="health">Health</button>
+                    <button class="detail-tab" data-tab="models">Models</button>
+                    <button class="detail-tab" data-tab="config">Config</button>
+                </div>
+                
+                <div class="detail-content">
+                    <div class="detail-panel active" id="performance-panel">
+                        <div class="performance-charts">
+                            <canvas class="performance-chart" width="300" height="150"></canvas>
+                        </div>
+                        <div class="performance-metrics">
+                            <div class="perf-metric">
+                                <span class="perf-label">CPU Cores</span>
+                                <span class="perf-value cpu-cores">0</span>
+                            </div>
+                            <div class="perf-metric">
+                                <span class="perf-label">Memory Total</span>
+                                <span class="perf-value memory-total">0 GB</span>
+                            </div>
+                            <div class="perf-metric">
+                                <span class="perf-label">Network RX</span>
+                                <span class="perf-value network-rx">0 MB</span>
+                            </div>
+                            <div class="perf-metric">
+                                <span class="perf-label">Network TX</span>
+                                <span class="perf-value network-tx">0 MB</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="detail-panel" id="health-panel">
+                        <div class="health-checks">
+                            <div class="health-check">
+                                <span class="check-label">API Status</span>
+                                <span class="check-status api-status">Unknown</span>
+                            </div>
+                            <div class="health-check">
+                                <span class="check-label">Models</span>
+                                <span class="check-status models-status">Unknown</span>
+                            </div>
+                            <div class="health-check">
+                                <span class="check-label">Resources</span>
+                                <span class="check-status resources-status">Unknown</span>
+                            </div>
+                            <div class="health-check">
+                                <span class="check-label">Network</span>
+                                <span class="check-status network-status">Unknown</span>
+                            </div>
+                        </div>
+                        <div class="health-warnings">
+                            <h4>Warnings</h4>
+                            <ul class="warnings-list">
+                                <!-- Warnings will be inserted here -->
+                            </ul>
+                        </div>
+                        <div class="health-errors">
+                            <h4>Errors</h4>
+                            <ul class="errors-list">
+                                <!-- Errors will be inserted here -->
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="detail-panel" id="models-panel">
+                        <div class="models-controls">
+                            <input type="text" class="model-input" placeholder="Model name to load">
+                            <button class="load-model-btn">Load Model</button>
+                        </div>
+                        <div class="loaded-models">
+                            <!-- Detailed model list will be inserted here -->
+                        </div>
+                    </div>
+                    
+                    <div class="detail-panel" id="config-panel">
+                        <div class="config-form">
+                            <div class="config-item">
+                                <label>Max Concurrent Requests</label>
+                                <input type="number" class="config-concurrent" min="1" max="50">
+                            </div>
+                            <div class="config-item">
+                                <label>Memory Limit (MB)</label>
+                                <input type="number" class="config-memory" min="1024" max="32768">
+                            </div>
+                            <div class="config-item">
+                                <label>Enable GPU</label>
+                                <input type="checkbox" class="config-gpu" checked>
+                            </div>
+                            <div class="config-actions">
+                                <button class="save-config-btn">Save Config</button>
+                                <button class="reset-config-btn">Reset</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- Model Card Template -->
+        <div class="model-card">
+            <div class="model-header">
+                <h4 class="model-name"></h4>
+                <span class="model-size"></span>
+            </div>
+            <div class="model-info">
+                <div class="model-detail">
+                    <span class="detail-label">Family:</span>
+                    <span class="model-family">-</span>
+                </div>
+                <div class="model-detail">
+                    <span class="detail-label">Size:</span>
+                    <span class="model-parameter-size">-</span>
+                </div>
+                <div class="model-detail">
+                    <span class="detail-label">Format:</span>
+                    <span class="model-format">-</span>
+                </div>
+            </div>
+            <div class="model-nodes">
+                <div class="nodes-header">Available on:</div>
+                <div class="node-badges" id="modelNodes">
+                    <!-- Node badges will be inserted here -->
+                </div>
+            </div>
+            <div class="model-actions">
+                <button class="model-action-button propagate-button" data-action="propagate">📤 Propagate</button>
+                <button class="model-action-button delete-button" data-action="delete">🗑️ Delete</button>
+            </div>
+        </div>
+    </template>
+
+    <!-- Add Node Modal -->
+    <div id="addNodeModal" class="modal">
+        <div class="modal-content">
+            <h2>Add New Node</h2>
+            <div class="form-group">
+                <label for="nodeUrl">Node URL:</label>
+                <input type="text" id="nodeUrl" placeholder="http://node-address:port">
+            </div>
+            <div class="form-group">
+                <label for="nodeName">Node Name:</label>
+                <input type="text" id="nodeName" placeholder="llama-node-01">
+            </div>
+            <div class="modal-actions">
+                <button id="confirmAddNode" class="primary-button">Add Node</button>
+                <button id="cancelAddNode" class="secondary-button">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+
+    <!-- Error Boundary -->
+    <div id="errorBoundary" class="error-boundary" style="display: none;">
+        <div class="error-content">
+            <h3>⚠️ Something went wrong</h3>
+            <p id="errorMessage">An unexpected error occurred. Please try refreshing the page.</p>
+            <div class="error-actions">
+                <button id="retryButton" class="primary-button">Retry</button>
+                <button id="reloadButton" class="secondary-button">Reload Page</button>
+            </div>
+        </div>
+    </div>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner">
+            <div class="spinner-ring"></div>
+            <p id="loadingMessage">Loading...</p>
+        </div>
+    </div>
+    <!-- Notification System -->
+    <div id="notificationContainer" class="notification-container">
+        <!-- Notifications will be inserted here -->
+    </div></body>
+</html>

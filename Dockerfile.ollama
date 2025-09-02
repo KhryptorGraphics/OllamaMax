@@ -1,0 +1,45 @@
+# Ollama Worker Node with GPU Support
+FROM ubuntu:22.04
+
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive
+ENV OLLAMA_HOST=0.0.0.0
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    wget \
+    ca-certificates \
+    gnupg \
+    lsb-release \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Ollama
+RUN curl -fsSL https://ollama.ai/install.sh | sh
+
+# Create ollama user and directories
+RUN useradd -r -s /bin/false -m -d /usr/share/ollama ollama && \
+    mkdir -p /usr/share/ollama/.ollama && \
+    chown -R ollama:ollama /usr/share/ollama
+
+# Create systemd service directory (if needed)
+RUN mkdir -p /etc/systemd/system
+
+# Copy Ollama models (if any pre-downloaded models exist)
+# COPY models/ /usr/share/ollama/.ollama/models/
+
+# Expose Ollama API port
+EXPOSE 11434
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:11434/api/version || exit 1
+
+# Switch to ollama user
+USER ollama
+
+# Set working directory
+WORKDIR /usr/share/ollama
+
+# Start Ollama server
+CMD ["ollama", "serve"]

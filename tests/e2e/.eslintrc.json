@@ -1,0 +1,57 @@
+{
+  "extends": [
+    "eslint:recommended",
+    "@typescript-eslint/recommended",
+    "plugin:playwright/recommended",
+    "prettier"
+  ],
+  "plugins": ["@typescript-eslint", "playwright"],
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "ecmaVersion": 2022,
+    "sourceType": "module",
+    "project": "./tsconfig.json"
+  },
+  "env": {
+    "node": true,
+    "es6": true
+  },
+  "rules": {
+    "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+    "@typescript-eslint/no-explicit-any": "warn",
+    "@typescript-eslint/explicit-function-return-type": "off",
+    "@typescript-eslint/explicit-module-boundary-types": "off",
+    "@typescript-eslint/no-non-null-assertion": "warn",
+    "playwright/missing-playwright-await": "error",
+    "playwright/no-conditional-in-test": "error",
+    "playwright/no-element-handle": "error",
+    "playwright/no-eval": "error",
+    "playwright/no-focused-test": "error",
+    "playwright/no-force-option": "warn",
+    "playwright/no-page-pause": "error",
+    "playwright/no-skipped-test": "warn",
+    "playwright/no-wait-for-timeout": "warn",
+    "playwright/prefer-strict-equal": "error",
+    "playwright/prefer-to-be": "error",
+    "playwright/prefer-to-contain": "error",
+    "playwright/prefer-to-have-count": "error",
+    "playwright/prefer-to-have-length": "error",
+    "playwright/require-top-level-describe": "error",
+    "playwright/valid-expect": "error",
+    "no-console": ["warn", { "allow": ["warn", "error", "info"] }],
+    "prefer-const": "error",
+    "no-var": "error",
+    "no-trailing-spaces": "error",
+    "eol-last": "error",
+    "comma-dangle": ["error", "never"],
+    "semi": ["error", "always"],
+    "quotes": ["error", "single", { "avoidEscape": true }],
+    "indent": ["error", 2]
+  },
+  "ignorePatterns": [
+    "node_modules/",
+    "dist/",
+    "reports/",
+    "test-results/"
+  ]
+}

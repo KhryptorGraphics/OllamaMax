@@ -1,0 +1,78 @@
+# Modern Docker Compose configuration - version field is deprecated
+
+services:
+  # Enhanced Distributed Inference API Server (Development)
+  distributed-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    ports:
+      - "13100:13100"  # API and Web Interface port
+    environment:
+      - NODE_ENV=production
+      - PORT=13100
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=ollama_dev_pass
+      - OLLAMA_PRIMARY=http://host.docker.internal:13000
+      - OLLAMA_WORKER_2=http://host.docker.internal:13001
+      - OLLAMA_WORKER_3=http://host.docker.internal:13002
+    depends_on:
+      redis:
+        condition: service_healthy
+    # No volume mounts for simplified development deployment
+    networks:
+      - ollama_dev
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:13100/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Redis for distributed state management
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "13101:6379"  # Redis port for development
+    command: redis-server --appendonly yes --requirepass ollama_dev_pass
+    volumes:
+      - redis_dev_data:/data
+    networks:
+      - ollama_dev
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Lightweight model storage for development
+  minio:
+    image: minio/minio:latest
+    ports:
+      - "13190:9000"  # MinIO API
+      - "13191:9001"  # MinIO Console
+    environment:
+      - MINIO_ROOT_USER=dev
+      - MINIO_ROOT_PASSWORD=dev_minio_pass
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_dev_data:/data
+    networks:
+      - ollama_dev
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+volumes:
+  redis_dev_data:
+  minio_dev_data:
+
+networks:
+  ollama_dev:
+    driver: bridge

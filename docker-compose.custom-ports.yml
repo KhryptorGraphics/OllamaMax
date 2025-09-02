@@ -1,0 +1,190 @@
+version: '3.8'
+
+# OllamaMax - Custom Port Deployment Configuration (Ports 12925-12998)
+# Optimized for distributed AI platform with BMad Framework integration
+
+services:
+  # Ollama AI Engine (CPU-only for WSL2 compatibility)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama-engine
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+      - OLLAMA_MODELS=/root/.ollama/models
+    ports:
+      - "13000:11434"  # Ollama API
+    volumes:
+      - ollama_models:/root/.ollama
+    restart: unless-stopped
+    networks:
+      - ollamamax-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: ollamamax-redis
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    ports:
+      - "13001:6379"  # Redis
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - ollamamax-network
+
+  # BMad Agents Dashboard (Simple HTTP server)
+  bmad-dashboard:
+    image: nginx:1.25-alpine
+    container_name: bmad-dashboard
+    ports:
+      - "13002:80"  # BMad Dashboard
+    volumes:
+      - ./bmad-dashboard.html:/usr/share/nginx/html/index.html:ro
+      - ./.bmad-core:/usr/share/nginx/html/.bmad-core:ro
+    restart: unless-stopped
+    networks:
+      - ollamamax-network
+
+  # Load Balancer & Reverse Proxy
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: ollamamax-nginx
+    ports:
+      - "13003:80"    # HTTP Load Balancer
+    volumes:
+      - nginx_logs:/var/log/nginx
+    depends_on:
+      - ollama
+      - bmad-dashboard
+    restart: unless-stopped
+    networks:
+      - ollamamax-network
+
+  # Monitoring with Prometheus
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    container_name: ollamamax-prometheus
+    ports:
+      - "13004:9090"  # Prometheus Metrics
+    volumes:
+      - prometheus_data:/prometheus
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+    networks:
+      - ollamamax-network
+
+  # Grafana Dashboards
+  grafana:
+    image: grafana/grafana:10.0.0
+    container_name: ollamamax-grafana
+    ports:
+      - "13005:3000"  # Grafana Dashboard
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    networks:
+      - ollamamax-network
+
+  # Redis Commander (Management UI)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: ollamamax-redis-commander
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    ports:
+      - "13006:8081"  # Redis Commander UI
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - ollamamax-network
+
+  # File Storage Service
+  minio:
+    image: minio/minio:latest
+    container_name: ollamamax-minio
+    ports:
+      - "13007:9000"  # MinIO API
+      - "13008:9001"  # MinIO Console
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - ollamamax-network
+
+  # WebUI for Ollama
+  ollama-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: ollama-webui
+    ports:
+      - "13009:8080"  # WebUI
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - WEBUI_SECRET_KEY=ollama-webui-secret-key
+    volumes:
+      - ollama_webui_data:/app/backend/data
+    depends_on:
+      - ollama
+    restart: unless-stopped
+    networks:
+      - ollamamax-network
+
+networks:
+  ollamamax-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16
+
+volumes:
+  # Core volumes
+  ollama_models:
+    driver: local
+  redis_data:
+    driver: local
+  bmad_workspace:
+    driver: local
+  bmad_reports:
+    driver: local
+  
+  # Infrastructure volumes
+  nginx_logs:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  minio_data:
+    driver: local
+  ollama_webui_data:
+    driver: local

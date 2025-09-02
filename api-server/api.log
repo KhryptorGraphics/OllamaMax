@@ -1,0 +1,332 @@
+Distributed Llama API Server running on port 13000
+WebSocket endpoint: ws://localhost:13000/chat
+REST API: http://localhost:13000/api
+Connected to Redis for distributed state management
+Node llama-02 error: Error: connect ECONNREFUSED 127.0.0.1:13010
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1636:16) {
+  errno: -111,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 13010
+}
+Node llama-02 disconnected
+Node llama-03 error: Error: connect ECONNREFUSED 127.0.0.1:13020
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1636:16) {
+  errno: -111,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 13020
+}
+Node llama-03 disconnected
+New WebSocket client connected
+Connected to node: llama-01
+Health check failed for llama-02: TypeError: fetch failed
+    at node:internal/deps/undici/undici:13510:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NodeRegistry.updateNodeHealth (/home/kp/ollamamax/api-server/server.js:88:30) {
+  [cause]: Error: connect ECONNREFUSED 127.0.0.1:13010
+      at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1636:16) {
+    errno: -111,
+    code: 'ECONNREFUSED',
+    syscall: 'connect',
+    address: '127.0.0.1',
+    port: 13010
+  }
+}
+Health check failed for llama-03: TypeError: fetch failed
+    at node:internal/deps/undici/undici:13510:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NodeRegistry.updateNodeHealth (/home/kp/ollamamax/api-server/server.js:88:30) {
+  [cause]: Error: connect ECONNREFUSED 127.0.0.1:13020
+      at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1636:16) {
+    errno: -111,
+    code: 'ECONNREFUSED',
+    syscall: 'connect',
+    address: '127.0.0.1',
+    port: 13020
+  }
+}
+Node llama-02 error: Error: connect ECONNREFUSED 127.0.0.1:13010
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1636:16) {
+  errno: -111,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 13010
+}
+Node llama-02 disconnected
+Node llama-03 error: Error: connect ECONNREFUSED 127.0.0.1:13020
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1636:16) {
+  errno: -111,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 13020
+}
+Node llama-03 disconnected
+Health check failed for llama-02: TypeError: fetch failed
+    at node:internal/deps/undici/undici:13510:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NodeRegistry.updateNodeHealth (/home/kp/ollamamax/api-server/server.js:88:30) {
+  [cause]: Error: connect ECONNREFUSED 127.0.0.1:13010
+      at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1636:16) {
+    errno: -111,
+    code: 'ECONNREFUSED',
+    syscall: 'connect',
+    address: '127.0.0.1',
+    port: 13010
+  }
+}
+Health check failed for llama-03: TypeError: fetch failed
+    at node:internal/deps/undici/undici:13510:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NodeRegistry.updateNodeHealth (/home/kp/ollamamax/api-server/server.js:88:30) {
+  [cause]: Error: connect ECONNREFUSED 127.0.0.1:13020
+      at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1636:16) {
+    errno: -111,
+    code: 'ECONNREFUSED',
+    syscall: 'connect',
+    address: '127.0.0.1',
+    port: 13020
+  }
+}
+Node llama-02 error: Error: connect ECONNREFUSED 127.0.0.1:13010
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1636:16) {
+  errno: -111,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 13010
+}
+Node llama-02 disconnected
+Node llama-03 error: Error: connect ECONNREFUSED 127.0.0.1:13020
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1636:16) {
+  errno: -111,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 13020
+}
+Node llama-03 disconnected
+Health check failed for llama-02: TypeError: fetch failed
+    at node:internal/deps/undici/undici:13510:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NodeRegistry.updateNodeHealth (/home/kp/ollamamax/api-server/server.js:88:30) {
+  [cause]: Error: connect ECONNREFUSED 127.0.0.1:13010
+      at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1636:16) {
+    errno: -111,
+    code: 'ECONNREFUSED',
+    syscall: 'connect',
+    address: '127.0.0.1',
+    port: 13010
+  }
+}
+Health check failed for llama-03: TypeError: fetch failed
+    at node:internal/deps/undici/undici:13510:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NodeRegistry.updateNodeHealth (/home/kp/ollamamax/api-server/server.js:88:30) {
+  [cause]: Error: connect ECONNREFUSED 127.0.0.1:13020
+      at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1636:16) {
+    errno: -111,
+    code: 'ECONNREFUSED',
+    syscall: 'connect',
+    address: '127.0.0.1',
+    port: 13020
+  }
+}
+Node llama-02 error: Error: connect ECONNREFUSED 127.0.0.1:13010
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1636:16) {
+  errno: -111,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 13010
+}
+Node llama-02 disconnected
+Node llama-03 error: Error: connect ECONNREFUSED 127.0.0.1:13020
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1636:16) {
+  errno: -111,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 13020
+}
+Node llama-03 disconnected
+Health check failed for llama-02: TypeError: fetch failed
+    at node:internal/deps/undici/undici:13510:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NodeRegistry.updateNodeHealth (/home/kp/ollamamax/api-server/server.js:88:30) {
+  [cause]: Error: connect ECONNREFUSED 127.0.0.1:13010
+      at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1636:16) {
+    errno: -111,
+    code: 'ECONNREFUSED',
+    syscall: 'connect',
+    address: '127.0.0.1',
+    port: 13010
+  }
+}
+Health check failed for llama-03: TypeError: fetch failed
+    at node:internal/deps/undici/undici:13510:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NodeRegistry.updateNodeHealth (/home/kp/ollamamax/api-server/server.js:88:30) {
+  [cause]: Error: connect ECONNREFUSED 127.0.0.1:13020
+      at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1636:16) {
+    errno: -111,
+    code: 'ECONNREFUSED',
+    syscall: 'connect',
+    address: '127.0.0.1',
+    port: 13020
+  }
+}
+Node llama-02 error: Error: connect ECONNREFUSED 127.0.0.1:13010
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1636:16) {
+  errno: -111,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 13010
+}
+Node llama-02 disconnected
+Node llama-03 error: Error: connect ECONNREFUSED 127.0.0.1:13020
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1636:16) {
+  errno: -111,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 13020
+}
+Node llama-03 disconnected
+Health check failed for llama-02: TypeError: fetch failed
+    at node:internal/deps/undici/undici:13510:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NodeRegistry.updateNodeHealth (/home/kp/ollamamax/api-server/server.js:88:30) {
+  [cause]: Error: connect ECONNREFUSED 127.0.0.1:13010
+      at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1636:16) {
+    errno: -111,
+    code: 'ECONNREFUSED',
+    syscall: 'connect',
+    address: '127.0.0.1',
+    port: 13010
+  }
+}
+Health check failed for llama-03: TypeError: fetch failed
+    at node:internal/deps/undici/undici:13510:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NodeRegistry.updateNodeHealth (/home/kp/ollamamax/api-server/server.js:88:30) {
+  [cause]: Error: connect ECONNREFUSED 127.0.0.1:13020
+      at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1636:16) {
+    errno: -111,
+    code: 'ECONNREFUSED',
+    syscall: 'connect',
+    address: '127.0.0.1',
+    port: 13020
+  }
+}
+Node llama-02 error: Error: connect ECONNREFUSED 127.0.0.1:13010
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1636:16) {
+  errno: -111,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 13010
+}
+Node llama-02 disconnected
+Node llama-03 error: Error: connect ECONNREFUSED 127.0.0.1:13020
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1636:16) {
+  errno: -111,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 13020
+}
+Node llama-03 disconnected
+Health check failed for llama-02: TypeError: fetch failed
+    at node:internal/deps/undici/undici:13510:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NodeRegistry.updateNodeHealth (/home/kp/ollamamax/api-server/server.js:88:30) {
+  [cause]: Error: connect ECONNREFUSED 127.0.0.1:13010
+      at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1636:16) {
+    errno: -111,
+    code: 'ECONNREFUSED',
+    syscall: 'connect',
+    address: '127.0.0.1',
+    port: 13010
+  }
+}
+Health check failed for llama-03: TypeError: fetch failed
+    at node:internal/deps/undici/undici:13510:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NodeRegistry.updateNodeHealth (/home/kp/ollamamax/api-server/server.js:88:30) {
+  [cause]: Error: connect ECONNREFUSED 127.0.0.1:13020
+      at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1636:16) {
+    errno: -111,
+    code: 'ECONNREFUSED',
+    syscall: 'connect',
+    address: '127.0.0.1',
+    port: 13020
+  }
+}
+Node llama-02 error: Error: connect ECONNREFUSED 127.0.0.1:13010
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1636:16) {
+  errno: -111,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 13010
+}
+Node llama-02 disconnected
+Node llama-03 error: Error: connect ECONNREFUSED 127.0.0.1:13020
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1636:16) {
+  errno: -111,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 13020
+}
+Node llama-03 disconnected
+Health check failed for llama-02: TypeError: fetch failed
+    at node:internal/deps/undici/undici:13510:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NodeRegistry.updateNodeHealth (/home/kp/ollamamax/api-server/server.js:88:30) {
+  [cause]: Error: connect ECONNREFUSED 127.0.0.1:13010
+      at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1636:16) {
+    errno: -111,
+    code: 'ECONNREFUSED',
+    syscall: 'connect',
+    address: '127.0.0.1',
+    port: 13010
+  }
+}
+Health check failed for llama-03: TypeError: fetch failed
+    at node:internal/deps/undici/undici:13510:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async NodeRegistry.updateNodeHealth (/home/kp/ollamamax/api-server/server.js:88:30) {
+  [cause]: Error: connect ECONNREFUSED 127.0.0.1:13020
+      at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1636:16) {
+    errno: -111,
+    code: 'ECONNREFUSED',
+    syscall: 'connect',
+    address: '127.0.0.1',
+    port: 13020
+  }
+}
+Node llama-02 error: Error: connect ECONNREFUSED 127.0.0.1:13010
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1636:16) {
+  errno: -111,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 13010
+}
+Node llama-02 disconnected
+Node llama-03 error: Error: connect ECONNREFUSED 127.0.0.1:13020
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1636:16) {
+  errno: -111,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 13020
+}
+Node llama-03 disconnected
