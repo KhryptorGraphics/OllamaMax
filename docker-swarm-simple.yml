@@ -1,0 +1,105 @@
+version: '3.8'
+
+services:
+  # Distributed Inference API Server
+  distributed-api:
+    image: localhost:5001/ollamamax-distributed-api:latest
+    ports:
+      - target: 13100
+        published: 13100
+        protocol: tcp
+        mode: ingress
+    environment:
+      - NODE_ENV=production
+      - PORT=13100
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=ollama_redis_pass
+      - OLLAMA_PRIMARY=http://ollama-worker:11434
+    networks:
+      - ollama_swarm
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+
+  # Ollama Workers - Scaled across swarm  
+  ollama-worker:
+    image: localhost:5001/ollamamax-ollama-primary:latest
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+      - OLLAMA_PORT=11434
+    networks:
+      - ollama_swarm
+    deploy:
+      replicas: 5
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Redis for distributed state
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --requirepass ollama_redis_pass
+    networks:
+      - ollama_swarm
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Load balancer for workers
+  nginx:
+    image: nginx:alpine
+    ports:
+      - target: 80
+        published: 13000
+        protocol: tcp
+        mode: ingress
+    configs:
+      - source: nginx_config
+        target: /etc/nginx/nginx.conf
+    networks:
+      - ollama_swarm
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+    depends_on:
+      - ollama-worker
+
+configs:
+  nginx_config:
+    external: true
+
+networks:
+  ollama_swarm:
+    driver: overlay
+    attachable: true

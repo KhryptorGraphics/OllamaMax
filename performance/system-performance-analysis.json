@@ -1,0 +1,86 @@
+{
+  "timestamp": "2025-09-02T17:11:28.000Z",
+  "analysis_id": "perf_analysis_001",
+  "system_overview": {
+    "platform": "linux",
+    "cpu_cores": 14,
+    "memory_total_gb": 31.1,
+    "node_version": "v23.11.1",
+    "architecture": "distributed_microservices"
+  },
+  "performance_baseline": {
+    "api_response_time": {
+      "health_endpoint": 14.5,
+      "units": "ms",
+      "status": "good"
+    },
+    "memory_usage": {
+      "current_percent": 52.8,
+      "efficiency": 47.2,
+      "trend": "stable_with_fluctuation",
+      "peak_usage": 55.7,
+      "min_usage": 50.7
+    },
+    "cpu_utilization": {
+      "current_load": 1.96,
+      "cores": 14,
+      "utilization_percent": 14.0,
+      "peak_observed": 39.6,
+      "trend": "variable_high_during_operations"
+    }
+  },
+  "identified_bottlenecks": [
+    {
+      "category": "test_execution",
+      "severity": "high",
+      "issue": "Performance tests timing out after 120s",
+      "impact": "Cannot measure actual performance metrics",
+      "root_cause": "Playwright tests hanging on WebSocket connections or network operations",
+      "evidence": "Tests timeout consistently during execution"
+    },
+    {
+      "category": "api_endpoints",
+      "severity": "medium", 
+      "issue": "Missing health endpoint /api/nodes/health returns 404",
+      "impact": "Cannot monitor distributed node health",
+      "root_cause": "Incomplete API implementation or routing configuration",
+      "evidence": "404 response for health check endpoints"
+    },
+    {
+      "category": "memory_efficiency",
+      "severity": "medium",
+      "issue": "Memory usage fluctuating between 50-56%", 
+      "impact": "Suboptimal resource utilization",
+      "root_cause": "Multiple node processes and potential memory leaks",
+      "evidence": "Memory usage varies by 5-6% during normal operations"
+    },
+    {
+      "category": "process_overhead",
+      "severity": "low",
+      "issue": "High number of concurrent Node.js processes",
+      "impact": "Context switching overhead", 
+      "root_cause": "Multiple MCP servers and agent processes running simultaneously",
+      "evidence": "17+ node processes with varying CPU usage"
+    }
+  ],
+  "docker_analysis": {
+    "containers_running": 17,
+    "resource_usage": {
+      "total_memory": "~400MB across containers",
+      "cpu_usage": "Low to moderate per container",
+      "network_io": "Active with 1.36GB total transferred"
+    },
+    "port_bindings": [
+      "13000: Primary Ollama API", 
+      "13001-13005: Worker nodes",
+      "13100: Distributed API",
+      "13101: Redis"
+    ]
+  },
+  "coordination_overhead": {
+    "mcp_servers_active": 6,
+    "agent_spawn_latency": 38.6,
+    "coordination_efficiency": "moderate",
+    "memory_per_agent": "~80MB estimated"
+  }
+}

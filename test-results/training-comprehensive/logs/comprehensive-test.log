@@ -1,2 +1,0 @@
-[2025-08-28 18:59:33] [INFO] Starting comprehensive training test execution
-[2025-08-28 19:02:14] [FAIL] validation_scripts - [0;32m✅ PASS[0m: Memory Usage    [0;36m→[0m Memory increase: 5MB (efficient)  (Duration: 02:41)

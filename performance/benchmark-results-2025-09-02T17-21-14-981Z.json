@@ -1,0 +1,1350 @@
+{
+  "timestamp": "2025-09-02T17:20:25.606Z",
+  "environment": {
+    "platform": "linux",
+    "arch": "x64",
+    "cpus": 14,
+    "memory_gb": 31,
+    "node_version": "v23.11.1",
+    "load_avg": [
+      18.21,
+      20.53,
+      19.41
+    ],
+    "uptime": 489263.43
+  },
+  "benchmarks": {
+    "api_performance": {
+      "endpoints": {
+        "/api/health": {
+          "endpoint": "/api/health",
+          "requests": 5,
+          "successful": 5,
+          "failed": 0,
+          "response_times": [
+            35.871511,
+            9.079205000000002,
+            12.646890999999982,
+            5.001289999999983,
+            4.89058799999998
+          ],
+          "error_types": {}
+        },
+        "/api/nodes": {
+          "endpoint": "/api/nodes",
+          "requests": 5,
+          "successful": 0,
+          "failed": 5,
+          "response_times": [],
+          "error_types": {
+            "HTTP_404": 5
+          }
+        },
+        "/api/models": {
+          "endpoint": "/api/models",
+          "requests": 5,
+          "successful": 5,
+          "failed": 0,
+          "response_times": [
+            12.216505999999981,
+            15.898576999999932,
+            11.935776000000033,
+            16.86572000000001,
+            9.786276000000043
+          ],
+          "error_types": {}
+        },
+        "/api/nodes/detailed": {
+          "endpoint": "/api/nodes/detailed",
+          "requests": 5,
+          "successful": 5,
+          "failed": 0,
+          "response_times": [
+            9.747127999999975,
+            4.913749999999936,
+            8.67409100000009,
+            6.145073000000139,
+            6.562069000000065
+          ],
+          "error_types": {}
+        }
+      },
+      "summary": {
+        "total_requests": 20,
+        "successful_requests": 15,
+        "avg_response_time": 11.34896340000001,
+        "max_response_time": 35.871511,
+        "min_response_time": 4.89058799999998
+      }
+    },
+    "docker_performance": {
+      "total_containers": 0,
+      "total_cpu_usage": 0,
+      "total_memory_mb": 0,
+      "containers": []
+    },
+    "mcp_coordination": {
+      "agent_spawn_times": [
+        7395.394867,
+        5664.850445000002,
+        4534.071690000001
+      ],
+      "memory_operations": [
+        4960.022291999998,
+        4366.350236999999
+      ],
+      "hook_execution_times": [],
+      "coordination_overhead": {}
+    },
+    "memory_efficiency": {
+      "process_memory": {
+        "rss_mb": 51,
+        "heap_used_mb": 5,
+        "heap_total_mb": 8,
+        "external_mb": 2,
+        "heap_efficiency": "67.27"
+      },
+      "gc_performance": {
+        "gc_time_ms": 0.003435999999055639,
+        "gc_available": false
+      },
+      "memory_leaks": []
+    },
+    "process_overhead": {
+      "total_processes": 161,
+      "total_cpu_usage": 732.1000000000005,
+      "total_memory_mb": 1037336,
+      "high_cpu_processes": [
+        {
+          "user": "kp",
+          "pid": 12754,
+          "cpu": 109,
+          "memory_percent": 0,
+          "memory_mb": 0,
+          "command": "[npm exec claude] <defunct>"
+        },
+        {
+          "user": "kp",
+          "pid": 17045,
+          "cpu": 106,
+          "memory_percent": 0.2,
+          "memory_mb": 1017,
+          "command": "/home/kp/.nvm/versions/node/v23.11.1/bin/node -r /"
+        },
+        {
+          "user": "kp",
+          "pid": 18672,
+          "cpu": 106,
+          "memory_percent": 0.8,
+          "memory_mb": 3461,
+          "command": "/home/kp/.nvm/versions/node/v23.11.1/bin/node -r /"
+        },
+        {
+          "user": "kp",
+          "pid": 48092,
+          "cpu": 105,
+          "memory_percent": 0.8,
+          "memory_mb": 3450,
+          "command": "/home/kp/.nvm/versions/node/v23.11.1/bin/node -r /"
+        },
+        {
+          "user": "kp",
+          "pid": 84149,
+          "cpu": 104,
+          "memory_percent": 2.6,
+          "memory_mb": 1784,
+          "command": "/home/kp/.nvm/versions/node/v23.11.1/bin/node -r /"
+        },
+        {
+          "user": "kp",
+          "pid": 99820,
+          "cpu": 56.9,
+          "memory_percent": 3.7,
+          "memory_mb": 26897,
+          "command": "claude"
+        },
+        {
+          "user": "kp",
+          "pid": 55764,
+          "cpu": 49.8,
+          "memory_percent": 4.1,
+          "memory_mb": 2203,
+          "command": "/home/kp/.nvm/versions/node/v23.11.1/bin/node /hom"
+        },
+        {
+          "user": "kp",
+          "pid": 46963,
+          "cpu": 41.4,
+          "memory_percent": 2.2,
+          "memory_mb": 26429,
+          "command": "claude"
+        },
+        {
+          "user": "kp",
+          "pid": 85479,
+          "cpu": 21.6,
+          "memory_percent": 3.4,
+          "memory_mb": 105414,
+          "command": "/home/kp/.vscode-server/bin/6f17636121051a53c88d3e"
+        }
+      ],
+      "high_memory_processes": [
+        {
+          "user": "kp",
+          "pid": 17045,
+          "cpu": 106,
+          "memory_percent": 0.2,
+          "memory_mb": 1017,
+          "command": "/home/kp/.nvm/versions/node/v23.11.1/bin/node -r /"
+        },
+        {
+          "user": "kp",
+          "pid": 18672,
+          "cpu": 106,
+          "memory_percent": 0.8,
+          "memory_mb": 3461,
+          "command": "/home/kp/.nvm/versions/node/v23.11.1/bin/node -r /"
+        },
+        {
+          "user": "kp",
+          "pid": 48092,
+          "cpu": 105,
+          "memory_percent": 0.8,
+          "memory_mb": 3450,
+          "command": "/home/kp/.nvm/versions/node/v23.11.1/bin/node -r /"
+        },
+        {
+          "user": "kp",
+          "pid": 84149,
+          "cpu": 104,
+          "memory_percent": 2.6,
+          "memory_mb": 1784,
+          "command": "/home/kp/.nvm/versions/node/v23.11.1/bin/node -r /"
+        },
+        {
+          "user": "kp",
+          "pid": 99820,
+          "cpu": 56.9,
+          "memory_percent": 3.7,
+          "memory_mb": 26897,
+          "command": "claude"
+        },
+        {
+          "user": "kp",
+          "pid": 55764,
+          "cpu": 49.8,
+          "memory_percent": 4.1,
+          "memory_mb": 2203,
+          "command": "/home/kp/.nvm/versions/node/v23.11.1/bin/node /hom"
+        },
+        {
+          "user": "kp",
+          "pid": 46963,
+          "cpu": 41.4,
+          "memory_percent": 2.2,
+          "memory_mb": 26429,
+          "command": "claude"
+        },
+        {
+          "user": "kp",
+          "pid": 85479,
+          "cpu": 21.6,
+          "memory_percent": 3.4,
+          "memory_mb": 105414,
+          "command": "/home/kp/.vscode-server/bin/6f17636121051a53c88d3e"
+        },
+        {
+          "user": "kp",
+          "pid": 85196,
+          "cpu": 4.2,
+          "memory_percent": 0.4,
+          "memory_mb": 11587,
+          "command": "/home/kp/.vscode-server/bin/6f17636121051a53c88d3e"
+        },
+        {
+          "user": "kp",
+          "pid": 85239,
+          "cpu": 3.1,
+          "memory_percent": 0.3,
+          "memory_mb": 1246,
+          "command": "/home/kp/.vscode-server/bin/6f17636121051a53c88d3e"
+        },
+        {
+          "user": "kp",
+          "pid": 565,
+          "cpu": 2.1,
+          "memory_percent": 0.2,
+          "memory_mb": 9477,
+          "command": "node /home/kp/.npm/_npx/9a04f97d82073705/node_modu"
+        },
+        {
+          "user": "kp",
+          "pid": 55752,
+          "cpu": 2.1,
+          "memory_percent": 7.4,
+          "memory_mb": 5086,
+          "command": "node /home/kp/.serena/language_servers/static/Type"
+        },
+        {
+          "user": "kp",
+          "pid": 9968,
+          "cpu": 1.7,
+          "memory_percent": 0.2,
+          "memory_mb": 1309,
+          "command": "npm exec claude-flow@alpha start --swarm"
+        },
+        {
+          "user": "kp",
+          "pid": 2482,
+          "cpu": 1.6,
+          "memory_percent": 0.5,
+          "memory_mb": 1123,
+          "command": "/home/kp/.nvm/versions/node/v23.11.1/bin/node /hom"
+        },
+        {
+          "user": "kp",
+          "pid": 55763,
+          "cpu": 1.3,
+          "memory_percent": 0.5,
+          "memory_mb": 1062,
+          "command": "/home/kp/.nvm/versions/node/v23.11.1/bin/node /hom"
+        },
+        {
+          "user": "kp",
+          "pid": 2481,
+          "cpu": 1.1,
+          "memory_percent": 0.4,
+          "memory_mb": 1061,
+          "command": "/home/kp/.nvm/versions/node/v23.11.1/bin/node /hom"
+        },
+        {
+          "user": "kp",
+          "pid": 627,
+          "cpu": 0.8,
+          "memory_percent": 0.3,
+          "memory_mb": 1309,
+          "command": "npm exec claude-flow@alpha mcp start"
+        },
+        {
+          "user": "kp",
+          "pid": 1036,
+          "cpu": 0.8,
+          "memory_percent": 0.2,
+          "memory_mb": 1309,
+          "command": "npm exec flow-nexus@latest mcp start"
+        },
+        {
+          "user": "kp",
+          "pid": 12390,
+          "cpu": 0.8,
+          "memory_percent": 0.1,
+          "memory_mb": 1087,
+          "command": "node benchmarks/performance-benchmark-suite.js"
+        },
+        {
+          "user": "kp",
+          "pid": 48417,
+          "cpu": 0.8,
+          "memory_percent": 0.4,
+          "memory_mb": 1076,
+          "command": "node /home/kp/spark/node_modules/.bin/ts-node-dev "
+        },
+        {
+          "user": "kp",
+          "pid": 52883,
+          "cpu": 0.8,
+          "memory_percent": 0.4,
+          "memory_mb": 1077,
+          "command": "node /home/kp/spark/node_modules/.bin/ts-node-dev "
+        },
+        {
+          "user": "kp",
+          "pid": 48941,
+          "cpu": 0.7,
+          "memory_percent": 0.4,
+          "memory_mb": 1087,
+          "command": "node /home/kp/spark/node_modules/.bin/ts-node-dev "
+        },
+        {
+          "user": "kp",
+          "pid": 50319,
+          "cpu": 0.7,
+          "memory_percent": 0.4,
+          "memory_mb": 1076,
+          "command": "node /home/kp/spark/node_modules/.bin/ts-node-dev "
+        },
+        {
+          "user": "kp",
+          "pid": 50859,
+          "cpu": 0.7,
+          "memory_percent": 0.4,
+          "memory_mb": 1093,
+          "command": "node /home/kp/spark/node_modules/.bin/ts-node-dev "
+        },
+        {
+          "user": "kp",
+          "pid": 51229,
+          "cpu": 0.7,
+          "memory_percent": 0.4,
+          "memory_mb": 1098,
+          "command": "node /home/kp/spark/node_modules/.bin/ts-node-dev "
+        },
+        {
+          "user": "kp",
+          "pid": 51714,
+          "cpu": 0.7,
+          "memory_percent": 0.4,
+          "memory_mb": 1092,
+          "command": "node /home/kp/spark/node_modules/.bin/ts-node-dev "
+        },
+        {
+          "user": "kp",
+          "pid": 52429,
+          "cpu": 0.7,
+          "memory_percent": 0.4,
+          "memory_mb": 1084,
+          "command": "node /home/kp/spark/node_modules/.bin/ts-node-dev "
+        },
+        {
+          "user": "kp",
+          "pid": 53179,
+          "cpu": 0.7,
+          "memory_percent": 0.4,
+          "memory_mb": 1076,
+          "command": "node /home/kp/spark/node_modules/.bin/ts-node-dev "
+        },
+        {
+          "user": "kp",
+          "pid": 53893,
+          "cpu": 0.7,
+          "memory_percent": 0.4,
+          "memory_mb": 1094,
+          "command": "node /home/kp/spark/node_modules/.bin/ts-node-dev "
+        },
+        {
+          "user": "kp",
+          "pid": 99780,
+          "cpu": 0.7,
+          "memory_percent": 0.2,
+          "memory_mb": 1309,
+          "command": "npm exec claude-flow@alpha swarm your objective --"
+        },
+        {
+          "user": "kp",
+          "pid": 524,
+          "cpu": 0.6,
+          "memory_percent": 0.2,
+          "memory_mb": 9236,
+          "command": "node /home/kp/.npm/_npx/9833c18b2d85bc59/node_modu"
+        },
+        {
+          "user": "kp",
+          "pid": 986,
+          "cpu": 0.5,
+          "memory_percent": 0.2,
+          "memory_mb": 34349,
+          "command": "node /home/kp/.npm/_npx/6a9de72f63e89751/node_modu"
+        },
+        {
+          "user": "kp",
+          "pid": 10067,
+          "cpu": 0.5,
+          "memory_percent": 0.2,
+          "memory_mb": 1033,
+          "command": "node /home/kp/.npm/_npx/7cfa166e65244432/node_modu"
+        },
+        {
+          "user": "root",
+          "pid": 128,
+          "cpu": 0.4,
+          "memory_percent": 0,
+          "memory_mb": 733,
+          "command": "snapfuse /var/lib/snapd/snaps/go_10938.snap /snap/"
+        },
+        {
+          "user": "kp",
+          "pid": 942,
+          "cpu": 0.4,
+          "memory_percent": 0.2,
+          "memory_mb": 1033,
+          "command": "node /home/kp/.npm/_npx/7cfa166e65244432/node_modu"
+        },
+        {
+          "user": "kp",
+          "pid": 998,
+          "cpu": 0.3,
+          "memory_percent": 0.2,
+          "memory_mb": 1039,
+          "command": "node /home/kp/.npm/_npx/15021d1a4708f1d7/node_modu"
+        },
+        {
+          "user": "kp",
+          "pid": 85210,
+          "cpu": 0.3,
+          "memory_percent": 0.2,
+          "memory_mb": 1014,
+          "command": "/home/kp/.vscode-server/bin/6f17636121051a53c88d3e"
+        },
+        {
+          "user": "kp",
+          "pid": 99806,
+          "cpu": 0.3,
+          "memory_percent": 0.2,
+          "memory_mb": 1033,
+          "command": "node /home/kp/.npm/_npx/7cfa166e65244432/node_modu"
+        },
+        {
+          "user": "kp",
+          "pid": 1056,
+          "cpu": 0.2,
+          "memory_percent": 0.2,
+          "memory_mb": 9230,
+          "command": "node /home/kp/.npm/_npx/7f9007664623f57c/node_modu"
+        },
+        {
+          "user": "kp",
+          "pid": 11099,
+          "cpu": 0.2,
+          "memory_percent": 0,
+          "memory_mb": 1211,
+          "command": "/home/kp/spark/dating-app/frontend/node_modules/@e"
+        },
+        {
+          "user": "kp",
+          "pid": 314,
+          "cpu": 0.1,
+          "memory_percent": 0.2,
+          "memory_mb": 9219,
+          "command": "node /home/kp/.npm/_npx/41d1713f86af43bb/node_modu"
+        },
+        {
+          "user": "kp",
+          "pid": 2470,
+          "cpu": 0.1,
+          "memory_percent": 0.1,
+          "memory_mb": 1093,
+          "command": "node /home/kp/.serena/language_servers/static/Type"
+        },
+        {
+          "user": "kp",
+          "pid": 2498,
+          "cpu": 0.1,
+          "memory_percent": 0.2,
+          "memory_mb": 1026,
+          "command": "/home/kp/.nvm/versions/node/v23.11.1/bin/node /hom"
+        },
+        {
+          "user": "kp",
+          "pid": 11088,
+          "cpu": 0.1,
+          "memory_percent": 0.5,
+          "memory_mb": 17791,
+          "command": "node /home/kp/spark/dating-app/frontend/node_modul"
+        },
+        {
+          "user": "kp",
+          "pid": 28128,
+          "cpu": 0.1,
+          "memory_percent": 0.1,
+          "memory_mb": 1042,
+          "command": "node /home/kp/.npm/_npx/7cfa166e65244432/node_modu"
+        },
+        {
+          "user": "kp",
+          "pid": 35579,
+          "cpu": 0.1,
+          "memory_percent": 0.1,
+          "memory_mb": 1040,
+          "command": "node /home/kp/.npm/_npx/7cfa166e65244432/node_modu"
+        },
+        {
+          "user": "kp",
+          "pid": 36384,
+          "cpu": 0.1,
+          "memory_percent": 0.1,
+          "memory_mb": 1043,
+          "command": "node /home/kp/.npm/_npx/7cfa166e65244432/node_modu"
+        },
+        {
+          "user": "kp",
+          "pid": 43503,
+          "cpu": 0.1,
+          "memory_percent": 0.1,
+          "memory_mb": 1041,
+          "command": "node /home/kp/.npm/_npx/7cfa166e65244432/node_modu"
+        },
+        {
+          "user": "kp",
+          "pid": 85220,
+          "cpu": 0.1,
+          "memory_percent": 0.1,
+          "memory_mb": 991,
+          "command": "/home/kp/.vscode-server/bin/6f17636121051a53c88d3e"
+        },
+        {
+          "user": "kp",
+          "pid": 85545,
+          "cpu": 0.1,
+          "memory_percent": 0.1,
+          "memory_mb": 990,
+          "command": "/home/kp/.vscode-server/bin/6f17636121051a53c88d3e"
+        },
+        {
+          "user": "kp",
+          "pid": 89682,
+          "cpu": 0.1,
+          "memory_percent": 0.2,
+          "memory_mb": 1111,
+          "command": "/home/kp/.vscode-server/bin/6f17636121051a53c88d3e"
+        },
+        {
+          "user": "kp",
+          "pid": 99984,
+          "cpu": 0.1,
+          "memory_percent": 0.2,
+          "memory_mb": 17414,
+          "command": "node /home/kp/.npm/_npx/c35ab75beed40a3c/node_modu"
+        },
+        {
+          "user": "root",
+          "pid": 127,
+          "cpu": 0,
+          "memory_percent": 0,
+          "memory_mb": 149,
+          "command": "snapfuse /var/lib/snapd/snaps/core22_2082.snap /sn"
+        },
+        {
+          "user": "root",
+          "pid": 135,
+          "cpu": 0,
+          "memory_percent": 0,
+          "memory_mb": 733,
+          "command": "snapfuse /var/lib/snapd/snaps/snapd_25202.snap /sn"
+        },
+        {
+          "user": "kp",
+          "pid": 931,
+          "cpu": 0,
+          "memory_percent": 0.1,
+          "memory_mb": 1021,
+          "command": "node /home/kp/.npm/_npx/7cfa166e65244432/node_modu"
+        },
+        {
+          "user": "kp",
+          "pid": 1011,
+          "cpu": 0,
+          "memory_percent": 0.1,
+          "memory_mb": 1024,
+          "command": "node /home/kp/.npm/_npx/7cfa166e65244432/node_modu"
+        },
+        {
+          "user": "kp",
+          "pid": 10056,
+          "cpu": 0,
+          "memory_percent": 0.1,
+          "memory_mb": 1021,
+          "command": "node /home/kp/.npm/_npx/7cfa166e65244432/node_modu"
+        },
+        {
+          "user": "kp",
+          "pid": 22080,
+          "cpu": 0,
+          "memory_percent": 0.2,
+          "memory_mb": 18294,
+          "command": "node /home/kp/spark/node_modules/.bin/playwright t"
+        },
+        {
+          "user": "kp",
+          "pid": 25354,
+          "cpu": 0,
+          "memory_percent": 0.1,
+          "memory_mb": 18294,
+          "command": "node /home/kp/spark/node_modules/.bin/playwright t"
+        },
+        {
+          "user": "kp",
+          "pid": 28104,
+          "cpu": 0,
+          "memory_percent": 0.1,
+          "memory_mb": 1330,
+          "command": "npm exec claude-flow@alpha hive-mind spawn the fro"
+        },
+        {
+          "user": "kp",
+          "pid": 28117,
+          "cpu": 0,
+          "memory_percent": 0.1,
+          "memory_mb": 1022,
+          "command": "node /home/kp/.npm/_npx/7cfa166e65244432/node_modu"
+        },
+        {
+          "user": "kp",
+          "pid": 28383,
+          "cpu": 0,
+          "memory_percent": 0.1,
+          "memory_mb": 18288,
+          "command": "node /home/kp/spark/node_modules/.bin/playwright t"
+        },
+        {
+          "user": "kp",
+          "pid": 28886,
+          "cpu": 0,
+          "memory_percent": 0.1,
+          "memory_mb": 18288,
+          "command": "node /home/kp/spark/node_modules/.bin/playwright t"
+        },
+        {
+          "user": "kp",
+          "pid": 29372,
+          "cpu": 0,
+          "memory_percent": 0.1,
+          "memory_mb": 18288,
+          "command": "node /home/kp/spark/node_modules/.bin/playwright t"
+        },
+        {
+          "user": "kp",
+          "pid": 29882,
+          "cpu": 0,
+          "memory_percent": 0.1,
+          "memory_mb": 18287,
+          "command": "node /home/kp/spark/node_modules/.bin/playwright t"
+        },
+        {
+          "user": "kp",
+          "pid": 30378,
+          "cpu": 0,
+          "memory_percent": 0.1,
+          "memory_mb": 18288,
+          "command": "node /home/kp/spark/node_modules/.bin/playwright t"
+        },
+        {
+          "user": "kp",
+          "pid": 30897,
+          "cpu": 0,
+          "memory_percent": 0.2,
+          "memory_mb": 18288,
+          "command": "node /home/kp/spark/node_modules/.bin/playwright t"
+        },
+        {
+          "user": "kp",
+          "pid": 31800,
+          "cpu": 0,
+          "memory_percent": 0.2,
+          "memory_mb": 18289,
+          "command": "node /home/kp/spark/node_modules/.bin/playwright t"
+        },
+        {
+          "user": "kp",
+          "pid": 32589,
+          "cpu": 0,
+          "memory_percent": 0.2,
+          "memory_mb": 18288,
+          "command": "node /home/kp/spark/node_modules/.bin/playwright t"
+        },
+        {
+          "user": "kp",
+          "pid": 33121,
+          "cpu": 0,
+          "memory_percent": 0.2,
+          "memory_mb": 18288,
+          "command": "node /home/kp/spark/node_modules/.bin/playwright t"
+        },
+        {
+          "user": "kp",
+          "pid": 33617,
+          "cpu": 0,
+          "memory_percent": 0.2,
+          "memory_mb": 18289,
+          "command": "node /home/kp/spark/node_modules/.bin/playwright t"
+        },
+        {
+          "user": "kp",
+          "pid": 35539,
+          "cpu": 0,
+          "memory_percent": 0.1,
+          "memory_mb": 1330,
+          "command": "npm exec claude-flow@alpha hive-mind spawn when i "
+        },
+        {
+          "user": "kp",
+          "pid": 35568,
+          "cpu": 0,
+          "memory_percent": 0.1,
+          "memory_mb": 1021,
+          "command": "node /home/kp/.npm/_npx/7cfa166e65244432/node_modu"
+        },
+        {
+          "user": "kp",
+          "pid": 36357,
+          "cpu": 0,
+          "memory_percent": 0.1,
+          "memory_mb": 1330,
+          "command": "npm exec claude-flow@alpha hive-mind spawn the edi"
+        },
+        {
+          "user": "kp",
+          "pid": 36373,
+          "cpu": 0,
+          "memory_percent": 0.1,
+          "memory_mb": 1021,
+          "command": "node /home/kp/.npm/_npx/7cfa166e65244432/node_modu"
+        },
+        {
+          "user": "kp",
+          "pid": 39681,
+          "cpu": 0,
+          "memory_percent": 0.2,
+          "memory_mb": 18287,
+          "command": "node /home/kp/spark/node_modules/.bin/playwright t"
+        },
+        {
+          "user": "kp",
+          "pid": 40472,
+          "cpu": 0,
+          "memory_percent": 0.2,
+          "memory_mb": 18291,
+          "command": "node /home/kp/spark/node_modules/.bin/playwright t"
+        },
+        {
+          "user": "kp",
+          "pid": 40961,
+          "cpu": 0,
+          "memory_percent": 0.2,
+          "memory_mb": 18288,
+          "command": "node /home/kp/spark/node_modules/.bin/playwright t"
+        },
+        {
+          "user": "kp",
+          "pid": 42836,
+          "cpu": 0,
+          "memory_percent": 0.2,
+          "memory_mb": 18288,
+          "command": "node /home/kp/spark/node_modules/.bin/playwright t"
+        },
+        {
+          "user": "kp",
+          "pid": 43479,
+          "cpu": 0,
+          "memory_percent": 0.1,
+          "memory_mb": 1331,
+          "command": "npm exec claude-flow@alpha hive-mind spawn the res"
+        },
+        {
+          "user": "kp",
+          "pid": 43492,
+          "cpu": 0,
+          "memory_percent": 0.1,
+          "memory_mb": 1021,
+          "command": "node /home/kp/.npm/_npx/7cfa166e65244432/node_modu"
+        },
+        {
+          "user": "kp",
+          "pid": 43693,
+          "cpu": 0,
+          "memory_percent": 0.2,
+          "memory_mb": 18288,
+          "command": "node /home/kp/spark/node_modules/.bin/playwright t"
+        },
+        {
+          "user": "kp",
+          "pid": 44507,
+          "cpu": 0,
+          "memory_percent": 0.2,
+          "memory_mb": 18295,
+          "command": "node /home/kp/spark/node_modules/.bin/playwright t"
+        },
+        {
+          "user": "kp",
+          "pid": 45322,
+          "cpu": 0,
+          "memory_percent": 0.1,
+          "memory_mb": 18295,
+          "command": "node /home/kp/spark/node_modules/.bin/playwright t"
+        },
+        {
+          "user": "kp",
+          "pid": 46291,
+          "cpu": 0,
+          "memory_percent": 0.2,
+          "memory_mb": 18296,
+          "command": "node /home/kp/spark/node_modules/.bin/playwright t"
+        },
+        {
+          "user": "kp",
+          "pid": 46703,
+          "cpu": 0,
+          "memory_percent": 0.3,
+          "memory_mb": 1144,
+          "command": "node /home/kp/spark/node_modules/.bin/ts-node-dev "
+        },
+        {
+          "user": "kp",
+          "pid": 47172,
+          "cpu": 0,
+          "memory_percent": 0.1,
+          "memory_mb": 1023,
+          "command": "node /home/kp/.npm/_npx/de2bd410102f5eda/node_modu"
+        },
+        {
+          "user": "kp",
+          "pid": 47180,
+          "cpu": 0,
+          "memory_percent": 0.2,
+          "memory_mb": 9220,
+          "command": "node /home/kp/.npm/_npx/41d1713f86af43bb/node_modu"
+        },
+        {
+          "user": "kp",
+          "pid": 47200,
+          "cpu": 0,
+          "memory_percent": 0.2,
+          "memory_mb": 17414,
+          "command": "node /home/kp/.npm/_npx/c35ab75beed40a3c/node_modu"
+        },
+        {
+          "user": "kp",
+          "pid": 47436,
+          "cpu": 0,
+          "memory_percent": 0.2,
+          "memory_mb": 9350,
+          "command": "node /home/kp/.npm/_npx/9a04f97d82073705/node_modu"
+        },
+        {
+          "user": "kp",
+          "pid": 47444,
+          "cpu": 0,
+          "memory_percent": 0.2,
+          "memory_mb": 9237,
+          "command": "node /home/kp/.npm/_npx/9833c18b2d85bc59/node_modu"
+        },
+        {
+          "user": "kp",
+          "pid": 47508,
+          "cpu": 0,
+          "memory_percent": 0.2,
+          "memory_mb": 1039,
+          "command": "node /home/kp/.npm/_npx/15021d1a4708f1d7/node_modu"
+        },
+        {
+          "user": "kp",
+          "pid": 53424,
+          "cpu": 0,
+          "memory_percent": 0.4,
+          "memory_mb": 18295,
+          "command": "node /home/kp/spark/node_modules/.bin/playwright t"
+        },
+        {
+          "user": "kp",
+          "pid": 54263,
+          "cpu": 0,
+          "memory_percent": 0.3,
+          "memory_mb": 18288,
+          "command": "node /home/kp/spark/node_modules/.bin/playwright t"
+        },
+        {
+          "user": "kp",
+          "pid": 55085,
+          "cpu": 0,
+          "memory_percent": 0.4,
+          "memory_mb": 18297,
+          "command": "node /home/kp/spark/node_modules/.bin/playwright t"
+        },
+        {
+          "user": "kp",
+          "pid": 55777,
+          "cpu": 0,
+          "memory_percent": 0.3,
+          "memory_mb": 1031,
+          "command": "/home/kp/.nvm/versions/node/v23.11.1/bin/node /hom"
+        },
+        {
+          "user": "kp",
+          "pid": 56123,
+          "cpu": 0,
+          "memory_percent": 0.3,
+          "memory_mb": 18287,
+          "command": "node /home/kp/spark/node_modules/.bin/playwright t"
+        },
+        {
+          "user": "kp",
+          "pid": 56999,
+          "cpu": 0,
+          "memory_percent": 0.3,
+          "memory_mb": 18287,
+          "command": "node /home/kp/spark/node_modules/.bin/playwright t"
+        },
+        {
+          "user": "kp",
+          "pid": 57908,
+          "cpu": 0,
+          "memory_percent": 0.4,
+          "memory_mb": 18303,
+          "command": "node /home/kp/spark/node_modules/.bin/playwright t"
+        },
+        {
+          "user": "kp",
+          "pid": 58735,
+          "cpu": 0,
+          "memory_percent": 0.4,
+          "memory_mb": 18296,
+          "command": "node /home/kp/spark/node_modules/.bin/playwright t"
+        },
+        {
+          "user": "kp",
+          "pid": 59688,
+          "cpu": 0,
+          "memory_percent": 0.4,
+          "memory_mb": 18294,
+          "command": "node /home/kp/spark/node_modules/.bin/playwright t"
+        },
+        {
+          "user": "kp",
+          "pid": 59819,
+          "cpu": 0,
+          "memory_percent": 0.4,
+          "memory_mb": 1175,
+          "command": "node /home/kp/spark/node_modules/.bin/ts-node-dev "
+        },
+        {
+          "user": "kp",
+          "pid": 60798,
+          "cpu": 0,
+          "memory_percent": 0.3,
+          "memory_mb": 18291,
+          "command": "node /home/kp/spark/node_modules/.bin/playwright t"
+        },
+        {
+          "user": "kp",
+          "pid": 69050,
+          "cpu": 0,
+          "memory_percent": 0.2,
+          "memory_mb": 1293,
+          "command": "node simple-auth-server.js"
+        },
+        {
+          "user": "kp",
+          "pid": 69247,
+          "cpu": 0,
+          "memory_percent": 0.2,
+          "memory_mb": 17427,
+          "command": "node /home/kp/novacron/frontend/node_modules/.bin/"
+        },
+        {
+          "user": "kp",
+          "pid": 72808,
+          "cpu": 0,
+          "memory_percent": 0.1,
+          "memory_mb": 18328,
+          "command": "node /home/kp/spark/node_modules/.bin/playwright t"
+        },
+        {
+          "user": "kp",
+          "pid": 78361,
+          "cpu": 0,
+          "memory_percent": 0.1,
+          "memory_mb": 18293,
+          "command": "node /home/kp/spark/node_modules/.bin/playwright t"
+        },
+        {
+          "user": "kp",
+          "pid": 80949,
+          "cpu": 0,
+          "memory_percent": 0.2,
+          "memory_mb": 18304,
+          "command": "node /home/kp/spark/node_modules/.bin/playwright t"
+        },
+        {
+          "user": "kp",
+          "pid": 81248,
+          "cpu": 0,
+          "memory_percent": 0.1,
+          "memory_mb": 1235,
+          "command": "node /home/kp/.npm/_npx/6a9de72f63e89751/node_modu"
+        },
+        {
+          "user": "kp",
+          "pid": 86340,
+          "cpu": 0,
+          "memory_percent": 0.1,
+          "memory_mb": 992,
+          "command": "/home/kp/.vscode-server/bin/6f17636121051a53c88d3e"
+        },
+        {
+          "user": "kp",
+          "pid": 86353,
+          "cpu": 0,
+          "memory_percent": 0.1,
+          "memory_mb": 992,
+          "command": "/home/kp/.vscode-server/bin/6f17636121051a53c88d3e"
+        },
+        {
+          "user": "kp",
+          "pid": 88021,
+          "cpu": 0,
+          "memory_percent": 0.2,
+          "memory_mb": 1094,
+          "command": "node simple-auth-server.js"
+        },
+        {
+          "user": "kp",
+          "pid": 89443,
+          "cpu": 0,
+          "memory_percent": 0.1,
+          "memory_mb": 992,
+          "command": "/home/kp/.vscode-server/bin/6f17636121051a53c88d3e"
+        },
+        {
+          "user": "kp",
+          "pid": 95647,
+          "cpu": 0,
+          "memory_percent": 0.1,
+          "memory_mb": 18334,
+          "command": "node /home/kp/spark/node_modules/.bin/playwright t"
+        },
+        {
+          "user": "kp",
+          "pid": 99795,
+          "cpu": 0,
+          "memory_percent": 0.1,
+          "memory_mb": 1021,
+          "command": "node /home/kp/.npm/_npx/7cfa166e65244432/node_modu"
+        },
+        {
+          "user": "kp",
+          "pid": 99991,
+          "cpu": 0,
+          "memory_percent": 0.1,
+          "memory_mb": 1023,
+          "command": "node /home/kp/.npm/_npx/de2bd410102f5eda/node_modu"
+        },
+        {
+          "user": "root",
+          "pid": 230610,
+          "cpu": 0,
+          "memory_percent": 0,
+          "memory_mb": 222,
+          "command": "snapfuse /var/lib/snapd/snaps/core22_2111.snap /sn"
+        },
+        {
+          "user": "kp",
+          "pid": 248270,
+          "cpu": 0,
+          "memory_percent": 0.1,
+          "memory_mb": 1248,
+          "command": "node /home/kp/.npm/_npx/6a9de72f63e89751/node_modu"
+        },
+        {
+          "user": "kp",
+          "pid": 294549,
+          "cpu": 0,
+          "memory_percent": 0.1,
+          "memory_mb": 1097,
+          "command": "node simple-email-test.js"
+        },
+        {
+          "user": "kp",
+          "pid": 368254,
+          "cpu": 0,
+          "memory_percent": 0.1,
+          "memory_mb": 1245,
+          "command": "node /home/kp/.npm/_npx/6a9de72f63e89751/node_modu"
+        },
+        {
+          "user": "kp",
+          "pid": 368273,
+          "cpu": 0,
+          "memory_percent": 0.1,
+          "memory_mb": 1245,
+          "command": "node /home/kp/.npm/_npx/6a9de72f63e89751/node_modu"
+        },
+        {
+          "user": "kp",
+          "pid": 448904,
+          "cpu": 0,
+          "memory_percent": 0.1,
+          "memory_mb": 1244,
+          "command": "node /home/kp/.npm/_npx/6a9de72f63e89751/node_modu"
+        },
+        {
+          "user": "kp",
+          "pid": 448912,
+          "cpu": 0,
+          "memory_percent": 0.1,
+          "memory_mb": 1244,
+          "command": "node /home/kp/.npm/_npx/6a9de72f63e89751/node_modu"
+        },
+        {
+          "user": "kp",
+          "pid": 448914,
+          "cpu": 0,
+          "memory_percent": 0.1,
+          "memory_mb": 1244,
+          "command": "node /home/kp/.npm/_npx/6a9de72f63e89751/node_modu"
+        },
+        {
+          "user": "kp",
+          "pid": 448916,
+          "cpu": 0,
+          "memory_percent": 0.1,
+          "memory_mb": 1243,
+          "command": "node /home/kp/.npm/_npx/6a9de72f63e89751/node_modu"
+        },
+        {
+          "user": "kp",
+          "pid": 448938,
+          "cpu": 0,
+          "memory_percent": 0.1,
+          "memory_mb": 1243,
+          "command": "node /home/kp/.npm/_npx/6a9de72f63e89751/node_modu"
+        }
+      ],
+      "processes": [
+        {
+          "user": "kp",
+          "pid": 12754,
+          "cpu": 109,
+          "memory_percent": 0,
+          "memory_mb": 0,
+          "command": "[npm exec claude] <defunct>"
+        },
+        {
+          "user": "kp",
+          "pid": 17045,
+          "cpu": 106,
+          "memory_percent": 0.2,
+          "memory_mb": 1017,
+          "command": "/home/kp/.nvm/versions/node/v23.11.1/bin/node -r /"
+        },
+        {
+          "user": "kp",
+          "pid": 18672,
+          "cpu": 106,
+          "memory_percent": 0.8,
+          "memory_mb": 3461,
+          "command": "/home/kp/.nvm/versions/node/v23.11.1/bin/node -r /"
+        },
+        {
+          "user": "kp",
+          "pid": 48092,
+          "cpu": 105,
+          "memory_percent": 0.8,
+          "memory_mb": 3450,
+          "command": "/home/kp/.nvm/versions/node/v23.11.1/bin/node -r /"
+        },
+        {
+          "user": "kp",
+          "pid": 84149,
+          "cpu": 104,
+          "memory_percent": 2.6,
+          "memory_mb": 1784,
+          "command": "/home/kp/.nvm/versions/node/v23.11.1/bin/node -r /"
+        },
+        {
+          "user": "kp",
+          "pid": 99820,
+          "cpu": 56.9,
+          "memory_percent": 3.7,
+          "memory_mb": 26897,
+          "command": "claude"
+        },
+        {
+          "user": "kp",
+          "pid": 55764,
+          "cpu": 49.8,
+          "memory_percent": 4.1,
+          "memory_mb": 2203,
+          "command": "/home/kp/.nvm/versions/node/v23.11.1/bin/node /hom"
+        },
+        {
+          "user": "kp",
+          "pid": 46963,
+          "cpu": 41.4,
+          "memory_percent": 2.2,
+          "memory_mb": 26429,
+          "command": "claude"
+        },
+        {
+          "user": "kp",
+          "pid": 85479,
+          "cpu": 21.6,
+          "memory_percent": 3.4,
+          "memory_mb": 105414,
+          "command": "/home/kp/.vscode-server/bin/6f17636121051a53c88d3e"
+        },
+        {
+          "user": "kp",
+          "pid": 85196,
+          "cpu": 4.2,
+          "memory_percent": 0.4,
+          "memory_mb": 11587,
+          "command": "/home/kp/.vscode-server/bin/6f17636121051a53c88d3e"
+        }
+      ]
+    }
+  },
+  "bottlenecks": [
+    {
+      "category": "process_proliferation",
+      "severity": "medium",
+      "issue": "High process count: 161",
+      "threshold": "< 10 processes for optimal efficiency",
+      "impact": "Context switching overhead and resource fragmentation"
+    }
+  ],
+  "optimizations": [
+    {
+      "category": "api_optimization",
+      "priority": "high",
+      "title": "Implement API Response Caching",
+      "description": "Cache frequent API responses (nodes, models) with 30s TTL",
+      "implementation": "Redis-based caching layer with cache invalidation",
+      "expected_improvement": "60-80% reduction in response time for cached endpoints",
+      "effort": "medium"
+    },
+    {
+      "category": "mcp_optimization",
+      "priority": "high",
+      "title": "Optimize MCP Server Communication",
+      "description": "Implement connection pooling and message batching for MCP servers",
+      "implementation": "Shared connection pool with request queuing and batch processing",
+      "expected_improvement": "40-50% reduction in coordination overhead",
+      "effort": "high"
+    },
+    {
+      "category": "memory_optimization",
+      "priority": "medium",
+      "title": "Implement Memory Pool Management",
+      "description": "Use object pooling for frequently created/destroyed objects",
+      "implementation": "Object pools for agent instances, message objects, and WebSocket frames",
+      "expected_improvement": "25-30% reduction in memory allocation overhead",
+      "effort": "medium"
+    },
+    {
+      "category": "process_optimization",
+      "priority": "medium",
+      "title": "Consolidate Agent Processes",
+      "description": "Use shared Node.js processes with isolated contexts",
+      "implementation": "Worker threads or VM contexts instead of separate processes",
+      "expected_improvement": "50-70% reduction in process overhead",
+      "effort": "high"
+    },
+    {
+      "category": "docker_optimization",
+      "priority": "low",
+      "title": "Optimize Container Resource Limits",
+      "description": "Set appropriate memory limits and use multi-stage builds",
+      "implementation": "Resource constraints in docker-compose and optimized base images",
+      "expected_improvement": "15-20% reduction in container overhead",
+      "effort": "low"
+    },
+    {
+      "category": "coordination_optimization",
+      "priority": "high",
+      "title": "Implement Smart Load Balancing",
+      "description": "Dynamic load balancing based on real-time performance metrics",
+      "implementation": "Weighted round-robin with health scoring and circuit breakers",
+      "expected_improvement": "30-40% improvement in request distribution efficiency",
+      "effort": "medium"
+    }
+  ]
+}

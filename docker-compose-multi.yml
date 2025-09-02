@@ -1,0 +1,152 @@
+version: '3.8'
+
+services:
+  # Enhanced Distributed Inference API Server
+  distributed-api:
+    image: ollamamax-distributed-api:latest
+    ports:
+      - "13100:13100"
+    environment:
+      - NODE_ENV=production
+      - PORT=13100
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=ollama_redis_pass
+      - OLLAMA_PRIMARY=http://ollama-worker-1:11434,http://ollama-worker-2:11434,http://ollama-worker-3:11434,http://ollama-worker-4:11434,http://ollama-worker-5:11434
+    depends_on:
+      redis:
+        condition: service_healthy
+      ollama-worker-1:
+        condition: service_started
+      ollama-worker-2:
+        condition: service_started
+      ollama-worker-3:
+        condition: service_started
+      ollama-worker-4:
+        condition: service_started
+      ollama-worker-5:
+        condition: service_started
+    volumes:
+      - api_logs:/app/logs
+      - api_data:/app/data
+    networks:
+      - ollama_distributed
+    restart: unless-stopped
+
+  # Ollama Worker 1
+  ollama-worker-1:
+    image: ollama/ollama:latest
+    ports:
+      - "13001:11434"
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+      - OLLAMA_PORT=11434
+    volumes:
+      - ollama_worker1_models:/root/.ollama
+    networks:
+      - ollama_distributed
+    restart: unless-stopped
+
+  # Ollama Worker 2  
+  ollama-worker-2:
+    image: ollama/ollama:latest
+    ports:
+      - "13002:11434"
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+      - OLLAMA_PORT=11434
+    volumes:
+      - ollama_worker2_models:/root/.ollama
+    networks:
+      - ollama_distributed
+    restart: unless-stopped
+
+  # Ollama Worker 3
+  ollama-worker-3:
+    image: ollama/ollama:latest
+    ports:
+      - "13003:11434"
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+      - OLLAMA_PORT=11434
+    volumes:
+      - ollama_worker3_models:/root/.ollama
+    networks:
+      - ollama_distributed
+    restart: unless-stopped
+
+  # Ollama Worker 4
+  ollama-worker-4:
+    image: ollama/ollama:latest
+    ports:
+      - "13004:11434"
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+      - OLLAMA_PORT=11434
+    volumes:
+      - ollama_worker4_models:/root/.ollama
+    networks:
+      - ollama_distributed
+    restart: unless-stopped
+
+  # Ollama Worker 5
+  ollama-worker-5:
+    image: ollama/ollama:latest
+    ports:
+      - "13005:11434"
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+      - OLLAMA_PORT=11434
+    volumes:
+      - ollama_worker5_models:/root/.ollama
+    networks:
+      - ollama_distributed
+    restart: unless-stopped
+
+  # Redis for distributed state management
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "13101:6379"
+    command: redis-server --appendonly yes --requirepass ollama_redis_pass
+    volumes:
+      - redis_distributed_data:/data
+    networks:
+      - ollama_distributed
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Load Balancer for Workers
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "13000:80"
+    volumes:
+      - ./nginx-multi.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - ollama_distributed
+    restart: unless-stopped
+    depends_on:
+      - ollama-worker-1
+      - ollama-worker-2
+      - ollama-worker-3
+      - ollama-worker-4
+      - ollama-worker-5
+
+volumes:
+  redis_distributed_data:
+  ollama_worker1_models:
+  ollama_worker2_models:
+  ollama_worker3_models:
+  ollama_worker4_models:
+  ollama_worker5_models:
+  api_logs:
+  api_data:
+
+networks:
+  ollama_distributed:
+    driver: bridge

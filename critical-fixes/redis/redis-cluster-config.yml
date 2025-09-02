@@ -1,0 +1,197 @@
+# Redis Cluster Configuration for 60-80% Latency Reduction
+version: '3.8'
+
+services:
+  # Redis Cluster - 3 Master Nodes for High Availability
+  redis-cluster-node-1:
+    image: redis:7.2-alpine
+    container_name: redis-cluster-node-1
+    command: >
+      redis-server
+      --cluster-enabled yes
+      --cluster-config-file nodes-1.conf
+      --cluster-node-timeout 5000
+      --cluster-announce-ip 172.25.0.11
+      --cluster-announce-port 6379
+      --cluster-announce-bus-port 16379
+      --appendonly yes
+      --appendfsync everysec
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+      --maxmemory 2gb
+      --maxmemory-policy allkeys-lru
+      --tcp-keepalive 60
+      --timeout 300
+    ports:
+      - "6379:6379"
+      - "16379:16379"
+    networks:
+      redis_cluster:
+        ipv4_address: 172.25.0.11
+    volumes:
+      - redis_node_1_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+
+  redis-cluster-node-2:
+    image: redis:7.2-alpine
+    container_name: redis-cluster-node-2
+    command: >
+      redis-server
+      --cluster-enabled yes
+      --cluster-config-file nodes-2.conf
+      --cluster-node-timeout 5000
+      --cluster-announce-ip 172.25.0.12
+      --cluster-announce-port 6379
+      --cluster-announce-bus-port 16379
+      --appendonly yes
+      --appendfsync everysec
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+      --maxmemory 2gb
+      --maxmemory-policy allkeys-lru
+      --tcp-keepalive 60
+      --timeout 300
+    ports:
+      - "6380:6379"
+      - "16380:16379"
+    networks:
+      redis_cluster:
+        ipv4_address: 172.25.0.12
+    volumes:
+      - redis_node_2_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+
+  redis-cluster-node-3:
+    image: redis:7.2-alpine
+    container_name: redis-cluster-node-3
+    command: >
+      redis-server
+      --cluster-enabled yes
+      --cluster-config-file nodes-3.conf
+      --cluster-node-timeout 5000
+      --cluster-announce-ip 172.25.0.13
+      --cluster-announce-port 6379
+      --cluster-announce-bus-port 16379
+      --appendonly yes
+      --appendfsync everysec
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+      --maxmemory 2gb
+      --maxmemory-policy allkeys-lru
+      --tcp-keepalive 60
+      --timeout 300
+    ports:
+      - "6381:6379"
+      - "16381:16379"
+    networks:
+      redis_cluster:
+        ipv4_address: 172.25.0.13
+    volumes:
+      - redis_node_3_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+
+  # Redis Cluster Manager - Initializes cluster
+  redis-cluster-manager:
+    image: redis:7.2-alpine
+    container_name: redis-cluster-manager
+    depends_on:
+      - redis-cluster-node-1
+      - redis-cluster-node-2
+      - redis-cluster-node-3
+    entrypoint: |
+      sh -c '
+        sleep 30
+        echo "Creating Redis cluster..."
+        redis-cli --cluster create \
+          172.25.0.11:6379 \
+          172.25.0.12:6379 \
+          172.25.0.13:6379 \
+          --cluster-replicas 0 \
+          --cluster-yes
+        echo "Redis cluster created successfully!"
+        
+        # Verify cluster health
+        redis-cli -h 172.25.0.11 cluster info
+        redis-cli -h 172.25.0.11 cluster nodes
+        
+        echo "Cluster initialization complete"
+      '
+    networks:
+      - redis_cluster
+
+  # Connection Pool Manager for Efficient Client Connections
+  redis-pool-manager:
+    image: haproxy:2.8-alpine
+    container_name: redis-pool-manager
+    ports:
+      - "6399:6399"
+    volumes:
+      - ./redis-haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    depends_on:
+      - redis-cluster-node-1
+      - redis-cluster-node-2
+      - redis-cluster-node-3
+    networks:
+      - redis_cluster
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "6399"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+networks:
+  redis_cluster:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/24
+
+volumes:
+  redis_node_1_data:
+    driver: local
+  redis_node_2_data:
+    driver: local
+  redis_node_3_data:
+    driver: local

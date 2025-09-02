@@ -215,8 +215,5 @@ volumes:
 
 networks:
   ollama_distributed:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.23.0.0/16
-          gateway: 172.23.0.1
+    driver: overlay
+    attachable: true

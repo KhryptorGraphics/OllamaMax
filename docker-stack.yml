@@ -1,0 +1,198 @@
+version: '3.8'
+
+services:
+  # Enhanced Distributed Inference API Server
+  distributed-api:
+    image: localhost:5001/ollamamax-distributed-api:latest
+    ports:
+      - "13100:13100"
+    environment:
+      - NODE_ENV=production
+      - PORT=13100
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=ollama_redis_pass
+      - OLLAMA_PRIMARY=http://ollama-worker:11434
+    networks:
+      - ollama_swarm
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+    depends_on:
+      - redis
+
+  # Ollama Worker Service - Scalable across swarm
+  ollama-worker:
+    image: localhost:5001/ollamamax-ollama-primary:latest
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+      - OLLAMA_PORT=11434
+    volumes:
+      - ollama_models:/usr/share/ollama/.ollama
+    networks:
+      - ollama_swarm
+    deploy:
+      replicas: 3
+      placement:
+        constraints:
+          - node.platform.os == linux
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Redis for distributed state management
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --requirepass ollama_redis_pass
+    volumes:
+      - redis_swarm_data:/data
+    networks:
+      - ollama_swarm
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MinIO for distributed model storage
+  minio:
+    image: minio/minio:latest
+    ports:
+      - "13090:9000"
+      - "13091:9001"
+    environment:
+      - MINIO_ROOT_USER=ollama
+      - MINIO_ROOT_PASSWORD=ollama_minio_pass
+      - MINIO_DOMAIN=minio
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_swarm_data:/data
+    networks:
+      - ollama_swarm
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "13092:9090"
+    volumes:
+      - ./monitoring/prometheus-swarm.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_swarm_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - ollama_swarm
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "13093:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=ollama_grafana_pass
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_swarm_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    networks:
+      - ollama_swarm
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+
+  # Load Balancer for Ollama workers
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "13000:80"
+    volumes:
+      - ./nginx-swarm.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - ollama_swarm
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+    depends_on:
+      - ollama-worker
+
+volumes:
+  redis_swarm_data:
+    driver: local
+  ollama_models:
+    driver: local
+  minio_swarm_data:
+    driver: local
+  prometheus_swarm_data:
+    driver: local
+  grafana_swarm_data:
+    driver: local
+
+networks:
+  ollama_swarm:
+    driver: overlay
+    attachable: true
+    ipam:
+      config:
+        - subnet: 10.0.9.0/24

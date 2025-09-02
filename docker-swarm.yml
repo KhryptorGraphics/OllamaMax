@@ -1,189 +1,81 @@
 version: '3.8'
 
-# Docker Swarm Configuration for Distributed Llama Inference
-# Deploy with: docker stack deploy -c docker-swarm.yml llama-swarm
-
 services:
-  # Load Balancer / API Gateway
-  api-gateway:
-    image: node:18-alpine
-    deploy:
-      replicas: 1
-      placement:
-        constraints:
-          - node.role == manager
-      restart_policy:
-        condition: any
-        delay: 5s
+  ollama-primary:
+    image: ollamamax-ollama-primary:latest
     ports:
-      - "13000:13000"
-    networks:
-      - llama-network
-    volumes:
-      - ./api-server:/app
-    working_dir: /app
-    command: sh -c "npm install && npm start"
-    environment:
-      - PORT=13000
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - DOCKER_SWARM=true
-
-  # Redis for distributed state
-  redis:
-    image: redis:7-alpine
-    deploy:
-      replicas: 1
-      placement:
-        constraints:
-          - node.role == manager
-    command: redis-server --appendonly yes
-    volumes:
-      - redis-data:/data
-    networks:
-      - llama-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # Ollama Inference Nodes (3 replicas)
-  ollama:
-    image: ollama/ollama:latest
-    deploy:
-      replicas: 3
-      update_config:
-        parallelism: 1
-        delay: 10s
-      restart_policy:
-        condition: any
-        delay: 5s
-      resources:
-        limits:
-          cpus: '2'
-          memory: 4G
-        reservations:
-          cpus: '1'
-          memory: 2G
+      - "13000:11434"
     environment:
       - OLLAMA_HOST=0.0.0.0
-      - OLLAMA_MODELS=/root/.ollama/models
-      - OLLAMA_NUM_PARALLEL=2
-      - OLLAMA_MAX_LOADED_MODELS=2
-    volumes:
-      - ollama-models:/root/.ollama
+      - OLLAMA_PORT=11434
     networks:
-      - llama-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # Web Interface
-  web-interface:
-    image: nginx:alpine
+      - ollama_swarm
     deploy:
       replicas: 1
-      placement:
-        constraints:
-          - node.role == manager
-    ports:
-      - "13080:80"
-    volumes:
-      - ./web-interface:/usr/share/nginx/html:ro
-    networks:
-      - llama-network
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
-  # Monitoring with Prometheus
-  prometheus:
-    image: prom/prometheus:v2.45.0
-    deploy:
-      replicas: 1
-      placement:
-        constraints:
-          - node.role == manager
+  ollama-worker-2:
+    image: ollamamax-ollama-worker-2:latest
     ports:
-      - "13090:9090"
-    volumes:
-      - ./monitoring/prometheus-swarm.yml:/etc/prometheus/prometheus.yml:ro
-      - prometheus-data:/prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-    networks:
-      - llama-network
-
-  # Grafana for visualization
-  grafana:
-    image: grafana/grafana:10.0.0
-    deploy:
-      replicas: 1
-      placement:
-        constraints:
-          - node.role == manager
-    ports:
-      - "13091:3000"
+      - "13001:11434"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin123
-      - GF_INSTALL_PLUGINS=redis-datasource
-    volumes:
-      - grafana-data:/var/lib/grafana
-      - ./monitoring/grafana-dashboards:/etc/grafana/provisioning/dashboards:ro
+      - OLLAMA_HOST=0.0.0.0
+      - OLLAMA_PORT=11434
     networks:
-      - llama-network
-
-  # Node Exporter for metrics
-  node-exporter:
-    image: prom/node-exporter:latest
+      - ollama_swarm
     deploy:
-      mode: global
+      replicas: 1
+
+  ollama-worker-3:
+    image: ollamamax-ollama-worker-3:latest
     ports:
-      - target: 9100
-        published: 13092
-        mode: host
+      - "13002:11434"
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+      - OLLAMA_PORT=11434
     networks:
-      - llama-network
-    command:
-      - '--path.procfs=/host/proc'
-      - '--path.sysfs=/host/sys'
-      - '--path.rootfs=/host'
-      - '--collector.filesystem.mount-points-exclude=^/(dev|proc|sys|var/lib/docker/.+)($|/)'
-    volumes:
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-      - /:/host:ro
+      - ollama_swarm
+    deploy:
+      replicas: 1
+
+  ollama-worker-extra:
+    image: ollamamax-ollama-primary:latest
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+      - OLLAMA_PORT=11434
+    networks:
+      - ollama_swarm
+    deploy:
+      replicas: 2
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "13101:6379"
+    command: redis-server --appendonly yes --requirepass ollama_redis_pass
+    networks:
+      - ollama_swarm
+    deploy:
+      replicas: 1
+
+  distributed-api:
+    image: ollamamax-distributed-api:latest
+    ports:
+      - "13100:13100"
+    environment:
+      - NODE_ENV=production
+      - PORT=13100
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=ollama_redis_pass
+      - OLLAMA_PRIMARY=http://ollama-primary:11434
+      - OLLAMA_WORKER_2=http://ollama-worker-2:11434
+      - OLLAMA_WORKER_3=http://ollama-worker-3:11434
+    networks:
+      - ollama_swarm
+    deploy:
+      replicas: 1
 
 networks:
-  llama-network:
+  ollama_swarm:
     driver: overlay
     attachable: true
-    ipam:
-      config:
-        - subnet: 10.0.9.0/24
-
-volumes:
-  redis-data:
-    driver: local
-  ollama-models:
-    driver: local
-  prometheus-data:
-    driver: local
-  grafana-data:
-    driver: local
-
-# Service Discovery Labels
-# These labels enable automatic service discovery and load balancing
-configs:
-  service-labels:
-    content: |
-      ollama.service=inference
-      ollama.port=11434
-      api-gateway.service=gateway
-      api-gateway.port=13000

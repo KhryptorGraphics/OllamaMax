@@ -1,4 +1,0 @@
-Concurrent Performance Test - Thu Aug 28 19:02:09 CDT 2025
-Concurrency 1: 5 requests in 75ms (66.66 req/s)
-Concurrency 5: 25 requests in 106ms (235.84 req/s)
-Concurrency 10: 50 requests in 125ms (400.00 req/s)
