@@ -11,11 +11,14 @@ services:
       - OLLAMA_HOST=0.0.0.0
       - OLLAMA_PORT=11434
       - DB_HOST=postgres
+      - DB_PORT=15432
       - DB_NAME=ollamamax
       - DB_USER=ollama
       - DB_PASSWORD=secure_password
+      - DB_SSL_MODE=prefer
       - REDIS_HOST=redis
-      - REDIS_PORT=6379
+      - REDIS_PORT=16379
+      - REDIS_PASSWORD=secure_redis_password
       - JWT_SECRET_KEY=your-secret-key-change-this-in-production
       - AUTH_ENABLED=true
     depends_on:
@@ -39,12 +42,13 @@ services:
   postgres:
     image: postgres:15-alpine
     ports:
-      - "11432:5432"  # Postgres port (above 11111)
+      - "15432:15432"  # Postgres port (above 10000)
     environment:
       - POSTGRES_DB=ollamamax
       - POSTGRES_USER=ollama
       - POSTGRES_PASSWORD=secure_password
       - POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256
+      - PGPORT=15432
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -52,7 +56,7 @@ services:
       - ollama_network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ollama -d ollamamax"]
+      test: ["CMD-SHELL", "pg_isready -U ollama -d ollamamax -p 15432"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -60,15 +64,15 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "11379:6379"  # Redis port (above 11111)
-    command: redis-server --appendonly yes --requirepass secure_redis_password
+      - "16379:16379"  # Redis port (above 10000)
+    command: redis-server --port 16379 --appendonly yes --requirepass secure_redis_password
     volumes:
       - redis_data:/data
     networks:
       - ollama_network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      test: ["CMD", "redis-cli", "-p", "16379", "--raw", "incr", "ping"]
       interval: 10s
       timeout: 3s
       retries: 5
@@ -76,8 +80,10 @@ services:
   nginx:
     image: nginx:alpine
     ports:
-      - "11433:80"   # HTTP port (above 11111)
-      - "11443:443"  # HTTPS port (above 11111)
+      - "10080:10080"   # HTTP port (above 10000)
+      - "10443:10443"  # HTTPS port (above 10000)
+    environment:
+      - NGINX_PORT=10080
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro
@@ -91,7 +97,7 @@ services:
   prometheus:
     image: prom/prometheus:latest
     ports:
-      - "11490:9090"  # Prometheus port (above 11111)
+      - "19090:19090"  # Prometheus port (above 10000)
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
@@ -102,6 +108,7 @@ services:
       - '--web.console.templates=/etc/prometheus/consoles'
       - '--storage.tsdb.retention.time=200h'
       - '--web.enable-lifecycle'
+      - '--web.listen-address=0.0.0.0:19090'
     networks:
       - ollama_network
     restart: unless-stopped
@@ -109,11 +116,12 @@ services:
   grafana:
     image: grafana/grafana:latest
     ports:
-      - "11300:3000"  # Grafana port (above 11111)
+      - "13000:13000"  # Grafana port (above 10000)
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin_password
       - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_HTTP_PORT=13000
     volumes:
       - grafana_data:/var/lib/grafana
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning

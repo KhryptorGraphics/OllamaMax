@@ -1,0 +1,130 @@
+{
+  "summary": {
+    "totalIssues": 9,
+    "criticalIssues": 1,
+    "warnings": 5,
+    "suggestions": 1,
+    "filesAnalyzed": 3,
+    "duration": 10.970226999999795
+  },
+  "analyses": {
+    "code-quality": {
+      "type": "code-quality",
+      "issues": [
+        {
+          "file": "src/agents/analyze-agent.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "src/agents/analyze-agent.js",
+          "type": "console-statements",
+          "message": "Found 33 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "src/cli.js",
+          "type": "console-statements",
+          "message": "Found 7 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "src/commands/analyze.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "src/commands/analyze.js",
+          "type": "console-statements",
+          "message": "Found 33 console statements",
+          "severity": "info"
+        }
+      ],
+      "suggestions": [],
+      "metrics": {
+        "duration": 9.983306999999968
+      }
+    },
+    "performance": {
+      "type": "performance",
+      "issues": [
+        {
+          "file": "src/agents/analyze-agent.js",
+          "type": "nested-loops",
+          "message": "Potential performance issue: nested loops detected",
+          "severity": "warning"
+        },
+        {
+          "file": "src/cli.js",
+          "type": "sync-operations",
+          "message": "Found 1 synchronous file operations",
+          "severity": "warning"
+        }
+      ],
+      "suggestions": [],
+      "metrics": {
+        "duration": 8.79408199999989
+      }
+    },
+    "security": {
+      "type": "security",
+      "issues": [
+        {
+          "file": "src/agents/analyze-agent.js",
+          "type": "eval-usage",
+          "message": "Dangerous eval() usage detected",
+          "severity": "high"
+        }
+      ],
+      "suggestions": [],
+      "metrics": {
+        "duration": 8.65927899999997
+      }
+    },
+    "architecture": {
+      "type": "architecture",
+      "issues": [],
+      "suggestions": [],
+      "metrics": {
+        "duration": 2.7680569999997715
+      }
+    },
+    "testing": {
+      "type": "testing",
+      "issues": [
+        {
+          "type": "low-test-coverage",
+          "message": "Test coverage is low: 0.0%",
+          "severity": "warning"
+        }
+      ],
+      "suggestions": [
+        {
+          "type": "missing-tests",
+          "message": "3 files lack test coverage",
+          "priority": "high",
+          "files": [
+            "src/agents/analyze-agent.js",
+            "src/cli.js",
+            "src/commands/analyze.js"
+          ]
+        }
+      ],
+      "metrics": {
+        "duration": 4.72619799999984
+      }
+    }
+  },
+  "recommendations": [
+    {
+      "priority": "critical",
+      "action": "Address critical security and performance issues immediately"
+    },
+    {
+      "priority": "high",
+      "action": "Improve test coverage for critical components"
+    }
+  ]
+}

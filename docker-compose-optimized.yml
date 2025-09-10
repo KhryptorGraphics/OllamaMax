@@ -19,8 +19,8 @@ services:
       - BOOTSTRAP_NODE=true
     ports:
       - "11434:11434"    # API port
-      - "14001:4001"     # P2P port
-      - "17000:7000"     # Consensus port
+      - "14001:14001"     # P2P port
+      - "17000:17000"     # Consensus port
       - "11435:8080"     # Admin UI
       - "11436:9090"     # Metrics
     volumes:
@@ -62,11 +62,11 @@ services:
       - NODE_ROLE=worker
       - CLUSTER_SIZE=3
       - BOOTSTRAP_NODE=false
-      - BOOTSTRAP_PEERS=node-1:4001
+      - BOOTSTRAP_PEERS=node-1:14001
     ports:
       - "11444:11434"    # API port
-      - "14002:4001"     # P2P port
-      - "17001:7000"     # Consensus port
+      - "14002:14001"     # P2P port
+      - "17001:17000"     # Consensus port
       - "11445:8080"     # Admin UI
       - "11446:9090"     # Metrics
     volumes:
@@ -109,11 +109,11 @@ services:
       - NODE_ROLE=worker
       - CLUSTER_SIZE=3
       - BOOTSTRAP_NODE=false
-      - BOOTSTRAP_PEERS=node-1:4001,node-2:4001
+      - BOOTSTRAP_PEERS=node-1:14001,node-2:14001
     ports:
       - "11454:11434"    # API port
-      - "14003:4001"     # P2P port
-      - "17002:7000"     # Consensus port
+      - "14003:14001"     # P2P port
+      - "17002:17000"     # Consensus port
       - "11455:8080"     # Admin UI
       - "11456:9090"     # Metrics
     volumes:
@@ -154,8 +154,9 @@ services:
       POSTGRES_USER: ollamamax
       POSTGRES_PASSWORD: secure_cluster_password
       POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+      PGPORT: 15432
     ports:
-      - "15432:5432"
+      - "15432:15432"
     volumes:
       - postgres_cluster_data:/var/lib/postgresql/data
       - ./sql/cluster_init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -183,6 +184,7 @@ services:
     hostname: redis-cluster
     command: >
       redis-server
+      --port 16379
       --appendonly yes
       --appendfsync everysec
       --maxmemory 512mb
@@ -196,7 +198,7 @@ services:
     networks:
       - ollama_cluster
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-p", "16379", "ping"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -215,8 +217,8 @@ services:
     image: nginx:alpine
     container_name: ollamamax-nginx-lb
     ports:
-      - "80:80"
-      - "443:443"
+      - "10080:10080"
+      - "10443:10443"
     volumes:
       - ./nginx/nginx-optimized.conf:/etc/nginx/nginx.conf
       - ./certs:/etc/nginx/certs:ro
@@ -238,7 +240,7 @@ services:
     image: prom/prometheus:latest
     container_name: ollamamax-prometheus
     ports:
-      - "19090:9090"
+      - "19090:19090"
     volumes:
       - ./monitoring/prometheus-cluster.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
@@ -249,6 +251,7 @@ services:
       - '--web.console.templates=/etc/prometheus/consoles'
       - '--storage.tsdb.retention.time=7d'
       - '--web.enable-lifecycle'
+      - '--web.listen-address=0.0.0.0:19090'
     networks:
       - ollama_cluster
     restart: unless-stopped
@@ -257,7 +260,7 @@ services:
     image: grafana/grafana:latest
     container_name: ollamamax-grafana
     ports:
-      - "13000:3000"
+      - "13000:13000"
     volumes:
       - grafana_data:/var/lib/grafana
       - ./monitoring/grafana-cluster-dashboards:/etc/grafana/provisioning/dashboards
@@ -265,6 +268,7 @@ services:
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin_cluster_password
       - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_HTTP_PORT=13000
     networks:
       - ollama_cluster
     depends_on:

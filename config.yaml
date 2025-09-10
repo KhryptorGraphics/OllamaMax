@@ -27,11 +27,11 @@ distributed:
   consistency_level: "eventual"
 
 p2p:
-  listen: "/ip4/0.0.0.0/tcp/4001"
+  listen: "/ip4/0.0.0.0/tcp/14001"
   enabled: true
 
 consensus:
-  bind_addr: "0.0.0.0:7000"
+  bind_addr: "0.0.0.0:17000"
   bootstrap: false
 
 security:

@@ -1,0 +1,457 @@
+{
+  "activeAgents": [
+    [
+      "agent-1756994242332-wkon8ixgm",
+      {
+        "agentType": "coder",
+        "agent": {
+          "name": "Coder",
+          "type": "general-purpose",
+          "description": "Implementation specialist for writing clean, efficient code",
+          "capabilities": [
+            "code-generation",
+            "implementation",
+            "debugging",
+            "optimization"
+          ],
+          "tools": [
+            "Write",
+            "Edit",
+            "MultiEdit",
+            "Read",
+            "Grep"
+          ],
+          "specializations": {
+            "languages": [
+              "javascript",
+              "typescript",
+              "python",
+              "go",
+              "rust"
+            ],
+            "frameworks": [
+              "react",
+              "vue",
+              "express",
+              "django",
+              "fastapi"
+            ],
+            "patterns": [
+              "solid",
+              "dry",
+              "kiss",
+              "yagni",
+              "mvc",
+              "mvvm"
+            ]
+          },
+          "hooks": {
+            "pre": "npx claude-flow@alpha hooks pre-task --agent coder",
+            "post": "npx claude-flow@alpha hooks post-task --agent coder"
+          }
+        },
+        "claudeCodeType": "general-purpose",
+        "taskDescription": "Create a simple test function",
+        "options": {
+          "timeout": 30000
+        },
+        "metadata": {
+          "sessionId": "session-1756994242333",
+          "priority": "medium",
+          "timeout": 30000,
+          "preTaskResult": {
+            "preTask": {
+              "success": true,
+              "output": "🔄 Executing pre-task hook...\n📋 Task: Unnamed task\n🆔 Task ID: task-1756994247711-cqp9fejki\n  💾 Saved to .swarm/memory.db\n\n⚠️  Skipping ruv-swarm hook (Timeout)\n\n🎯 TASK PREPARATION COMPLETE",
+              "duration": 8528,
+              "command": "npx claude-flow@alpha hooks pre-task --agent coder"
+            },
+            "sessionRestore": {
+              "success": true,
+              "output": "🔄 Executing session-restore hook...\n🆔 Session: session-1756994242333\n⚠️  No session found with ID: session-1756994242333"
+            },
+            "success": true
+          },
+          "taskConfig": {
+            "name": "Coder",
+            "description": "Create a simple test function\n\nAgent: Coder (Implementation specialist for writing clean, efficient code)\nCapabilities: code-generation, implementation, debugging, optimization\nTools: Write, Edit, MultiEdit, Read, Grep\n\nCoordination Instructions:\n1. Execute pre-task hooks for coordination\n2. Create a simple test function\n3. Store progress in swarm memory using: npx claude-flow@alpha hooks post-edit --file \"[file]\" --memory-key \"swarm/Coder/[step]\"\n4. Notify other agents of progress: npx claude-flow@alpha hooks notify --message \"[what was done]\"\n5. Execute post-task hooks for cleanup\n\nPriority: medium\nTimeout: 30000ms",
+            "type": "general-purpose",
+            "tools": [
+              "Write",
+              "Edit",
+              "MultiEdit",
+              "Read",
+              "Grep"
+            ],
+            "specializations": {
+              "languages": [
+                "javascript",
+                "typescript",
+                "python",
+                "go",
+                "rust"
+              ],
+              "frameworks": [
+                "react",
+                "vue",
+                "express",
+                "django",
+                "fastapi"
+              ],
+              "patterns": [
+                "solid",
+                "dry",
+                "kiss",
+                "yagni",
+                "mvc",
+                "mvvm"
+              ]
+            },
+            "hooks": {
+              "pre": "npx claude-flow@alpha hooks pre-task --agent coder",
+              "post": "npx claude-flow@alpha hooks post-task --agent coder"
+            },
+            "metadata": {
+              "originalAgentType": {
+                "name": "Coder",
+                "type": "general-purpose",
+                "description": "Implementation specialist for writing clean, efficient code",
+                "capabilities": [
+                  "code-generation",
+                  "implementation",
+                  "debugging",
+                  "optimization"
+                ],
+                "tools": [
+                  "Write",
+                  "Edit",
+                  "MultiEdit",
+                  "Read",
+                  "Grep"
+                ],
+                "specializations": {
+                  "languages": [
+                    "javascript",
+                    "typescript",
+                    "python",
+                    "go",
+                    "rust"
+                  ],
+                  "frameworks": [
+                    "react",
+                    "vue",
+                    "express",
+                    "django",
+                    "fastapi"
+                  ],
+                  "patterns": [
+                    "solid",
+                    "dry",
+                    "kiss",
+                    "yagni",
+                    "mvc",
+                    "mvvm"
+                  ]
+                },
+                "hooks": {
+                  "pre": "npx claude-flow@alpha hooks pre-task --agent coder",
+                  "post": "npx claude-flow@alpha hooks post-task --agent coder"
+                }
+              }
+            }
+          }
+        },
+        "createdAt": "2025-09-04T13:57:22.333Z",
+        "status": "ready-for-execution",
+        "lastUpdate": "2025-09-04T13:57:41.621Z"
+      }
+    ],
+    [
+      "agent-1756994272632-x4bg9cysy",
+      {
+        "agentType": "reviewer",
+        "agent": {
+          "name": "Reviewer",
+          "type": "general-purpose",
+          "description": "Code review and quality assurance specialist",
+          "capabilities": [
+            "code-review",
+            "quality-assessment",
+            "security-audit",
+            "best-practices"
+          ],
+          "tools": [
+            "Read",
+            "Grep",
+            "Glob",
+            "TodoWrite"
+          ],
+          "specializations": {
+            "focus": [
+              "security",
+              "performance",
+              "maintainability",
+              "scalability"
+            ],
+            "standards": [
+              "eslint",
+              "prettier",
+              "sonarqube",
+              "owasp"
+            ],
+            "metrics": [
+              "complexity",
+              "coverage",
+              "debt",
+              "vulnerabilities"
+            ]
+          }
+        },
+        "claudeCodeType": "general-purpose",
+        "taskDescription": "Review test code",
+        "options": {},
+        "metadata": {
+          "sessionId": "session-1756994272632",
+          "priority": "medium",
+          "timeout": 300000,
+          "preTaskResult": {
+            "preTask": {
+              "success": true,
+              "skipped": true
+            },
+            "sessionRestore": {
+              "success": true,
+              "output": "🔄 Executing session-restore hook...\n🆔 Session: session-1756994272632\n⚠️  No session found with ID: session-1756994272632"
+            },
+            "success": true
+          },
+          "taskConfig": {
+            "name": "Reviewer",
+            "description": "Review test code\n\nAgent: Reviewer (Code review and quality assurance specialist)\nCapabilities: code-review, quality-assessment, security-audit, best-practices\nTools: Read, Grep, Glob, TodoWrite\n\nCoordination Instructions:\n1. Execute pre-task hooks for coordination\n2. Review test code\n3. Store progress in swarm memory using: npx claude-flow@alpha hooks post-edit --file \"[file]\" --memory-key \"swarm/Reviewer/[step]\"\n4. Notify other agents of progress: npx claude-flow@alpha hooks notify --message \"[what was done]\"\n5. Execute post-task hooks for cleanup\n\nPriority: medium\nTimeout: 300000ms",
+            "type": "general-purpose",
+            "tools": [
+              "Read",
+              "Grep",
+              "Glob",
+              "TodoWrite"
+            ],
+            "specializations": {
+              "focus": [
+                "security",
+                "performance",
+                "maintainability",
+                "scalability"
+              ],
+              "standards": [
+                "eslint",
+                "prettier",
+                "sonarqube",
+                "owasp"
+              ],
+              "metrics": [
+                "complexity",
+                "coverage",
+                "debt",
+                "vulnerabilities"
+              ]
+            },
+            "metadata": {
+              "originalAgentType": {
+                "name": "Reviewer",
+                "type": "general-purpose",
+                "description": "Code review and quality assurance specialist",
+                "capabilities": [
+                  "code-review",
+                  "quality-assessment",
+                  "security-audit",
+                  "best-practices"
+                ],
+                "tools": [
+                  "Read",
+                  "Grep",
+                  "Glob",
+                  "TodoWrite"
+                ],
+                "specializations": {
+                  "focus": [
+                    "security",
+                    "performance",
+                    "maintainability",
+                    "scalability"
+                  ],
+                  "standards": [
+                    "eslint",
+                    "prettier",
+                    "sonarqube",
+                    "owasp"
+                  ],
+                  "metrics": [
+                    "complexity",
+                    "coverage",
+                    "debt",
+                    "vulnerabilities"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "createdAt": "2025-09-04T13:57:52.632Z",
+        "status": "ready-for-execution",
+        "lastUpdate": "2025-09-04T13:58:03.268Z"
+      }
+    ],
+    [
+      "agent-1756994293694-hgj15srkq",
+      {
+        "agentType": "nonexistent-agent",
+        "agent": {
+          "name": "nonexistent-agent",
+          "type": "general-purpose",
+          "description": "Custom agent: nonexistent-agent",
+          "capabilities": [
+            "general"
+          ],
+          "tools": [
+            "Read",
+            "Write",
+            "Edit",
+            "Bash"
+          ],
+          "specializations": {}
+        },
+        "claudeCodeType": "general-purpose",
+        "taskDescription": "test",
+        "options": {},
+        "metadata": {
+          "sessionId": "session-1756994293694",
+          "priority": "medium",
+          "timeout": 300000,
+          "preTaskResult": {
+            "preTask": {
+              "success": true,
+              "skipped": true
+            },
+            "sessionRestore": {
+              "success": true,
+              "output": "🔄 Executing session-restore hook...\n🆔 Session: session-1756994293694\n⚠️  No session found with ID: session-1756994293694"
+            },
+            "success": true
+          },
+          "taskConfig": {
+            "name": "nonexistent-agent",
+            "description": "test\n\nAgent: nonexistent-agent (Custom agent: nonexistent-agent)\nCapabilities: general\nTools: Read, Write, Edit, Bash\n\nCoordination Instructions:\n1. Execute pre-task hooks for coordination\n2. test\n3. Store progress in swarm memory using: npx claude-flow@alpha hooks post-edit --file \"[file]\" --memory-key \"swarm/nonexistent-agent/[step]\"\n4. Notify other agents of progress: npx claude-flow@alpha hooks notify --message \"[what was done]\"\n5. Execute post-task hooks for cleanup\n\nPriority: medium\nTimeout: 300000ms",
+            "type": "general-purpose",
+            "tools": [
+              "Read",
+              "Write",
+              "Edit",
+              "Bash"
+            ],
+            "specializations": {},
+            "metadata": {
+              "originalAgentType": {
+                "name": "nonexistent-agent",
+                "type": "general-purpose",
+                "description": "Custom agent: nonexistent-agent",
+                "capabilities": [
+                  "general"
+                ],
+                "tools": [
+                  "Read",
+                  "Write",
+                  "Edit",
+                  "Bash"
+                ],
+                "specializations": {}
+              }
+            }
+          }
+        },
+        "createdAt": "2025-09-04T13:58:13.694Z",
+        "status": "ready-for-execution",
+        "lastUpdate": "2025-09-04T13:58:24.282Z"
+      }
+    ],
+    [
+      "agent-1756994320188-os6iqleee",
+      {
+        "agentType": "general-purpose",
+        "agent": {
+          "name": "general-purpose",
+          "type": "general-purpose",
+          "description": "Custom agent: general-purpose",
+          "capabilities": [
+            "general"
+          ],
+          "tools": [
+            "Read",
+            "Write",
+            "Edit",
+            "Bash"
+          ],
+          "specializations": {}
+        },
+        "claudeCodeType": "general-purpose",
+        "taskDescription": "[general-purpose] Build a simple web application\nFocus: code-generation\nUse your specialized capabilities: general\nAvailable tools: Read, Write, Edit, Bash",
+        "options": {
+          "strategy": "parallel",
+          "maxAgents": 3,
+          "capability": "code-generation",
+          "orchestrationId": "orch-1756994309468-mguum"
+        },
+        "metadata": {
+          "sessionId": "session-1756994320188",
+          "priority": "medium",
+          "timeout": 300000,
+          "preTaskResult": {
+            "preTask": {
+              "success": true,
+              "skipped": true
+            },
+            "sessionRestore": {
+              "success": true,
+              "output": "🔄 Executing session-restore hook...\n🆔 Session: session-1756994320188\n⚠️  No session found with ID: session-1756994320188"
+            },
+            "success": true
+          },
+          "taskConfig": {
+            "name": "general-purpose",
+            "description": "[general-purpose] Build a simple web application\nFocus: code-generation\nUse your specialized capabilities: general\nAvailable tools: Read, Write, Edit, Bash\n\nAgent: general-purpose (Custom agent: general-purpose)\nCapabilities: general\nTools: Read, Write, Edit, Bash\n\nCoordination Instructions:\n1. Execute pre-task hooks for coordination\n2. [general-purpose] Build a simple web application\nFocus: code-generation\nUse your specialized capabilities: general\nAvailable tools: Read, Write, Edit, Bash\n3. Store progress in swarm memory using: npx claude-flow@alpha hooks post-edit --file \"[file]\" --memory-key \"swarm/general-purpose/[step]\"\n4. Notify other agents of progress: npx claude-flow@alpha hooks notify --message \"[what was done]\"\n5. Execute post-task hooks for cleanup\n\nPriority: medium\nTimeout: 300000ms",
+            "type": "general-purpose",
+            "tools": [
+              "Read",
+              "Write",
+              "Edit",
+              "Bash"
+            ],
+            "specializations": {},
+            "metadata": {
+              "originalAgentType": {
+                "name": "general-purpose",
+                "type": "general-purpose",
+                "description": "Custom agent: general-purpose",
+                "capabilities": [
+                  "general"
+                ],
+                "tools": [
+                  "Read",
+                  "Write",
+                  "Edit",
+                  "Bash"
+                ],
+                "specializations": {}
+              }
+            }
+          }
+        },
+        "createdAt": "2025-09-04T13:58:40.188Z",
+        "status": "ready-for-execution",
+        "lastUpdate": "2025-09-04T13:58:50.858Z"
+      }
+    ]
+  ],
+  "swarmState": null,
+  "executionHistory": [],
+  "timestamp": "2025-09-04T13:58:50.858Z"
+}

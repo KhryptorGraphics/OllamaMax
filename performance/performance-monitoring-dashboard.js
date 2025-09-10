@@ -192,43 +192,55 @@ class PerformanceMonitoringDashboard {
       '/api/models'
     ];
     
-    const results = [];
-    
-    for (const endpoint of endpoints) {
+    // OPTIMIZED: Execute API requests in parallel instead of sequential loop
+    const requestPromises = endpoints.map(async (endpoint) => {
       try {
         const startTime = performance.now();
         const response = await this.makeRequest(`http://localhost:13100${endpoint}`);
         const responseTime = performance.now() - startTime;
         
-        results.push({
+        return {
           endpoint,
           responseTime,
           success: response.statusCode === 200,
           statusCode: response.statusCode
-        });
+        };
         
       } catch (error) {
-        results.push({
+        return {
           endpoint,
           responseTime: this.thresholds.api_response_time,
           success: false,
           error: error.message
-        });
+        };
+      }
+    });
+    
+    // Wait for all requests to complete
+    const results = await Promise.all(requestPromises);
+    
+    // OPTIMIZED: Use single pass to calculate both successful results and error count
+    let successfulCount = 0;
+    let totalResponseTime = 0;
+    const successfulResponseTimes = [];
+    
+    for (const result of results) {
+      if (result.success) {
+        successfulCount++;
+        totalResponseTime += result.responseTime;
+        successfulResponseTimes.push(result.responseTime);
       }
     }
     
-    const successfulResults = results.filter(r => r.success);
-    const avgResponseTime = successfulResults.length > 0 ?
-      successfulResults.reduce((sum, r) => sum + r.responseTime, 0) / successfulResults.length : 0;
-    
-    const errorRate = results.length > 0 ?
-      (results.filter(r => !r.success).length / results.length) * 100 : 0;
+    const avgResponseTime = successfulCount > 0 ? totalResponseTime / successfulCount : 0;
+    const errorRate = results.length > 0 ? 
+      ((results.length - successfulCount) / results.length) * 100 : 0;
     
     return {
       requests_per_second: results.length / (this.monitoring.interval / 1000),
       avg_response_time: avgResponseTime,
       error_rate: errorRate,
-      p95_response_time: this.calculateP95(successfulResults.map(r => r.responseTime)),
+      p95_response_time: this.calculateP95(successfulResponseTimes),
       endpoint_results: results,
       timestamp: Date.now()
     };
@@ -313,61 +325,70 @@ class PerformanceMonitoringDashboard {
   detectBottlenecks() {
     const bottlenecks = [];
     
-    // API Performance Bottlenecks
-    if (this.metrics.api_performance.avg_response_time > this.thresholds.api_response_time) {
-      bottlenecks.push({
-        category: 'api_latency',
-        severity: this.metrics.api_performance.avg_response_time > 200 ? 'high' : 'medium',
-        metric: 'Average API Response Time',
-        current: `${this.metrics.api_performance.avg_response_time.toFixed(2)}ms`,
-        threshold: `${this.thresholds.api_response_time}ms`,
-        recommendation: 'Implement API caching layer or optimize backend processing'
-      });
-    }
+    // OPTIMIZED: Use configuration-driven bottleneck detection to avoid nested conditions
+    const bottleneckRules = [
+      {
+        condition: () => this.metrics.api_performance.avg_response_time > this.thresholds.api_response_time,
+        createBottleneck: () => ({
+          category: 'api_latency',
+          severity: this.metrics.api_performance.avg_response_time > 200 ? 'high' : 'medium',
+          metric: 'Average API Response Time',
+          current: `${this.metrics.api_performance.avg_response_time.toFixed(2)}ms`,
+          threshold: `${this.thresholds.api_response_time}ms`,
+          recommendation: 'Implement API caching layer or optimize backend processing'
+        })
+      },
+      {
+        condition: () => this.metrics.system_performance.memory_usage > this.thresholds.memory_usage,
+        createBottleneck: () => ({
+          category: 'memory_pressure',
+          severity: this.metrics.system_performance.memory_usage > 85 ? 'high' : 'medium',
+          metric: 'System Memory Usage',
+          current: `${this.metrics.system_performance.memory_usage.toFixed(1)}%`,
+          threshold: `${this.thresholds.memory_usage}%`,
+          recommendation: 'Implement memory pooling or reduce agent process count'
+        })
+      },
+      {
+        condition: () => this.metrics.system_performance.process_count > 20,
+        createBottleneck: () => ({
+          category: 'process_overhead',
+          severity: this.metrics.system_performance.process_count > 50 ? 'high' : 'medium',
+          metric: 'Active Node.js Processes',
+          current: this.metrics.system_performance.process_count.toString(),
+          threshold: '20',
+          recommendation: 'Consolidate agent processes using worker threads or shared contexts'
+        })
+      },
+      {
+        condition: () => this.metrics.coordination_performance.agent_spawn_time > this.thresholds.agent_spawn_time,
+        createBottleneck: () => ({
+          category: 'coordination_latency',
+          severity: 'medium',
+          metric: 'Agent Spawn Time',
+          current: `${this.metrics.coordination_performance.agent_spawn_time.toFixed(0)}ms`,
+          threshold: `${this.thresholds.agent_spawn_time}ms`,
+          recommendation: 'Implement agent pre-spawning and connection pooling'
+        })
+      }
+    ];
     
-    // Memory Usage Bottlenecks
-    if (this.metrics.system_performance.memory_usage > this.thresholds.memory_usage) {
-      bottlenecks.push({
-        category: 'memory_pressure',
-        severity: this.metrics.system_performance.memory_usage > 85 ? 'high' : 'medium',
-        metric: 'System Memory Usage',
-        current: `${this.metrics.system_performance.memory_usage.toFixed(1)}%`,
-        threshold: `${this.thresholds.memory_usage}%`,
-        recommendation: 'Implement memory pooling or reduce agent process count'
-      });
-    }
-    
-    // Process Overhead Bottlenecks
-    if (this.metrics.system_performance.process_count > 20) {
-      bottlenecks.push({
-        category: 'process_overhead',
-        severity: this.metrics.system_performance.process_count > 50 ? 'high' : 'medium',
-        metric: 'Active Node.js Processes',
-        current: this.metrics.system_performance.process_count.toString(),
-        threshold: '20',
-        recommendation: 'Consolidate agent processes using worker threads or shared contexts'
-      });
-    }
-    
-    // Coordination Overhead Bottlenecks
-    if (this.metrics.coordination_performance.agent_spawn_time > this.thresholds.agent_spawn_time) {
-      bottlenecks.push({
-        category: 'coordination_latency',
-        severity: 'medium',
-        metric: 'Agent Spawn Time',
-        current: `${this.metrics.coordination_performance.agent_spawn_time.toFixed(0)}ms`,
-        threshold: `${this.thresholds.agent_spawn_time}ms`,
-        recommendation: 'Implement agent pre-spawning and connection pooling'
-      });
+    // Evaluate bottleneck rules efficiently
+    for (const rule of bottleneckRules) {
+      if (rule.condition()) {
+        bottlenecks.push(rule.createBottleneck());
+      }
     }
     
     this.metrics.bottlenecks = bottlenecks;
     
-    // Log new bottlenecks
+    // OPTIMIZED: Use Set for faster comparison instead of nested some() loops
+    const previousBottleneckKeys = new Set(
+      (this.previousBottlenecks || []).map(b => `${b.category}-${b.severity}`)
+    );
+    
     const newBottlenecks = bottlenecks.filter(b => 
-      !this.previousBottlenecks?.some(prev => 
-        prev.category === b.category && prev.severity === b.severity
-      )
+      !previousBottleneckKeys.has(`${b.category}-${b.severity}`)
     );
     
     if (newBottlenecks.length > 0) {
@@ -377,7 +398,7 @@ class PerformanceMonitoringDashboard {
       });
     }
     
-    this.previousBottlenecks = [...bottlenecks];
+    this.previousBottlenecks = bottlenecks;
   }
 
   /**
@@ -496,33 +517,41 @@ class PerformanceMonitoringDashboard {
   generateRecommendations() {
     const recommendations = [];
     
-    // Based on current bottlenecks
-    for (const bottleneck of this.metrics.bottlenecks) {
-      recommendations.push({
-        priority: bottleneck.severity,
-        category: bottleneck.category,
-        action: bottleneck.recommendation,
-        expected_impact: this.estimateImpact(bottleneck.category)
-      });
-    }
+    // OPTIMIZED: Build recommendations from bottlenecks efficiently
+    recommendations.push(...this.metrics.bottlenecks.map(bottleneck => ({
+      priority: bottleneck.severity,
+      category: bottleneck.category,
+      action: bottleneck.recommendation,
+      expected_impact: this.estimateImpact(bottleneck.category)
+    })));
     
-    // General optimization recommendations
-    if (this.metrics.system_performance.process_count > 30) {
-      recommendations.push({
-        priority: 'medium',
-        category: 'architecture',
-        action: 'Implement agent process consolidation using worker threads',
-        expected_impact: '40-60% reduction in process overhead'
-      });
-    }
+    // OPTIMIZED: Use rule-based system for general recommendations
+    const generalRules = [
+      {
+        condition: () => this.metrics.system_performance.process_count > 30,
+        recommendation: {
+          priority: 'medium',
+          category: 'architecture',
+          action: 'Implement agent process consolidation using worker threads',
+          expected_impact: '40-60% reduction in process overhead'
+        }
+      },
+      {
+        condition: () => this.metrics.api_performance.avg_response_time > 20,
+        recommendation: {
+          priority: 'high',
+          category: 'caching',
+          action: 'Deploy Redis caching layer for API responses',
+          expected_impact: '60-80% reduction in API response times'
+        }
+      }
+    ];
     
-    if (this.metrics.api_performance.avg_response_time > 20) {
-      recommendations.push({
-        priority: 'high',
-        category: 'caching',
-        action: 'Deploy Redis caching layer for API responses',
-        expected_impact: '60-80% reduction in API response times'
-      });
+    // Apply general rules efficiently
+    for (const rule of generalRules) {
+      if (rule.condition()) {
+        recommendations.push(rule.recommendation);
+      }
     }
     
     return recommendations.slice(0, 5); // Top 5 recommendations
@@ -541,58 +570,80 @@ class PerformanceMonitoringDashboard {
 
   displayDashboard(dashboard) {
     console.clear();
-    console.log('╔═══════════════════════════════════════════════════════════════╗');
-    console.log('║              🚀 OllamaMax Performance Dashboard              ║');
-    console.log('╠═══════════════════════════════════════════════════════════════╣');
-    console.log(`║ Status: ${this.getStatusIcon(dashboard.status)} ${dashboard.status.toUpperCase().padEnd(45)} ║`);
-    console.log(`║ Score:  ${dashboard.performance_score}/100${''.padEnd(45)} ║`);
-    console.log(`║ Time:   ${new Date().toLocaleTimeString().padEnd(45)} ║`);
-    console.log('╠═══════════════════════════════════════════════════════════════╣');
     
-    // System Metrics
+    // OPTIMIZED: Pre-build all display strings to reduce repeated operations
+    const statusIcon = this.getStatusIcon(dashboard.status);
+    const timeString = new Date().toLocaleTimeString();
     const sys = dashboard.metrics.system_performance;
-    console.log('║ 📊 SYSTEM PERFORMANCE                                        ║');
-    console.log(`║   Memory: ${sys.memory_usage?.toFixed(1) || 'N/A'}% (${sys.memory_used_gb || 'N/A'}GB/${sys.memory_total_gb || 'N/A'}GB)${''.padEnd(20)} ║`);
-    console.log(`║   CPU:    ${sys.cpu_usage?.toFixed(1) || 'N/A'}% (Load: ${sys.load_average?.toFixed(2) || 'N/A'})${''.padEnd(25)} ║`);
-    console.log(`║   Processes: ${sys.process_count || 'N/A'}${''.padEnd(45)} ║`);
-    
-    // API Metrics
     const api = dashboard.metrics.api_performance;
-    console.log('║                                                               ║');
-    console.log('║ 🌐 API PERFORMANCE                                           ║');
-    console.log(`║   Response Time: ${api.avg_response_time?.toFixed(2) || 'N/A'}ms${''.padEnd(35)} ║`);
-    console.log(`║   Error Rate:    ${api.error_rate?.toFixed(1) || 'N/A'}%${''.padEnd(35)} ║`);
-    console.log(`║   RPS:           ${api.requests_per_second?.toFixed(1) || 'N/A'}${''.padEnd(35)} ║`);
-    
-    // Coordination Metrics
     const coord = dashboard.metrics.coordination_performance;
-    console.log('║                                                               ║');
-    console.log('║ 🤖 COORDINATION PERFORMANCE                                  ║');
-    console.log(`║   Agent Spawn:   ${coord.agent_spawn_time?.toFixed(0) || 'N/A'}ms${''.padEnd(35)} ║`);
-    console.log(`║   Task Success:  ${coord.task_completion_rate?.toFixed(1) || 'N/A'}%${''.padEnd(35)} ║`);
     
-    // Active Issues
-    console.log('║                                                               ║');
-    console.log('║ ⚠️  ACTIVE ISSUES                                            ║');
+    // Use template literals for better performance
+    const header = [
+      '╔═══════════════════════════════════════════════════════════════╗',
+      '║              🚀 OllamaMax Performance Dashboard              ║',
+      '╠═══════════════════════════════════════════════════════════════╣',
+      `║ Status: ${statusIcon} ${dashboard.status.toUpperCase().padEnd(45)} ║`,
+      `║ Score:  ${dashboard.performance_score}/100${''.padEnd(45)} ║`,
+      `║ Time:   ${timeString.padEnd(45)} ║`,
+      '╠═══════════════════════════════════════════════════════════════╣'
+    ];
+    
+    const systemSection = [
+      '║ 📊 SYSTEM PERFORMANCE                                        ║',
+      `║   Memory: ${(sys.memory_usage?.toFixed(1) || 'N/A')}% (${sys.memory_used_gb || 'N/A'}GB/${sys.memory_total_gb || 'N/A'}GB)${''.padEnd(20)} ║`,
+      `║   CPU:    ${(sys.cpu_usage?.toFixed(1) || 'N/A')}% (Load: ${(sys.load_average?.toFixed(2) || 'N/A')})${''.padEnd(25)} ║`,
+      `║   Processes: ${sys.process_count || 'N/A'}${''.padEnd(45)} ║`
+    ];
+    
+    const apiSection = [
+      '║                                                               ║',
+      '║ 🌐 API PERFORMANCE                                           ║',
+      `║   Response Time: ${(api.avg_response_time?.toFixed(2) || 'N/A')}ms${''.padEnd(35)} ║`,
+      `║   Error Rate:    ${(api.error_rate?.toFixed(1) || 'N/A')}%${''.padEnd(35)} ║`,
+      `║   RPS:           ${(api.requests_per_second?.toFixed(1) || 'N/A')}${''.padEnd(35)} ║`
+    ];
+    
+    const coordSection = [
+      '║                                                               ║',
+      '║ 🤖 COORDINATION PERFORMANCE                                  ║',
+      `║   Agent Spawn:   ${(coord.agent_spawn_time?.toFixed(0) || 'N/A')}ms${''.padEnd(35)} ║`,
+      `║   Task Success:  ${(coord.task_completion_rate?.toFixed(1) || 'N/A')}%${''.padEnd(35)} ║`
+    ];
+    
+    // Build issues section efficiently
+    const issuesSection = [
+      '║                                                               ║',
+      '║ ⚠️  ACTIVE ISSUES                                            ║'
+    ];
+    
     if (dashboard.metrics.bottlenecks.length === 0) {
-      console.log('║   No performance issues detected ✅                          ║');
+      issuesSection.push('║   No performance issues detected ✅                          ║');
     } else {
-      dashboard.metrics.bottlenecks.slice(0, 3).forEach(bottleneck => {
+      const topBottlenecks = dashboard.metrics.bottlenecks.slice(0, 3);
+      for (const bottleneck of topBottlenecks) {
         const emoji = bottleneck.severity === 'high' ? '🚨' : '⚠️';
         const line = `   ${emoji} ${bottleneck.category}: ${bottleneck.current}`;
-        console.log(`║ ${line.padEnd(61)} ║`);
-      });
+        issuesSection.push(`║ ${line.padEnd(61)} ║`);
+      }
     }
     
-    console.log('╚═══════════════════════════════════════════════════════════════╝');
+    const footer = ['╚═══════════════════════════════════════════════════════════════╝'];
     
-    // Recent alerts
+    // Output all sections at once for better performance
+    const allSections = [...header, ...systemSection, ...apiSection, ...coordSection, ...issuesSection, ...footer];
+    console.log(allSections.join('\n'));
+    
+    // Recent alerts - optimized with pre-built strings
     if (dashboard.metrics.alerts.length > 0) {
       console.log('\n🔔 Recent Alerts:');
-      dashboard.metrics.alerts.slice(-3).forEach(alert => {
+      const recentAlerts = dashboard.metrics.alerts.slice(-3);
+      const alertLines = recentAlerts.map(alert => {
         const emoji = alert.severity === 'high' ? '🚨' : alert.severity === 'medium' ? '⚠️' : '💡';
-        console.log(`   ${emoji} [${new Date(alert.timestamp).toLocaleTimeString()}] ${alert.message}`);
+        const timestamp = new Date(alert.timestamp).toLocaleTimeString();
+        return `   ${emoji} [${timestamp}] ${alert.message}`;
       });
+      console.log(alertLines.join('\n'));
     }
   }
 

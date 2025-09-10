@@ -1,0 +1,1187 @@
+{
+  "summary": {
+    "totalIssues": 181,
+    "criticalIssues": 10,
+    "warnings": 96,
+    "suggestions": 4,
+    "filesAnalyzed": 134,
+    "duration": 31578.545948
+  },
+  "analyses": {
+    "code-quality": {
+      "type": "code-quality",
+      "issues": [
+        {
+          "file": "api-server/distributed-inference.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "api-server/distributed-inference.js",
+          "type": "console-statements",
+          "message": "Found 18 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "api-server/server-simple.js",
+          "type": "console-statements",
+          "message": "Found 14 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "api-server/server.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "api-server/server.js",
+          "type": "console-statements",
+          "message": "Found 18 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "benchmarks/performance-benchmark-suite.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "benchmarks/performance-benchmark-suite.js",
+          "type": "console-statements",
+          "message": "Found 55 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "coordination-system/optimization/deployment-orchestrator.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "coordination-system/optimization/deployment-orchestrator.js",
+          "type": "console-statements",
+          "message": "Found 38 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "coordination-system/unified/integrated-coordination-architecture.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "coordination-system/unified/integrated-coordination-architecture.js",
+          "type": "console-statements",
+          "message": "Found 63 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "critical-fixes/agent-pool/prewarming-system.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "critical-fixes/agent-pool/prewarming-system.js",
+          "type": "console-statements",
+          "message": "Found 40 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "critical-fixes/coordination/event-driven-system.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "critical-fixes/coordination/event-driven-system.js",
+          "type": "console-statements",
+          "message": "Found 32 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "critical-fixes/mcp-parallel/parallel-execution-framework.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "critical-fixes/mcp-parallel/parallel-execution-framework.js",
+          "type": "console-statements",
+          "message": "Found 21 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "ollama/macapp/src/app.tsx",
+          "type": "console-statements",
+          "message": "Found 1 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "ollama/macapp/src/index.ts",
+          "type": "console-statements",
+          "message": "Found 1 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "ollama-distributed/docs/documentation-site/src/pages/api-playground.tsx",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "ollama-distributed/docs/documentation-site/src/pages/api-playground.tsx",
+          "type": "console-statements",
+          "message": "Found 1 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "ollama-distributed/docs/documentation-site/src/pages/training.tsx",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "ollama-distributed/web/src/components/AccessibilityFeatures.jsx",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "ollama-distributed/web/src/components/AccessibilityFeatures.jsx",
+          "type": "console-statements",
+          "message": "Found 1 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "ollama-distributed/web/src/components/AdminDashboard.jsx",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "ollama-distributed/web/src/components/AdminDashboard.jsx",
+          "type": "console-statements",
+          "message": "Found 15 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "ollama-distributed/web/src/components/AdvancedCharts.jsx",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "ollama-distributed/web/src/components/Analytics.jsx",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "ollama-distributed/web/src/components/CollaborationHub.jsx",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "ollama-distributed/web/src/components/CollaborationHub.jsx",
+          "type": "console-statements",
+          "message": "Found 3 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "ollama-distributed/web/src/components/DataVisualization.jsx",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "ollama-distributed/web/src/components/EnhancedApp.jsx",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "ollama-distributed/web/src/components/EnhancedApp.jsx",
+          "type": "console-statements",
+          "message": "Found 10 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "ollama-distributed/web/src/components/EnhancedDashboard.jsx",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "ollama-distributed/web/src/components/ErrorBoundary.jsx",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "ollama-distributed/web/src/components/ErrorBoundary.jsx",
+          "type": "console-statements",
+          "message": "Found 6 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "ollama-distributed/web/src/components/FormValidation.jsx",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "ollama-distributed/web/src/components/FormValidation.jsx",
+          "type": "console-statements",
+          "message": "Found 1 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "ollama-distributed/web/src/components/Login.jsx",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "ollama-distributed/web/src/components/MobileInterface.jsx",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "ollama-distributed/web/src/components/MobileInterface.jsx",
+          "type": "console-statements",
+          "message": "Found 2 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "ollama-distributed/web/src/components/ModelManager.jsx",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "ollama-distributed/web/src/components/ModelManager.jsx",
+          "type": "console-statements",
+          "message": "Found 2 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "ollama-distributed/web/src/components/Navigation.jsx",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "ollama-distributed/web/src/components/PerformanceMonitor.jsx",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "ollama-distributed/web/src/components/RealTimeMetrics.jsx",
+          "type": "console-statements",
+          "message": "Found 1 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "ollama-distributed/web/src/components/RealtimeDataVisualization.jsx",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "ollama-distributed/web/src/components/RegistrationFlow.jsx",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "ollama-distributed/web/src/components/RegistrationFlow.jsx",
+          "type": "console-statements",
+          "message": "Found 1 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "ollama-distributed/web/src/components/SystemSettings.jsx",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "ollama-distributed/web/src/components/ToastNotificationSystem.jsx",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "ollama-distributed/web/src/components/index.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "ollama-distributed/web/src/components/index.js",
+          "type": "console-statements",
+          "message": "Found 7 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "ollama-distributed/web/src/integration-test.js",
+          "type": "console-statements",
+          "message": "Found 27 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "ollama-distributed/web/src/services/api.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "ollama-distributed/web/src/services/api.js",
+          "type": "console-statements",
+          "message": "Found 10 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "ollama-distributed/web/src/services/auth.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "ollama-distributed/web/src/services/auth.js",
+          "type": "console-statements",
+          "message": "Found 3 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "ollama-distributed/web/src/services/websocket.js",
+          "type": "console-statements",
+          "message": "Found 11 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "ollama-distributed/web/src/tests/components/EnhancedApp.test.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "ollama-distributed/web/src/tests/integration/full-stack.test.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "ollama-distributed/web/src/tests/services/api.test.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "ollama-distributed/web/src/tests/services/auth.test.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "ollama-distributed/web/src/tests/services/websocket.test.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "ollama-distributed/web/src/tests/setup.js",
+          "type": "console-statements",
+          "message": "Found 7 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "ollama-distributed/web/test-runner.js",
+          "type": "console-statements",
+          "message": "Found 6 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "optimizations/api-caching-layer.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "optimizations/api-caching-layer.js",
+          "type": "console-statements",
+          "message": "Found 20 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "optimizations/coordination-optimization.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "optimizations/coordination-optimization.js",
+          "type": "console-statements",
+          "message": "Found 16 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "optimizations/memory-pool-manager.js",
+          "type": "console-statements",
+          "message": "Found 8 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "optimizations/smart-load-balancer.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "optimizations/smart-load-balancer.js",
+          "type": "console-statements",
+          "message": "Found 16 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "performance/performance-monitoring-dashboard.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "performance/performance-monitoring-dashboard.js",
+          "type": "console-statements",
+          "message": "Found 42 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "src/agents/agent-registry.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "src/agents/analyze-agent.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "src/agents/analyze-agent.js",
+          "type": "console-statements",
+          "message": "Found 33 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "src/agents/claude-flow-bridge.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "src/agents/claude-flow-bridge.js",
+          "type": "console-statements",
+          "message": "Found 11 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "src/agents/claude-flow-expert-integration.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "src/agents/claude-flow-expert-integration.js",
+          "type": "console-statements",
+          "message": "Found 16 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "src/agents/claude-flow-integration.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "src/agents/claude-flow-integration.js",
+          "type": "console-statements",
+          "message": "Found 24 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "src/agents/expert-agent-registry.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "src/cli.js",
+          "type": "console-statements",
+          "message": "Found 7 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "src/commands/analyze.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "src/commands/analyze.js",
+          "type": "console-statements",
+          "message": "Found 33 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "test-smart-agents.js",
+          "type": "console-statements",
+          "message": "Found 16 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "tests/browser-comprehensive.test.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "tests/comprehensive-test-strategy.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "tests/comprehensive-test-strategy.js",
+          "type": "console-statements",
+          "message": "Found 6 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "tests/comprehensive-ui-validation.test.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "tests/comprehensive-ui-validation.test.js",
+          "type": "console-statements",
+          "message": "Found 1 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "tests/e2e/global-setup.ts",
+          "type": "console-statements",
+          "message": "Found 18 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "tests/e2e/global-teardown.ts",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "tests/e2e/global-teardown.ts",
+          "type": "console-statements",
+          "message": "Found 17 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "tests/e2e/helpers/load-test-helper.ts",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "tests/e2e/helpers/load-test-helper.ts",
+          "type": "console-statements",
+          "message": "Found 5 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "tests/e2e/helpers/metrics-helper.ts",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "tests/e2e/helpers/metrics-helper.ts",
+          "type": "console-statements",
+          "message": "Found 5 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "tests/e2e/helpers/performance-helper.ts",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "tests/e2e/helpers/performance-helper.ts",
+          "type": "console-statements",
+          "message": "Found 1 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "tests/e2e/helpers/screenshot-helper.ts",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "tests/e2e/helpers/screenshot-helper.ts",
+          "type": "console-statements",
+          "message": "Found 8 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "tests/e2e/helpers/security-helper.ts",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "tests/e2e/run-playwright-firefox.js",
+          "type": "console-statements",
+          "message": "Found 2 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "tests/e2e/specs/admin-dashboard.test.js",
+          "type": "console-statements",
+          "message": "Found 1 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "tests/e2e/tests/core-functionality.spec.ts",
+          "type": "console-statements",
+          "message": "Found 5 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "tests/e2e/tests/distributed-inference.spec.ts",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "tests/e2e/tests/distributed-inference.spec.ts",
+          "type": "console-statements",
+          "message": "Found 16 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "tests/e2e/tests/load.spec.ts",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "tests/e2e/tests/load.spec.ts",
+          "type": "console-statements",
+          "message": "Found 16 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "tests/e2e/tests/performance.spec.ts",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "tests/e2e/tests/performance.spec.ts",
+          "type": "console-statements",
+          "message": "Found 11 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "tests/e2e/tests/security.spec.ts",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "tests/e2e/tests/security.spec.ts",
+          "type": "console-statements",
+          "message": "Found 25 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "tests/enhanced-features-validation.test.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "tests/enhanced-features-validation.test.js",
+          "type": "console-statements",
+          "message": "Found 1 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "tests/final-comprehensive-test.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "tests/global-performance-setup.js",
+          "type": "console-statements",
+          "message": "Found 5 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "tests/global-performance-teardown.js",
+          "type": "console-statements",
+          "message": "Found 3 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "tests/p2p-model-migration-tests.js",
+          "type": "console-statements",
+          "message": "Found 3 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "tests/performance-analysis-report.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "tests/performance-analysis-report.js",
+          "type": "console-statements",
+          "message": "Found 6 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "tests/performance-comprehensive.test.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "tests/performance-comprehensive.test.js",
+          "type": "console-statements",
+          "message": "Found 35 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "tests/performance-monitoring.test.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "tests/performance-monitoring.test.js",
+          "type": "console-statements",
+          "message": "Found 15 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "tests/performance-stress.test.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "tests/performance-stress.test.js",
+          "type": "console-statements",
+          "message": "Found 26 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "tests/run-comprehensive-tests.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "tests/run-comprehensive-tests.js",
+          "type": "console-statements",
+          "message": "Found 35 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "tests/run-performance-tests.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "tests/run-performance-tests.js",
+          "type": "console-statements",
+          "message": "Found 31 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "tests/test-agent-system.js",
+          "type": "console-statements",
+          "message": "Found 34 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "tests/test-expert-agents.js",
+          "type": "console-statements",
+          "message": "Found 43 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "tests/ui-improvements.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "tests/ui-improvements.js",
+          "type": "console-statements",
+          "message": "Found 18 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "tests/ui-interaction-tests.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "tests/ui-interaction-tests.js",
+          "type": "console-statements",
+          "message": "Found 23 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "validation-tests/integration/master-validation-suite.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "validation-tests/integration/master-validation-suite.js",
+          "type": "console-statements",
+          "message": "Found 64 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "validation-tests/mcp-parallel/parallel-execution-test.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "validation-tests/mcp-parallel/parallel-execution-test.js",
+          "type": "console-statements",
+          "message": "Found 35 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "validation-tests/redis/redis-cluster-test.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "validation-tests/redis/redis-cluster-test.js",
+          "type": "console-statements",
+          "message": "Found 27 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "validation-tests/simplified-validation.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "validation-tests/simplified-validation.js",
+          "type": "console-statements",
+          "message": "Found 31 console statements",
+          "severity": "info"
+        },
+        {
+          "file": "web-interface/app.js",
+          "type": "large-file",
+          "message": "File exceeds recommended size (>10KB)",
+          "severity": "warning"
+        },
+        {
+          "file": "web-interface/app.js",
+          "type": "console-statements",
+          "message": "Found 21 console statements",
+          "severity": "info"
+        }
+      ],
+      "suggestions": [
+        {
+          "file": "ollama-distributed/web/src/components/AdminDashboard.jsx",
+          "type": "technical-debt",
+          "message": "Found 3 TODO/FIXME comments",
+          "priority": "low"
+        }
+      ],
+      "metrics": {
+        "duration": 2105.1611080000002
+      }
+    },
+    "performance": {
+      "type": "performance",
+      "issues": [
+        {
+          "file": "critical-fixes/agent-pool/prewarming-system.js",
+          "type": "nested-loops",
+          "message": "Potential performance issue: nested loops detected",
+          "severity": "warning"
+        },
+        {
+          "file": "ollama/macapp/forge.config.ts",
+          "type": "sync-operations",
+          "message": "Found 1 synchronous file operations",
+          "severity": "warning"
+        },
+        {
+          "file": "ollama-distributed/web/src/components/FormValidation.jsx",
+          "type": "nested-loops",
+          "message": "Potential performance issue: nested loops detected",
+          "severity": "warning"
+        },
+        {
+          "file": "ollama-distributed/web/test-runner.js",
+          "type": "sync-operations",
+          "message": "Found 1 synchronous file operations",
+          "severity": "warning"
+        },
+        {
+          "file": "performance/performance-monitoring-dashboard.js",
+          "type": "nested-loops",
+          "message": "Potential performance issue: nested loops detected",
+          "severity": "warning"
+        },
+        {
+          "file": "src/agents/analyze-agent.js",
+          "type": "nested-loops",
+          "message": "Potential performance issue: nested loops detected",
+          "severity": "warning"
+        },
+        {
+          "file": "src/agents/claude-flow-integration.js",
+          "type": "nested-loops",
+          "message": "Potential performance issue: nested loops detected",
+          "severity": "warning"
+        },
+        {
+          "file": "src/cli.js",
+          "type": "sync-operations",
+          "message": "Found 1 synchronous file operations",
+          "severity": "warning"
+        },
+        {
+          "file": "tests/e2e/helpers/load-test-helper.ts",
+          "type": "nested-loops",
+          "message": "Potential performance issue: nested loops detected",
+          "severity": "warning"
+        },
+        {
+          "file": "tests/e2e/helpers/security-helper.ts",
+          "type": "nested-loops",
+          "message": "Potential performance issue: nested loops detected",
+          "severity": "warning"
+        },
+        {
+          "file": "tests/e2e/specs/main-web.test.js",
+          "type": "sync-operations",
+          "message": "Found 1 synchronous file operations",
+          "severity": "warning"
+        },
+        {
+          "file": "tests/e2e/tests/distributed-inference.spec.ts",
+          "type": "nested-loops",
+          "message": "Potential performance issue: nested loops detected",
+          "severity": "warning"
+        },
+        {
+          "file": "tests/e2e/tests/security.spec.ts",
+          "type": "nested-loops",
+          "message": "Potential performance issue: nested loops detected",
+          "severity": "warning"
+        },
+        {
+          "file": "tests/performance-stress.test.js",
+          "type": "nested-loops",
+          "message": "Potential performance issue: nested loops detected",
+          "severity": "warning"
+        },
+        {
+          "file": "tests/test-agent-system.js",
+          "type": "nested-loops",
+          "message": "Potential performance issue: nested loops detected",
+          "severity": "warning"
+        },
+        {
+          "file": "tests/test-expert-agents.js",
+          "type": "nested-loops",
+          "message": "Potential performance issue: nested loops detected",
+          "severity": "warning"
+        },
+        {
+          "file": "tests/ui-improvements.js",
+          "type": "sync-operations",
+          "message": "Found 12 synchronous file operations",
+          "severity": "warning"
+        },
+        {
+          "file": "validation-tests/mcp-parallel/parallel-execution-test.js",
+          "type": "nested-loops",
+          "message": "Potential performance issue: nested loops detected",
+          "severity": "warning"
+        },
+        {
+          "file": "validation-tests/redis/redis-cluster-test.js",
+          "type": "nested-loops",
+          "message": "Potential performance issue: nested loops detected",
+          "severity": "warning"
+        }
+      ],
+      "suggestions": [],
+      "metrics": {
+        "duration": 2105.1478700000007
+      }
+    },
+    "security": {
+      "type": "security",
+      "issues": [
+        {
+          "file": "analysis-report.json",
+          "type": "eval-usage",
+          "message": "Dangerous eval() usage detected",
+          "severity": "high"
+        },
+        {
+          "file": "ollama-distributed/web/src/components/Login.jsx",
+          "type": "hardcoded-secrets",
+          "message": "Potential hardcoded secrets detected",
+          "severity": "critical"
+        },
+        {
+          "file": "ollama-distributed/web/src/components/RegistrationFlow.jsx",
+          "type": "hardcoded-secrets",
+          "message": "Potential hardcoded secrets detected",
+          "severity": "critical"
+        },
+        {
+          "file": "ollama-distributed/web/src/tests/integration/full-stack.test.js",
+          "type": "hardcoded-secrets",
+          "message": "Potential hardcoded secrets detected",
+          "severity": "critical"
+        },
+        {
+          "file": "ollama-distributed/web/src/tests/services/api.test.js",
+          "type": "hardcoded-secrets",
+          "message": "Potential hardcoded secrets detected",
+          "severity": "critical"
+        },
+        {
+          "file": "ollama-distributed/web/src/tests/services/auth.test.js",
+          "type": "hardcoded-secrets",
+          "message": "Potential hardcoded secrets detected",
+          "severity": "critical"
+        },
+        {
+          "file": "ollama-distributed/web/src/tests/services/websocket.test.js",
+          "type": "hardcoded-secrets",
+          "message": "Potential hardcoded secrets detected",
+          "severity": "critical"
+        },
+        {
+          "file": "src/agents/analyze-agent.js",
+          "type": "eval-usage",
+          "message": "Dangerous eval() usage detected",
+          "severity": "high"
+        },
+        {
+          "file": "tests/e2e/helpers/security-helper.ts",
+          "type": "eval-usage",
+          "message": "Dangerous eval() usage detected",
+          "severity": "high"
+        },
+        {
+          "file": "tests/e2e/specs/main-web.test.js",
+          "type": "eval-usage",
+          "message": "Dangerous eval() usage detected",
+          "severity": "high"
+        }
+      ],
+      "suggestions": [],
+      "metrics": {
+        "duration": 2104.6111759999985
+      }
+    },
+    "architecture": {
+      "type": "architecture",
+      "issues": [],
+      "suggestions": [
+        {
+          "type": "module-size",
+          "message": "Module ollama-distributed contains 52 files (consider splitting)",
+          "priority": "medium"
+        },
+        {
+          "type": "module-size",
+          "message": "Module tests contains 38 files (consider splitting)",
+          "priority": "medium"
+        }
+      ],
+      "metrics": {
+        "duration": 203.33530099999916
+      }
+    },
+    "testing": {
+      "type": "testing",
+      "issues": [
+        {
+          "type": "low-test-coverage",
+          "message": "Test coverage is low: 0.0%",
+          "severity": "warning"
+        }
+      ],
+      "suggestions": [
+        {
+          "type": "missing-tests",
+          "message": "134 files lack test coverage",
+          "priority": "high",
+          "files": [
+            "api-server/distributed-inference.js",
+            "api-server/server-simple.js",
+            "api-server/server.js",
+            "benchmarks/performance-benchmark-suite.js",
+            "coordination-system/optimization/deployment-orchestrator.js",
+            "coordination-system/unified/integrated-coordination-architecture.js",
+            "critical-fixes/agent-pool/prewarming-system.js",
+            "critical-fixes/coordination/event-driven-system.js",
+            "critical-fixes/mcp-parallel/parallel-execution-framework.js",
+            "ollama/macapp/forge.config.ts"
+          ]
+        }
+      ],
+      "metrics": {
+        "duration": 277.46332699999766
+      }
+    }
+  },
+  "recommendations": [
+    {
+      "priority": "critical",
+      "action": "Address critical security and performance issues immediately"
+    },
+    {
+      "priority": "high",
+      "action": "Improve test coverage for critical components"
+    }
+  ]
+}

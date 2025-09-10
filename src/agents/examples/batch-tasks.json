@@ -1,0 +1,25 @@
+{
+  "parallel": true,
+  "maxConcurrent": 3,
+  "stopOnError": false,
+  "options": {
+    "strategy": "parallel",
+    "maxAgents": 5,
+    "retries": 2,
+    "timeout": 120000,
+    "memorySharing": true,
+    "hooks": true
+  },
+  "tasks": [
+    "Implement a REST API for user authentication with JWT tokens",
+    "Create React components for user login and registration forms",
+    "Write comprehensive unit tests for the authentication system",
+    "Design a PostgreSQL database schema for user management",
+    "Setup CI/CD pipeline with automated testing and deployment",
+    "Perform security audit of the authentication implementation",
+    "Create API documentation using OpenAPI/Swagger specifications",
+    "Implement performance monitoring and logging for the API",
+    "Setup Docker containerization for the application",
+    "Create end-to-end tests for the complete user flow"
+  ]
+}

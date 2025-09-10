@@ -28,6 +28,8 @@ const (
 	PermissionInferenceRead  = "inference:read"
 	PermissionSystemManage   = "system:manage"
 	PermissionSystemRead     = "system:read"
+	PermissionInferenceRun   = "inference:run"
+	PermissionMetricsRead    = "metrics:read"
 )
 
 // RBAC implements Role-Based Access Control
@@ -418,4 +420,59 @@ func (r *RBAC) ListPermissions() []*Permission {
 	}
 
 	return permissions
+}
+
+// GetRolePermissions returns the permissions for a given role
+func GetRolePermissions(roleName string) []string {
+	switch roleName {
+	case RoleAdmin:
+		return []string{
+			PermissionModelManage,
+			PermissionModelRead,
+			PermissionClusterManage,
+			PermissionClusterRead,
+			PermissionNodeManage,
+			PermissionNodeRead,
+			PermissionUserManage,
+			PermissionUserRead,
+			PermissionInferenceWrite,
+			PermissionInferenceRead,
+			PermissionInferenceRun,
+			PermissionSystemManage,
+			PermissionSystemRead,
+			PermissionMetricsRead,
+		}
+	case RoleOperator:
+		return []string{
+			PermissionModelRead,
+			PermissionClusterRead,
+			PermissionNodeManage,
+			PermissionNodeRead,
+			PermissionInferenceWrite,
+			PermissionInferenceRead,
+			PermissionInferenceRun,
+			PermissionSystemRead,
+			PermissionMetricsRead,
+		}
+	case RoleUser:
+		return []string{
+			PermissionModelRead,
+			PermissionClusterRead,
+			PermissionNodeRead,
+			PermissionInferenceWrite,
+			PermissionInferenceRead,
+			PermissionInferenceRun,
+		}
+	case RoleReadonly:
+		return []string{
+			PermissionModelRead,
+			PermissionClusterRead,
+			PermissionNodeRead,
+			PermissionInferenceRead,
+			PermissionSystemRead,
+			PermissionMetricsRead,
+		}
+	default:
+		return []string{}
+	}
 }

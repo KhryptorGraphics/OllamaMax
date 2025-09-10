@@ -3,9 +3,23 @@
   "version": "1.0.0",
   "description": "Enterprise-Grade Distributed AI Model Platform",
   "main": "index.js",
+  "type": "module",
+  "bin": {
+    "claude-flow": "./src/cli.js"
+  },
   "scripts": {
+    "analyze": "node src/cli.js analyze",
+    "analyse": "node src/cli.js analyse",
     "build": "go build -o bin/ollamamax .",
-    "test": "npx playwright test",
+    "test": "jest --config=jest.config.cjs",
+    "test:all": "npm run test && node scripts/test-all-fixes.cjs",
+    "test:comprehensive": "node scripts/test-all-fixes.cjs",
+    "test:agents": "jest tests/agent-system.test.cjs --config=jest.config.cjs",
+    "test:fixes": "jest tests/comprehensive-test-suite.test.cjs --config=jest.config.cjs",
+    "test:unit": "jest --config=jest.config.cjs",
+    "test:watch": "jest --watch --config=jest.config.cjs",
+    "test:coverage": "go test -coverprofile=coverage.out ./... && go tool cover -html=coverage.out -o coverage.html",
+    "test:playwright": "npx playwright test",
     "test:api": "npx playwright test tests/api-health-tests.js",
     "test:ui": "npx playwright test tests/ui-interaction-tests.js",
     "test:p2p": "npx playwright test tests/p2p-model-migration-tests.js",
@@ -20,10 +34,10 @@
     "test:performance:monitoring": "npx playwright test tests/performance-monitoring.test.js --config=playwright.performance.config.js",
     "test:performance:all": "node tests/run-performance-tests.js",
     "test:performance:report": "node tests/performance-analysis-report.js",
-    "test:coverage": "go test -coverprofile=coverage.out ./... && go tool cover -html=coverage.out -o coverage.html",
     "test:show-report": "npx playwright show-report",
     "lint": "golangci-lint run",
     "dev": "go run .",
+    "validate": "npm run test:all && npm run lint",
     "build:distributed": "cd ollama-distributed && go build -o bin/ollama-distributed ./cmd/distributed-ollama",
     "test:distributed": "cd ollama-distributed && go test ./... -v",
     "docker:build": "docker-compose build",
@@ -33,7 +47,11 @@
     "smart-agents": "node .claude-flow/commands/smart-agents/index.js",
     "agents": "./smart-agents",
     "agents:status": "node .claude-flow/commands/smart-agents/index.js status",
-    "agents:test": "node .claude-flow/commands/smart-agents/test-runner.js"
+    "agents:test": "node .claude-flow/commands/smart-agents/test-runner.js",
+    "agents:spawn": "node src/agents/claude-flow-integration.js spawn",
+    "agents:orchestrate": "node src/agents/claude-flow-integration.js orchestrate",
+    "agents:list": "node src/agents/claude-flow-integration.js list",
+    "agents:integration": "node src/agents/claude-flow-integration.js"
   },
   "keywords": [
     "ai",
@@ -46,7 +64,14 @@
   "license": "MIT",
   "devDependencies": {
     "@playwright/test": "^1.55.0",
-    "concurrently": "^8.2.2"
+    "claude-flow": "^2.0.0-alpha.86",
+    "concurrently": "^8.2.2",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "ioredis": "^5.7.0",
+    "jest": "^29.7.0",
+    "supertest": "^7.1.4",
+    "ws": "^8.18.3"
   },
   "engines": {
     "node": ">=16.0.0"
@@ -60,6 +85,8 @@
   },
   "homepage": "https://github.com/khryptorgraphics/ollamamax#readme",
   "dependencies": {
+    "better-sqlite3": "^12.2.0",
+    "chalk": "^5.6.0",
     "playwright": "^1.55.0"
   }
 }

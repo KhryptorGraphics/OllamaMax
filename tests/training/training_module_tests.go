@@ -198,7 +198,7 @@ p2p:
 auth:
   enabled: true
   method: "jwt"
-  secret_key: "your-secret-key-here"
+  secret_key: "{{ .Env.TEST_JWT_SECRET }}"
   token_expiry: 3600s
 `
 		

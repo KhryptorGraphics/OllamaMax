@@ -38,8 +38,8 @@ RUN chown -R ollama:ollama /app
 # Switch to non-root user
 USER ollama
 
-# Expose ports (using ports above 11111 as requested)
-EXPOSE 11434
+# Expose ports (using ports above 10000 as requested)
+EXPOSE 11434 11435 11436
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \

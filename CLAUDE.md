@@ -1,5 +1,55 @@
 # Claude Code Configuration - SPARC Development Environment
 
+## 📋 Memory Persistence System
+
+### Quick Start
+```bash
+# Start session with memory restoration
+./scripts/session-hooks.sh start
+
+# End session with memory export
+./scripts/session-hooks.sh end
+
+# Manual memory operations
+node scripts/memory-persist.js export "checkpoint-name"
+node scripts/memory-persist.js import
+node scripts/memory-persist.js auto-backup
+```
+
+### Automatic Memory Persistence
+The system now includes automatic memory persistence across Claude Code sessions:
+
+1. **Session Management**
+   - Auto-restore memory on session start
+   - Auto-export memory on session end
+   - Continuous backup every 5 minutes
+
+2. **Memory Commands**
+   ```bash
+   # Export/Import memory
+   npx claude-flow@alpha memory export <file>
+   npx claude-flow@alpha memory import <file>
+   
+   # Store/Query memory
+   npx claude-flow@alpha memory store "key" "value"
+   npx claude-flow@alpha memory query "search-term"
+   
+   # List namespaces
+   npx claude-flow@alpha memory list
+   ```
+
+3. **Configuration**
+   - Config: `.claude-flow/config/memory-persist.json`
+   - Backups: `memory/backups/`
+   - Sessions: `memory/sessions/`
+
+4. **Hooks Integration**
+   - Pre-task: Restores context
+   - Post-task: Saves progress
+   - Session-end: Exports full state
+
+# Claude Code Configuration - SPARC Development Environment
+
 ## 🚨 CRITICAL: CONCURRENT EXECUTION & FILE MANAGEMENT
 
 **ABSOLUTE RULES**:

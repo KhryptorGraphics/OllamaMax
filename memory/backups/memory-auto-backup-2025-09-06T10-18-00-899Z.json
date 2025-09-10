@@ -1,0 +1,28 @@
+{
+  "default": [
+    {
+      "key": "benchmark_test_0",
+      "value": "test data",
+      "namespace": "default",
+      "timestamp": 1756833652784
+    },
+    {
+      "key": "benchmark_test_1",
+      "value": "test data",
+      "namespace": "default",
+      "timestamp": 1756833659714
+    },
+    {
+      "key": "benchmark_test_2",
+      "value": "test data",
+      "namespace": "default",
+      "timestamp": 1756833664976
+    },
+    {
+      "key": "a",
+      "value": "simple web application with 1 agents. 1 succeeded, 0 failed.\",\"details\":[{\"agent\":\"general-purpose\",\"success\":true,\"hasResult\":true,\"errorMessage\":null}],\"recommendations\":[\"Consider adding testing agent for generated code\",\"Consider security review for generated code\",\"Consider performance analysis for generated code\",\"All agents succeeded - pattern can be reused for similar tasks\"]}}},\"timestamp\":\"2025-09-04T13:59:01.376Z\",\"namespace\":\"default\",\"compressed\":false}",
+      "namespace": "default",
+      "timestamp": 1756994346597
+    }
+  ]
+}

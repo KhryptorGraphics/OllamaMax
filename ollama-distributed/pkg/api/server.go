@@ -183,13 +183,30 @@ func (s *Server) Stop() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	// Close WebSocket connections
+	// Close WebSocket connections gracefully
 	if s.wsHub != nil {
-		// TODO: Implement graceful WebSocket shutdown
+		fmt.Println("Shutting down WebSocket connections...")
+		
+		// Calculate remaining time for WebSocket shutdown
+		deadline, ok := ctx.Deadline()
+		var wsTimeout time.Duration
+		if ok {
+			wsTimeout = time.Until(deadline) - (2 * time.Second) // Leave 2s for HTTP shutdown
+			if wsTimeout < 5*time.Second {
+				wsTimeout = 5 * time.Second
+			}
+		} else {
+			wsTimeout = 15 * time.Second
+		}
+		
+		if err := s.wsHub.Shutdown(wsTimeout); err != nil {
+			fmt.Printf("WebSocket shutdown error: %v\n", err)
+		}
 	}
 
 	// Shutdown HTTP server
 	if s.server != nil {
+		fmt.Println("Shutting down HTTP server...")
 		return s.server.Shutdown(ctx)
 	}
 

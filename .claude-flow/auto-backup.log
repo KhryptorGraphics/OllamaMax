@@ -1,0 +1,1465 @@
+✅ Memory Persistence Manager initialized
+📋 Session ID: session-1757006849996-ro3t3vrjf
+⏱️ Auto-backup enabled (every 5 minutes)
+Auto-backup started. Press Ctrl+C to stop.
+✅ Memory exported: memory-auto-backup-2025-09-04T17-32-30-122Z.json
+📦 Reason: auto-backup
+✅ Memory exported: memory-auto-backup-2025-09-04T17-37-30-233Z.json
+📦 Reason: auto-backup
+✅ Memory exported: memory-auto-backup-2025-09-04T17-42-30-306Z.json
+📦 Reason: auto-backup
+✅ Memory exported: memory-auto-backup-2025-09-04T17-47-30-334Z.json
+📦 Reason: auto-backup
+✅ Memory exported: memory-auto-backup-2025-09-04T17-52-30-405Z.json
+📦 Reason: auto-backup
+✅ Memory exported: memory-auto-backup-2025-09-04T17-57-30-498Z.json
+📦 Reason: auto-backup
+✅ Memory exported: memory-auto-backup-2025-09-04T18-02-30-634Z.json
+📦 Reason: auto-backup
+✅ Memory exported: memory-auto-backup-2025-09-04T18-07-30-740Z.json
+📦 Reason: auto-backup
+✅ Memory exported: memory-auto-backup-2025-09-04T18-12-30-763Z.json
+📦 Reason: auto-backup
+✅ Memory exported: memory-auto-backup-2025-09-04T18-17-30-893Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T17-32-30-122Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T18-22-31-024Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T17-37-30-233Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T18-27-31-151Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T17-42-30-306Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T18-32-31-192Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T17-47-30-334Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T18-37-31-317Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T17-52-30-405Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T18-42-31-428Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T17-57-30-498Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T18-47-31-508Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T18-02-30-634Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T18-52-31-633Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T18-07-30-740Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T18-57-31-787Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T18-12-30-763Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T19-02-31-869Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T18-17-30-893Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T19-07-32-058Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T18-22-31-024Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T19-12-32-130Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T18-27-31-151Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T19-17-32-239Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T18-32-31-192Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T19-22-32-300Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T18-37-31-317Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T19-27-32-408Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T18-42-31-428Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T19-32-32-510Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T18-47-31-508Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T19-37-32-686Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T18-52-31-633Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T19-42-32-739Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T18-57-31-787Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T19-47-32-800Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T19-02-31-869Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T19-52-32-845Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T19-07-32-058Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T19-57-32-956Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T19-12-32-130Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T20-02-33-083Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T19-17-32-239Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T20-07-33-145Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T19-22-32-300Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T20-12-33-298Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T19-27-32-408Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T20-17-33-451Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T19-32-32-510Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T20-22-33-496Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T19-37-32-686Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T20-27-33-572Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T19-42-32-739Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T20-32-33-690Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T19-47-32-800Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T20-37-33-805Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T19-52-32-845Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T20-42-33-822Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T19-57-32-956Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T20-47-33-956Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T20-02-33-083Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T20-52-34-029Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T20-07-33-145Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T20-57-34-155Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T20-12-33-298Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T21-02-34-183Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T20-17-33-451Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T21-07-34-311Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T20-22-33-496Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T21-12-34-414Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T20-27-33-572Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T21-17-34-542Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T20-32-33-690Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T21-22-34-699Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T20-37-33-805Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T21-27-34-803Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T20-42-33-822Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T21-32-34-926Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T20-47-33-956Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T21-37-34-924Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T20-52-34-029Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T21-42-35-004Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T20-57-34-155Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T21-47-35-109Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T21-02-34-183Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T21-52-35-139Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T21-07-34-311Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T21-57-35-266Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T21-12-34-414Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T22-02-35-301Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T21-17-34-542Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T22-07-35-412Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T21-22-34-699Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T22-12-35-457Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T21-27-34-803Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T22-17-35-573Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T21-32-34-926Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T22-22-35-704Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T21-37-34-924Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T22-27-35-816Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T21-42-35-004Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T22-32-35-858Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T21-47-35-109Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T22-37-35-966Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T21-52-35-139Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T22-42-36-015Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T21-57-35-266Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T22-47-36-108Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T22-02-35-301Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T22-52-36-192Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T22-07-35-412Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T22-57-36-264Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T22-12-35-457Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T23-02-36-283Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T22-17-35-573Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T23-07-36-408Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T22-22-35-704Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T23-12-36-542Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T22-27-35-816Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T23-17-36-619Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T22-32-35-858Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T23-22-36-783Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T22-37-35-966Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T23-27-36-822Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T22-42-36-015Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T23-32-36-917Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T22-47-36-108Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T23-37-37-013Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T22-52-36-192Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T23-42-37-022Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T22-57-36-264Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T23-47-37-047Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T23-02-36-283Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T23-52-37-055Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T23-07-36-408Z.json
+✅ Memory exported: memory-auto-backup-2025-09-04T23-57-37-087Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T23-12-36-542Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T00-02-37-138Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T23-17-36-619Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T00-07-37-178Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T23-22-36-783Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T00-12-37-285Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T23-27-36-822Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T00-17-37-294Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T23-32-36-917Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T00-22-37-323Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T23-37-37-013Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T00-27-37-394Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T23-42-37-022Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T00-32-37-555Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T23-47-37-047Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T00-37-37-554Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T23-52-37-055Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T00-42-37-559Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-04T23-57-37-087Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T00-47-37-631Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T00-02-37-138Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T00-52-37-727Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T00-07-37-178Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T00-57-37-801Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T00-12-37-285Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T01-02-37-791Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T00-17-37-294Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T01-07-37-821Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T00-22-37-323Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T01-12-37-912Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T00-27-37-394Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T01-17-37-917Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T00-32-37-555Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T01-22-37-917Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T00-37-37-554Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T01-27-38-005Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T00-42-37-559Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T01-32-38-080Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T00-47-37-631Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T01-37-38-142Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T00-52-37-727Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T01-42-38-170Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T00-57-37-801Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T01-47-38-153Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T01-02-37-791Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T01-52-38-257Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T01-07-37-821Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T01-57-38-246Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T01-12-37-912Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T02-02-38-228Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T01-17-37-917Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T02-07-38-200Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T01-22-37-917Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T02-12-38-178Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T01-27-38-005Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T02-17-38-266Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T01-32-38-080Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T02-22-38-264Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T01-37-38-142Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T02-27-38-301Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T01-42-38-170Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T02-32-38-332Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T01-47-38-153Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T02-37-38-476Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T01-52-38-257Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T02-42-38-524Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T01-57-38-246Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T02-47-38-698Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T02-02-38-228Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T02-52-38-782Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T02-07-38-200Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T02-57-38-874Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T02-12-38-178Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T03-02-38-869Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T02-17-38-266Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T03-07-38-974Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T02-22-38-264Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T03-12-38-989Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T02-27-38-301Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T03-17-39-040Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T02-32-38-332Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T03-22-39-125Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T02-37-38-476Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T03-27-39-212Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T02-42-38-524Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T03-32-39-333Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T02-47-38-698Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T03-37-39-512Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T02-52-38-782Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T03-42-39-569Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T02-57-38-874Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T03-47-39-599Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T03-02-38-869Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T03-52-39-689Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T03-07-38-974Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T03-57-39-795Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T03-12-38-989Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T04-02-39-858Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T03-17-39-040Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T04-07-39-948Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T03-22-39-125Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T04-12-40-046Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T03-27-39-212Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T04-17-40-137Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T03-32-39-333Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T04-22-40-221Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T03-37-39-512Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T04-27-40-294Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T03-42-39-569Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T04-32-40-349Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T03-47-39-599Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T04-37-40-367Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T03-52-39-689Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T04-42-40-449Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T03-57-39-795Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T04-47-40-494Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T04-02-39-858Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T04-52-40-513Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T04-07-39-948Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T04-57-40-583Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T04-12-40-046Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T05-02-40-654Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T04-17-40-137Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T05-07-40-750Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T04-22-40-221Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T05-12-40-829Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T04-27-40-294Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T05-17-40-834Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T04-32-40-349Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T05-22-40-956Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T04-37-40-367Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T05-27-40-999Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T04-42-40-449Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T05-32-41-065Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T04-47-40-494Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T05-37-41-069Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T04-52-40-513Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T05-42-41-161Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T04-57-40-583Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T05-47-41-242Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T05-02-40-654Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T05-52-41-309Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T05-07-40-750Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T05-57-41-316Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T05-12-40-829Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T06-02-41-438Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T05-17-40-834Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T06-07-41-546Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T05-22-40-956Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T06-12-41-631Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T05-27-40-999Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T06-17-41-788Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T05-32-41-065Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T06-22-41-873Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T05-37-41-069Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T06-27-41-888Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T05-42-41-161Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T06-32-41-881Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T05-47-41-242Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T06-37-41-974Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T05-52-41-309Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T06-42-41-979Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T05-57-41-316Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T06-47-42-044Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T06-02-41-438Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T06-52-42-128Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T06-07-41-546Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T06-57-42-141Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T06-12-41-631Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T07-02-42-210Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T06-17-41-788Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T07-07-42-264Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T06-22-41-873Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T07-12-42-346Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T06-27-41-888Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T07-17-42-371Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T06-32-41-881Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T07-22-42-449Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T06-37-41-974Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T07-27-42-474Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T06-42-41-979Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T07-32-42-522Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T06-47-42-044Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T07-37-42-502Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T06-52-42-128Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T07-42-42-578Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T06-57-42-141Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T07-47-42-610Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T07-02-42-210Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T07-52-42-712Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T07-07-42-264Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T07-57-42-736Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T07-12-42-346Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T08-02-42-870Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T07-17-42-371Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T08-07-42-960Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T07-22-42-449Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T08-12-43-083Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T07-27-42-474Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T08-17-43-132Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T07-32-42-522Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T08-22-43-190Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T07-37-42-502Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T08-27-43-353Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T07-42-42-578Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T08-32-43-349Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T07-47-42-610Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T08-37-43-388Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T07-52-42-712Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T08-42-43-480Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T07-57-42-736Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T08-47-43-525Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T08-02-42-870Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T08-52-43-602Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T08-07-42-960Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T08-57-43-600Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T08-12-43-083Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T09-02-43-771Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T08-17-43-132Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T09-07-43-857Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T08-22-43-190Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T09-12-43-905Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T08-27-43-353Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T09-17-43-897Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T08-32-43-349Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T09-22-43-995Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T08-37-43-388Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T09-27-44-085Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T08-42-43-480Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T09-32-44-173Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T08-47-43-525Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T09-37-44-200Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T08-52-43-602Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T09-42-44-176Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T08-57-43-600Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T09-47-44-139Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T09-02-43-771Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T09-52-44-274Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T09-07-43-857Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T09-57-44-298Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T09-12-43-905Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T10-02-44-351Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T09-17-43-897Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T10-07-44-386Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T09-22-43-995Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T10-12-44-538Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T09-27-44-085Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T10-17-44-622Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T09-32-44-173Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T10-22-44-661Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T09-37-44-200Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T10-27-44-837Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T09-42-44-176Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T10-32-45-008Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T09-47-44-139Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T10-37-45-021Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T09-52-44-274Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T10-42-45-113Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T09-57-44-298Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T10-47-45-206Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T10-02-44-351Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T10-52-45-197Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T10-07-44-386Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T10-57-45-275Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T10-12-44-538Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T11-02-45-278Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T10-17-44-622Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T11-07-45-305Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T10-22-44-661Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T11-12-45-385Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T10-27-44-837Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T11-17-45-458Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T10-32-45-008Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T11-22-45-450Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T10-37-45-021Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T11-27-45-563Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T10-42-45-113Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T11-32-45-568Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T10-47-45-206Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T11-37-45-632Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T10-52-45-197Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T11-42-45-698Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T10-57-45-275Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T11-47-45-757Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T11-02-45-278Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T11-52-45-845Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T11-07-45-305Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T11-57-45-868Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T11-12-45-385Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T12-02-45-896Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T11-17-45-458Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T12-07-45-960Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T11-22-45-450Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T12-12-46-040Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T11-27-45-563Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T12-17-46-086Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T11-32-45-568Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T12-22-46-165Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T11-37-45-632Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T12-27-46-220Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T11-42-45-698Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T12-32-46-269Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T11-47-45-757Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T12-37-46-268Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T11-52-45-845Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T12-42-46-334Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T11-57-45-868Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T12-47-46-272Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T12-02-45-896Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T12-52-46-290Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T12-07-45-960Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T12-57-46-354Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T12-12-46-040Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T13-02-46-413Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T12-17-46-086Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T13-07-46-440Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T12-22-46-165Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T13-12-46-429Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T12-27-46-220Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T13-17-46-437Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T12-32-46-269Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T13-22-46-537Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T12-37-46-268Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T13-27-46-545Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T12-42-46-334Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T13-32-46-656Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T12-47-46-272Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T13-37-46-742Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T12-52-46-290Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T13-42-46-919Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T12-57-46-354Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T13-47-46-980Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T13-02-46-413Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T13-52-47-050Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T13-07-46-440Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T13-57-47-098Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T13-12-46-429Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T14-02-47-075Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T13-17-46-437Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T14-07-47-050Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T13-22-46-537Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T14-12-47-223Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T13-27-46-545Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T14-17-47-268Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T13-32-46-656Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T14-22-47-324Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T13-37-46-742Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T14-27-47-448Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T13-42-46-919Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T14-32-47-519Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T13-47-46-980Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T14-37-47-571Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T13-52-47-050Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T14-42-47-675Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T13-57-47-098Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T14-47-47-723Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T14-02-47-075Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T14-52-47-783Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T14-07-47-050Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T14-57-47-868Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T14-12-47-223Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T15-02-48-038Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T14-17-47-268Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T15-07-48-053Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T14-22-47-324Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T15-12-48-035Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T14-27-47-448Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T15-17-48-153Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T14-32-47-519Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T15-22-48-204Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T14-37-47-571Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T15-27-48-279Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T14-42-47-675Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T15-32-48-363Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T14-47-47-723Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T15-37-48-446Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T14-52-47-783Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T15-42-48-447Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T14-57-47-868Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T15-47-48-536Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T15-02-48-038Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T15-52-48-610Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T15-07-48-053Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T15-57-48-659Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T15-12-48-035Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T16-02-48-685Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T15-17-48-153Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T16-07-48-653Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T15-22-48-204Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T16-12-48-589Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T15-27-48-279Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T16-17-48-679Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T15-32-48-363Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T16-22-48-761Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T15-37-48-446Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T16-27-48-776Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T15-42-48-447Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T16-32-48-780Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T15-47-48-536Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T16-37-48-791Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T15-52-48-610Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T16-42-48-819Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T15-57-48-659Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T16-47-48-830Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T16-02-48-685Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T16-52-48-847Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T16-07-48-653Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T16-57-48-885Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T16-12-48-589Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T17-02-48-974Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T16-17-48-679Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T17-07-48-995Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T16-22-48-761Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T17-12-49-022Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T16-27-48-776Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T17-17-49-078Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T16-32-48-780Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T17-22-49-111Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T16-37-48-791Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T17-27-49-135Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T16-42-48-819Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T17-32-49-192Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T16-47-48-830Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T17-37-49-154Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T16-52-48-847Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T17-42-49-225Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T16-57-48-885Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T17-47-49-247Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T17-02-48-974Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T17-52-49-350Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T17-07-48-995Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T17-57-49-415Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T17-12-49-022Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T18-02-49-409Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T17-17-49-078Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T18-07-49-426Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T17-22-49-111Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T18-12-49-467Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T17-27-49-135Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T18-17-49-506Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T17-32-49-192Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T18-22-49-530Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T17-37-49-154Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T18-27-49-516Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T17-42-49-225Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T18-32-49-591Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T17-47-49-247Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T18-37-49-667Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T17-52-49-350Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T18-42-49-738Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T17-57-49-415Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T18-47-49-812Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T18-02-49-409Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T18-52-49-975Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T18-07-49-426Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T18-57-49-960Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T18-12-49-467Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T19-02-50-051Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T18-17-49-506Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T19-07-50-179Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T18-22-49-530Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T19-12-50-291Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T18-27-49-516Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T19-17-50-212Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T18-32-49-591Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T19-22-50-191Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T18-37-49-667Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T19-27-50-262Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T18-42-49-738Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T19-32-50-354Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T18-47-49-812Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T19-37-50-439Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T18-52-49-975Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T19-42-50-527Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T18-57-49-960Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T19-47-50-614Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T19-02-50-051Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T19-52-50-702Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T19-07-50-179Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T19-57-50-815Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T19-12-50-291Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T20-02-50-905Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T19-17-50-212Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T20-07-50-965Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T19-22-50-191Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T20-12-51-036Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T19-27-50-262Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T20-17-51-117Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T19-32-50-354Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T20-22-51-141Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T19-37-50-439Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T20-27-51-192Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T19-42-50-527Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T20-32-51-283Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T19-47-50-614Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T20-37-51-381Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T19-52-50-702Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T20-42-51-486Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T19-57-50-815Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T20-47-51-581Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T20-02-50-905Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T20-52-51-676Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T20-07-50-965Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T20-57-51-773Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T20-12-51-036Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T21-02-51-874Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T20-17-51-117Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T21-07-51-965Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T20-22-51-141Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T21-12-52-104Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T20-27-51-192Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T21-17-52-082Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T20-32-51-283Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T21-22-52-261Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T20-37-51-381Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T21-27-52-312Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T20-42-51-486Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T21-32-52-390Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T20-47-51-581Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T21-37-52-468Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T20-52-51-676Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T21-42-52-546Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T20-57-51-773Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T21-47-52-625Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T21-02-51-874Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T21-52-52-708Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T21-07-51-965Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T21-57-52-781Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T21-12-52-104Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T22-02-52-858Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T21-17-52-082Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T22-07-52-890Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T21-22-52-261Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T22-12-52-987Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T21-27-52-312Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T22-17-53-063Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T21-32-52-390Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T22-22-53-062Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T21-37-52-468Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T22-27-53-131Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T21-42-52-546Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T22-32-53-209Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T21-47-52-625Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T22-37-53-299Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T21-52-52-708Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T22-42-53-376Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T21-57-52-781Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T22-47-53-455Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T22-02-52-858Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T22-52-53-488Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T22-07-52-890Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T22-57-53-535Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T22-12-52-987Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T23-02-53-605Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T22-17-53-063Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T23-07-53-574Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T22-22-53-062Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T23-12-53-662Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T22-27-53-131Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T23-17-53-642Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T22-32-53-209Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T23-22-53-690Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T22-37-53-299Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T23-27-53-754Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T22-42-53-376Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T23-32-53-673Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T22-47-53-455Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T23-37-53-817Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T22-52-53-488Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T23-42-53-885Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T22-57-53-535Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T23-47-53-928Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T23-02-53-605Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T23-52-53-993Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T23-07-53-574Z.json
+✅ Memory exported: memory-auto-backup-2025-09-05T23-57-53-974Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T23-12-53-662Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T00-02-54-086Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T23-17-53-642Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T00-07-54-146Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T23-22-53-690Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T00-12-54-033Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T23-27-53-754Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T00-17-54-017Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T23-32-53-673Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T00-22-54-059Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T23-37-53-817Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T00-27-54-139Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T23-42-53-885Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T00-32-54-154Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T23-47-53-928Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T00-37-54-232Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T23-52-53-993Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T00-42-54-318Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-05T23-57-53-974Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T00-47-54-397Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T00-02-54-086Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T00-52-54-479Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T00-07-54-146Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T00-57-54-551Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T00-12-54-033Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T01-02-54-627Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T00-17-54-017Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T01-07-54-688Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T00-22-54-059Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T01-12-54-760Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T00-27-54-139Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T01-17-54-774Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T00-32-54-154Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T01-22-54-764Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T00-37-54-232Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T01-27-54-790Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T00-42-54-318Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T01-32-54-809Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T00-47-54-397Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T01-37-54-879Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T00-52-54-479Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T01-42-54-961Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T00-57-54-551Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T01-47-55-053Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T01-02-54-627Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T01-52-55-110Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T01-07-54-688Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T01-57-55-289Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T01-12-54-760Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T02-02-55-376Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T01-17-54-774Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T02-07-55-467Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T01-22-54-764Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T02-12-55-535Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T01-27-54-790Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T02-17-55-526Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T01-32-54-809Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T02-22-55-623Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T01-37-54-879Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T02-27-55-653Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T01-42-54-961Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T02-32-55-701Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T01-47-55-053Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T02-37-55-783Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T01-52-55-110Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T02-42-55-799Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T01-57-55-289Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T02-47-55-895Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T02-02-55-376Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T02-52-55-948Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T02-07-55-467Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T02-57-56-054Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T02-12-55-535Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T03-02-56-075Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T02-17-55-526Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T03-07-56-180Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T02-22-55-623Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T03-12-56-285Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T02-27-55-653Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T03-17-56-385Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T02-32-55-701Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T03-22-56-327Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T02-37-55-783Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T03-27-56-278Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T02-42-55-799Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T03-32-56-302Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T02-47-55-895Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T03-37-56-393Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T02-52-55-948Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T03-42-56-407Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T02-57-56-054Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T03-47-56-474Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T03-02-56-075Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T03-52-56-564Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T03-07-56-180Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T03-57-56-647Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T03-12-56-285Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T04-02-56-751Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T03-17-56-385Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T04-07-56-896Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T03-22-56-327Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T04-12-56-900Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T03-27-56-278Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T04-17-56-936Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T03-32-56-302Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T04-22-56-913Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T03-37-56-393Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T04-27-56-925Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T03-42-56-407Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T04-32-57-015Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T03-47-56-474Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T04-37-56-995Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T03-52-56-564Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T04-42-57-002Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T03-57-56-647Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T04-47-57-082Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T04-02-56-751Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T04-52-57-160Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T04-07-56-896Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T04-57-57-186Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T04-12-56-900Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T05-02-57-282Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T04-17-56-936Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T05-07-57-264Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T04-22-56-913Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T05-12-57-320Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T04-27-56-925Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T05-17-57-327Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T04-32-57-015Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T05-22-57-431Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T04-37-56-995Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T05-27-57-534Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T04-42-57-002Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T05-32-57-612Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T04-47-57-082Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T05-37-57-688Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T04-52-57-160Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T05-42-57-782Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T04-57-57-186Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T05-47-57-770Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T05-02-57-282Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T05-52-57-818Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T05-07-57-264Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T05-57-57-906Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T05-12-57-320Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T06-02-57-941Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T05-17-57-327Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T06-07-58-035Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T05-22-57-431Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T06-12-58-128Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T05-27-57-534Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T06-17-58-177Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T05-32-57-612Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T06-22-58-229Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T05-37-57-688Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T06-27-58-323Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T05-42-57-782Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T06-32-58-397Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T05-47-57-770Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T06-37-58-403Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T05-52-57-818Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T06-42-58-485Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T05-57-57-906Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T06-47-58-523Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T06-02-57-941Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T06-52-58-532Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T06-07-58-035Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T06-57-58-542Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T06-12-58-128Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T07-02-58-600Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T06-17-58-177Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T07-07-58-656Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T06-22-58-229Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T07-12-58-799Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T06-27-58-323Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T07-17-58-854Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T06-32-58-397Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T07-22-58-954Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T06-37-58-403Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T07-27-58-942Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T06-42-58-485Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T07-32-59-040Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T06-47-58-523Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T07-37-58-965Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T06-52-58-532Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T07-42-58-965Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T06-57-58-542Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T07-47-59-020Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T07-02-58-600Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T07-52-59-094Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T07-07-58-656Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T07-57-59-065Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T07-12-58-799Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T08-02-59-122Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T07-17-58-854Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T08-07-59-151Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T07-22-58-954Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T08-12-59-242Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T07-27-58-942Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T08-17-59-309Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T07-32-59-040Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T08-22-59-318Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T07-37-58-965Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T08-27-59-406Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T07-42-58-965Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T08-32-59-493Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T07-47-59-020Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T08-37-59-581Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T07-52-59-094Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T08-42-59-597Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T07-57-59-065Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T08-47-59-665Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T08-02-59-122Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T08-52-59-749Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T08-07-59-151Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T08-57-59-837Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T08-12-59-242Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T09-03-00-000Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T08-17-59-309Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T09-08-00-008Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T08-22-59-318Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T09-13-00-035Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T08-27-59-406Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T09-18-00-206Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T08-32-59-493Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T09-23-00-226Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T08-37-59-581Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T09-28-00-310Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T08-42-59-597Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T09-33-00-368Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T08-47-59-665Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T09-38-00-372Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T08-52-59-749Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T09-43-00-421Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T08-57-59-837Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T09-48-00-488Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T09-03-00-000Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T09-53-00-668Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T09-08-00-008Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T09-58-00-669Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T09-13-00-035Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T10-03-00-760Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T09-18-00-206Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T10-08-00-825Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T09-23-00-226Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T10-13-00-894Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T09-28-00-310Z.json
+✅ Memory exported: memory-auto-backup-2025-09-06T10-18-00-899Z.json
+📦 Reason: auto-backup
+🗑️ Deleted old backup: memory-auto-backup-2025-09-06T09-33-00-368Z.json

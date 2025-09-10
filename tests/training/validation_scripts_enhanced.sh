@@ -378,7 +378,7 @@ logging:
 auth:
   enabled: true
   method: "jwt"
-  secret_key: "test-secret-for-ci-cd-only"
+  secret_key: "${TEST_JWT_SECRET:-test-secret-for-ci-cd-only}"
 EOF
                 ;;
             "production")
@@ -403,7 +403,7 @@ logging:
 auth:
   enabled: true
   method: "jwt"
-  secret_key: "your-secure-secret-key-here"
+  secret_key: "${TEST_JWT_SECRET:-your-secure-secret-key-here}"
   token_expiry: 3600s
 EOF
                 ;;
@@ -927,7 +927,7 @@ logging:
 auth:
   enabled: true
   method: "jwt"
-  secret_key: "CHANGE-THIS-SECRET-KEY"
+  secret_key: "${TEST_JWT_SECRET:-CHANGE-THIS-SECRET-KEY}"
 PRODEOF
         ;;
     *)

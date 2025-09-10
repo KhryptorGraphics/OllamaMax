@@ -1,50 +1,380 @@
-# Development Dockerfile for OllamaMax
-FROM golang:1.21-alpine
+# Development Dockerfile for OllamaMax with Hot Reload
+# Optimized for development workflow with both Go and Node.js support
 
-# Install development tools
+ARG GOLANG_VERSION=1.24.6
+ARG NODE_VERSION=18-alpine
+
+# ============================================================================
+# Stage 1: Go Development Environment
+# ============================================================================
+FROM golang:${GOLANG_VERSION}-alpine AS go-dev
+
+# Install development tools and dependencies
 RUN apk add --no-cache \
     git \
     make \
     curl \
     bash \
     vim \
-    htop
+    nano \
+    htop \
+    jq \
+    ca-certificates \
+    tzdata \
+    inotify-tools \
+    && rm -rf /var/cache/apk/*
 
 # Install Go development tools
-RUN go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-RUN go install github.com/onsi/ginkgo/v2/ginkgo@latest
+RUN go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest && \
+    go install github.com/onsi/ginkgo/v2/ginkgo@latest && \
+    go install github.com/cosmtrek/air@latest && \
+    go install github.com/go-delve/delve/cmd/dlv@latest
 
 # Set working directory
 WORKDIR /app
 
 # Configure Go environment for development
+ENV GOTOOLCHAIN=local
 ENV GOPROXY=direct
 ENV GOSUMDB=off
-ENV CGO_ENABLED=0
+ENV CGO_ENABLED=1
+ENV GO111MODULE=on
 
 # Create directories for caching
-RUN mkdir -p /go/pkg/mod
-RUN mkdir -p /root/.cache/go-build
+RUN mkdir -p /go/pkg/mod && \
+    mkdir -p /root/.cache/go-build && \
+    mkdir -p /app/{data,models,cache,logs,config}
 
 # Copy go mod files first for better caching
 COPY go.mod go.sum ./
 
 # Download dependencies
-RUN go mod download
+RUN go mod download && go mod verify
+
+# ============================================================================
+# Stage 2: Node.js Development Environment
+# ============================================================================
+FROM node:${NODE_VERSION} AS node-dev
+
+# Install development tools
+RUN apk add --no-cache \
+    git \
+    bash \
+    curl \
+    && rm -rf /var/cache/apk/*
+
+# Set working directory
+WORKDIR /app/web
+
+# Copy package files
+COPY web/package*.json ./
+
+# Install all dependencies including dev dependencies
+RUN npm install && npm cache clean --force
+
+# ============================================================================
+# Stage 3: Unified Development Environment
+# ============================================================================
+FROM golang:${GOLANG_VERSION}-alpine AS development
+
+# Install all development tools and runtime dependencies
+RUN apk add --no-cache \
+    git \
+    make \
+    curl \
+    bash \
+    vim \
+    nano \
+    htop \
+    jq \
+    ca-certificates \
+    tzdata \
+    inotify-tools \
+    nodejs \
+    npm \
+    && rm -rf /var/cache/apk/*
+
+# Install Go development tools
+RUN go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest && \
+    go install github.com/onsi/ginkgo/v2/ginkgo@latest && \
+    go install github.com/cosmtrek/air@latest && \
+    go install github.com/go-delve/delve/cmd/dlv@latest
+
+# Create non-root user for development
+RUN addgroup -g 1000 developer && \
+    adduser -D -s /bin/bash -u 1000 -G developer developer && \
+    mkdir -p /home/developer/.cache && \
+    chown -R developer:developer /home/developer
+
+# Set working directory
+WORKDIR /app
+
+# Configure Go environment for development
+ENV GOTOOLCHAIN=local
+ENV GOPROXY=direct
+ENV GOSUMDB=off
+ENV CGO_ENABLED=1
+ENV GO111MODULE=on
+ENV PATH="/home/developer/go/bin:${PATH}"
+
+# Configure development environment
+ENV OLLAMA_DATA_DIR=/app/data
+ENV OLLAMA_MODELS_DIR=/app/models
+ENV OLLAMA_CACHE_DIR=/app/cache
+ENV OLLAMA_LOG_DIR=/app/logs
+ENV OLLAMA_CONFIG_FILE=/app/config/config.yaml
+ENV OLLAMA_WEB_DIR=/app/web
+ENV OLLAMA_LOG_LEVEL=debug
+ENV OLLAMA_LOG_FORMAT=text
+ENV GIN_MODE=debug
+ENV NODE_ENV=development
+
+# Create application directory structure
+RUN mkdir -p /app/{data,models,cache,logs,config,web,bin} && \
+    chown -R developer:developer /app
+
+# Switch to developer user
+USER developer
+
+# Set up Go workspace
+ENV GOPATH=/home/developer/go
+ENV GOCACHE=/home/developer/.cache/go-build
+RUN mkdir -p $GOPATH/{bin,src,pkg} && \
+    mkdir -p $GOCACHE
+
+# Copy Go dependencies first
+COPY --chown=developer:developer go.mod go.sum ./
+RUN go mod download && go mod verify
+
+# Copy Node.js dependencies
+COPY --chown=developer:developer web/package*.json ./web/
+WORKDIR /app/web
+RUN npm install
+
+# Back to main directory
+WORKDIR /app
 
 # Copy source code
-COPY . .
+COPY --chown=developer:developer . .
 
-# Create development scripts
-RUN echo '#!/bin/bash\necho "🏗️ Building OllamaMax..."\ngo build -o ollama-distributed ./cmd/node\necho "✅ Build complete"' > /usr/local/bin/build.sh
-RUN echo '#!/bin/bash\necho "🧪 Running tests..."\ngo test -v ./...\necho "✅ Tests complete"' > /usr/local/bin/test.sh
-RUN echo '#!/bin/bash\necho "🔍 Running linter..."\ngolangci-lint run\necho "✅ Lint complete"' > /usr/local/bin/lint.sh
-RUN echo '#!/bin/bash\necho "🚀 Starting development server..."\n./ollama-distributed start' > /usr/local/bin/dev.sh
+# Create Air configuration for Go hot reload
+RUN cat > .air.toml << 'EOF'
+root = "."
+testdata_dir = "testdata"
+tmp_dir = "tmp"
 
-RUN chmod +x /usr/local/bin/*.sh
+[build]
+args_bin = []
+bin = "./tmp/main"
+cmd = "go build -o ./tmp/main ./cmd/distributed-ollama"
+delay = 1000
+exclude_dir = ["assets", "tmp", "vendor", "testdata", "web/node_modules"]
+exclude_file = []
+exclude_regex = ["_test.go"]
+exclude_unchanged = false
+follow_symlink = false
+full_bin = ""
+include_dir = []
+include_ext = ["go", "tpl", "tmpl", "html"]
+kill_delay = "0s"
+log = "build-errors.log"
+send_interrupt = false
+stop_on_root = false
 
-# Expose ports
-EXPOSE 8080 9090 11434
+[color]
+app = ""
+build = "yellow"
+main = "magenta"
+runner = "green"
+watcher = "cyan"
 
-# Default command
-CMD ["bash"]
+[log]
+time = false
+
+[misc]
+clean_on_exit = false
+
+[screen]
+clear_on_rebuild = false
+keep_scroll = true
+EOF
+
+# Create comprehensive development script
+RUN cat > dev.sh << 'EOF'
+#!/bin/bash
+set -e
+
+echo "🚀 OllamaMax Development Environment"
+echo "======================================"
+echo "Go version: $(go version)"
+echo "Node version: $(node --version)"
+echo "NPM version: $(npm --version)"
+echo ""
+
+# Function to handle cleanup
+cleanup() {
+    echo "🛑 Shutting down development servers..."
+    jobs -p | xargs -r kill
+    exit 0
+}
+trap cleanup INT TERM
+
+# Start Node.js development server in background
+echo "📦 Starting Node.js development server..."
+cd /app/web
+npm run dev &
+NODE_PID=$!
+
+# Start Go development server with Air
+echo "🔥 Starting Go development server with hot reload..."
+cd /app
+air &
+GO_PID=$!
+
+echo ""
+echo "🎯 Development servers started!"
+echo "   Go API: http://localhost:11434"
+echo "   Web UI: http://localhost:3000 (if configured)"
+echo "   Debug: http://localhost:2345 (if dlv enabled)"
+echo ""
+echo "💡 Available commands:"
+echo "   make build    - Build the application"
+echo "   make test     - Run tests"
+echo "   make lint     - Run linter"
+echo "   make clean    - Clean build artifacts"
+echo ""
+echo "Press Ctrl+C to stop all servers"
+
+# Wait for background processes
+wait
+EOF
+
+# Create development Makefile
+RUN cat > Makefile << 'EOF'
+.PHONY: build test lint clean dev debug install-tools
+
+# Variables
+BINARY_NAME=ollama-distributed
+BUILD_DIR=./bin
+SRC_DIR=./cmd/distributed-ollama
+
+# Default target
+all: build
+
+# Build the application
+build:
+	@echo "🏗️ Building $(BINARY_NAME)..."
+	@mkdir -p $(BUILD_DIR)
+	@go build -o $(BUILD_DIR)/$(BINARY_NAME) $(SRC_DIR)
+	@echo "✅ Build complete: $(BUILD_DIR)/$(BINARY_NAME)"
+
+# Run tests
+test:
+	@echo "🧪 Running tests..."
+	@go test -v ./...
+	@echo "✅ Tests complete"
+
+# Run tests with coverage
+test-coverage:
+	@echo "🧪 Running tests with coverage..."
+	@go test -coverprofile=coverage.out ./...
+	@go tool cover -html=coverage.out -o coverage.html
+	@echo "✅ Coverage report: coverage.html"
+
+# Run linter
+lint:
+	@echo "🔍 Running linter..."
+	@golangci-lint run
+	@echo "✅ Lint complete"
+
+# Clean build artifacts
+clean:
+	@echo "🧹 Cleaning build artifacts..."
+	@rm -rf $(BUILD_DIR) tmp coverage.out coverage.html
+	@echo "✅ Clean complete"
+
+# Start development servers
+dev:
+	@./dev.sh
+
+# Start with debugging
+debug:
+	@echo "🐛 Starting with debugging..."
+	@dlv debug $(SRC_DIR) --headless --listen=:2345 --api-version=2 --accept-multiclient
+
+# Install development tools
+install-tools:
+	@echo "🔧 Installing development tools..."
+	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+	@go install github.com/cosmtrek/air@latest
+	@go install github.com/go-delve/delve/cmd/dlv@latest
+	@echo "✅ Tools installed"
+
+# Hot reload with air
+hot:
+	@echo "🔥 Starting hot reload with Air..."
+	@air
+
+# Build and run
+run: build
+	@echo "🚀 Running $(BINARY_NAME)..."
+	@$(BUILD_DIR)/$(BINARY_NAME)
+
+# Build for production
+build-prod:
+	@echo "🏗️ Building for production..."
+	@mkdir -p $(BUILD_DIR)
+	@CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags '-w -s' -o $(BUILD_DIR)/$(BINARY_NAME) $(SRC_DIR)
+	@echo "✅ Production build complete"
+EOF
+
+# Set executable permissions
+RUN chmod +x dev.sh Makefile
+
+# Create default configuration for development
+RUN cat > config/config.yaml << 'EOF'
+# Development configuration
+api:
+  listen: "0.0.0.0:11434"
+  cors_enabled: true
+  debug: true
+
+p2p:
+  listen: "/ip4/0.0.0.0/tcp/12000"
+  bootstrap_peers: []
+
+raft:
+  bind_addr: "0.0.0.0:13000"
+  advertise_addr: "localhost:13000"
+  data_dir: "./data/raft"
+
+logging:
+  level: "debug"
+  format: "text"
+  output: "stdout"
+
+storage:
+  data_dir: "./data"
+  models_dir: "./models"
+  cache_dir: "./cache"
+
+metrics:
+  enabled: true
+  listen: "0.0.0.0:14090"
+EOF
+
+# Expose development ports
+EXPOSE 11434 11435 11436 12000 13000 14090 2345 3000
+
+# Health check for development
+HEALTHCHECK --interval=10s --timeout=5s --retries=3 --start-period=10s \
+    CMD curl -f http://localhost:11434/api/v1/health || exit 1
+
+# Default development command
+CMD ["bash", "./dev.sh"]
+
+# Alternative commands for specific development tasks:
+# docker run -it --rm -v $(pwd):/app ollamamax:dev make build
+# docker run -it --rm -v $(pwd):/app ollamamax:dev make test
+# docker run -it --rm -v $(pwd):/app ollamamax:dev make lint
+# docker run -it --rm -v $(pwd):/app -p 11434:11434 -p 3000:3000 ollamamax:dev

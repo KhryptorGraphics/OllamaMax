@@ -12,7 +12,7 @@ services:
       - NODE_ENV=production
       - PORT=13100
       - REDIS_HOST=redis
-      - REDIS_PORT=6379
+      - REDIS_PORT=16379
       - REDIS_PASSWORD=ollama_dev_pass
       - OLLAMA_PRIMARY=http://host.docker.internal:13000
       - OLLAMA_WORKER_2=http://host.docker.internal:13001
@@ -35,15 +35,15 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "13101:6379"  # Redis port for development
-    command: redis-server --appendonly yes --requirepass ollama_dev_pass
+      - "16379:16379"  # Redis port for development
+    command: redis-server --port 16379 --appendonly yes --requirepass ollama_dev_pass
     volumes:
       - redis_dev_data:/data
     networks:
       - ollama_dev
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      test: ["CMD", "redis-cli", "-p", "16379", "--raw", "incr", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -52,12 +52,12 @@ services:
   minio:
     image: minio/minio:latest
     ports:
-      - "13190:9000"  # MinIO API
-      - "13191:9001"  # MinIO Console
+      - "19000:19000"  # MinIO API
+      - "19001:19001"  # MinIO Console
     environment:
       - MINIO_ROOT_USER=dev
       - MINIO_ROOT_PASSWORD=dev_minio_pass
-    command: server /data --console-address ":9001"
+    command: server /data --address ":19000" --console-address ":19001"
     volumes:
       - minio_dev_data:/data
     networks:

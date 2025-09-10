@@ -41,11 +41,11 @@ distributed:
     cooldown_period: "5m"
 
 p2p:
-  listen: "/ip4/0.0.0.0/tcp/4001"
+  listen: "/ip4/0.0.0.0/tcp/14001"
   enabled: true
   bootstrap_peers: 
-    - "/ip4/node-2/tcp/4001"
-    - "/ip4/node-3/tcp/4001"
+    - "/ip4/node-2/tcp/14001"
+    - "/ip4/node-3/tcp/14001"
   connection_timeout: "10s"
   heartbeat_interval: "5s"
   max_peers: 20
@@ -56,7 +56,7 @@ p2p:
     dht_enabled: true
 
 consensus:
-  bind_addr: "0.0.0.0:7000"
+  bind_addr: "0.0.0.0:17000"
   bootstrap: false
   algorithm: "raft"
   election_timeout: "1s"

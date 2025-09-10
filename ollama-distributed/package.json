@@ -6,17 +6,31 @@
   "scripts": {
     "build": "go build -o bin/ollama-distributed ./cmd/distributed-ollama",
     "build:all": "make build",
+    "build:docker": "./scripts/build.sh --prod",
+    "build:docker:dev": "./scripts/build.sh --dev",
+    "build:docker:multi": "./scripts/build.sh --platforms linux/amd64,linux/arm64",
+    "build:docker:push": "./scripts/build.sh --prod --push",
     "test": "go test ./... -v",
     "test:unit": "./run_tests.sh unit",
     "test:integration": "./run_tests.sh integration", 
     "test:comprehensive": "./comprehensive_test_runner.sh",
     "test:coverage": "go test -coverprofile=coverage.out ./... && go tool cover -html=coverage.out -o coverage.html",
+    "test:docker": "./scripts/build.sh --test",
     "lint": "golangci-lint run",
     "dev": "go run ./cmd/distributed-ollama",
+    "dev:docker": "docker-compose -f docker-compose.yml -f docker-compose.dev.yml up",
+    "dev:docker:build": "docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build",
     "web:serve": "python3 -m http.server 8000 --directory web",
-    "docker:build": "docker build -t ollama-distributed .",
+    "web:build": "cd web && npm run build",
+    "web:dev": "cd web && npm run dev",
+    "docker:build": "./scripts/build.sh",
+    "docker:build:dev": "./scripts/build.sh --dev",
+    "docker:build:prod": "./scripts/build.sh --prod",
     "docker:up": "docker-compose up -d",
+    "docker:up:dev": "docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d",
     "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "docker:clean": "docker-compose down -v && docker system prune -f",
     "cluster:start": "./cluster-test/start-cluster.sh",
     "cluster:stop": "./cluster-test/stop-cluster.sh",
     "cluster:status": "./cluster-test/cluster-status.sh"
@@ -28,6 +42,7 @@
     "http-server": "^14.1.1"
   },
   "engines": {
-    "node": ">=16.0.0"
+    "node": ">=16.0.0",
+    "docker": ">=20.0.0"
   }
 }

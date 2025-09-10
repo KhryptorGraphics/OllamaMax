@@ -232,16 +232,21 @@ class AgentPoolManager extends EventEmitter {
     }
   }
 
-  // Find best matching agent from available pools
+  // Find best matching agent from available pools - OPTIMIZED with Set for O(1) lookups
   async findBestMatchingAgent(requiredCapabilities, priority) {
     let bestAgent = null;
     let bestScore = -1;
 
-    for (const [agentType, pool] of this.agentPools) {
-      if (pool.available.length === 0) continue;
-
-      // Calculate compatibility score
-      const score = this.calculateCompatibilityScore(pool.capabilities, requiredCapabilities);
+    // Convert required capabilities to Set for faster lookups
+    const requiredSet = new Set(requiredCapabilities);
+    
+    // Pre-filter pools with available agents using Map.entries() for better performance
+    const availablePools = Array.from(this.agentPools.entries())
+      .filter(([_, pool]) => pool.available.length > 0);
+    
+    for (const [agentType, pool] of availablePools) {
+      // Calculate compatibility score with optimized Set operations
+      const score = this.calculateCompatibilityScoreOptimized(pool.capabilities, requiredSet);
       
       if (score > bestScore) {
         bestScore = score;
@@ -250,9 +255,9 @@ class AgentPoolManager extends EventEmitter {
     }
 
     if (bestAgent && bestScore > 0.3) { // Minimum 30% capability match
-      // Remove agent from pool
+      // Remove agent from pool efficiently
       const pool = this.agentPools.get(bestAgent.type);
-      pool.available = pool.available.filter(a => a.id !== bestAgent.id);
+      pool.available.shift(); // O(1) removal from front vs filter O(n)
       pool.requestCount++;
       pool.lastUsed = Date.now();
       
@@ -262,37 +267,74 @@ class AgentPoolManager extends EventEmitter {
     return null;
   }
 
-  // Calculate compatibility score between agent and required capabilities
-  calculateCompatibilityScore(agentCapabilities, requiredCapabilities) {
-    if (requiredCapabilities.length === 0) return 1.0;
+  // Calculate compatibility score - OPTIMIZED version with Set operations
+  calculateCompatibilityScoreOptimized(agentCapabilities, requiredCapabilitiesSet) {
+    if (requiredCapabilitiesSet.size === 0) return 1.0;
 
-    const matches = requiredCapabilities.filter(req => 
-      agentCapabilities.some(cap => 
-        cap.includes(req) || req.includes(cap) || 
-        this.areCapabilitiesCompatible(cap, req)
-      )
-    ).length;
+    // Convert agent capabilities to Set for O(1) lookups
+    const agentCapSet = new Set(agentCapabilities);
+    let matches = 0;
 
-    return matches / requiredCapabilities.length;
-  }
-
-  // Check if capabilities are compatible
-  areCapabilitiesCompatible(cap1, cap2) {
-    const compatibilityMap = {
-      'coding': ['implementation', 'development', 'programming'],
-      'testing': ['validation', 'qa', 'quality-assurance'],
-      'research': ['analysis', 'investigation'],
-      'coordination': ['management', 'orchestration']
-    };
-
-    for (const [key, synonyms] of Object.entries(compatibilityMap)) {
-      if ((cap1 === key && synonyms.includes(cap2)) ||
-          (cap2 === key && synonyms.includes(cap1))) {
-        return true;
+    // Use Set iteration for better performance
+    for (const req of requiredCapabilitiesSet) {
+      // Direct match check - O(1)
+      if (agentCapSet.has(req)) {
+        matches++;
+        continue;
+      }
+      
+      // Substring/compatibility check - optimized with early exit
+      let found = false;
+      for (const cap of agentCapSet) {
+        if (cap.includes(req) || req.includes(cap) || 
+            this.areCapabilitiesCompatible(cap, req)) {
+          matches++;
+          found = true;
+          break; // Early exit on first match
+        }
       }
     }
 
-    return false;
+    return matches / requiredCapabilitiesSet.size;
+  }
+
+  // Fallback method for backward compatibility
+  calculateCompatibilityScore(agentCapabilities, requiredCapabilities) {
+    const requiredSet = new Set(requiredCapabilities);
+    return this.calculateCompatibilityScoreOptimized(agentCapabilities, requiredSet);
+  }
+
+  // Check if capabilities are compatible - OPTIMIZED with Maps for O(1) lookups
+  areCapabilitiesCompatible(cap1, cap2) {
+    // Use static Map for better performance (initialized once)
+    if (!this.compatibilityLookup) {
+      this.compatibilityLookup = new Map();
+      const compatibilityRules = {
+        'coding': ['implementation', 'development', 'programming'],
+        'testing': ['validation', 'qa', 'quality-assurance'],
+        'research': ['analysis', 'investigation'],
+        'coordination': ['management', 'orchestration']
+      };
+      
+      // Build bidirectional lookup map for O(1) access
+      for (const [key, synonyms] of Object.entries(compatibilityRules)) {
+        this.compatibilityLookup.set(key, new Set(synonyms));
+        for (const synonym of synonyms) {
+          if (!this.compatibilityLookup.has(synonym)) {
+            this.compatibilityLookup.set(synonym, new Set([key]));
+          } else {
+            this.compatibilityLookup.get(synonym).add(key);
+          }
+        }
+      }
+    }
+
+    // Fast bidirectional lookup - O(1)
+    const cap1Synonyms = this.compatibilityLookup.get(cap1);
+    const cap2Synonyms = this.compatibilityLookup.get(cap2);
+    
+    return (cap1Synonyms && cap1Synonyms.has(cap2)) ||
+           (cap2Synonyms && cap2Synonyms.has(cap1));
   }
 
   // Create agent on-demand when pool is insufficient
@@ -395,38 +437,60 @@ class AgentPoolManager extends EventEmitter {
     }
   }
 
-  // Health check all agents in pools
+  // Health check all agents in pools - OPTIMIZED with parallel processing
   startHealthChecking() {
     setInterval(async () => {
       console.log('🏥 Running agent pool health check...');
       
-      for (const [agentType, pool] of this.agentPools) {
-        const healthyAgents = [];
-        const unhealthyAgents = [];
-        
-        for (const agent of pool.available) {
-          const isHealthy = await this.checkAgentHealth(agent);
-          if (isHealthy) {
-            healthyAgents.push(agent);
-          } else {
-            unhealthyAgents.push(agent);
+      // Process all pools in parallel for better performance
+      const healthCheckPromises = Array.from(this.agentPools.entries()).map(
+        async ([agentType, pool]) => {
+          if (pool.available.length === 0) return { agentType, healthyCount: 0, unhealthyCount: 0 };
+          
+          // Parallel health checks for all agents in pool
+          const healthResults = await Promise.all(
+            pool.available.map(agent => this.checkAgentHealth(agent))
+          );
+          
+          // Efficiently separate healthy vs unhealthy agents
+          const healthyAgents = [];
+          const unhealthyAgents = [];
+          
+          for (let i = 0; i < pool.available.length; i++) {
+            const agent = pool.available[i];
+            if (healthResults[i]) {
+              healthyAgents.push(agent);
+            } else {
+              unhealthyAgents.push(agent);
+            }
           }
+          
+          // Update pool with healthy agents
+          pool.available = healthyAgents;
+          
+          // Terminate unhealthy agents in parallel
+          if (unhealthyAgents.length > 0) {
+            await Promise.all(unhealthyAgents.map(agent => this.terminateAgent(agent)));
+            console.log(`🔄 Replacing ${unhealthyAgents.length} unhealthy ${agentType} agents`);
+            // Don't await warmup to avoid blocking health check
+            this.warmupAgentType(agentType, unhealthyAgents.length);
+          }
+          
+          return { 
+            agentType, 
+            healthyCount: healthyAgents.length, 
+            unhealthyCount: unhealthyAgents.length 
+          };
         }
-        
-        // Replace unhealthy agents
-        pool.available = healthyAgents;
-        for (const agent of unhealthyAgents) {
-          await this.terminateAgent(agent);
-        }
-        
-        // Warm up replacements if needed
-        if (unhealthyAgents.length > 0) {
-          console.log(`🔄 Replacing ${unhealthyAgents.length} unhealthy ${agentType} agents`);
-          this.warmupAgentType(agentType, unhealthyAgents.length);
-        }
-      }
+      );
       
-      this.emit('health:check', this.getPoolStatus());
+      // Wait for all health checks to complete
+      const results = await Promise.all(healthCheckPromises);
+      
+      this.emit('health:check', {
+        ...this.getPoolStatus(),
+        healthCheckResults: results
+      });
     }, this.options.healthCheckInterval);
   }
 

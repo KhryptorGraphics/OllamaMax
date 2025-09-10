@@ -294,7 +294,7 @@ class CodeImprovementManager {
 
     if (improvementType === 'security') {
       // Check for security issues
-      if (content.includes('eval(') || content.includes('innerHTML')) {
+      if (content.match(/\beval\s*\(/) || content.includes('innerHTML')) {
         issues.push({
           file: filePath,
           type: 'security-risk',

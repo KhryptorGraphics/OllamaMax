@@ -1,0 +1,54 @@
+{
+  "memoryPersistence": {
+    "enabled": true,
+    "autoBackup": {
+      "enabled": true,
+      "intervalMinutes": 5,
+      "maxBackups": 10
+    },
+    "sessionManagement": {
+      "autoRestore": true,
+      "autoExport": true,
+      "mergeOnConflict": true,
+      "compressionEnabled": false
+    },
+    "directories": {
+      "backups": "./memory/backups",
+      "sessions": "./memory/sessions",
+      "exports": "./memory/exports"
+    },
+    "namespaces": {
+      "preserve": ["default", "distributed", "serena", "integration"],
+      "autoClean": ["temp", "cache"],
+      "ttlDays": {
+        "default": 30,
+        "distributed": 90,
+        "serena": 90,
+        "integration": 60,
+        "temp": 1,
+        "cache": 7
+      }
+    },
+    "hooks": {
+      "preTask": {
+        "restoreContext": true,
+        "loadLastSession": true
+      },
+      "postTask": {
+        "saveProgress": true,
+        "updateMemory": true
+      },
+      "sessionEnd": {
+        "exportMemory": true,
+        "generateSummary": true,
+        "cleanupTemp": true
+      }
+    },
+    "consolidation": {
+      "deduplication": true,
+      "compression": false,
+      "mergeStrategy": "newest-wins",
+      "maxEntrySize": 10000
+    }
+  }
+}

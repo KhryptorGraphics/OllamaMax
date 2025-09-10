@@ -12,7 +12,7 @@ services:
       - NODE_ENV=production
       - PORT=13100
       - REDIS_HOST=redis
-      - REDIS_PORT=6379
+      - REDIS_PORT=16379
       - OLLAMA_PRIMARY=http://ollama-primary:11434
       - OLLAMA_WORKER_2=http://ollama-worker-2:11434
       - OLLAMA_WORKER_3=http://ollama-worker-3:11434
@@ -132,15 +132,15 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "13101:6379"  # Redis port
-    command: redis-server --appendonly yes --requirepass ollama_redis_pass
+      - "16379:16379"  # Redis port
+    command: redis-server --port 16379 --appendonly yes --requirepass ollama_redis_pass
     volumes:
       - redis_distributed_data:/data
     networks:
       - ollama_distributed
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      test: ["CMD", "redis-cli", "-p", "16379", "--raw", "incr", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -149,20 +149,20 @@ services:
   minio:
     image: minio/minio:latest
     ports:
-      - "13090:9000"  # MinIO API
-      - "13091:9001"  # MinIO Console
+      - "19000:19000"  # MinIO API
+      - "19001:19001"  # MinIO Console
     environment:
       - MINIO_ROOT_USER=ollama
       - MINIO_ROOT_PASSWORD=ollama_minio_pass
       - MINIO_DOMAIN=minio
-    command: server /data --console-address ":9001"
+    command: server /data --address ":19000" --console-address ":19001"
     volumes:
       - minio_data:/data
     networks:
       - ollama_distributed
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: ["CMD", "curl", "-f", "http://localhost:19000/minio/health/live"]
       interval: 30s
       timeout: 20s
       retries: 3
@@ -171,7 +171,7 @@ services:
   prometheus:
     image: prom/prometheus:latest
     ports:
-      - "13092:9090"  # Prometheus port
+      - "19090:19090"  # Prometheus port
     volumes:
       - ./monitoring/prometheus-distributed.yml:/etc/prometheus/prometheus.yml:ro
       - ./monitoring/prometheus/alerts:/etc/prometheus/alerts:ro
@@ -183,6 +183,7 @@ services:
       - '--web.console.templates=/etc/prometheus/consoles'
       - '--storage.tsdb.retention.time=200h'
       - '--web.enable-lifecycle'
+      - '--web.listen-address=0.0.0.0:19090'
     networks:
       - ollama_distributed
     restart: unless-stopped
@@ -193,11 +194,12 @@ services:
   grafana:
     image: grafana/grafana:latest
     ports:
-      - "13093:3000"  # Grafana port
+      - "13000:13000"  # Grafana port
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=ollama_grafana_pass
       - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_HTTP_PORT=13000
     volumes:
       - grafana_distributed_data:/var/lib/grafana
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
@@ -212,14 +214,15 @@ services:
   alertmanager:
     image: prom/alertmanager:latest
     ports:
-      - "13094:9093"  # Alertmanager port
+      - "19093:19093"  # Alertmanager port
     volumes:
       - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
       - alertmanager_data:/alertmanager
     command:
       - '--config.file=/etc/alertmanager/alertmanager.yml'
       - '--storage.path=/alertmanager'
-      - '--web.external-url=http://localhost:13094'
+      - '--web.external-url=http://localhost:19093'
+      - '--web.listen-address=0.0.0.0:19093'
     networks:
       - ollama_distributed
     restart: unless-stopped

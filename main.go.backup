@@ -1,0 +1,366 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"net/http"
+	"os"
+	"os/signal"
+	"strconv"
+	"sync"
+	"syscall"
+	"time"
+
+	"github.com/khryptorgraphics/ollamamax/internal/config"
+	"github.com/khryptorgraphics/ollamamax/pkg/auth"
+	"github.com/khryptorgraphics/ollamamax/pkg/database"
+
+	// Distributed components
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/api"
+	distributedConfig "github.com/khryptorgraphics/ollamamax/ollama-distributed/internal/config"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/consensus"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/scheduler"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/integration"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/proxy"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/scheduler/loadbalancer"
+)
+
+// createDatabaseConfig creates a database configuration with proper environment variable handling
+func createDatabaseConfig(logger *slog.Logger) (*database.DatabaseConfig, error) {
+	// Helper function to get integer environment variable with default
+	getEnvInt := func(key string, defaultValue int) (int, error) {
+		if value := os.Getenv(key); value != "" {
+			if intValue, err := strconv.Atoi(value); err != nil {
+				return 0, fmt.Errorf("invalid integer value for %s: %s", key, value)
+			} else {
+				return intValue, nil
+			}
+		}
+		return defaultValue, nil
+	}
+
+	// Parse database port
+	dbPort, err := getEnvInt("DB_PORT", 15432)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse Redis port
+	redisPort, err := getEnvInt("REDIS_PORT", 16379)
+	if err != nil {
+		return nil, err
+	}
+
+	config := &database.DatabaseConfig{
+		// PostgreSQL configuration
+		Host:     getEnvWithDefault("DB_HOST", "localhost"),
+		Port:     dbPort,
+		Name:     getEnvWithDefault("DB_NAME", "ollamamax"),
+		User:     getEnvWithDefault("DB_USER", "ollama"),
+		Password: os.Getenv("DB_PASSWORD"), // No default for password - should be explicitly set
+		SSLMode:  getEnvWithDefault("DB_SSL_MODE", "prefer"),
+		
+		// Redis configuration
+		RedisHost:     getEnvWithDefault("REDIS_HOST", "localhost"),
+		RedisPort:     redisPort,
+		RedisPassword: os.Getenv("REDIS_PASSWORD"), // No default for password - should be explicitly set
+		RedisDB:       0, // Default Redis DB
+	}
+
+	// Validate critical configuration
+	if config.Password == "" {
+		logger.Warn("DB_PASSWORD environment variable not set - using empty password")
+	}
+	
+	// Log configuration (without sensitive data)
+	logger.Info("Database configuration created",
+		"host", config.Host,
+		"port", config.Port,
+		"database", config.Name,
+		"user", config.User,
+		"ssl_mode", config.SSLMode,
+		"redis_host", config.RedisHost,
+		"redis_port", config.RedisPort,
+		"redis_auth", config.RedisPassword != "",
+	)
+
+	return config, nil
+}
+
+// getEnvWithDefault returns environment variable value or default if not set
+func getEnvWithDefault(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
+func main() {
+	// Initialize logger
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	}))
+	
+	logger.Info("Starting OllamaMax distributed inference platform")
+	
+	// Load configuration
+	cfg := config.LoadConfig()
+	logger.Info("Configuration loaded", "listen_addr", cfg.API.Listen)
+	
+	// Initialize database with environment variables and proper error handling
+	dbConfig, err := createDatabaseConfig(logger)
+	if err != nil {
+		logger.Error("Failed to create database configuration", "error", err)
+		os.Exit(1)
+	}
+	
+	db, err := database.NewDatabaseManager(dbConfig, logger)
+	if err != nil {
+		logger.Error("Failed to initialize database", "error", err)
+		os.Exit(1)
+	}
+	defer db.Close()
+	
+	logger.Info("Database initialized successfully")
+	
+	// Initialize authentication service
+	_, err = auth.NewJWTService(&cfg.Auth)
+	if err != nil {
+		logger.Error("Failed to initialize JWT service", "error", err)
+		os.Exit(1)
+	}
+	
+	logger.Info("JWT service initialized")
+	
+	// Create context for graceful shutdown
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	
+	// Handle shutdown signals
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
+	
+	go func() {
+		<-signalChan
+		logger.Info("Shutdown signal received, initiating graceful shutdown")
+		cancel()
+	}()
+	
+	// Load distributed configuration
+	distConfig, err := distributedConfig.Load("")
+	if err != nil {
+		logger.Error("Failed to load distributed configuration", "error", err)
+		os.Exit(1)
+	}
+	
+	logger.Info("Distributed configuration loaded", "node_id", distConfig.Node.ID)
+	
+	// Initialize P2P node
+	logger.Info("Initializing P2P node...")
+	p2pNode, err := p2p.NewNode(ctx, &distConfig.P2P, &distConfig.Node, logger)
+	if err != nil {
+		logger.Error("Failed to initialize P2P node", "error", err)
+		os.Exit(1)
+	}
+	
+	// Start P2P node
+	if err := p2pNode.Start(ctx); err != nil {
+		logger.Error("Failed to start P2P node", "error", err)
+		os.Exit(1)
+	}
+	logger.Info("P2P node started successfully")
+	
+	// Initialize consensus engine
+	logger.Info("Initializing consensus engine...")
+	consensusEngine, err := consensus.NewEngine(&distConfig.Consensus, p2pNode)
+	if err != nil {
+		logger.Error("Failed to initialize consensus engine", "error", err)
+		os.Exit(1)
+	}
+	
+	// Start consensus engine
+	if err := consensusEngine.Start(); err != nil {
+		logger.Error("Failed to start consensus engine", "error", err)
+		os.Exit(1)
+	}
+	logger.Info("Consensus engine started successfully")
+	
+	// Initialize scheduler
+	logger.Info("Initializing scheduler...")
+	schedulerEngine, err := scheduler.NewEngine(&distConfig.Scheduler, p2pNode, consensusEngine)
+	if err != nil {
+		logger.Error("Failed to initialize scheduler", "error", err)
+		os.Exit(1)
+	}
+	
+	// Start scheduler
+	if err := schedulerEngine.Start(ctx); err != nil {
+		logger.Error("Failed to start scheduler", "error", err)
+		os.Exit(1)
+	}
+	logger.Info("Scheduler started successfully")
+	
+	// Initialize Ollama integration
+	logger.Info("Initializing Ollama integration...")
+	ollamaIntegration := integration.NewSimpleOllamaIntegration("http://localhost:11434")
+	
+	// Initialize Ollama proxy
+	ollamaProxy, err := proxy.NewOllamaProxy(schedulerEngine, consensusEngine)
+	if err != nil {
+		logger.Error("Failed to initialize Ollama proxy", "error", err)
+		os.Exit(1)
+	}
+	
+	// Initialize load balancer
+	loadBalancer := loadbalancer.NewLoadBalancer(schedulerEngine)
+	
+	// Initialize API server
+	logger.Info("Initializing API server...")
+	apiServer, err := api.NewServer(&distConfig.API, p2pNode, consensusEngine, schedulerEngine)
+	if err != nil {
+		logger.Error("Failed to initialize API server", "error", err)
+		os.Exit(1)
+	}
+	
+	// Set server dependencies
+	apiServer.SetIntegration(ollamaIntegration)
+	apiServer.SetProxy(ollamaProxy)
+	apiServer.SetLoadBalancer(loadBalancer)
+	
+	logger.Info("All components initialized successfully")
+	
+	// Create wait group for proper shutdown coordination
+	var wg sync.WaitGroup
+	var serverErr error
+	var serverMutex sync.Mutex
+	
+	// Start API server in goroutine
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		logger.Info("Starting API server", "listen", distConfig.API.Listen)
+		
+		if err := apiServer.Start(); err != nil && err != http.ErrServerClosed {
+			serverMutex.Lock()
+			serverErr = fmt.Errorf("API server error: %w", err)
+			serverMutex.Unlock()
+			logger.Error("API server failed", "error", err)
+			cancel() // Trigger shutdown
+		}
+	}()
+	
+	// Health check endpoint
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				health, err := db.Health(ctx)
+				if err != nil {
+					logger.Error("Health check failed", "error", err)
+					continue
+				}
+				logger.Info("System health check", "status", health.Overall)
+			}
+		}
+	}()
+	
+	logger.Info("OllamaMax server started successfully",
+		"version", "1.0.0",
+		"api_port", distConfig.API.Listen,
+		"node_id", distConfig.Node.ID,
+		"p2p_listen", distConfig.P2P.Listen)
+	
+	// Wait for shutdown signal or server error
+	select {
+	case <-ctx.Done():
+		logger.Info("Shutdown signal received")
+	default:
+		// Check if server had an error
+		serverMutex.Lock()
+		if serverErr != nil {
+			logger.Error("Server error occurred", "error", serverErr)
+		}
+		serverMutex.Unlock()
+	}
+	
+	// Graceful shutdown
+	logger.Info("Shutting down gracefully...")
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer shutdownCancel()
+	
+	// Shutdown components in reverse order
+	var shutdownWg sync.WaitGroup
+	
+	// Stop API server
+	shutdownWg.Add(1)
+	go func() {
+		defer shutdownWg.Done()
+		if err := apiServer.Stop(); err != nil {
+			logger.Error("Error stopping API server", "error", err)
+		} else {
+			logger.Info("API server stopped")
+		}
+	}()
+	
+	// Stop scheduler
+	shutdownWg.Add(1)
+	go func() {
+		defer shutdownWg.Done()
+		if err := schedulerEngine.Stop(); err != nil {
+			logger.Error("Error stopping scheduler", "error", err)
+		} else {
+			logger.Info("Scheduler stopped")
+		}
+	}()
+	
+	// Stop consensus engine
+	shutdownWg.Add(1)
+	go func() {
+		defer shutdownWg.Done()
+		if err := consensusEngine.Stop(); err != nil {
+			logger.Error("Error stopping consensus engine", "error", err)
+		} else {
+			logger.Info("Consensus engine stopped")
+		}
+	}()
+	
+	// Stop P2P node
+	shutdownWg.Add(1)
+	go func() {
+		defer shutdownWg.Done()
+		if err := p2pNode.Stop(); err != nil {
+			logger.Error("Error stopping P2P node", "error", err)
+		} else {
+			logger.Info("P2P node stopped")
+		}
+	}()
+	
+	// Wait for all components to shutdown or timeout
+	done := make(chan struct{})
+	go func() {
+		shutdownWg.Wait()
+		close(done)
+	}()
+	
+	select {
+	case <-done:
+		logger.Info("All components shut down successfully")
+	case <-shutdownCtx.Done():
+		logger.Warn("Shutdown timeout exceeded, forcing exit")
+	}
+	
+	// Wait for all goroutines to finish
+	wg.Wait()
+	
+	logger.Info("OllamaMax server stopped")
+	fmt.Println("Server stopped successfully")
+}

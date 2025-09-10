@@ -1,0 +1,189 @@
+# Docker Compose override for OllamaMax development
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+version: '3.8'
+
+services:
+  # Development overrides for OllamaMax nodes
+  ollamamax-node1:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      target: development
+      args:
+        - GOLANG_VERSION=1.24.6
+        - NODE_VERSION=18-alpine
+    volumes:
+      # Mount source code for hot reload
+      - .:/app:cached
+      # Cache Go modules and build cache for faster rebuilds
+      - go-mod-cache:/home/developer/go/pkg/mod
+      - go-build-cache:/home/developer/.cache/go-build
+      # Cache Node.js modules
+      - node-modules-cache:/app/web/node_modules
+      # Persistent development data
+      - ./dev-data/node1:/app/data
+      - ./dev-data/node1-models:/app/models
+      - ./dev-data/logs:/app/logs
+    environment:
+      - NODE_ID=dev-node-1
+      - BOOTSTRAP=true
+      - API_LISTEN=0.0.0.0:11434
+      - P2P_LISTEN=/ip4/0.0.0.0/tcp/12000
+      - RAFT_BIND_ADDR=0.0.0.0:13000
+      - RAFT_ADVERTISE_ADDR=ollamamax-node1:13000
+      - LOG_LEVEL=debug
+      - GIN_MODE=debug
+      - NODE_ENV=development
+      - OLLAMA_LOG_FORMAT=text
+      # Development-specific settings
+      - HOT_RELOAD=true
+      - DEBUG_PORT=2345
+    ports:
+      - "11434:11434"  # API server
+      - "12000:12000"  # P2P networking
+      - "13000:13000"  # Raft consensus
+      - "14090:14090"  # Metrics
+      - "2345:2345"    # Debug port
+      - "3000:3000"    # Web UI dev server
+    command: ["bash", "./dev.sh"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  ollamamax-node2:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      target: development
+      args:
+        - GOLANG_VERSION=1.24.6
+        - NODE_VERSION=18-alpine
+    volumes:
+      - .:/app:cached
+      - go-mod-cache:/home/developer/go/pkg/mod
+      - go-build-cache:/home/developer/.cache/go-build
+      - node-modules-cache:/app/web/node_modules
+      - ./dev-data/node2:/app/data
+      - ./dev-data/node2-models:/app/models
+      - ./dev-data/logs:/app/logs
+    environment:
+      - NODE_ID=dev-node-2
+      - BOOTSTRAP=false
+      - API_LISTEN=0.0.0.0:11434
+      - P2P_LISTEN=/ip4/0.0.0.0/tcp/12000
+      - P2P_BOOTSTRAP_PEERS=/ip4/ollamamax-node1/tcp/12000
+      - RAFT_BIND_ADDR=0.0.0.0:13000
+      - RAFT_ADVERTISE_ADDR=ollamamax-node2:13000
+      - LOG_LEVEL=debug
+      - GIN_MODE=debug
+      - NODE_ENV=development
+      - OLLAMA_LOG_FORMAT=text
+      - HOT_RELOAD=true
+      - DEBUG_PORT=2346
+    ports:
+      - "11435:11434"  # API server
+      - "12001:12000"  # P2P networking
+      - "13001:13000"  # Raft consensus
+      - "14091:14090"  # Metrics
+      - "2346:2345"    # Debug port
+      - "3001:3000"    # Web UI dev server
+    command: ["bash", "./dev.sh"]
+    depends_on:
+      ollamamax-node1:
+        condition: service_healthy
+
+  ollamamax-node3:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      target: development
+      args:
+        - GOLANG_VERSION=1.24.6
+        - NODE_VERSION=18-alpine
+    volumes:
+      - .:/app:cached
+      - go-mod-cache:/home/developer/go/pkg/mod
+      - go-build-cache:/home/developer/.cache/go-build
+      - node-modules-cache:/app/web/node_modules
+      - ./dev-data/node3:/app/data
+      - ./dev-data/node3-models:/app/models
+      - ./dev-data/logs:/app/logs
+    environment:
+      - NODE_ID=dev-node-3
+      - BOOTSTRAP=false
+      - API_LISTEN=0.0.0.0:11434
+      - P2P_LISTEN=/ip4/0.0.0.0/tcp/12000
+      - P2P_BOOTSTRAP_PEERS=/ip4/ollamamax-node1/tcp/12000
+      - RAFT_BIND_ADDR=0.0.0.0:13000
+      - RAFT_ADVERTISE_ADDR=ollamamax-node3:13000
+      - LOG_LEVEL=debug
+      - GIN_MODE=debug
+      - NODE_ENV=development
+      - OLLAMA_LOG_FORMAT=text
+      - HOT_RELOAD=true
+      - DEBUG_PORT=2347
+    ports:
+      - "11436:11434"  # API server
+      - "12002:12000"  # P2P networking
+      - "13002:13000"  # Raft consensus
+      - "14092:14090"  # Metrics
+      - "2347:2345"    # Debug port
+      - "3002:3000"    # Web UI dev server
+    command: ["bash", "./dev.sh"]
+    depends_on:
+      ollamamax-node1:
+        condition: service_healthy
+
+  # Development database with different settings
+  postgres:
+    environment:
+      - POSTGRES_DB=ollamamax_dev
+      - POSTGRES_USER=dev_user
+      - POSTGRES_PASSWORD=dev_password
+    volumes:
+      - postgres-dev-data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+    ports:
+      - "15432:5432"
+
+  # Development Redis with different settings
+  redis:
+    command: redis-server --appendonly yes --requirepass dev_password
+    volumes:
+      - redis-dev-data:/data
+    ports:
+      - "16379:6379"
+
+  # Optional: Development tools container
+  dev-tools:
+    image: alpine:3.19
+    command: tail -f /dev/null
+    volumes:
+      - .:/workspace
+    working_dir: /workspace
+    profiles:
+      - tools
+
+volumes:
+  # Development-specific volumes for caching
+  go-mod-cache:
+    driver: local
+  go-build-cache:
+    driver: local
+  node-modules-cache:
+    driver: local
+  
+  # Development data volumes
+  postgres-dev-data:
+    driver: local
+  redis-dev-data:
+    driver: local
+
+# Networks remain the same as production
+networks:
+  ollamamax-network:
+    driver: bridge

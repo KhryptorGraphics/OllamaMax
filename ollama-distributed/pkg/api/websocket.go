@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -17,6 +18,9 @@ type WSHub struct {
 	register   chan *WSConnection
 	unregister chan *WSConnection
 	mutex      sync.RWMutex
+	done       chan bool
+	shutdown   chan bool
+	wg         sync.WaitGroup
 }
 
 // WSConnection represents a WebSocket connection
@@ -42,11 +46,17 @@ func NewWSHub() *WSHub {
 		broadcast:  make(chan []byte, 256),
 		register:   make(chan *WSConnection),
 		unregister: make(chan *WSConnection),
+		done:       make(chan bool),
+		shutdown:   make(chan bool),
 	}
 }
 
 // Run starts the WebSocket hub
 func (h *WSHub) Run() {
+	defer func() {
+		h.done <- true
+	}()
+
 	for {
 		select {
 		case client := <-h.register:
@@ -75,7 +85,9 @@ func (h *WSHub) Run() {
 			h.mutex.Lock()
 			if _, ok := h.clients[client]; ok {
 				delete(h.clients, client)
-				close(client.send)
+				if client.send != nil {
+					close(client.send)
+				}
 			}
 			h.mutex.Unlock()
 
@@ -85,11 +97,20 @@ func (h *WSHub) Run() {
 				select {
 				case client.send <- message:
 				default:
-					close(client.send)
+					if client.send != nil {
+						close(client.send)
+					}
 					delete(h.clients, client)
+					// Note: wg.Done() will be called by readPump when it exits
 				}
 			}
 			h.mutex.RUnlock()
+
+		case <-h.shutdown:
+			// Graceful shutdown requested
+			log.Printf("WebSocket hub shutting down...")
+			h.broadcastShutdown()
+			return
 		}
 	}
 }
@@ -141,6 +162,9 @@ func (s *Server) HandleWebSocket(c *gin.Context) {
 
 	client.hub.register <- client
 
+	// Add to wait group for tracking active connections
+	client.hub.wg.Add(1)
+
 	// Start goroutines for reading and writing
 	go client.writePump()
 	go client.readPump()
@@ -151,6 +175,7 @@ func (c *WSConnection) readPump() {
 	defer func() {
 		c.hub.unregister <- c
 		c.conn.Close()
+		c.hub.wg.Done() // Decrement wait group when readPump exits
 	}()
 
 	c.conn.SetReadLimit(512)
@@ -285,4 +310,98 @@ func (s *Server) BroadcastMetricsUpdate(metrics map[string]interface{}) {
 		"metrics":   metrics,
 		"timestamp": time.Now(),
 	})
+}
+
+// Shutdown gracefully shuts down the WebSocket hub
+func (h *WSHub) Shutdown(timeout time.Duration) error {
+	log.Printf("Initiating WebSocket hub shutdown...")
+	
+	// Signal shutdown to the hub
+	select {
+	case h.shutdown <- true:
+	default:
+		// Already shutting down
+		return nil
+	}
+
+	// Wait for hub to finish running
+	select {
+	case <-h.done:
+		log.Printf("WebSocket hub stopped")
+	case <-time.After(timeout):
+		log.Printf("WebSocket hub shutdown timed out")
+		return fmt.Errorf("WebSocket hub shutdown timed out after %v", timeout)
+	}
+
+	// Wait for all client connections to close
+	done := make(chan struct{})
+	go func() {
+		h.wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		log.Printf("All WebSocket connections closed gracefully")
+		return nil
+	case <-time.After(timeout):
+		log.Printf("WebSocket client shutdown timed out, forcing close")
+		h.forceCloseConnections()
+		return fmt.Errorf("WebSocket client shutdown timed out after %v", timeout)
+	}
+}
+
+// broadcastShutdown sends shutdown messages to all connected clients
+func (h *WSHub) broadcastShutdown() {
+	shutdownMsg := WSMessage{
+		Type:      "server_shutdown",
+		Data:      map[string]string{"message": "Server is shutting down"},
+		Timestamp: time.Now(),
+	}
+
+	if jsonData, err := json.Marshal(shutdownMsg); err == nil {
+		h.mutex.RLock()
+		for client := range h.clients {
+			select {
+			case client.send <- jsonData:
+			default:
+				// Client channel is full, skip
+			}
+		}
+		h.mutex.RUnlock()
+
+		// Give clients time to process the shutdown message
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	// Close all client connections gracefully
+	h.mutex.RLock()
+	for client := range h.clients {
+		// Send close message to client if connection exists
+		if client.conn != nil {
+			client.conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+			client.conn.WriteMessage(websocket.CloseMessage, 
+				websocket.FormatCloseMessage(websocket.CloseGoingAway, "Server shutdown"))
+		}
+		
+		// Close send channel to signal writePump to stop
+		if client.send != nil {
+			close(client.send)
+		}
+	}
+	h.mutex.RUnlock()
+}
+
+// forceCloseConnections forcefully closes all remaining connections
+func (h *WSHub) forceCloseConnections() {
+	h.mutex.Lock()
+	defer h.mutex.Unlock()
+
+	for client := range h.clients {
+		if client.conn != nil {
+			client.conn.Close()
+		}
+		delete(h.clients, client)
+		h.wg.Done() // Manually decrement wait group for forced close
+	}
 }

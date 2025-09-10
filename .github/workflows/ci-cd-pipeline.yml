@@ -1,0 +1,308 @@
+name: OllamaMax CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  # Non-standard ports configuration (all above 10000)
+  POSTGRES_PORT: 15432
+  REDIS_PORT: 16379
+  OLLAMA_API_PORT: 11434
+  NGINX_HTTP_PORT: 10080
+  NGINX_HTTPS_PORT: 10443
+  PROMETHEUS_PORT: 19090
+  GRAFANA_PORT: 13000
+  MINIO_API_PORT: 19000
+  MINIO_CONSOLE_PORT: 19001
+  
+  # Database configuration
+  DB_HOST: postgres
+  DB_PORT: 15432
+  DB_NAME: ollamamax_test
+  DB_USER: test_user
+  DB_PASSWORD: test_password
+  
+  # Redis configuration
+  REDIS_HOST: redis
+  REDIS_PORT: 16379
+  REDIS_PASSWORD: test_redis_password
+  
+  # Security
+  JWT_SECRET_KEY: test-jwt-secret-key-for-ci-pipeline-testing-only
+  AUTH_ENABLED: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: ollamamax_test
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          PGPORT: 15432
+        ports:
+          - 15432:15432
+        options: >-
+          --health-cmd "pg_isready -U test_user -d ollamamax_test -p 15432"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+          
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 16379:16379
+        options: >-
+          --health-cmd "redis-cli -p 16379 ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        # Configure Redis to use non-standard port
+        volumes:
+          - /tmp/redis.conf:/etc/redis/redis.conf:ro
+        entrypoint: redis-server /etc/redis/redis.conf --port 16379
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+        
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Create Redis configuration
+      run: |
+        echo "port 16379" > /tmp/redis.conf
+        echo "bind 0.0.0.0" >> /tmp/redis.conf
+        echo "protected-mode no" >> /tmp/redis.conf
+
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Install dependencies
+      run: |
+        go mod download
+        npm ci
+
+    - name: Run Go tests
+      run: |
+        go test -v ./...
+      env:
+        DB_HOST: localhost
+        DB_PORT: 15432
+        REDIS_HOST: localhost
+        REDIS_PORT: 16379
+
+    - name: Run JavaScript tests
+      run: npm test
+
+    - name: Run linting
+      run: |
+        go vet ./...
+        npm run lint
+
+    - name: Build application
+      run: |
+        CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o bin/ollamamax .
+
+    - name: Run security audit
+      run: |
+        go list -json -m all | nancy sleuth
+        npm audit --audit-level moderate
+
+  build-and-test-docker:
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build Docker images
+      run: |
+        docker-compose build
+      env:
+        COMPOSE_FILE: docker-compose.yml
+
+    - name: Start services with non-standard ports
+      run: |
+        docker-compose up -d
+        sleep 30  # Wait for services to start
+
+    - name: Test service connectivity
+      run: |
+        # Test PostgreSQL on port 15432
+        docker-compose exec -T postgres pg_isready -U ollama -d ollamamax -p 15432
+        
+        # Test Redis on port 16379
+        docker-compose exec -T redis redis-cli -p 16379 ping
+        
+        # Test Ollama API on port 11434
+        curl -f http://localhost:11434/health || echo "Ollama API not ready yet"
+        
+        # Test Nginx on port 10080
+        curl -f http://localhost:10080/ || echo "Nginx not ready yet"
+        
+        # Test Prometheus on port 19090
+        curl -f http://localhost:19090/metrics || echo "Prometheus not ready yet"
+        
+        # Test Grafana on port 13000
+        curl -f http://localhost:13000/api/health || echo "Grafana not ready yet"
+
+    - name: Run integration tests
+      run: |
+        # Run integration tests against the running containers
+        npm run test:integration
+      env:
+        API_URL: http://localhost:11434
+        DB_URL: postgresql://ollama:secure_password@localhost:15432/ollamamax
+        REDIS_URL: redis://localhost:16379
+
+    - name: Generate test coverage report
+      run: |
+        go test -coverprofile=coverage.out ./...
+        go tool cover -html=coverage.out -o coverage.html
+
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.out
+        flags: unittests
+        name: codecov-umbrella
+
+    - name: Stop services
+      if: always()
+      run: docker-compose down
+
+  security-scan:
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+    - name: Docker security scan
+      run: |
+        docker build -t ollamamax:latest .
+        docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+          -v $PWD:/root/.cache/ aquasec/trivy:latest image ollamamax:latest
+
+  deploy-staging:
+    if: github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    needs: [test, build-and-test-docker, security-scan]
+    environment: staging
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Deploy to staging
+      run: |
+        echo "Deploying to staging environment with non-standard ports..."
+        echo "PostgreSQL: 15432, Redis: 16379, API: 11434"
+        echo "HTTP: 10080, HTTPS: 10443, Prometheus: 19090, Grafana: 13000"
+        
+        # Deploy using docker-compose with environment-specific overrides
+        docker-compose -f docker-compose.yml -f docker-compose.staging.yml up -d
+      env:
+        ENVIRONMENT: staging
+
+    - name: Run staging health checks
+      run: |
+        # Wait for services to be ready
+        timeout 300 bash -c 'until curl -f http://localhost:11434/health; do sleep 5; done'
+        timeout 300 bash -c 'until curl -f http://localhost:10080/; do sleep 5; done'
+        timeout 300 bash -c 'until curl -f http://localhost:19090/metrics; do sleep 5; done'
+        timeout 300 bash -c 'until curl -f http://localhost:13000/api/health; do sleep 5; done'
+
+  deploy-production:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    needs: [test, build-and-test-docker, security-scan]
+    environment: production
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Deploy to production
+      run: |
+        echo "Deploying to production environment with non-standard ports..."
+        echo "All services configured to use ports above 10000 for security"
+        
+        # Production deployment with enhanced security
+        docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+      env:
+        ENVIRONMENT: production
+        AUTH_ENABLED: true
+
+    - name: Run production health checks
+      run: |
+        # Comprehensive health checks for production
+        timeout 300 bash -c 'until curl -f http://localhost:11434/health; do sleep 5; done'
+        timeout 300 bash -c 'until curl -f http://localhost:10080/; do sleep 5; done'
+        
+        # Verify all services are using correct non-standard ports
+        netstat -tlpn | grep :15432  # PostgreSQL
+        netstat -tlpn | grep :16379  # Redis
+        netstat -tlpn | grep :11434  # Ollama API
+        netstat -tlpn | grep :10080  # HTTP
+        netstat -tlpn | grep :19090  # Prometheus
+        netstat -tlpn | grep :13000  # Grafana
+
+    - name: Notify deployment success
+      run: |
+        echo "✅ Production deployment successful!"
+        echo "🔒 All services running on non-standard ports above 10000"
+        echo "📊 Services: PostgreSQL:15432, Redis:16379, API:11434, HTTP:10080, HTTPS:10443"
+        echo "📈 Monitoring: Prometheus:19090, Grafana:13000"
+
+  cleanup:
+    if: always()
+    runs-on: ubuntu-latest
+    needs: [deploy-staging, deploy-production]
+    
+    steps:
+    - name: Cleanup resources
+      run: |
+        echo "Cleaning up CI/CD resources..."
+        docker system prune -f

@@ -12,7 +12,7 @@ services:
       - OLLAMA_HOST=0.0.0.0
       - OLLAMA_MODELS=/root/.ollama/models
     ports:
-      - "13000:11434"  # Ollama API
+      - "11434:11434"  # Ollama API
     volumes:
       - ollama_models:/root/.ollama
     restart: unless-stopped
@@ -25,17 +25,18 @@ services:
     container_name: ollamamax-redis
     command: >
       redis-server
+      --port 16379
       --appendonly yes
       --appendfsync everysec
       --maxmemory 256mb
       --maxmemory-policy allkeys-lru
     ports:
-      - "13001:6379"  # Redis
+      - "16379:16379"  # Redis
     volumes:
       - redis_data:/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-p", "16379", "ping"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -47,7 +48,7 @@ services:
     image: nginx:1.25-alpine
     container_name: bmad-dashboard
     ports:
-      - "13002:80"  # BMad Dashboard
+      - "10080:10080"  # BMad Dashboard
     volumes:
       - ./bmad-dashboard.html:/usr/share/nginx/html/index.html:ro
       - ./.bmad-core:/usr/share/nginx/html/.bmad-core:ro
@@ -60,7 +61,7 @@ services:
     image: nginx:1.25-alpine
     container_name: ollamamax-nginx
     ports:
-      - "13003:80"    # HTTP Load Balancer
+      - "10080:10080"    # HTTP Load Balancer
     volumes:
       - nginx_logs:/var/log/nginx
     depends_on:
@@ -75,7 +76,7 @@ services:
     image: prom/prometheus:v2.45.0
     container_name: ollamamax-prometheus
     ports:
-      - "13004:9090"  # Prometheus Metrics
+      - "19090:19090"  # Prometheus Metrics
     volumes:
       - prometheus_data:/prometheus
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
@@ -95,7 +96,7 @@ services:
     image: grafana/grafana:10.0.0
     container_name: ollamamax-grafana
     ports:
-      - "13005:3000"  # Grafana Dashboard
+      - "13000:13000"  # Grafana Dashboard
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin123
     volumes:
@@ -111,9 +112,9 @@ services:
     image: rediscommander/redis-commander:latest
     container_name: ollamamax-redis-commander
     environment:
-      - REDIS_HOSTS=local:redis:6379
+      - REDIS_HOSTS=local:redis:16379
     ports:
-      - "13006:8081"  # Redis Commander UI
+      - "18081:18081"  # Redis Commander UI
     depends_on:
       - redis
     restart: unless-stopped
@@ -125,17 +126,17 @@ services:
     image: minio/minio:latest
     container_name: ollamamax-minio
     ports:
-      - "13007:9000"  # MinIO API
-      - "13008:9001"  # MinIO Console
+      - "19000:19000"  # MinIO API
+      - "19001:19001"  # MinIO Console
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin123
     volumes:
       - minio_data:/data
-    command: server /data --console-address ":9001"
+    command: server /data --address ":19000" --console-address ":19001"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: ["CMD", "curl", "-f", "http://localhost:19000/minio/health/live"]
       interval: 30s
       timeout: 20s
       retries: 3
@@ -147,10 +148,11 @@ services:
     image: ghcr.io/open-webui/open-webui:main
     container_name: ollama-webui
     ports:
-      - "13009:8080"  # WebUI
+      - "18080:18080"  # WebUI
     environment:
       - OLLAMA_BASE_URL=http://ollama:11434
       - WEBUI_SECRET_KEY=ollama-webui-secret-key
+      - PORT=18080
     volumes:
       - ollama_webui_data:/app/backend/data
     depends_on:
