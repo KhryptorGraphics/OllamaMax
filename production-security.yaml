@@ -1,0 +1,78 @@
+# Production Security Configuration for OllamaMax
+security:
+  vulnerability_scanning:
+    enabled: true
+    tools:
+      - snyk
+      - sonarqube
+      - owasp-zap
+    schedule: daily
+    
+  dependency_checks:
+    enabled: true
+    auto_fix: true
+    alerts: true
+    
+  ssl_configuration:
+    min_version: "TLSv1.3"
+    ciphers: "ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384"
+    hsts: true
+    certificate_transparency: true
+    
+  waf_rules:
+    mode: strict
+    rules:
+      - sql_injection_protection
+      - xss_protection
+      - csrf_protection
+      - rate_limiting
+      - ip_whitelisting
+      
+  rate_limiting:
+    enabled: true
+    mode: adaptive
+    rules:
+      api_requests: "1000/hour"
+      login_attempts: "5/minute"
+      file_uploads: "10/minute"
+      
+  ddos_protection:
+    enabled: true
+    thresholds:
+      requests_per_second: 1000
+      concurrent_connections: 10000
+      
+  encryption:
+    at_rest: true
+    in_transit: true
+    key_rotation: automatic
+    algorithm: "AES-256-GCM"
+    
+  secrets_management:
+    rotation: automatic
+    storage: encrypted
+    access_logging: enabled
+    
+  audit_logging:
+    enabled: true
+    level: comprehensive
+    retention: "1 year"
+    real_time_monitoring: true
+    
+  penetration_testing:
+    enabled: true
+    frequency: monthly
+    automated: true
+    
+  compliance:
+    frameworks:
+      - SOC2
+      - GDPR
+      - HIPAA
+    reporting: automated
+    
+monitoring:
+  security_events: true
+  anomaly_detection: true
+  threat_intelligence: enabled
+  incident_response: automated

@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"sync"
 	"time"
+
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/scheduler/partitioning"
 )
 
 // OrchestrationEngine manages distributed task orchestration
@@ -22,6 +24,12 @@ type OrchestrationEngine struct {
 	ctx           context.Context
 	cancel        context.CancelFunc
 	started       bool
+
+	// Enhanced aggregation components
+	contextManager       *AggregationContextManager
+	dependencyManager    *PipelineDependencyManager
+	attentionCoordinator *AttentionCoordinator
+	outputAssembler      *OutputAssembler
 }
 
 // Config holds orchestration configuration
@@ -221,19 +229,25 @@ type AggregationStrategy interface {
 type AggregationContext struct {
 	TaskID         string                 `json:"task_id"`
 	Strategy       string                 `json:"strategy"`
-	PartialResults []PartialResult        `json:"partial_results"`
+	PartialResults []*PartialResult       `json:"partial_results"`
 	Metadata       map[string]interface{} `json:"metadata"`
 	CreatedAt      time.Time              `json:"created_at"`
 }
 
-// PartialResult represents a partial result
+// PartialResult represents a partial result with enhanced ML data support
 type PartialResult struct {
-	PartitionID string                 `json:"partition_id"`
-	NodeID      string                 `json:"node_id"`
-	Data        interface{}            `json:"data"`
-	Error       string                 `json:"error,omitempty"`
-	Metadata    map[string]interface{} `json:"metadata"`
-	Timestamp   time.Time              `json:"timestamp"`
+	PartitionID  string                 `json:"partition_id"`
+	NodeID       string                 `json:"node_id"`
+	Data         interface{}            `json:"data"`
+	Error        string                 `json:"error,omitempty"`
+	Metadata     map[string]interface{} `json:"metadata"`
+	Timestamp    time.Time              `json:"timestamp"`
+
+	// Enhanced ML-specific fields
+	HiddenStates []float32              `json:"hidden_states,omitempty"`
+	Logits       []float32              `json:"logits,omitempty"`
+	Tokens       []int                  `json:"tokens,omitempty"`
+	AttentionWeights []float32          `json:"attention_weights,omitempty"`
 }
 
 // AggregatedResponse represents an aggregated response
@@ -280,7 +294,7 @@ type OrchestrationTask struct {
 	Type             string                 `json:"type"`
 	Request          *OrchestrationRequest  `json:"request"`
 	PartitionPlan    *PartitionPlan         `json:"partition_plan"`
-	PartialResults   []PartialResult        `json:"partial_results"`
+	PartialResults   []*PartialResult       `json:"partial_results"`
 	AggregatedResult *AggregatedResponse    `json:"aggregated_result"`
 	Status           TaskStatus             `json:"status"`
 	StartedAt        time.Time              `json:"started_at"`
@@ -288,6 +302,7 @@ type OrchestrationTask struct {
 	Metadata         map[string]interface{} `json:"metadata"`
 	RetryCount       int                    `json:"retry_count"`
 	LastError        string                 `json:"last_error"`
+	mu               sync.RWMutex           // For thread-safe access to PartialResults
 }
 
 // TaskStatus represents task status
@@ -395,21 +410,39 @@ func (oe *OrchestrationEngine) initializeComponents() {
 		stopCh:   make(chan struct{}),
 	}
 
+	// Initialize enhanced aggregation components
+	oe.contextManager = NewAggregationContextManager()
+	oe.dependencyManager = NewPipelineDependencyManager()
+	oe.attentionCoordinator = NewAttentionCoordinator()
+	oe.outputAssembler = NewOutputAssembler()
+
 	// Register default strategies
 	oe.registerDefaultStrategies()
 }
 
 // registerDefaultStrategies registers default strategies
 func (oe *OrchestrationEngine) registerDefaultStrategies() {
-	// Register aggregation strategies
+	// Register enhanced aggregation strategies
+	oe.aggregator.strategies["tensor"] = &TensorAggregationStrategy{}
+	oe.aggregator.strategies["attention"] = NewAttentionAggregationStrategy()
+	oe.aggregator.strategies["embedding"] = &EmbeddingAggregationStrategy{}
+	oe.aggregator.strategies["logits"] = &LogitsAggregationStrategy{}
+	oe.aggregator.strategies["hidden_states"] = &HiddenStateAggregationStrategy{}
+
+	// Keep legacy strategies for backward compatibility
 	oe.aggregator.strategies["concat"] = &ConcatAggregationStrategy{}
 	oe.aggregator.strategies["average"] = &AverageAggregationStrategy{}
 	oe.aggregator.strategies["weighted"] = &WeightedAggregationStrategy{}
 
-	// Register partitioning strategies
-	oe.coordinator.partitioner.strategies["round_robin"] = &RoundRobinPartitioningStrategy{}
-	oe.coordinator.partitioner.strategies["load_based"] = &LoadBasedPartitioningStrategy{}
-	oe.coordinator.partitioner.strategies["capability_based"] = &CapabilityBasedPartitioningStrategy{}
+	// Register partitioning strategies with safe default stubs
+	// These act as placeholders until proper partitioning strategies are configured
+	oe.coordinator.partitioner.strategies["round_robin"] = &DefaultPartitioningStrategy{name: "round_robin"}
+	oe.coordinator.partitioner.strategies["load_based"] = &DefaultPartitioningStrategy{name: "load_based"}
+	oe.coordinator.partitioner.strategies["capability_based"] = &DefaultPartitioningStrategy{name: "capability_based"}
+
+	slog.Info("registered default strategies",
+		"aggregation_strategies", len(oe.aggregator.strategies),
+		"partitioning_strategies", len(oe.coordinator.partitioner.strategies))
 }
 
 // Start starts the orchestration engine
@@ -484,7 +517,7 @@ func (oe *OrchestrationEngine) convertToOrchestrationRequest(task interface{}) *
 	}
 }
 
-// executeTaskAsync executes a task asynchronously
+// executeTaskAsync executes a task asynchronously with enhanced pipeline coordination
 func (oe *OrchestrationEngine) executeTaskAsync(ctx context.Context, task *OrchestrationTask) {
 	defer func() {
 		// Clean up task
@@ -500,6 +533,11 @@ func (oe *OrchestrationEngine) executeTaskAsync(ctx context.Context, task *Orche
 			oe.metrics.FailedTasks++
 		}
 	}()
+
+	// Check for pipeline dependencies before execution
+	if err := oe.coordinateWithPipelineDependencies(ctx, task); err != nil {
+		slog.Warn("pipeline coordination failed", "task_id", task.ID, "error", err)
+	}
 
 	for {
 		switch task.Status {
@@ -567,12 +605,26 @@ func (oe *OrchestrationEngine) executeTaskAsync(ctx context.Context, task *Orche
 	}
 }
 
-// partitionTask partitions a task for distributed execution
+// partitionTask partitions a task for distributed execution with model analysis
 func (oe *OrchestrationEngine) partitionTask(ctx context.Context, task *OrchestrationTask) error {
 	// Select partitioning strategy
 	strategy, err := oe.selectPartitioningStrategy(task)
 	if err != nil {
 		return fmt.Errorf("failed to select partitioning strategy: %v", err)
+	}
+
+	// Double-check strategy is not nil (defensive programming)
+	if strategy == nil {
+		return fmt.Errorf("partitioning strategy is nil after selection")
+	}
+
+	// Enhance partition plan with model analysis information if available
+	if modelAnalysis, ok := task.Request.Metadata["model_analysis"]; ok {
+		if analysis, ok := modelAnalysis.(*partitioning.ModelAnalysis); ok {
+			// Include model analysis in partition metadata for better aggregation strategy selection
+			task.Request.Metadata["has_model_analysis"] = true
+			task.Request.Metadata["model_layers"] = analysis.LayerInfo.TotalLayers
+		}
 	}
 
 	// Partition the task
@@ -581,42 +633,116 @@ func (oe *OrchestrationEngine) partitionTask(ctx context.Context, task *Orchestr
 		return fmt.Errorf("failed to partition task: %v", err)
 	}
 
+	// Validate partition plan
+	if plan == nil {
+		return fmt.Errorf("partition plan is nil from strategy %s", strategy.GetName())
+	}
+
+	// Add aggregation strategy hints to partition plan
+	if plan.Metadata == nil {
+		plan.Metadata = make(map[string]interface{})
+	}
+	plan.Metadata["aggregation_strategy_hint"] = oe.selectAggregationStrategyHint(task)
+
 	task.PartitionPlan = plan
+
+	slog.Info("task partitioned",
+		"task_id", task.ID,
+		"strategy", strategy.GetName(),
+		"partitions", len(plan.Partitions))
+
 	return nil
 }
 
 // selectPartitioningStrategy selects the best partitioning strategy
 func (oe *OrchestrationEngine) selectPartitioningStrategy(task *OrchestrationTask) (PartitioningStrategy, error) {
 	// Simple strategy selection based on task type
+	var strategyName string
 	switch task.Type {
 	case "distributed_inference":
-		return oe.coordinator.partitioner.strategies["load_based"], nil
+		strategyName = "load_based"
 	case "batch_processing":
-		return oe.coordinator.partitioner.strategies["round_robin"], nil
+		strategyName = "round_robin"
 	default:
-		return oe.coordinator.partitioner.strategies["capability_based"], nil
+		strategyName = "capability_based"
 	}
+
+	// Retrieve strategy with nil check
+	strategy := oe.coordinator.partitioner.strategies[strategyName]
+	if strategy == nil {
+		// Log warning and try fallback
+		slog.Warn("partitioning strategy not found, trying fallback",
+			"requested", strategyName,
+			"task_id", task.ID)
+
+		// Try round_robin as fallback
+		strategy = oe.coordinator.partitioner.strategies["round_robin"]
+		if strategy == nil {
+			return nil, fmt.Errorf("no partitioning strategy available for %s (requested: %s)", task.Type, strategyName)
+		}
+
+		slog.Info("using fallback partitioning strategy",
+			"strategy", "round_robin",
+			"task_id", task.ID)
+	}
+
+	slog.Debug("selected partitioning strategy",
+		"strategy", strategyName,
+		"task_type", task.Type,
+		"task_id", task.ID)
+
+	return strategy, nil
 }
 
-// executePartitions executes task partitions
+// executePartitions executes task partitions with proper dependency handling
 func (oe *OrchestrationEngine) executePartitions(ctx context.Context, task *OrchestrationTask) error {
-	// Execute partitions in parallel
+	// Check for execution order in metadata (for dependency-aware execution)
+	if executionOrder, ok := task.Metadata["execution_order"]; ok {
+		// Execute partitions in dependency-aware phases
+		return oe.executePartitionsWithDependencies(ctx, task, executionOrder)
+	}
+
+	// Create channel for thread-safe result collection
+	resultsCh := make(chan *PartialResult, len(task.PartitionPlan.Partitions))
+	var wg sync.WaitGroup
+
+	// Execute partitions in parallel with safe result collection
 	for _, partition := range task.PartitionPlan.Partitions {
-		go oe.executePartition(ctx, task, partition)
+		wg.Add(1)
+		go func(p *TaskPartition) {
+			defer wg.Done()
+			result := oe.executePartitionSafe(ctx, task, p)
+			if result != nil {
+				resultsCh <- result
+			}
+		}(partition)
+	}
+
+	// Collector goroutine for thread-safe result aggregation
+	go func() {
+		wg.Wait()
+		close(resultsCh)
+	}()
+
+	// Collect results safely
+	for result := range resultsCh {
+		task.mu.Lock()
+		task.PartialResults = append(task.PartialResults, result)
+		task.mu.Unlock()
 	}
 
 	return nil
 }
 
-// executePartition executes a single partition
-func (oe *OrchestrationEngine) executePartition(ctx context.Context, task *OrchestrationTask, partition *TaskPartition) {
+// executePartitionSafe executes a single partition and returns the result
+func (oe *OrchestrationEngine) executePartitionSafe(ctx context.Context, task *OrchestrationTask, partition *TaskPartition) *PartialResult {
 	start := time.Now()
 
 	// Simulate partition execution
 	time.Sleep(100 * time.Millisecond)
 
 	// Create partial result
-	result := PartialResult{
+	result := &PartialResult{
 		PartitionID: partition.ID,
 		NodeID:      partition.NodeID,
 		Data:        "mock_result",
@@ -624,38 +750,134 @@ func (oe *OrchestrationEngine) executePartition(ctx context.Context, task *Orche
 		Timestamp:   time.Now(),
 	}
 
-	// Store partial result
-	task.PartialResults = append(task.PartialResults, result)
-
 	slog.Debug("partition executed", "task_id", task.ID, "partition_id", partition.ID, "duration", time.Since(start))
+
+	return result
+}
+
+// executePartitionsWithDependencies executes partitions respecting dependencies
+func (oe *OrchestrationEngine) executePartitionsWithDependencies(ctx context.Context, task *OrchestrationTask, executionOrder interface{}) error {
+	// Parse execution order (expected to be [][]string or similar)
+	levels, ok := executionOrder.([]interface{})
+	if !ok {
+		slog.Warn("invalid execution_order format, falling back to parallel execution",
+			"task_id", task.ID)
+		return oe.executePartitions(ctx, task)
+	}
+
+	// Create partition map for quick lookup
+	partitionMap := make(map[string]*TaskPartition)
+	for _, p := range task.PartitionPlan.Partitions {
+		partitionMap[p.ID] = p
+	}
+
+	// Execute levels sequentially, partitions within level in parallel
+	for levelIdx, level := range levels {
+		levelPartitions, ok := level.([]interface{})
+		if !ok {
+			continue
+		}
+
+		slog.Debug("executing dependency level",
+			"task_id", task.ID,
+			"level", levelIdx,
+			"partitions", len(levelPartitions))
+
+		// Channel for this level's results
+		resultsCh := make(chan *PartialResult, len(levelPartitions))
+		var wg sync.WaitGroup
+
+		// Execute this level's partitions in parallel
+		for _, pID := range levelPartitions {
+			partitionID, ok := pID.(string)
+			if !ok {
+				continue
+			}
+
+			partition, exists := partitionMap[partitionID]
+			if !exists {
+				continue
+			}
+
+			wg.Add(1)
+			go func(p *TaskPartition) {
+				defer wg.Done()
+				result := oe.executePartitionSafe(ctx, task, p)
+				if result != nil {
+					resultsCh <- result
+				}
+			}(partition)
+		}
+
+		// Wait for this level to complete
+		go func() {
+			wg.Wait()
+			close(resultsCh)
+		}()
+
+		// Collect results for this level
+		for result := range resultsCh {
+			task.mu.Lock()
+			task.PartialResults = append(task.PartialResults, result)
+			task.mu.Unlock()
+		}
+	}
+
+	return nil
 }
 
 // arePartitionsComplete checks if all partitions are complete
 func (oe *OrchestrationEngine) arePartitionsComplete(task *OrchestrationTask) bool {
-	return len(task.PartialResults) >= len(task.PartitionPlan.Partitions)
+	// Thread-safe read of partial results
+	task.mu.RLock()
+	resultCount := len(task.PartialResults)
+	task.mu.RUnlock()
+
+	return resultCount >= len(task.PartitionPlan.Partitions)
 }
 
-// aggregateResults aggregates partial results
+// aggregateResults aggregates partial results using tensor-aware strategies
 func (oe *OrchestrationEngine) aggregateResults(ctx context.Context, task *OrchestrationTask) error {
-	// Create aggregation context
-	aggCtx := &AggregationContext{
-		TaskID:         task.ID,
-		Strategy:       "concat", // Default strategy
-		PartialResults: task.PartialResults,
-		Metadata:       make(map[string]interface{}),
-		CreatedAt:      time.Now(),
+	// Create enhanced aggregation context using context manager
+	aggCtx, err := oe.contextManager.CreateEnhancedContext(
+		task.ID,
+		task.PartialResults,
+		task.Request.Metadata,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create aggregation context: %v", err)
 	}
 
-	// Select aggregation strategy
-	strategy := oe.aggregator.strategies[aggCtx.Strategy]
+	// Select appropriate aggregation strategy based on data type and model analysis
+	strategyName := oe.selectOptimalAggregationStrategy(task, task.PartialResults)
+	aggCtx.Strategy = strategyName
+
+	// Get strategy
+	strategy := oe.aggregator.strategies[strategyName]
 	if strategy == nil {
-		return fmt.Errorf("aggregation strategy not found: %s", aggCtx.Strategy)
+		// Fallback to tensor strategy
+		strategy = oe.aggregator.strategies["tensor"]
+		if strategy == nil {
+			return fmt.Errorf("no suitable aggregation strategy found")
+		}
 	}
 
 	// Aggregate results
 	aggregated, err := strategy.Aggregate(aggCtx)
 	if err != nil {
 		return fmt.Errorf("failed to aggregate results: %v", err)
+	}
+
+	// Use output assembler for final output formatting if needed
+	if oe.shouldUseOutputAssembler(task, aggregated) {
+		finalOutput, err := oe.assembleOutput(aggregated, task)
+		if err != nil {
+			slog.Warn("output assembly failed, using raw aggregated result", "error", err)
+		} else {
+			// Update aggregated result with assembled output
+			aggregated.Data = finalOutput
+			aggregated.Metadata["output_assembled"] = true
+		}
 	}
 
 	task.AggregatedResult = aggregated
@@ -767,6 +989,201 @@ func (oe *OrchestrationEngine) GetActiveTasks() []*OrchestrationTask {
 	return tasks
 }
 
+// coordinateWithPipelineDependencies coordinates task execution with pipeline dependencies
+func (oe *OrchestrationEngine) coordinateWithPipelineDependencies(ctx context.Context, task *OrchestrationTask) error {
+	// Extract model analysis from task metadata
+	modelAnalysis, ok := task.Request.Metadata["model_analysis"]
+	if !ok {
+		return nil // No model analysis available, skip pipeline coordination
+	}
+
+	analysis, ok := modelAnalysis.(*partitioning.ModelAnalysis)
+	if !ok {
+		return fmt.Errorf("invalid model analysis type")
+	}
+
+	// Analyze dependencies
+	dependencyGraph, err := oe.dependencyManager.AnalyzeDependencies(analysis)
+	if err != nil {
+		return fmt.Errorf("failed to analyze dependencies: %v", err)
+	}
+
+	// Get execution order
+	executionOrder, err := oe.dependencyManager.GetExecutionOrder(dependencyGraph)
+	if err != nil {
+		return fmt.Errorf("failed to get execution order: %v", err)
+	}
+
+	// Store execution information in task metadata
+	if task.Metadata == nil {
+		task.Metadata = make(map[string]interface{})
+	}
+	task.Metadata["execution_order"] = executionOrder
+	task.Metadata["dependency_graph"] = dependencyGraph
+
+	return nil
+}
+
+// selectAggregationStrategyHint selects aggregation strategy hint based on task characteristics
+func (oe *OrchestrationEngine) selectAggregationStrategyHint(task *OrchestrationTask) string {
+	// Check if task has model analysis information
+	if _, hasModelAnalysis := task.Request.Metadata["model_analysis"]; hasModelAnalysis {
+		// For ML model inference, prefer tensor-aware strategies
+		return "tensor"
+	}
+
+	// Check task type
+	switch task.Type {
+	case "distributed_inference":
+		return "tensor"
+	case "attention_computation":
+		return "attention"
+	case "embedding_generation":
+		return "embedding"
+	case "classification":
+		return "logits"
+	default:
+		return "concat" // Fallback to legacy strategy
+	}
+}
+
+// selectOptimalAggregationStrategy selects the best aggregation strategy based on data characteristics
+func (oe *OrchestrationEngine) selectOptimalAggregationStrategy(task *OrchestrationTask, results []*PartialResult) string {
+	// Check for explicit strategy hint from partition plan
+	if task.PartitionPlan != nil && task.PartitionPlan.Metadata != nil {
+		if hint, ok := task.PartitionPlan.Metadata["aggregation_strategy_hint"]; ok {
+			if hintStr, ok := hint.(string); ok {
+				return hintStr
+			}
+		}
+	}
+
+	// Analyze partial results to determine data types
+	hasHiddenStates := false
+	hasLogits := false
+	hasTokens := false
+	hasAttentionWeights := false
+
+	for _, result := range results {
+		if len(result.HiddenStates) > 0 {
+			hasHiddenStates = true
+		}
+		if len(result.Logits) > 0 {
+			hasLogits = true
+		}
+		if len(result.Tokens) > 0 {
+			hasTokens = true
+		}
+		if len(result.AttentionWeights) > 0 {
+			hasAttentionWeights = true
+		}
+	}
+
+	// Select strategy based on data types
+	if hasAttentionWeights {
+		return "attention"
+	}
+	if hasLogits {
+		return "logits"
+	}
+	if hasHiddenStates {
+		return "hidden_states"
+	}
+	if hasTokens {
+		return "tensor" // Use tensor strategy for token sequences
+	}
+
+	// Check task-specific hints
+	if task.Request.Metadata != nil {
+		if outputType, ok := task.Request.Metadata["output_type"]; ok {
+			if outputTypeStr, ok := outputType.(string); ok {
+				switch outputTypeStr {
+				case "embedding":
+					return "embedding"
+				case "classification":
+					return "logits"
+				case "sequence":
+					return "tensor"
+				case "attention":
+					return "attention"
+				}
+			}
+		}
+	}
+
+	// Default to tensor strategy for ML tasks
+	return "tensor"
+}
+
+// shouldUseOutputAssembler determines if output assembly is needed
+func (oe *OrchestrationEngine) shouldUseOutputAssembler(task *OrchestrationTask, aggregated *AggregatedResponse) bool {
+	// Check if task requests specific output format
+	if task.Request.Metadata != nil {
+		if _, ok := task.Request.Metadata["output_format"]; ok {
+			return true
+		}
+		if _, ok := task.Request.Metadata["output_type"]; ok {
+			return true
+		}
+	}
+
+	// Check if aggregated data is tensor data that could benefit from assembly
+	if tensorData, ok := aggregated.Data.(*TensorData); ok {
+		// Use output assembler for tensor data
+		return tensorData.Type == "logits" || tensorData.Type == "hidden_states"
+	}
+
+	return false
+}
+
+// assembleOutput uses the output assembler to format final output
+func (oe *OrchestrationEngine) assembleOutput(aggregated *AggregatedResponse, task *OrchestrationTask) (*AssembledOutput, error) {
+	// Convert aggregated data to tensor data if possible
+	tensorData, ok := aggregated.Data.(*TensorData)
+	if !ok {
+		return nil, fmt.Errorf("aggregated data is not tensor data")
+	}
+
+	// Determine output type and format from task metadata
+	outputType := SequenceOutput // Default
+	outputFormat := TokenSequenceFormat // Default
+
+	if task.Request.Metadata != nil {
+		if ot, ok := task.Request.Metadata["output_type"]; ok {
+			if otStr, ok := ot.(string); ok {
+				switch otStr {
+				case "sequence":
+					outputType = SequenceOutput
+				case "classification":
+					outputType = ClassificationOutput
+				case "embedding":
+					outputType = EmbeddingOutput
+				case "generative":
+					outputType = GenerativeOutput
+				}
+			}
+		}
+
+		if of, ok := task.Request.Metadata["output_format"]; ok {
+			if ofStr, ok := of.(string); ok {
+				switch ofStr {
+				case "token_sequence":
+					outputFormat = TokenSequenceFormat
+				case "probability":
+					outputFormat = ProbabilityFormat
+				case "embedding_vector":
+					outputFormat = EmbeddingVectorFormat
+				case "structured":
+					outputFormat = StructuredFormat
+				}
+			}
+		}
+	}
+
+	// Use output assembler
+	return oe.outputAssembler.AssembleOutput(tensorData, outputType, outputFormat, task.Request.Metadata)
+}
+
 // Shutdown gracefully shuts down the orchestration engine
 func (oe *OrchestrationEngine) Shutdown(ctx context.Context) error {
 	oe.mu.Lock()
@@ -867,4 +1284,42 @@ func (om *OrchestrationMonitor) processMetrics(monitorName string, metrics map[s
 			om.metrics.Throughput = throughput
 		}
 	}
+}
+
+// DefaultPartitioningStrategy provides a safe default partitioning implementation
+type DefaultPartitioningStrategy struct {
+	name string
+}
+
+// Partition implements PartitioningStrategy interface
+func (s *DefaultPartitioningStrategy) Partition(request *OrchestrationRequest) (*PartitionPlan, error) {
+	// Create a simple single-partition plan as a safe default
+	partition := &TaskPartition{
+		ID:           fmt.Sprintf("partition_%s_0", request.ID),
+		NodeID:       "default_node",
+		Type:         "default",
+		Data:         request.Payload,
+		Dependencies: []string{},
+		Metadata:     make(map[string]interface{}),
+	}
+
+	plan := &PartitionPlan{
+		ID:         fmt.Sprintf("plan_%s", request.ID),
+		Strategy:   s.name,
+		Partitions: []*TaskPartition{partition},
+		Metadata:   make(map[string]interface{}),
+		CreatedAt:  time.Now(),
+	}
+
+	slog.Debug("default partitioning strategy used",
+		"strategy", s.name,
+		"request_id", request.ID,
+		"partitions", 1)
+
+	return plan, nil
+}
+
+// GetName returns the strategy name
+func (s *DefaultPartitioningStrategy) GetName() string {
+	return s.name
 }

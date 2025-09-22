@@ -60,7 +60,14 @@ func createDatabaseConfig(logger *slog.Logger) (*database.DatabaseConfig, error)
 
 	// Validate critical configuration
 	if config.Password == "" {
-		logger.Warn("DB_PASSWORD environment variable not set - using empty password")
+		logger.Error("DB_PASSWORD environment variable not set - database connections will fail")
+		return nil, fmt.Errorf("database password is required for secure operation")
+	}
+	
+	// Validate password strength (minimum 8 characters)
+	if len(config.Password) < 8 {
+		logger.Error("Database password is too weak", "length", len(config.Password))
+		return nil, fmt.Errorf("database password must be at least 8 characters")
 	}
 	
 	// Log configuration (without sensitive data)
@@ -94,9 +101,32 @@ func main() {
 	
 	logger.Info("Starting OllamaMax distributed inference platform")
 	
-	// Load configuration
+	// Load configuration with validation
 	cfg := config.LoadConfig()
-	logger.Info("Configuration loaded", "listen_addr", cfg.API.Listen)
+	
+	// Validate critical security configurations
+	if cfg.Auth.SecretKey == "" || cfg.Auth.SecretKey == "your-secret-key-change-this" {
+		logger.Error("Auth secret not properly configured - using default or empty secret")
+		os.Exit(1)
+	}
+	
+	if len(cfg.Auth.SecretKey) < 32 {
+		logger.Error("Auth secret too short for security", "length", len(cfg.Auth.SecretKey))
+		os.Exit(1)
+	}
+	
+	// Also validate JWT secret if available
+	if cfg.JWT.SecretKey == "" || cfg.JWT.SecretKey == "your-secret-key-change-this" {
+		logger.Error("JWT secret not properly configured - using default or empty secret")
+		os.Exit(1)
+	}
+	
+	if len(cfg.JWT.SecretKey) < 32 {
+		logger.Error("JWT secret too short for security", "length", len(cfg.JWT.SecretKey))
+		os.Exit(1)
+	}
+	
+	logger.Info("Configuration loaded successfully", "listen_addr", cfg.API.Listen)
 	
 	// Initialize database with environment variables and proper error handling
 	dbConfig, err := createDatabaseConfig(logger)
@@ -108,10 +138,19 @@ func main() {
 	db, err := database.NewDatabaseManager(dbConfig, logger)
 	if err != nil {
 		logger.Error("Failed to initialize database", "error", err)
+		// In production, database connectivity is critical
+		if os.Getenv("NODE_ENV") == "production" {
+			logger.Error("Database is required in production environment")
+			os.Exit(1)
+		}
 		logger.Warn("Continuing without database - some features will be unavailable")
 		db = nil
 	} else {
-		defer db.Close()
+		defer func() {
+			if err := db.Close(); err != nil {
+				logger.Error("Error closing database connection", "error", err)
+			}
+		}()
 		logger.Info("Database initialized successfully")
 	}
 	
@@ -129,13 +168,26 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	
-	// Handle shutdown signals
+	// Handle shutdown signals with timeout
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
 	
 	go func() {
-		<-signalChan
-		logger.Info("Shutdown signal received, initiating graceful shutdown")
+		sig := <-signalChan
+		logger.Info("Shutdown signal received", "signal", sig.String())
+		
+		// Give server 30 seconds to shutdown gracefully
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer shutdownCancel()
+		
+		go func() {
+			<-shutdownCtx.Done()
+			if shutdownCtx.Err() == context.DeadlineExceeded {
+				logger.Error("Graceful shutdown timeout exceeded, forcing exit")
+				os.Exit(1)
+			}
+		}()
+		
 		cancel()
 	}()
 	

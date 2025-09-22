@@ -512,25 +512,6 @@ class DistributedLlamaClient {
             
             nodesGrid.appendChild(cardEl);
         });
-    }%`;
-            cardEl.querySelector('.memory-value').textContent = `${node.memory}%`;
-            cardEl.querySelector('.requests-value').textContent = node.requestsPerSecond;
-            cardEl.querySelector('.queue-value').textContent = node.queue;
-            
-            // Draw sparkline
-            const canvas = cardEl.querySelector('canvas');
-            this.drawSparkline(canvas, node);
-            
-            // Add action handlers
-            cardEl.querySelectorAll('.node-action-button').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const action = e.target.dataset.action;
-                    this.handleNodeAction(node, action);
-                });
-            });
-            
-            nodesGrid.appendChild(cardEl);
-        });
     }
 
     drawSparkline(canvas, node) {

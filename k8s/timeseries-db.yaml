@@ -1,0 +1,612 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ollamamax-timeseries
+  labels:
+    name: ollamamax-timeseries
+---
+# InfluxDB ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: influxdb-config
+  namespace: ollamamax-timeseries
+data:
+  influxdb.conf: |
+    # InfluxDB Configuration for OllamaMax Agent Metrics
+    
+    [meta]
+      dir = "/var/lib/influxdb/meta"
+      retention-autocreate = true
+      logging-enabled = true
+    
+    [data]
+      dir = "/var/lib/influxdb/data"
+      wal-dir = "/var/lib/influxdb/wal"
+      query-log-enabled = true
+      cache-max-memory-size = "1g"
+      cache-snapshot-memory-size = "25m"
+      cache-snapshot-write-cold-duration = "10m"
+      compact-full-write-cold-duration = "4h"
+      max-concurrent-compactions = 0
+      compact-throughput = "48m"
+      compact-throughput-burst = "48m"
+      
+      # Time series index
+      series-id-set-cache-size = 100
+      
+      # Write Ahead Log
+      wal-fsync-delay = "0s"
+      
+      # Query settings
+      query-timeout = "0s"
+      max-concurrent-queries = 0
+      
+    [coordinator]
+      write-timeout = "10s"
+      max-concurrent-queries = 0
+      query-timeout = "0s"
+      log-queries-after = "0s"
+      max-select-point = 0
+      max-select-series = 0
+      max-select-buckets = 0
+    
+    [retention]
+      enabled = true
+      check-interval = "30m0s"
+    
+    [shard-precreation]
+      enabled = true
+      check-interval = "10m"
+      advance-period = "30m"
+    
+    [admin]
+      enabled = true
+      bind-address = ":8083"
+      https-enabled = false
+    
+    [monitor]
+      store-enabled = true
+      store-database = "_internal"
+      store-interval = "10s"
+    
+    [http]
+      enabled = true
+      bind-address = ":8086"
+      auth-enabled = false
+      log-enabled = true
+      write-tracing = false
+      pprof-enabled = true
+      https-enabled = false
+      max-row-limit = 0
+      max-connection-limit = 0
+      shared-secret = ""
+      realm = "InfluxDB"
+      unix-socket-enabled = false
+      max-body-size = 25000000
+      max-concurrent-write-limit = 0
+      max-enqueued-write-limit = 0
+      enqueued-write-timeout = 30000000000
+    
+    [ifql]
+      enabled = true
+      log-enabled = true
+      bind-address = ":8082"
+    
+    [[graphite]]
+      enabled = false
+    
+    [[collectd]]
+      enabled = false
+    
+    [[opentsdb]]
+      enabled = false
+    
+    [[udp]]
+      enabled = false
+    
+    [continuous_queries]
+      enabled = true
+      log-enabled = true
+      run-interval = "1s"
+  
+  init.iql: |
+    -- InfluxDB initialization script for OllamaMax
+    
+    -- Create database for agent metrics
+    CREATE DATABASE ollamamax_metrics WITH DURATION 30d REPLICATION 1 SHARD DURATION 1h NAME "agent_metrics_rp";
+    
+    -- Create database for system metrics  
+    CREATE DATABASE ollamamax_system WITH DURATION 7d REPLICATION 1 SHARD DURATION 1h NAME "system_metrics_rp";
+    
+    -- Create retention policies
+    CREATE RETENTION POLICY "realtime" ON "ollamamax_metrics" DURATION 1h REPLICATION 1 DEFAULT;
+    CREATE RETENTION POLICY "hourly" ON "ollamamax_metrics" DURATION 24h REPLICATION 1;
+    CREATE RETENTION POLICY "daily" ON "ollamamax_metrics" DURATION 30d REPLICATION 1;
+    
+    -- Create continuous queries for downsampling
+    CREATE CONTINUOUS QUERY "cq_agent_metrics_hourly" ON "ollamamax_metrics"
+    BEGIN
+      SELECT mean("duration") AS "duration", mean("cpu") AS "cpu", mean("memory") AS "memory", sum("success") AS "success_count", count("success") AS "total_count"
+      INTO "hourly"."agent_metrics_hourly" 
+      FROM "realtime"."agent_metrics"
+      GROUP BY time(1h), "agent_id", "task_type"
+    END;
+    
+    CREATE CONTINUOUS QUERY "cq_agent_metrics_daily" ON "ollamamax_metrics"  
+    BEGIN
+      SELECT mean("duration") AS "duration", mean("cpu") AS "cpu", mean("memory") AS "memory", sum("success_count") AS "success_count", sum("total_count") AS "total_count"
+      INTO "daily"."agent_metrics_daily"
+      FROM "hourly"."agent_metrics_hourly" 
+      GROUP BY time(1d), "agent_id", "task_type"
+    END;
+    
+    -- Create indexes for better query performance
+    -- Note: InfluxDB automatically creates indexes on tags
+---
+# InfluxDB Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: influxdb
+  namespace: ollamamax-timeseries
+  labels:
+    app: influxdb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: influxdb
+  template:
+    metadata:
+      labels:
+        app: influxdb
+    spec:
+      containers:
+      - name: influxdb
+        image: influxdb:1.8-alpine
+        ports:
+        - containerPort: 8086
+          name: http
+        - containerPort: 8083
+          name: admin
+        env:
+        - name: INFLUXDB_DB
+          value: "ollamamax_metrics"
+        - name: INFLUXDB_ADMIN_USER
+          value: "admin"
+        - name: INFLUXDB_ADMIN_PASSWORD
+          value: "ollamamax-influx-admin"
+        - name: INFLUXDB_USER
+          value: "ollamamax"
+        - name: INFLUXDB_USER_PASSWORD
+          value: "ollamamax-influx-user"
+        - name: INFLUXDB_HTTP_AUTH_ENABLED
+          value: "false"
+        - name: INFLUXDB_HTTP_LOG_ENABLED
+          value: "true"
+        - name: INFLUXDB_DATA_QUERY_LOG_ENABLED
+          value: "true"
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "500m"
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"
+        volumeMounts:
+        - name: influxdb-storage
+          mountPath: /var/lib/influxdb
+        - name: influxdb-config
+          mountPath: /etc/influxdb/influxdb.conf
+          subPath: influxdb.conf
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 8086
+          initialDelaySeconds: 30
+          timeoutSeconds: 10
+          periodSeconds: 10
+          successThreshold: 1
+          failureThreshold: 5
+        readinessProbe:
+          httpGet:
+            path: /ping
+            port: 8086
+          initialDelaySeconds: 10
+          timeoutSeconds: 5
+          periodSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+      volumes:
+      - name: influxdb-storage
+        persistentVolumeClaim:
+          claimName: influxdb-storage
+      - name: influxdb-config
+        configMap:
+          name: influxdb-config
+---
+# InfluxDB PVC
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: influxdb-storage
+  namespace: ollamamax-timeseries
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Gi
+---
+# InfluxDB Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: influxdb
+  namespace: ollamamax-timeseries
+  labels:
+    app: influxdb
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8086
+    targetPort: 8086
+    protocol: TCP
+    name: http
+  - port: 8083
+    targetPort: 8083
+    protocol: TCP
+    name: admin
+  selector:
+    app: influxdb
+---
+# InfluxDB Init Job
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: influxdb-init
+  namespace: ollamamax-timeseries
+spec:
+  template:
+    spec:
+      containers:
+      - name: influxdb-init
+        image: influxdb:1.8-alpine
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          echo "Waiting for InfluxDB to be ready..."
+          
+          # Wait for InfluxDB to be available
+          until curl -f http://influxdb:8086/ping; do
+            echo "Waiting for InfluxDB..."
+            sleep 5
+          done
+          
+          echo "InfluxDB is ready, creating databases and retention policies..."
+          
+          # Create databases
+          curl -X POST http://influxdb:8086/query --data-urlencode "q=CREATE DATABASE ollamamax_metrics"
+          curl -X POST http://influxdb:8086/query --data-urlencode "q=CREATE DATABASE ollamamax_system"
+          
+          # Create retention policies
+          curl -X POST http://influxdb:8086/query --data-urlencode "q=CREATE RETENTION POLICY \"realtime\" ON \"ollamamax_metrics\" DURATION 1h REPLICATION 1 DEFAULT"
+          curl -X POST http://influxdb:8086/query --data-urlencode "q=CREATE RETENTION POLICY \"hourly\" ON \"ollamamax_metrics\" DURATION 24h REPLICATION 1"  
+          curl -X POST http://influxdb:8086/query --data-urlencode "q=CREATE RETENTION POLICY \"daily\" ON \"ollamamax_metrics\" DURATION 30d REPLICATION 1"
+          
+          # Create continuous queries for downsampling
+          curl -X POST http://influxdb:8086/query --data-urlencode "q=CREATE CONTINUOUS QUERY \"cq_agent_metrics_hourly\" ON \"ollamamax_metrics\" BEGIN SELECT mean(\"duration\") AS \"duration\", mean(\"cpu\") AS \"cpu\", mean(\"memory\") AS \"memory\", sum(\"success\") AS \"success_count\", count(\"success\") AS \"total_count\" INTO \"hourly\".\"agent_metrics_hourly\" FROM \"realtime\".\"agent_metrics\" GROUP BY time(1h), \"agent_id\", \"task_type\" END"
+          
+          curl -X POST http://influxdb:8086/query --data-urlencode "q=CREATE CONTINUOUS QUERY \"cq_agent_metrics_daily\" ON \"ollamamax_metrics\" BEGIN SELECT mean(\"duration\") AS \"duration\", mean(\"cpu\") AS \"cpu\", mean(\"memory\") AS \"memory\", sum(\"success_count\") AS \"success_count\", sum(\"total_count\") AS \"total_count\" INTO \"daily\".\"agent_metrics_daily\" FROM \"hourly\".\"agent_metrics_hourly\" GROUP BY time(1d), \"agent_id\", \"task_type\" END"
+          
+          echo "InfluxDB initialization completed successfully"
+          
+          # Verify setup
+          curl -G http://influxdb:8086/query --data-urlencode "q=SHOW DATABASES"
+          curl -G http://influxdb:8086/query --data-urlencode "q=SHOW RETENTION POLICIES ON ollamamax_metrics"
+          
+      restartPolicy: OnFailure
+  backoffLimit: 3
+---
+# Telegraf ConfigMap for additional metrics collection
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: telegraf-config
+  namespace: ollamamax-timeseries
+data:
+  telegraf.conf: |
+    # Telegraf Configuration for OllamaMax System Metrics
+    
+    [global_tags]
+      environment = "production"
+      cluster = "ollamamax"
+    
+    [agent]
+      interval = "10s"
+      round_interval = true
+      metric_batch_size = 1000
+      metric_buffer_limit = 10000
+      collection_jitter = "0s"
+      flush_interval = "10s"
+      flush_jitter = "0s"
+      precision = ""
+      debug = false
+      quiet = false
+      logfile = ""
+      hostname = "$HOSTNAME"
+      omit_hostname = false
+    
+    # InfluxDB Output
+    [[outputs.influxdb]]
+      urls = ["http://influxdb:8086"]
+      database = "ollamamax_system"
+      retention_policy = ""
+      write_consistency = "any"
+      timeout = "5s"
+    
+    # System metrics
+    [[inputs.cpu]]
+      percpu = true
+      totalcpu = true
+      collect_cpu_time = false
+      report_active = false
+    
+    [[inputs.disk]]
+      ignore_fs = ["tmpfs", "devtmpfs", "devfs", "overlay", "aufs", "squashfs"]
+    
+    [[inputs.diskio]]
+    
+    [[inputs.kernel]]
+    
+    [[inputs.mem]]
+    
+    [[inputs.processes]]
+    
+    [[inputs.swap]]
+    
+    [[inputs.system]]
+    
+    # Network metrics
+    [[inputs.net]]
+    
+    [[inputs.netstat]]
+    
+    # Docker metrics
+    [[inputs.docker]]
+      endpoint = "unix:///var/run/docker.sock"
+      gather_services = false
+      container_names = []
+      source_tag = false
+      container_name_include = []
+      container_name_exclude = []
+      timeout = "5s"
+      api_version = "1.24"
+    
+    # Kubernetes metrics
+    [[inputs.kubernetes]]
+      url = "https://$HOSTIP:10250"
+      bearer_token = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+      insecure_skip_verify = true
+    
+    # Redis metrics
+    [[inputs.redis]]
+      servers = ["tcp://redis-cluster-0.redis-cluster-service.ollamamax-redis:6379"]
+      password = "$REDIS_PASSWORD"
+    
+    # HTTP response time monitoring
+    [[inputs.http_response]]
+      urls = [
+        "http://ollamamax-api:13100/api/health",
+        "http://agent-metrics-service:8080/health",
+        "http://influxdb:8086/ping"
+      ]
+      response_timeout = "5s"
+      method = "GET"
+      follow_redirects = false
+---
+# Telegraf Deployment
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: telegraf
+  namespace: ollamamax-timeseries
+  labels:
+    app: telegraf
+spec:
+  selector:
+    matchLabels:
+      app: telegraf
+  template:
+    metadata:
+      labels:
+        app: telegraf
+    spec:
+      serviceAccountName: telegraf
+      containers:
+      - name: telegraf
+        image: telegraf:1.28-alpine
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        env:
+        - name: HOSTNAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: HOSTIP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.hostIP
+        - name: REDIS_PASSWORD
+          value: "ollama_redis_pass"
+        volumeMounts:
+        - name: telegraf-config
+          mountPath: /etc/telegraf
+        - name: docker-socket
+          mountPath: /var/run/docker.sock
+        - name: proc
+          mountPath: /host/proc
+          readOnly: true
+        - name: sys
+          mountPath: /host/sys
+          readOnly: true
+        - name: etc
+          mountPath: /host/etc
+          readOnly: true
+      volumes:
+      - name: telegraf-config
+        configMap:
+          name: telegraf-config
+      - name: docker-socket
+        hostPath:
+          path: /var/run/docker.sock
+      - name: proc
+        hostPath:
+          path: /proc
+      - name: sys
+        hostPath:
+          path: /sys
+      - name: etc
+        hostPath:
+          path: /etc
+      hostNetwork: true
+      hostPID: true
+---
+# Telegraf ServiceAccount
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: telegraf
+  namespace: ollamamax-timeseries
+---
+# Telegraf ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: telegraf
+rules:
+- apiGroups: [""]
+  resources:
+  - nodes
+  - nodes/proxy
+  - nodes/metrics
+  - services
+  - endpoints
+  - pods
+  verbs: ["get", "list", "watch"]
+- apiGroups:
+  - extensions
+  resources:
+  - ingresses
+  verbs: ["get", "list", "watch"]
+- nonResourceURLs: ["/metrics"]
+  verbs: ["get"]
+---
+# Telegraf ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: telegraf
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: telegraf
+subjects:
+- kind: ServiceAccount
+  name: telegraf
+  namespace: ollamamax-timeseries
+---
+# Chronograf (InfluxDB UI) Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chronograf
+  namespace: ollamamax-timeseries
+  labels:
+    app: chronograf
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: chronograf
+  template:
+    metadata:
+      labels:
+        app: chronograf
+    spec:
+      containers:
+      - name: chronograf
+        image: chronograf:1.10-alpine
+        ports:
+        - containerPort: 8888
+        env:
+        - name: INFLUXDB_URL
+          value: "http://influxdb:8086"
+        - name: INFLUXDB_USERNAME
+          value: "ollamamax"
+        - name: INFLUXDB_PASSWORD
+          value: "ollamamax-influx-user"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        volumeMounts:
+        - mountPath: /var/lib/chronograf
+          name: chronograf-storage
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 8888
+          initialDelaySeconds: 30
+          timeoutSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ping
+            port: 8888
+          initialDelaySeconds: 10
+          timeoutSeconds: 5
+      volumes:
+      - name: chronograf-storage
+        persistentVolumeClaim:
+          claimName: chronograf-storage
+---
+# Chronograf PVC
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: chronograf-storage
+  namespace: ollamamax-timeseries
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+# Chronograf Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: chronograf
+  namespace: ollamamax-timeseries
+  labels:
+    app: chronograf
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 8888
+    targetPort: 8888
+    protocol: TCP
+  selector:
+    app: chronograf

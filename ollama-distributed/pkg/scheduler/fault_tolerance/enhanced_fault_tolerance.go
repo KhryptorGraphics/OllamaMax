@@ -35,6 +35,13 @@ type EnhancedFaultToleranceManager struct {
 	// System integration
 	systemIntegration *SystemIntegration
 
+	// Inference-specific fault tolerance components
+	inferenceFaultTolerance *InferenceFaultToleranceCoordinator
+	inferenceCheckpoint     *InferenceCheckpointManager
+	dynamicRepartitioning   *DynamicRepartitioningManager
+	gracefulDegradation     *InferenceGracefulDegradationManager
+	inferencePredictive     *InferencePredictiveManager
+
 	// Metrics
 	enhancedMetrics *EnhancedFaultToleranceMetrics
 
@@ -94,6 +101,18 @@ type EnhancedFaultToleranceConfig struct {
 	// Alerting
 	AlertThrottleTime      time.Duration `json:"alert_throttle_time"`
 	AlertSeverityThreshold string        `json:"alert_severity_threshold"`
+
+	// Inference-specific fault tolerance
+	EnableInferenceFaultTolerance bool          `json:"enable_inference_fault_tolerance"`
+	InferenceCheckpointInterval    time.Duration `json:"inference_checkpoint_interval"`
+	InferenceCheckpointCompression bool          `json:"inference_checkpoint_compression"`
+	InferenceCheckpointEncryption  bool          `json:"inference_checkpoint_encryption"`
+	EnableDynamicRepartitioning    bool          `json:"enable_dynamic_repartitioning"`
+	RepartitioningStrategy         string        `json:"repartitioning_strategy"`
+	EnableGracefulDegradation      bool          `json:"enable_graceful_degradation"`
+	DegradationThreshold           float64       `json:"degradation_threshold"`
+	EnableInferencePrediction      bool          `json:"enable_inference_prediction"`
+	InferencePredictionThreshold   float64       `json:"inference_prediction_threshold"`
 }
 
 // EnhancedFaultToleranceMetrics tracks enhanced fault tolerance metrics
@@ -356,10 +375,110 @@ func NewEnhancedFaultToleranceManager(
 	// Initialize system integration
 	eftm.systemIntegration = NewSystemIntegration(eftm)
 
+	// Initialize inference-specific components if enabled
+	if config.EnableInferenceFaultTolerance {
+		eftm.initializeInferenceComponents(config)
+	}
+
 	// Initialize components
 	eftm.initializeComponents(config)
 
 	return eftm
+}
+
+// initializeInferenceComponents initializes inference-specific fault tolerance components
+func (eftm *EnhancedFaultToleranceManager) initializeInferenceComponents(config *EnhancedFaultToleranceConfig) {
+	// Initialize checkpoint manager
+	checkpointConfig := CheckpointConfig{
+		CheckpointInterval:   config.InferenceCheckpointInterval,
+		MaxCheckpoints:       10,
+		CompressionEnabled:   config.InferenceCheckpointCompression,
+		EncryptionEnabled:    config.InferenceCheckpointEncryption,
+		ReplicationFactor:    3,
+		RetentionPolicy: RetentionPolicy{
+			MaxAge:       config.CheckpointRetention,
+			MaxCount:     100,
+			KeepCritical: true,
+		},
+		IncrementalEnabled: true,
+		StorageBackend:     "distributed",
+	}
+	// TODO: Create proper CheckpointStorage implementation
+	var storage CheckpointStorage = nil // Placeholder, needs implementation
+	eftm.inferenceCheckpoint = NewInferenceCheckpointManager(checkpointConfig, storage)
+
+	// Initialize dynamic repartitioning manager
+	repartitioningConfig := RepartitioningConfig{
+		Strategy:             config.RepartitioningStrategy,
+		MaxPartitionSize:     1024 * 1024 * 1024, // 1GB
+		MinPartitionSize:     100 * 1024 * 1024,  // 100MB
+		RebalanceThreshold:   0.2,
+		MigrationBandwidth:   100 * 1024 * 1024, // 100MB/s
+		EnableCompression:    true,
+		EnableParallelTransfer: true,
+	}
+	// TODO: Provide actual implementations for these interfaces
+	var partitionManager PartitionManager = nil       // Needs implementation
+	var shardManager ModelShardManager = nil          // Needs implementation
+	var p2pTransfer P2PTransferProtocol = nil        // Needs implementation
+	var inferenceEngine InferenceEngine = nil         // Needs implementation
+	eftm.dynamicRepartitioning = NewDynamicRepartitioningManager(
+		partitionManager,
+		shardManager,
+		p2pTransfer,
+		inferenceEngine,
+		repartitioningConfig,
+	)
+
+	// Initialize graceful degradation manager
+	degradationConfig := &DegradationConfig{
+		QualityThreshold:      config.DegradationThreshold,
+		MinAcceptableQuality:  0.7,
+		MaxDegradationLevel:   3,
+		RecoveryThreshold:     0.9,
+		MonitoringInterval:    30 * time.Second,
+		EnableAutoRecovery:    true,
+		PrioritizeLatency:     false,
+	}
+	eftm.gracefulDegradation = NewInferenceGracefulDegradationManager(degradationConfig)
+
+	// Initialize predictive inference manager
+	predictiveConfig := &PredictiveConfig{
+		PredictionThreshold:    config.InferencePredictionThreshold,
+		LookAheadWindow:        5 * time.Minute,
+		ModelUpdateInterval:    time.Hour,
+		MinDataPoints:          100,
+		EnableProactiveScaling: true,
+		EnablePreemptiveMigration: true,
+		StandbyNodeRatio:       0.1,
+	}
+	eftm.inferencePredictive = NewInferencePredictiveManager(predictiveConfig)
+
+	// Initialize the main inference fault tolerance coordinator
+	coordinatorConfig := CoordinatorConfig{
+		MaxConcurrentRecoveries: 10,
+		RecoveryTimeout:         5 * time.Minute,
+		HealthCheckInterval:     30 * time.Second,
+		EventBufferSize:         1000,
+		EnablePredictive:        true,
+		PredictionThreshold:     0.7,
+		MetricsInterval:         time.Minute,
+		DefaultRecoveryStrategy: "checkpoint_recovery",
+		EnableMetrics:           true,
+	}
+	eftm.inferenceFaultTolerance = NewInferenceFaultToleranceCoordinator(
+		coordinatorConfig,
+		eftm.inferenceCheckpoint,
+		eftm.dynamicRepartitioning,
+		eftm.gracefulDegradation,
+		eftm.inferencePredictive,
+	)
+
+	slog.Info("Inference fault tolerance components initialized",
+		"checkpoint_enabled", config.InferenceCheckpointCompression,
+		"repartitioning_enabled", config.EnableDynamicRepartitioning,
+		"degradation_enabled", config.EnableGracefulDegradation,
+		"prediction_enabled", config.EnableInferencePrediction)
 }
 
 // initializeComponents initializes all enhanced fault tolerance components
@@ -504,6 +623,13 @@ func (eftm *EnhancedFaultToleranceManager) startEnhancedComponents() {
 	if eftm.configAdaptor.learning {
 		eftm.wg.Add(1)
 		go eftm.configAdaptor.start(eftm.ctx, &eftm.wg)
+	}
+
+	// Start inference fault tolerance components
+	if eftm.inferenceFaultTolerance != nil {
+		if err := eftm.inferenceFaultTolerance.Start(eftm.ctx); err != nil {
+			slog.Error("Failed to start inference fault tolerance coordinator", "error", err)
+		}
 	}
 
 	// Start system integration
@@ -735,6 +861,17 @@ func NewEnhancedFaultToleranceConfig(baseConfig *Config) *EnhancedFaultTolerance
 		CircuitBreakerTimeout:     30 * time.Second,
 		AlertThrottleTime:         5 * time.Minute,
 		AlertSeverityThreshold:    "medium",
+		// Inference-specific settings
+		EnableInferenceFaultTolerance: true,
+		InferenceCheckpointInterval:    60 * time.Second,
+		InferenceCheckpointCompression: true,
+		InferenceCheckpointEncryption:  true,
+		EnableDynamicRepartitioning:    true,
+		RepartitioningStrategy:         "adaptive",
+		EnableGracefulDegradation:      true,
+		DegradationThreshold:           0.8,
+		EnableInferencePrediction:      true,
+		InferencePredictionThreshold:   0.7,
 	}
 }
 
@@ -859,6 +996,88 @@ func (eftm *EnhancedFaultToleranceManager) GetFaultDetections() []*FaultDetectio
 	return eftm.FaultToleranceManager.GetFaultDetections()
 }
 
+// StartInferenceSession starts a new inference session with fault tolerance
+func (eftm *EnhancedFaultToleranceManager) StartInferenceSession(sessionID string, modelID string, config map[string]interface{}) error {
+	if eftm.inferenceFaultTolerance == nil {
+		return fmt.Errorf("inference fault tolerance not initialized")
+	}
+	return eftm.inferenceFaultTolerance.StartSession(sessionID, modelID, config)
+}
+
+// HandleInferenceFailure handles failures during inference
+func (eftm *EnhancedFaultToleranceManager) HandleInferenceFailure(sessionID string, nodeID string, errorMsg string) error {
+	if eftm.inferenceFaultTolerance == nil {
+		return fmt.Errorf("inference fault tolerance not initialized")
+	}
+	return eftm.inferenceFaultTolerance.HandleFailure(eftm.ctx, sessionID, nodeID, errorMsg)
+}
+
+// GetInferenceSession gets information about an active inference session
+func (eftm *EnhancedFaultToleranceManager) GetInferenceSession(sessionID string) (*InferenceSession, error) {
+	if eftm.inferenceFaultTolerance == nil {
+		return nil, fmt.Errorf("inference fault tolerance not initialized")
+	}
+	return eftm.inferenceFaultTolerance.GetSession(sessionID)
+}
+
+// CreateInferenceCheckpoint creates a checkpoint for the current inference state
+func (eftm *EnhancedFaultToleranceManager) CreateInferenceCheckpoint(sessionID string) error {
+	if eftm.inferenceCheckpoint == nil {
+		return fmt.Errorf("inference checkpoint manager not initialized")
+	}
+	checkpoint := &InferenceCheckpoint{
+		ID:        fmt.Sprintf("checkpoint-%s-%d", sessionID, time.Now().Unix()),
+		SessionID: sessionID,
+		Timestamp: time.Now(),
+		State:     make(map[string]interface{}),
+	}
+	return eftm.inferenceCheckpoint.CreateCheckpoint(eftm.ctx, sessionID, checkpoint)
+}
+
+// RestoreFromInferenceCheckpoint restores inference state from a checkpoint
+func (eftm *EnhancedFaultToleranceManager) RestoreFromInferenceCheckpoint(sessionID string, checkpointID string) error {
+	if eftm.inferenceCheckpoint == nil {
+		return fmt.Errorf("inference checkpoint manager not initialized")
+	}
+	checkpoint, err := eftm.inferenceCheckpoint.GetCheckpoint(checkpointID)
+	if err != nil {
+		return err
+	}
+	return eftm.inferenceCheckpoint.RestoreCheckpoint(eftm.ctx, sessionID, checkpoint)
+}
+
+// TriggerDynamicRepartitioning triggers dynamic repartitioning for a failed node
+func (eftm *EnhancedFaultToleranceManager) TriggerDynamicRepartitioning(failedNodeID string, sessionID string) error {
+	if eftm.dynamicRepartitioning == nil {
+		return fmt.Errorf("dynamic repartitioning manager not initialized")
+	}
+	return eftm.dynamicRepartitioning.HandleNodeFailure(eftm.ctx, failedNodeID, sessionID)
+}
+
+// ApplyGracefulDegradation applies graceful degradation to maintain service
+func (eftm *EnhancedFaultToleranceManager) ApplyGracefulDegradation(sessionID string, constraints map[string]interface{}) error {
+	if eftm.gracefulDegradation == nil {
+		return fmt.Errorf("graceful degradation manager not initialized")
+	}
+	return eftm.gracefulDegradation.ApplyDegradation(eftm.ctx, sessionID, constraints)
+}
+
+// PredictInferenceFailure predicts potential failures using ML models
+func (eftm *EnhancedFaultToleranceManager) PredictInferenceFailure(nodeID string) (float64, error) {
+	if eftm.inferencePredictive == nil {
+		return 0, fmt.Errorf("predictive inference manager not initialized")
+	}
+	return eftm.inferencePredictive.PredictFailure(nodeID)
+}
+
+// GetInferenceMetrics returns inference-specific fault tolerance metrics
+func (eftm *EnhancedFaultToleranceManager) GetInferenceMetrics() (*InferenceFaultToleranceMetrics, error) {
+	if eftm.inferenceFaultTolerance == nil {
+		return nil, fmt.Errorf("inference fault tolerance not initialized")
+	}
+	return eftm.inferenceFaultTolerance.GetMetrics(), nil
+}
+
 // Recover method for FaultToleranceManager (stub implementation)
 func (ftm *FaultToleranceManager) Recover(ctx context.Context, fault *FaultDetection) (*RecoveryResult, error) {
 	return &RecoveryResult{
@@ -907,3 +1126,71 @@ type ConfigMetrics struct {
 	ConfigAdaptations int64      `json:"config_adaptations"`
 	LastAdaptation    *time.Time `json:"last_adaptation"`
 }
+
+// InferenceFT Interface Implementation
+// These methods implement the InferenceFT interface for integration with DistributedInferenceEngine
+
+// CreateInferenceCheckpoint creates a checkpoint for an inference session
+func (eftm *EnhancedFaultToleranceManager) CreateInferenceCheckpoint(ctx context.Context, sessionID string, state interface{}) error {
+	if eftm.inferenceCheckpoint == nil {
+		return fmt.Errorf("inference checkpoint manager not initialized")
+	}
+	
+	// Convert the state to InferenceState if possible
+	inferenceState, ok := state.(*InferenceState)
+	if !ok {
+		// Try to extract InferenceState fields from generic state
+		// This is a fallback for when the state is passed as interface{}
+		return fmt.Errorf("invalid state type for checkpoint")
+	}
+	
+	return eftm.inferenceCheckpoint.CreateInferenceCheckpoint(ctx, sessionID, inferenceState)
+}
+
+// RestoreFromInferenceCheckpoint restores inference state from a checkpoint
+func (eftm *EnhancedFaultToleranceManager) RestoreFromInferenceCheckpoint(ctx context.Context, sessionID, checkpointID string) error {
+	if eftm.inferenceCheckpoint == nil {
+		return fmt.Errorf("inference checkpoint manager not initialized")
+	}
+	
+	_, err := eftm.inferenceCheckpoint.RestoreInferenceFromCheckpoint(ctx, checkpointID)
+	return err
+}
+
+// HandleInferenceFailure handles a failure during inference
+func (eftm *EnhancedFaultToleranceManager) HandleInferenceFailure(ctx context.Context, sessionID, nodeID, errorMsg string) error {
+	if eftm.inferenceFaultTolerance == nil {
+		return fmt.Errorf("inference fault tolerance coordinator not initialized")
+	}
+	
+	failure := FailureInformation{
+		Type:      "node_failure",
+		NodeID:    nodeID,
+		Timestamp: time.Now(),
+		ErrorMessage: errorMsg,
+		Severity:  "high",
+	}
+	
+	return eftm.inferenceFaultTolerance.HandleInferenceFailure(ctx, sessionID, failure)
+}
+
+// TriggerDynamicRepartitioning triggers dynamic repartitioning after a failure
+func (eftm *EnhancedFaultToleranceManager) TriggerDynamicRepartitioning(ctx context.Context, failedNodeID, sessionID string) error {
+	if eftm.dynamicRepartitioning == nil {
+		return fmt.Errorf("dynamic repartitioning manager not initialized")
+	}
+	
+	return eftm.dynamicRepartitioning.TriggerEmergencyRepartitioning(ctx, failedNodeID, sessionID)
+}
+
+// ApplyGracefulDegradation applies graceful degradation to maintain service
+func (eftm *EnhancedFaultToleranceManager) ApplyGracefulDegradation(ctx context.Context, sessionID string, constraints map[string]interface{}) error {
+	if eftm.gracefulDegradation == nil {
+		return fmt.Errorf("graceful degradation manager not initialized")
+	}
+	
+	return eftm.gracefulDegradation.ApplyDegradation(ctx, sessionID, constraints)
+}
+
+// Ensure EnhancedFaultToleranceManager implements InferenceFT interface
+var _ InferenceFT = (*EnhancedFaultToleranceManager)(nil)

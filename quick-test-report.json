@@ -1,0 +1,21 @@
+{
+  "timestamp": "2025-09-11T10:24:59.909Z",
+  "totalIssues": 14,
+  "issues": [
+    "Console Error: Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "Console Error: Failed to load nodes: SyntaxError: Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON",
+    "Console Error: Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "Console Error: Error loading detailed nodes: SyntaxError: Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON",
+    "Console Error: Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "Console Error: Error loading models: SyntaxError: Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON",
+    "Console Error: Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "Console Error: Error loading models: SyntaxError: Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON",
+    "Console Error: Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "Console Error: Error loading detailed nodes: SyntaxError: Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON",
+    "Console Error: Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "Console Error: Error loading models: SyntaxError: Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON",
+    "Console Error: Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "Console Error: Error loading models: SyntaxError: Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON"
+  ],
+  "status": "ISSUES_FOUND"
+}

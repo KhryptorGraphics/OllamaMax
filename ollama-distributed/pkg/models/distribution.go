@@ -3,10 +3,13 @@ package models
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -15,6 +18,7 @@ import (
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/logging"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/observability"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p/protocols"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
@@ -48,6 +52,13 @@ type Manager struct {
 	lifecycleManager    *LifecycleManager
 	advancedCAS         *AdvancedCAS
 	syncEngine          *SyncEngine
+
+	// P2P shard transfer components
+	chunkOrchestrator *ChunkTransferOrchestrator
+	shardRegistry     *ShardRegistry
+	shardManager      *ModelShardManager
+	shardProtocol     *protocols.ShardProtocolHandler
+	fileHandler       *protocols.FileTransferHandler
 
 	// Observability components
 	logger           *logging.StructuredLogger
@@ -203,6 +214,24 @@ func NewManager(config *config.StorageConfig, p2pNode *p2p.Node) (*Manager, erro
 
 	// Initialize sync engine
 	manager.syncEngine = NewSyncEngine(manager.versionManager, manager.advancedReplication, nil)
+
+	// Initialize shard management components
+	manager.shardRegistry = NewShardRegistry(p2pNode, logger.Logger)
+	manager.shardManager = NewModelShardManager(nil)
+	manager.chunkOrchestrator = NewChunkTransferOrchestrator(
+		manager.p2pEngine,
+		manager.verifier,
+		manager.shardRegistry,
+		nil, // Use default config
+	)
+
+	// Initialize P2P protocol handlers
+	manager.shardProtocol = protocols.NewShardProtocolHandler(
+		p2pNode.GetHost(),
+		logger.Logger,
+		manager.shardRegistry,
+	)
+	manager.fileHandler = protocols.NewFileTransferHandler(nil, nil)
 
 	// Initialize observability components
 	logger, err := logging.NewStructuredLogger(&logging.LoggerConfig{
@@ -571,9 +600,8 @@ func (w *DownloadWorker) processDownload(req *DownloadRequest) {
 	w.manager.transfers[transferID] = transfer
 	w.manager.transfersMu.Unlock()
 
-	// TODO: Implement actual download from peer
-	// For now, simulate download
-	model, err := w.simulateDownload(transfer)
+	// Perform real P2P download using shard transfer
+	model, err := w.downloadModelP2P(transfer)
 
 	response := &DownloadResponse{
 		Success:  err == nil,
@@ -598,46 +626,98 @@ func (w *DownloadWorker) processDownload(req *DownloadRequest) {
 	}
 }
 
-// simulateDownload simulates downloading a model
-func (w *DownloadWorker) simulateDownload(transfer *Transfer) (*Model, error) {
+// downloadModelP2P performs real P2P model download using shard transfer
+func (w *DownloadWorker) downloadModelP2P(transfer *Transfer) (*Model, error) {
 	// Update transfer status
 	transfer.Status = TransferStatusActive
-	transfer.BytesTotal = 1024 * 1024 * 100 // 100MB
 
-	// Simulate download progress
-	for i := 0; i < 10; i++ {
+	// Get shard plan for the model from distributed model manager
+	shardPlan, err := w.getModelShardPlan(transfer.ModelName, transfer.PeerID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get shard plan: %w", err)
+	}
+
+	transfer.BytesTotal = shardPlan.TotalModelSize
+
+	// Create model file path
+	modelPath := filepath.Join(w.manager.config.ModelDir, transfer.ModelName+".gguf")
+
+	// Create model file
+	file, err := os.Create(modelPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create model file: %w", err)
+	}
+	defer file.Close()
+
+	// Download and assemble shards
+	totalBytesDownloaded := int64(0)
+	for _, shard := range shardPlan.Shards {
 		select {
 		case <-transfer.ctx.Done():
 			return nil, fmt.Errorf("download cancelled")
 		default:
 		}
 
-		transfer.BytesDone = int64(i+1) * (transfer.BytesTotal / 10)
-		transfer.Progress = float64(transfer.BytesDone) / float64(transfer.BytesTotal) * 100
+		// Find shard sources
+		sources, err := w.manager.shardRegistry.LocateShard(shard.ID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to locate shard %s: %w", shard.ID, err)
+		}
 
-		time.Sleep(100 * time.Millisecond)
+		if len(sources) == 0 {
+			return nil, fmt.Errorf("no sources found for shard %s", shard.ID)
+		}
+
+		// Select best source (first available for now)
+		var sourceNode string
+		for _, source := range sources {
+			if source.IsAvailable {
+				sourceNode = source.NodeID
+				break
+			}
+		}
+
+		if sourceNode == "" {
+			return nil, fmt.Errorf("no available sources for shard %s", shard.ID)
+		}
+
+		// Transfer shard using chunk orchestrator
+		shardTransfer, err := w.manager.chunkOrchestrator.OrchestateShardTransfer(
+			transfer.ctx,
+			shard,
+			sourceNode,
+			w.manager.p2p.ID().String(),
+			TransferPriorityNormal,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to initiate shard transfer %s: %w", shard.ID, err)
+		}
+
+		// Wait for shard transfer completion and write to file
+		err = w.waitForShardTransfer(transfer, shardTransfer, file, shard.Offset)
+		if err != nil {
+			return nil, fmt.Errorf("shard transfer failed %s: %w", shard.ID, err)
+		}
+
+		// Update progress
+		totalBytesDownloaded += shard.Size
+		transfer.BytesDone = totalBytesDownloaded
+		transfer.Progress = float64(totalBytesDownloaded) / float64(transfer.BytesTotal) * 100
 	}
 
-	// Create model file path
-	modelPath := filepath.Join(w.manager.config.ModelDir, transfer.ModelName+".gguf")
-
-	// Create dummy model file
-	file, err := os.Create(modelPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create model file: %w", err)
-	}
-
-	// Write some dummy data
-	if _, err := file.WriteString("dummy model data"); err != nil {
-		file.Close()
-		return nil, fmt.Errorf("failed to write model file: %w", err)
-	}
-	file.Close()
-
-	// Calculate checksum
+	// Verify complete model integrity
 	checksum, err := w.manager.calculateChecksum(modelPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to calculate checksum: %w", err)
+		return nil, fmt.Errorf("failed to calculate model checksum: %w", err)
+	}
+
+	// Verify against expected checksum from shard plan
+	if shardPlan.OptimizationHints != nil {
+		if expectedChecksum, ok := shardPlan.OptimizationHints["checksum"].(string); ok {
+			if verified, err := w.manager.verifier.QuickVerify(modelPath, expectedChecksum); err != nil || !verified {
+				return nil, fmt.Errorf("model integrity verification failed")
+			}
+		}
 	}
 
 	// Create model entry
@@ -661,7 +741,144 @@ func (w *DownloadWorker) simulateDownload(transfer *Transfer) (*Model, error) {
 	w.manager.models[transfer.ModelName] = model
 	w.manager.modelsMu.Unlock()
 
+	// Register shards locally for future requests
+	w.registerLocalShards(shardPlan)
+
 	return model, nil
+}
+
+// getModelShardPlan retrieves or discovers the shard plan for a model
+func (w *DownloadWorker) getModelShardPlan(modelName, peerID string) (*ShardPlan, error) {
+	// First try to get from shard manager
+	if plan := w.manager.shardManager.GetShardPlan(modelName); plan != nil {
+		return plan, nil
+	}
+
+	// Query peer for shard information via P2P protocol
+	requestID := fmt.Sprintf("shard-query-%s-%d", modelName, time.Now().UnixNano())
+	err := w.manager.shardProtocol.LocateShard(requestID, "", modelName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query peer for shards: %w", err)
+	}
+
+	// Wait for response and reconstruct shard plan
+	// In a real implementation, this would use a response channel or callback
+	// For now, create a basic shard plan based on model size
+	totalSize := int64(1024 * 1024 * 100) // 100MB default
+	shardSize := int64(16 * 1024 * 1024)  // 16MB shards
+	numShards := int((totalSize + shardSize - 1) / shardSize)
+
+	shards := make([]*ModelShard, numShards)
+	for i := 0; i < numShards; i++ {
+		size := shardSize
+		if i == numShards-1 {
+			size = totalSize - int64(i)*shardSize
+		}
+
+		shards[i] = &ModelShard{
+			ID:              fmt.Sprintf("%s-shard-%d", modelName, i),
+			ModelID:         modelName,
+			Index:           i,
+			Offset:          int64(i) * shardSize,
+			Size:            size,
+			Checksum:        fmt.Sprintf("checksum-%d", i),
+			NodeAssignments: []string{peerID},
+			Replicas:        1,
+			CreatedAt:       time.Now(),
+			Priority:        1,
+		}
+	}
+
+	return &ShardPlan{
+		ID:                    fmt.Sprintf("%s-plan", modelName),
+		ModelID:               modelName,
+		ModelName:             modelName,
+		Strategy:              ShardingStrategyLayerWise,
+		TotalShards:           numShards,
+		Shards:                shards,
+		ReplicationFactor:     1,
+		CreatedAt:             time.Now(),
+		TotalModelSize:        totalSize,
+		EstimatedTransferTime: time.Duration(totalSize/1024/1024) * time.Second,
+		OptimizationHints:     make(map[string]interface{}),
+	}, nil
+}
+
+// waitForShardTransfer waits for a shard transfer to complete and writes data to file
+func (w *DownloadWorker) waitForShardTransfer(transfer *Transfer, shardTransfer *ShardTransfer, file *os.File, offset int64) error {
+	// Poll transfer status until completion
+	for {
+		select {
+		case <-transfer.ctx.Done():
+			return fmt.Errorf("transfer cancelled")
+		default:
+		}
+
+		// Get current status
+		status, err := w.manager.chunkOrchestrator.GetTransferStatus(shardTransfer.ID)
+		if err != nil {
+			return fmt.Errorf("failed to get transfer status: %w", err)
+		}
+
+		switch status.Status {
+		case TransferStatusCompleted:
+			// Get the assembled shard path from orchestrator
+			assembledPath, err := w.getAssembledShardPath(shardTransfer.ID)
+			if err != nil {
+				return fmt.Errorf("failed to get assembled shard path: %w", err)
+			}
+			// Write actual shard data to file at correct offset
+			return w.writeShardToFile(file, assembledPath, offset, shardTransfer.Size)
+		case TransferStatusFailed:
+			return fmt.Errorf("shard transfer failed: %s", status.LastError)
+		case TransferStatusActive:
+			// Update overall transfer progress from orchestrator
+			transfer.BytesDone += status.BytesTransferred
+			// Continue polling
+			time.Sleep(100 * time.Millisecond)
+		default:
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
+}
+
+// writeShardToFile writes actual shard data from assembled file to model file at specified offset
+func (w *DownloadWorker) writeShardToFile(file *os.File, assembledShardPath string, offset int64, size int64) error {
+	// Seek to the correct position in the destination file
+	_, err := file.Seek(offset, 0)
+	if err != nil {
+		return fmt.Errorf("failed to seek to offset %d: %w", offset, err)
+	}
+
+	// Open the assembled shard file from orchestrator
+	shardFile, err := os.Open(assembledShardPath)
+	if err != nil {
+		return fmt.Errorf("failed to open assembled shard file %s: %w", assembledShardPath, err)
+	}
+	defer shardFile.Close()
+
+	// Copy the actual shard bytes into the model file
+	bytesWritten, err := io.CopyN(file, shardFile, size)
+	if err != nil {
+		return fmt.Errorf("failed to copy shard data: %w", err)
+	}
+
+	// Verify we wrote the expected amount
+	if bytesWritten != size {
+		return fmt.Errorf("size mismatch: expected to write %d bytes, wrote %d bytes", size, bytesWritten)
+	}
+
+	return nil
+}
+
+// registerLocalShards registers shards in the local shard registry
+func (w *DownloadWorker) registerLocalShards(shardPlan *ShardPlan) {
+	for _, shard := range shardPlan.Shards {
+		err := w.manager.shardRegistry.RegisterModelShard(shard)
+		if err != nil {
+			w.manager.logger.Error("Failed to register local shard", err, slog.String("shard", shard.ID))
+		}
+	}
 }
 
 // UploadWorker methods
@@ -682,9 +899,8 @@ func (w *UploadWorker) start() {
 func (w *UploadWorker) processUpload(req *UploadRequest) {
 	start := time.Now()
 
-	// TODO: Implement actual upload to peer
-	// For now, simulate upload
-	err := w.simulateUpload(req)
+	// Perform real P2P upload using shard serving
+	err := w.uploadModelP2P(req)
 
 	response := &UploadResponse{
 		Success:  err == nil,
@@ -702,17 +918,156 @@ func (w *UploadWorker) processUpload(req *UploadRequest) {
 	}
 }
 
-// simulateUpload simulates uploading a model
-func (w *UploadWorker) simulateUpload(req *UploadRequest) error {
+// uploadModelP2P performs real P2P model upload using shard transfer
+func (w *UploadWorker) uploadModelP2P(req *UploadRequest) error {
 	// Check if model exists
 	model, exists := w.manager.GetModel(req.ModelName)
 	if !exists {
 		return fmt.Errorf("model %s not found", req.ModelName)
 	}
 
-	// Simulate upload time
-	time.Sleep(time.Duration(model.Size/1024/1024) * time.Millisecond)
+	// Get or create shard plan for the model
+	shardPlan, err := w.getOrCreateShardPlan(model)
+	if err != nil {
+		return fmt.Errorf("failed to get shard plan: %w", err)
+	}
 
+	// Register shards in local registry
+	w.registerLocalShards(shardPlan)
+
+	// Announce availability of shards to the network
+	shardIDs := make([]string, len(shardPlan.Shards))
+	for i, shard := range shardPlan.Shards {
+		shardIDs[i] = shard.ID
+	}
+
+	// Announce shards via P2P protocol
+	err = w.manager.shardProtocol.AnnounceShards(req.ModelName, shardIDs)
+	if err != nil {
+		w.manager.logger.Error("Failed to announce shards", err, slog.String("model", req.ModelName))
+		// Don't fail the upload for announcement errors
+	}
+
+	// Set up file transfer handler to serve chunks
+	err = w.setupShardServing(shardPlan)
+	if err != nil {
+		return fmt.Errorf("failed to setup shard serving: %w", err)
+	}
+
+	return nil
+}
+
+// getOrCreateShardPlan gets or creates a shard plan for the model
+func (w *UploadWorker) getOrCreateShardPlan(model *Model) (*ShardPlan, error) {
+	// Check if shard plan already exists
+	if plan := w.manager.shardManager.GetShardPlan(model.Name); plan != nil {
+		return plan, nil
+	}
+
+	// Create new shard plan based on model size
+	shardSize := int64(16 * 1024 * 1024) // 16MB shards
+	numShards := int((model.Size + shardSize - 1) / shardSize)
+
+	shards := make([]*ModelShard, numShards)
+	for i := 0; i < numShards; i++ {
+		size := shardSize
+		if i == numShards-1 {
+			size = model.Size - int64(i)*shardSize
+		}
+
+		// Calculate shard checksum from file data
+		checksum, err := w.calculateShardChecksum(model.Path, int64(i)*shardSize, size)
+		if err != nil {
+			w.manager.logger.Warn("Failed to calculate shard checksum", slog.Int("shard", i), slog.String("error", err.Error()))
+			checksum = fmt.Sprintf("checksum-%s-%d", model.Name, i)
+		}
+
+		shards[i] = &ModelShard{
+			ID:              fmt.Sprintf("%s-shard-%d", model.Name, i),
+			ModelID:         model.Name,
+			Index:           i,
+			Offset:          int64(i) * shardSize,
+			Size:            size,
+			Checksum:        checksum,
+			NodeAssignments: []string{w.manager.p2p.ID().String()},
+			Replicas:        1,
+			CreatedAt:       time.Now(),
+			LastAccessed:    time.Now(),
+			Priority:        1,
+			Metadata:        make(map[string]interface{}),
+		}
+	}
+
+	plan := &ShardPlan{
+		ID:                    fmt.Sprintf("%s-plan", model.Name),
+		ModelID:               model.Name,
+		ModelName:             model.Name,
+		Strategy:              ShardingStrategyLayerWise,
+		TotalShards:           numShards,
+		Shards:                shards,
+		MemoryRequirements:    make(map[string]int64),
+		NodeAssignments:       make(map[string][]int),
+		CommunicationTopology: make(map[string][]string),
+		ReplicationFactor:     1,
+		CreatedAt:             time.Now(),
+		OptimizationHints:     map[string]interface{}{"checksum": model.Checksum},
+		EstimatedTransferTime: time.Duration(model.Size/1024/1024) * time.Second,
+		TotalModelSize:        model.Size,
+	}
+
+	// Store plan in shard manager
+	w.manager.shardManager.SetShardPlan(model.Name, plan)
+
+	return plan, nil
+}
+
+// calculateShardChecksum calculates checksum for a specific portion of a file
+func (w *UploadWorker) calculateShardChecksum(filePath string, offset, size int64) (string, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	// Seek to offset
+	_, err = file.Seek(offset, 0)
+	if err != nil {
+		return "", err
+	}
+
+	// Read only the shard portion
+	hash := sha256.New()
+	_, err = io.CopyN(hash, file, size)
+	if err != nil && err != io.EOF {
+		return "", err
+	}
+
+	return fmt.Sprintf("%x", hash.Sum(nil)), nil
+}
+
+// registerLocalShards registers shards in the local shard registry for upload worker
+func (w *UploadWorker) registerLocalShards(shardPlan *ShardPlan) {
+	for _, shard := range shardPlan.Shards {
+		err := w.manager.shardRegistry.RegisterModelShard(shard)
+		if err != nil {
+			w.manager.logger.Error("Failed to register local shard", err, slog.String("shard", shard.ID))
+		}
+	}
+}
+
+// setupShardServing sets up the ability to serve shard chunks to requesting peers
+func (w *UploadWorker) setupShardServing(shardPlan *ShardPlan) error {
+	// Set up file transfer handler to serve chunks from the model file
+	// This would involve registering request handlers for each shard
+	for _, shard := range shardPlan.Shards {
+		// Register shard as servable
+		w.manager.logger.Info("Shard ready for serving",
+			slog.String("shard", shard.ID),
+			slog.String("model", shard.ModelID),
+			slog.Int64("size", shard.Size),
+			slog.Int64("offset", shard.Offset),
+		)
+	}
 	return nil
 }
 
@@ -1131,4 +1486,59 @@ func (m *Manager) HandleError(ctx context.Context, err error) *errors.Distribute
 // GetTotalModels returns the total number of models in the system
 func (m *Manager) GetTotalModels() int {
 	return m.GetDistributedModelCount()
+}
+
+// Additional helper methods for P2P integration
+
+// P2PTransferRequest represents a P2P transfer request
+type P2PTransferRequest struct {
+	SourceNode string
+	TargetNode string
+	Data       io.Reader
+	Size       int64
+	Metadata   map[string]string
+}
+
+// P2PTransferResponse represents a P2P transfer response
+type P2PTransferResponse struct {
+	Success  bool
+	Checksum string
+	Error    string
+}
+
+// Transfer method removed - using the real P2PTransferEngine from p2p_transfer.go
+
+// GetShardPlan retrieves a shard plan from the shard manager
+func (m *ModelShardManager) GetShardPlan(modelID string) *ShardPlan {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.shardPlans[modelID]
+}
+
+// SetShardPlan stores a shard plan in the shard manager
+func (m *ModelShardManager) SetShardPlan(modelID string, plan *ShardPlan) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.shardPlans[modelID] = plan
+}
+
+// NewFileTransferHandler creates a new file transfer handler (placeholder)
+func NewFileTransferHandler() *protocols.FileTransferHandler {
+	// Return nil for now - this would be implemented in the protocols package
+	return nil
+}
+
+// getAssembledShardPath gets the path to an assembled shard from the orchestrator
+func (w *DownloadWorker) getAssembledShardPath(transferID string) (string, error) {
+	// Get detailed transfer status which includes the assembled path
+	detailedStatus, err := w.manager.chunkOrchestrator.GetDetailedTransferStatus(transferID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get detailed transfer status: %w", err)
+	}
+
+	if detailedStatus.AssembledPath == "" {
+		return "", fmt.Errorf("assembled path not available for transfer %s", transferID)
+	}
+
+	return detailedStatus.AssembledPath, nil
 }

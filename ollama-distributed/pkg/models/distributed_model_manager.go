@@ -9,6 +9,8 @@ import (
 
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/internal/config"
 	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p/protocols"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/scheduler/partitioning"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
@@ -21,13 +23,21 @@ type DistributedModelManager struct {
 	casStore           *ContentAddressedStore
 	deltaTracker       *DeltaTracker
 
+	// Advanced components for large-scale model distribution
+	shardManager         *ModelShardManager
+	memoryDistributor    *MemoryAwareDistributor
+	transferOrchestrator *ChunkTransferOrchestrator
+	shardRegistry        *ShardRegistry
+	modelLoader          *ShardedModelLoader
+	p2pTransferEngine    *P2PTransferEngine
+	integrityVerifier    *IntegrityVerifier
+	versionManager       *BasicVersionManager
+	shardProtocolHandler *protocols.ShardProtocolHandler
+
 	// Configuration
 	config *config.DistributedConfig
 	p2p    *p2p.Node
 	logger *slog.Logger
-
-	// Ollama integration
-	// ollamaServer removed - using distributed architecture
 
 	// Distributed model registry
 	registry      *DistributedRegistry
@@ -38,7 +48,8 @@ type DistributedModelManager struct {
 	lifecycleMutex sync.RWMutex
 
 	// Performance monitoring
-	monitor *PerformanceMonitor
+	monitor     *PerformanceMonitor
+	distMonitor *DistributedModelPerformanceMonitor
 
 	// Context management
 	ctx     context.Context
@@ -319,10 +330,10 @@ const (
 type AlertSeverity string
 
 const (
-	SeverityInfo     AlertSeverity = "info"
-	SeverityWarning  AlertSeverity = "warning"
-	SeverityError    AlertSeverity = "error"
-	SeverityCritical AlertSeverity = "critical"
+	AlertSeverityInfo     AlertSeverity = "info"
+	AlertSeverityWarning  AlertSeverity = "warning"
+	AlertSeverityError    AlertSeverity = "error"
+	AlertSeverityCritical AlertSeverity = "critical"
 )
 
 // NewDistributedModelManager creates a new distributed model manager
@@ -363,17 +374,112 @@ func NewDistributedModelManager(
 		return nil, fmt.Errorf("failed to create delta tracker: %w", err)
 	}
 
+	// Initialize advanced components
+	shardingConfig := DefaultShardingConfig()
+	shardManager := NewModelShardManager(shardingConfig)
+
+	distributorConfig := DefaultDistributorConfig()
+	memoryDistributor := NewMemoryAwareDistributor(distributorConfig)
+
+	// Create LocalFileStore for shard storage
+	localFileStore := protocols.NewLocalFileStore(config.Storage.BasePath + "/shards")
+
+	// Initialize P2P file transfer client for real remote transfers with LocalFileStore
+	p2pClient, err := protocols.NewFileTransferClient(p2pNode.Host(), localFileStore, 5*time.Minute)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create P2P client: %w", err)
+	}
+
+	// Register a real FileTransferHandler on the host with LocalFileStore
+	fileHandler := protocols.NewFileTransferHandler(localFileStore, protocols.DefaultFileTransferConfig())
+	p2pNode.Host().SetStreamHandler(protocols.FileTransferProtocol, fileHandler.HandleStream)
+
+	// Initialize P2P transfer engine with real FileTransferClient
+	transferConfig := &TransferConfig{
+		ChunkSize:           1024 * 1024, // 1MB chunks
+		MaxConcurrentChunks: 10,
+		RetryAttempts:       3,
+		TransferTimeout:     5 * time.Minute,
+		VerificationTimeout: 30 * time.Second,
+		EnableCompression:   true,
+		EnableEncryption:    false,
+		CacheChunks:         true,
+		MaxCacheSize:        100 * 1024 * 1024, // 100MB cache
+		StorageDir:          config.Storage.BasePath + "/chunks",
+	}
+	p2pTransferEngine := NewP2PTransferEngine(transferConfig, p2pClient)
+
+	// Initialize integrity verifier
+	verificationConfig := &VerificationConfig{
+		HashAlgorithms: []HashAlgorithm{HashAlgorithmSHA256, HashAlgorithmSHA512},
+		EnableCaching:  true,
+		CacheTimeout:   10 * time.Minute,
+		MaxCacheSize:   1000,
+		BufferSize:     8192,
+	}
+	integrityVerifier := NewIntegrityVerifier(verificationConfig)
+
+	// Initialize version manager
+	versionConfig := &VersionConfig{
+		StoragePath:       config.Storage.BasePath,
+		MaxVersions:       10,
+		RetentionPeriod:   30 * 24 * time.Hour,
+		EnableAutoCleanup: true,
+		CleanupInterval:   24 * time.Hour,
+	}
+	versionManager := NewBasicVersionManager(versionConfig)
+
+	// Initialize shard registry
+	shardRegistry := NewShardRegistry(p2pNode, logger)
+
+	// Initialize chunk transfer orchestrator
+	orchestratorConfig := DefaultOrchestratorConfig()
+	transferOrchestrator := NewChunkTransferOrchestrator(
+		p2pTransferEngine,
+		integrityVerifier,
+		shardRegistry,
+		orchestratorConfig,
+	)
+
+	// Wire FileTransferClient to orchestrator for real P2P chunk streaming
+	transferOrchestrator.SetFileTransferClient(p2pClient)
+
+	// Initialize sharded model loader with P2P client for real remote transfers
+	modelLoader := NewShardedModelLoader(
+		shardRegistry,
+		shardManager,
+		p2pClient,
+		p2pNode.ID().String(), // Use actual peer ID from p2pNode
+		logger,
+	)
+
+	// Initialize distributed performance monitor
+	distMonitor := NewDistributedModelPerformanceMonitor(logger)
+
+	// Initialize shard protocol handler for P2P shard announcements
+	shardProtocolHandler := protocols.NewShardProtocolHandler(p2pNode.Host(), logger, shardRegistry)
+
 	dmm := &DistributedModelManager{
-		localManager:       localManager,
-		syncManager:        syncManager,
-		replicationManager: replicationManager,
-		casStore:           casStore,
-		deltaTracker:       deltaTracker,
-		config:             config,
-		p2p:                p2pNode,
-		logger:             logger,
-		ctx:                ctx,
-		cancel:             cancel,
+		localManager:         localManager,
+		syncManager:          syncManager,
+		replicationManager:   replicationManager,
+		casStore:             casStore,
+		deltaTracker:         deltaTracker,
+		shardManager:         shardManager,
+		memoryDistributor:    memoryDistributor,
+		transferOrchestrator: transferOrchestrator,
+		shardRegistry:        shardRegistry,
+		modelLoader:          modelLoader,
+		p2pTransferEngine:    p2pTransferEngine,
+		integrityVerifier:    integrityVerifier,
+		versionManager:       versionManager,
+		shardProtocolHandler: shardProtocolHandler,
+		config:               config,
+		p2p:                  p2pNode,
+		logger:               logger,
+		ctx:                  ctx,
+		cancel:               cancel,
+		distMonitor:          distMonitor,
 	}
 
 	// Initialize registry
@@ -407,6 +513,9 @@ func NewDistributedModelManager(
 		broadcastInterval: 30 * time.Second,
 		discoveryTimeout:  10 * time.Second,
 	}
+
+	// Wire orchestrator to model loader for remote shard loading
+	modelLoader.SetOrchestrator(transferOrchestrator)
 
 	return dmm, nil
 }
@@ -515,12 +624,68 @@ func (dmm *DistributedModelManager) GetModel(modelName string) (*DistributedMode
 	return dmm.discoverAndFetchModel(modelName)
 }
 
-// AddModel adds a model to the distributed system
+// AddModel adds a model to the distributed system with optional sharding for large models
 func (dmm *DistributedModelManager) AddModel(modelName, modelPath string) (*DistributedModel, error) {
 	// Create model version
 	version, err := dmm.syncManager.CreateModelVersion(modelName, modelPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create model version: %w", err)
+	}
+
+	// Check if model needs sharding (>10GB)
+	var shardPlan *ShardPlan
+	if version.Size > 10*1024*1024*1024 { // 10GB threshold
+		// Get node capabilities
+		nodeCapabilities := dmm.getNodeCapabilities()
+
+		// Create shard plan
+		shardPlan, err = dmm.shardManager.CreateShardPlan(
+			modelName,
+			modelPath,
+			version.Size,
+			nodeCapabilities,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create shard plan: %w", err)
+		}
+
+		// Validate shard plan
+		if err := dmm.shardManager.ValidateShardPlan(shardPlan); err != nil {
+			return nil, fmt.Errorf("shard plan validation failed: %w", err)
+		}
+
+		// Create distribution plan
+		modelAnalysis := &partitioning.ModelAnalysis{
+			ModelName:     modelName,
+			ParameterSize: version.Size / 1000000000, // Convert to billions of parameters (approximate)
+			MemoryReqs:    &partitioning.MemoryRequirements{TotalRequired: version.Size},
+		}
+
+		distPlan, err := dmm.memoryDistributor.CalculateDistributionPlan(
+			modelAnalysis,
+			shardPlan,
+			nodeCapabilities,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create distribution plan: %w", err)
+		}
+
+		// Validate memory requirements
+		if err := dmm.memoryDistributor.ValidateMemoryRequirements(distPlan); err != nil {
+			return nil, fmt.Errorf("memory validation failed: %w", err)
+		}
+
+		// Execute shard distribution
+		if err := dmm.executeShardDistribution(shardPlan, distPlan); err != nil {
+			return nil, fmt.Errorf("shard distribution failed: %w", err)
+		}
+
+		// Register shards in the registry
+		for _, shard := range shardPlan.Shards {
+			if err := dmm.shardRegistry.RegisterModelShard(shard); err != nil {
+				dmm.logger.Warn("failed to register shard", "shard", shard.ID, "error", err)
+			}
+		}
 	}
 
 	// Create distributed model
@@ -541,6 +706,13 @@ func (dmm *DistributedModelManager) AddModel(modelName, modelPath string) (*Dist
 		AccessedAt:     time.Now(),
 		AccessCount:    0,
 		DownloadCount:  0,
+	}
+
+	// Store shard plan reference if created
+	if shardPlan != nil {
+		model.Metadata["shard_plan_id"] = shardPlan.ID
+		model.Metadata["total_shards"] = shardPlan.TotalShards
+		model.Metadata["sharding_strategy"] = shardPlan.Strategy
 	}
 
 	// Add to registry
@@ -626,11 +798,337 @@ func (dmm *DistributedModelManager) discoverAndFetchModel(modelName string) (*Di
 	}
 }
 
-// downloadModelFromPeer downloads a model from a specific peer
+// downloadModelFromPeer downloads a model from a specific peer, handling sharded models
 func (dmm *DistributedModelManager) downloadModelFromPeer(modelName, peerID string) error {
-	// Use the local manager to download the model
-	_, err := dmm.localManager.DownloadModel(modelName, peerID)
+	// Check if model is sharded
+	shardPlan, err := dmm.shardManager.GetShardPlan(modelName)
+	if err == nil && shardPlan != nil {
+		// Model is sharded, use chunk transfer orchestrator
+		return dmm.downloadShardedModel(modelName, shardPlan, peerID)
+	}
+
+	// Use the local manager for non-sharded models
+	_, err = dmm.localManager.DownloadModel(modelName, peerID)
 	return err
+}
+
+// downloadShardedModel downloads a sharded model using the chunk transfer orchestrator
+func (dmm *DistributedModelManager) downloadShardedModel(modelName string, shardPlan *ShardPlan, peerID string) error {
+	ctx := context.Background()
+
+	// Transfer each shard
+	for _, shard := range shardPlan.Shards {
+		// Find source node for this shard
+		sourceNode := peerID
+		if len(shard.NodeAssignments) > 0 {
+			// Prefer assigned nodes
+			sourceNode = shard.NodeAssignments[0]
+		}
+
+		// Orchestrate shard transfer
+		transfer, err := dmm.transferOrchestrator.OrchestateShardTransfer(
+			ctx,
+			shard,
+			sourceNode,
+			dmm.p2p.ID().String(),
+			TransferPriorityNormal,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to transfer shard %s: %w", shard.ID, err)
+		}
+
+		// Wait for transfer completion
+		if err := dmm.waitForTransfer(transfer.ID); err != nil {
+			return fmt.Errorf("shard transfer %s failed: %w", transfer.ID, err)
+		}
+	}
+
+	// Load the assembled model
+	if err := dmm.modelLoader.LoadModel(modelName, shardPlan.Shards); err != nil {
+		return fmt.Errorf("failed to load assembled model: %w", err)
+	}
+
+	return nil
+}
+
+// ShardModel creates a sharded version of a large model
+func (dmm *DistributedModelManager) ShardModel(modelName, modelPath string, modelSize int64) (*ShardPlan, error) {
+	nodeCapabilities := dmm.getNodeCapabilities()
+	return dmm.shardManager.CreateShardPlan(modelName, modelPath, modelSize, nodeCapabilities)
+}
+
+// DistributeShards coordinates shard placement across nodes
+func (dmm *DistributedModelManager) DistributeShards(shardPlan *ShardPlan) error {
+	// Create model analysis
+	modelAnalysis := &partitioning.ModelAnalysis{
+		ModelName:     shardPlan.ModelID,
+		ParameterSize: shardPlan.TotalModelSize / 1000000000, // Convert to billions of parameters (approximate)
+		MemoryReqs:    &partitioning.MemoryRequirements{TotalRequired: shardPlan.TotalModelSize},
+	}
+
+	// Get node capabilities
+	nodeCapabilities := dmm.getNodeCapabilities()
+
+	// Create distribution plan
+	distPlan, err := dmm.memoryDistributor.CalculateDistributionPlan(
+		modelAnalysis,
+		shardPlan,
+		nodeCapabilities,
+	)
+	if err != nil {
+		return err
+	}
+
+	// Execute distribution
+	return dmm.executeShardDistribution(shardPlan, distPlan)
+}
+
+// AssembleModel reconstructs a model from its shards
+func (dmm *DistributedModelManager) AssembleModel(modelName string) error {
+	shardPlan, err := dmm.shardManager.GetShardPlan(modelName)
+	if err != nil {
+		return fmt.Errorf("shard plan not found: %w", err)
+	}
+
+	return dmm.modelLoader.LoadModel(modelName, shardPlan.Shards)
+}
+
+// ShardRegistry returns the shard registry
+func (dmm *DistributedModelManager) ShardRegistry() *ShardRegistry {
+	return dmm.shardRegistry
+}
+
+// ExecuteShardDistribution executes the distribution of shards (exported for inference engine)
+func (dmm *DistributedModelManager) ExecuteShardDistribution(shardPlan *ShardPlan, distPlan *DistributionPlan) error {
+	return dmm.executeShardDistribution(shardPlan, distPlan)
+}
+
+// executeShardDistribution executes the distribution of shards across nodes
+func (dmm *DistributedModelManager) executeShardDistribution(shardPlan *ShardPlan, distPlan *DistributionPlan) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+	defer cancel()
+
+	var wg sync.WaitGroup
+	var transferErrors []error
+	var errorMutex sync.Mutex
+
+	// Execute transfers for each shard assignment
+	for nodeID, shardIDs := range distPlan.ShardAssignments {
+		for _, shardID := range shardIDs {
+			// Find the shard
+			var targetShard *ModelShard
+			for _, shard := range shardPlan.Shards {
+				if shard.ID == shardID {
+					targetShard = shard
+					break
+				}
+			}
+
+			if targetShard == nil {
+				return fmt.Errorf("shard %s not found", shardID)
+			}
+
+			wg.Add(1)
+			go func(shard *ModelShard, targetNodeID, shardIdentifier string) {
+				defer wg.Done()
+
+				// Orchestrate transfer to target node
+				transfer, err := dmm.transferOrchestrator.OrchestateShardTransfer(
+					ctx,
+					shard,
+					dmm.p2p.ID().String(), // Source is local node
+					targetNodeID,
+					TransferPriorityNormal,
+				)
+				if err != nil {
+					dmm.logger.Error("failed to start shard transfer", "shard", shardIdentifier, "node", targetNodeID, "error", err)
+					errorMutex.Lock()
+					transferErrors = append(transferErrors, fmt.Errorf("failed to transfer shard %s to node %s: %w", shardIdentifier, targetNodeID, err))
+					errorMutex.Unlock()
+					return
+				}
+
+				// Wait for transfer completion
+				ticker := time.NewTicker(500 * time.Millisecond)
+				defer ticker.Stop()
+
+				for {
+					select {
+					case <-ctx.Done():
+						dmm.logger.Error("shard transfer timeout", "shard", shardIdentifier, "node", targetNodeID)
+						errorMutex.Lock()
+						transferErrors = append(transferErrors, fmt.Errorf("timeout transferring shard %s to node %s", shardIdentifier, targetNodeID))
+						errorMutex.Unlock()
+						return
+					case <-ticker.C:
+						status, err := dmm.transferOrchestrator.GetTransferStatus(transfer.ID)
+						if err != nil {
+							continue // Retry on status check error
+						}
+
+						switch status.Status {
+						case TransferStatusCompleted:
+							// Transfer successful - update registry
+							assembledPath := dmm.transferOrchestrator.GetAssembledShardPath(shardIdentifier)
+
+							// Build shard location for target node
+							targetPeerID, err := peer.Decode(targetNodeID)
+							if err != nil {
+								dmm.logger.Warn("failed to decode target peer ID", "node", targetNodeID, "error", err)
+								targetPeerID = peer.ID("")
+							}
+
+							location := protocols.ShardNodeLocation{
+								NodeID:      targetNodeID,
+								PeerID:      targetPeerID,
+								IsAvailable: true,
+								IsLoaded:    true,
+								IsLocal:     targetNodeID == dmm.p2p.ID().String(),
+								StoragePath: assembledPath,
+								LastSeen:    time.Now(),
+							}
+
+							// Register shard in registry for target node
+							err = dmm.shardRegistry.RegisterShard(shardIdentifier, shard.ModelID, location)
+							if err != nil {
+								dmm.logger.Warn("failed to register shard in registry", "shard", shardIdentifier, "node", targetNodeID, "error", err)
+							}
+
+							// Update shard status
+							statusMsg := protocols.ShardStatusMessage{
+								ShardID:      shardIdentifier,
+								ModelName:    shard.ModelID,
+								NodeID:       targetNodeID,
+								IsAvailable:  true,
+								IsLoaded:     true,
+								StoragePath:  assembledPath,
+								Size:         shard.Size,
+								Checksum:     shard.Checksum,
+								LastAccessed: time.Now(),
+							}
+
+							err = dmm.shardRegistry.UpdateShardStatus(shardIdentifier, statusMsg)
+							if err != nil {
+								dmm.logger.Warn("failed to update shard status", "shard", shardIdentifier, "node", targetNodeID, "error", err)
+							}
+
+							// Broadcast shard availability
+							dmm.broadcastShardAvailability(shardIdentifier, targetNodeID)
+
+							dmm.logger.Info("shard transfer completed successfully",
+								"shard", shardIdentifier,
+								"node", targetNodeID,
+								"transfer_id", transfer.ID)
+							return
+
+						case TransferStatusFailed:
+							dmm.logger.Error("shard transfer failed", "shard", shardIdentifier, "node", targetNodeID, "error", status.LastError)
+							errorMutex.Lock()
+							transferErrors = append(transferErrors, fmt.Errorf("transfer failed for shard %s to node %s: %s", shardIdentifier, targetNodeID, status.LastError))
+							errorMutex.Unlock()
+							return
+
+						case TransferStatusCancelled:
+							dmm.logger.Warn("shard transfer cancelled", "shard", shardIdentifier, "node", targetNodeID)
+							return
+						}
+					}
+				}
+			}(targetShard, nodeID, shardID)
+		}
+	}
+
+	// Wait for all transfers to complete
+	wg.Wait()
+
+	// Check if all transfers succeeded
+	if len(transferErrors) > 0 {
+		// Log all errors
+		for _, err := range transferErrors {
+			dmm.logger.Error("shard distribution error", "error", err)
+		}
+		return fmt.Errorf("shard distribution completed with %d errors", len(transferErrors))
+	}
+
+	// Verify all shards are properly registered
+	for nodeID, shardIDs := range distPlan.ShardAssignments {
+		for _, shardID := range shardIDs {
+			locations, err := dmm.shardRegistry.LocateShard(shardID)
+			if err != nil || len(locations) == 0 {
+				dmm.logger.Warn("shard not found in registry after distribution", "shard", shardID, "node", nodeID)
+			}
+		}
+	}
+
+	return nil
+}
+
+// getNodeCapabilities retrieves capabilities of all nodes in the cluster
+func (dmm *DistributedModelManager) getNodeCapabilities() []*NodeCapabilities {
+	peerIDs := dmm.p2p.GetConnectedPeers()
+	capabilities := make([]*NodeCapabilities, 0, len(peerIDs)+1)
+
+	// Add local node capabilities
+	localCap := &NodeCapabilities{
+		NodeID:            dmm.p2p.ID().String(),
+		AvailableMemory:   32 * 1024 * 1024 * 1024, // 32GB default
+		TotalMemory:       64 * 1024 * 1024 * 1024, // 64GB default
+		GPUMemory:         16 * 1024 * 1024 * 1024, // 16GB default
+		CPUCores:          16,
+		GPUCount:          1,
+		NetworkBandwidth:  1000 * 1024 * 1024 / 8,    // 1Gbps
+		StorageCapacity:   1024 * 1024 * 1024 * 1024, // 1TB
+		ComputeCapability: 8.6,                       // Default CUDA capability
+		IsHealthy:         true,
+	}
+	capabilities = append(capabilities, localCap)
+
+	// Add peer capabilities (would query peers in real implementation)
+	for _, peerID := range peerIDs {
+		peerCap := &NodeCapabilities{
+			NodeID:            peerID.String(),
+			AvailableMemory:   16 * 1024 * 1024 * 1024, // 16GB default
+			TotalMemory:       32 * 1024 * 1024 * 1024, // 32GB default
+			GPUMemory:         8 * 1024 * 1024 * 1024,  // 8GB default
+			CPUCores:          8,
+			GPUCount:          1,
+			NetworkBandwidth:  100 * 1024 * 1024 / 8,    // 100Mbps
+			StorageCapacity:   500 * 1024 * 1024 * 1024, // 500GB
+			ComputeCapability: 7.5,
+			IsHealthy:         true,
+		}
+		capabilities = append(capabilities, peerCap)
+	}
+
+	return capabilities
+}
+
+// waitForTransfer waits for a transfer to complete
+func (dmm *DistributedModelManager) waitForTransfer(transferID string) error {
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	timeout := time.After(30 * time.Minute)
+
+	for {
+		select {
+		case <-ticker.C:
+			transfer, err := dmm.transferOrchestrator.GetTransferStatus(transferID)
+			if err != nil {
+				return err
+			}
+
+			switch transfer.Status {
+			case TransferStatusCompleted:
+				return nil
+			case TransferStatusFailed:
+				return fmt.Errorf("transfer failed: %s", transfer.LastError)
+			}
+
+		case <-timeout:
+			return fmt.Errorf("transfer timeout")
+		}
+	}
 }
 
 // emitLifecycleEvent emits a lifecycle event
@@ -696,6 +1194,10 @@ func (dmm *DistributedModelManager) registrySyncRoutine() {
 
 // syncRegistry synchronizes the registry with peers
 func (dmm *DistributedModelManager) syncRegistry() {
+	// First, synchronize shard registry with P2P protocol
+	dmm.syncShardRegistry()
+
+	// Then, synchronize model registry with peers
 	// Get connected peers
 	peerIDs := dmm.p2p.GetConnectedPeers()
 	if len(peerIDs) == 0 {
@@ -1248,4 +1750,144 @@ func (dw *DiscoveryWorker) matchesCriteria(model *DistributedModel, criteria map
 		}
 	}
 	return true
+}
+
+// GetShardPlan retrieves the shard plan for a model
+func (dmm *DistributedModelManager) GetShardPlan(modelName string) (*ShardPlan, error) {
+	if dmm.shardManager == nil {
+		return nil, fmt.Errorf("shard manager not initialized")
+	}
+	return dmm.shardManager.GetShardPlan(modelName)
+}
+
+// LoadShardOnDemand loads a specific shard on demand
+func (dmm *DistributedModelManager) LoadShardOnDemand(modelName string, shardIndex int) error {
+	if dmm.modelLoader == nil {
+		return fmt.Errorf("model loader not initialized")
+	}
+	return dmm.modelLoader.LoadShardOnDemand(modelName, shardIndex)
+}
+
+// broadcastShardAvailability broadcasts shard availability to the network
+func (dmm *DistributedModelManager) broadcastShardAvailability(shardID, nodeID string) {
+	if dmm.p2p == nil || dmm.shardProtocolHandler == nil {
+		return
+	}
+
+	// Get the model name for this shard from registry
+	modelName := ""
+	locations, err := dmm.shardRegistry.LocateShard(shardID)
+	if err == nil && len(locations) > 0 {
+		// Try to extract model name from shard metadata
+		// For now, use a placeholder - in a full implementation,
+		// the shard registry would store model associations
+		modelName = "unknown"
+	}
+
+	// Create shard status message for the protocol
+	status := protocols.ShardStatusMessage{
+		ShardID:      shardID,
+		ModelName:    modelName,
+		NodeID:       nodeID,
+		IsAvailable:  true,
+		IsLoaded:     true,
+		StoragePath:  "", // Will be filled by the receiving node
+		Size:         0,  // Will be filled by the receiving node
+		Checksum:     "", // Will be filled by the receiving node
+		LastAccessed: time.Now(),
+	}
+
+	// Update shard status in registry first
+	err = dmm.shardRegistry.UpdateShardStatus(shardID, status)
+	if err != nil {
+		dmm.logger.Warn("failed to update shard status in registry",
+			"shard", shardID,
+			"error", err)
+	}
+
+	// Announce the shard via the protocol handler
+	err = dmm.shardProtocolHandler.AnnounceShards(modelName, []string{shardID})
+	if err != nil {
+		dmm.logger.Error("failed to announce shard availability",
+			"shard", shardID,
+			"model", modelName,
+			"error", err)
+	} else {
+		dmm.logger.Info("successfully announced shard availability",
+			"shard", shardID,
+			"node", nodeID,
+			"model", modelName)
+	}
+}
+
+// announceAllLocalShards announces all locally available shards to the network
+func (dmm *DistributedModelManager) announceAllLocalShards() {
+	if dmm.shardProtocolHandler == nil || dmm.shardRegistry == nil {
+		return
+	}
+
+	// Get all local shards from the registry
+	localShards, err := dmm.shardRegistry.GetLocalShards()
+	if err != nil {
+		dmm.logger.Warn("failed to get local shards for announcement", "error", err)
+		return
+	}
+
+	if len(localShards) == 0 {
+		dmm.logger.Debug("no local shards to announce")
+		return
+	}
+
+	// Group shards by model for efficient announcement
+	shardsByModel := make(map[string][]string)
+	for _, shardID := range localShards {
+		// Get model name for this shard
+		locations, err := dmm.shardRegistry.LocateShard(shardID)
+		if err != nil {
+			continue
+		}
+
+		// Find the local location to get model info
+		modelName := "unknown"
+		for _, loc := range locations {
+			if loc.IsLocal {
+				// In a full implementation, model name would be stored with location
+				// For now, we'll use a placeholder
+				modelName = "unknown"
+				break
+			}
+		}
+
+		if _, exists := shardsByModel[modelName]; !exists {
+			shardsByModel[modelName] = make([]string, 0)
+		}
+		shardsByModel[modelName] = append(shardsByModel[modelName], shardID)
+	}
+
+	// Announce each model's shards
+	for modelName, shardIDs := range shardsByModel {
+		err := dmm.shardProtocolHandler.AnnounceShards(modelName, shardIDs)
+		if err != nil {
+			dmm.logger.Error("failed to announce model shards",
+				"model", modelName,
+				"shard_count", len(shardIDs),
+				"error", err)
+		} else {
+			dmm.logger.Info("announced model shards",
+				"model", modelName,
+				"shard_count", len(shardIDs))
+		}
+	}
+}
+
+// syncShardRegistry synchronizes the shard registry with the network
+func (dmm *DistributedModelManager) syncShardRegistry() {
+	// Announce all local shards to keep the network updated
+	dmm.announceAllLocalShards()
+
+	// The registry synchronization is handled by the protocol handler
+	// which automatically processes incoming announcements and updates
+	// the registry with remote shard information
+
+	dmm.logger.Debug("shard registry synchronization completed")
 }

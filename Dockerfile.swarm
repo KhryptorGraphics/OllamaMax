@@ -1,0 +1,61 @@
+# Dockerfile for Swarm Intelligence Workers
+FROM node:20-alpine
+
+# Install dependencies
+RUN apk add --no-cache \
+    python3 \
+    py3-pip \
+    g++ \
+    make \
+    cmake \
+    git
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install Node dependencies
+RUN npm install --omit=dev
+
+# Copy application code
+COPY src/swarm/ ./src/swarm/
+COPY src/enterprise/ ./src/enterprise/
+COPY bin/ ./bin/
+COPY config/ ./config/
+
+# Create necessary directories
+RUN mkdir -p /app/memory /app/logs /app/data
+
+# Create healthcheck script
+RUN echo '#!/usr/bin/env node\n\
+const http = require("http");\n\
+const options = {\n\
+  hostname: "localhost",\n\
+  port: process.env.HEALTH_PORT || 8080,\n\
+  path: "/health",\n\
+  timeout: 2000,\n\
+};\n\
+const req = http.request(options, (res) => {\n\
+  process.exit(res.statusCode === 200 ? 0 : 1);\n\
+});\n\
+req.on("error", () => process.exit(1));\n\
+req.end();' > healthcheck.js
+
+# Create startup script
+RUN echo '#!/bin/sh\n\
+echo "Starting Swarm Worker..."\n\
+node src/swarm/worker.js' > start.sh && chmod +x start.sh
+
+# Non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+
+# Change ownership
+RUN chown -R nodejs:nodejs /app
+
+USER nodejs
+
+EXPOSE 8080
+
+CMD ["./start.sh"]

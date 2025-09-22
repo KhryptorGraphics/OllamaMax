@@ -1,0 +1,768 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ollamamax-ml
+  labels:
+    name: ollamamax-ml
+
+---
+# Agent Selection Model Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent-selection-model
+  namespace: ollamamax-ml
+  labels:
+    app: agent-selection-model
+    component: ml-pipeline
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: agent-selection-model
+  template:
+    metadata:
+      labels:
+        app: agent-selection-model
+    spec:
+      containers:
+      - name: agent-selection-model
+        image: node:18-alpine
+        ports:
+        - containerPort: 8081
+        env:
+        - name: REDIS_NODE_1
+          value: "redis-cluster-0.redis-cluster-service.ollamamax-redis"
+        - name: REDIS_NODE_2
+          value: "redis-cluster-1.redis-cluster-service.ollamamax-redis"
+        - name: REDIS_NODE_3
+          value: "redis-cluster-2.redis-cluster-service.ollamamax-redis"
+        - name: REDIS_PASSWORD
+          value: "ollama_redis_pass"
+        - name: MODEL_PORT
+          value: "8081"
+        - name: N_ESTIMATORS
+          value: "200"
+        - name: MAX_DEPTH
+          value: "15"
+        command: ["/bin/sh"]
+        args:
+        - -c
+        - |
+          cd /app
+          npm install ioredis express cors ml-random-forest
+          node src/ml/agent-selection-model.js
+        volumeMounts:
+        - name: app-code
+          mountPath: /app
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1"
+        livenessProbe:
+          exec:
+            command: ["node", "-e", "process.exit(0)"]
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          exec:
+            command: ["node", "-e", "process.exit(0)"]
+          initialDelaySeconds: 30
+          periodSeconds: 10
+      volumes:
+      - name: app-code
+        configMap:
+          name: ml-pipeline-code
+
+---
+# Predictive Scaling System Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: predictive-scaling-system
+  namespace: ollamamax-ml
+  labels:
+    app: predictive-scaling-system
+    component: ml-pipeline
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: predictive-scaling-system
+  template:
+    metadata:
+      labels:
+        app: predictive-scaling-system
+    spec:
+      containers:
+      - name: predictive-scaling-system
+        image: node:18-alpine
+        ports:
+        - containerPort: 8082
+        env:
+        - name: REDIS_NODE_1
+          value: "redis-cluster-0.redis-cluster-service.ollamamax-redis"
+        - name: REDIS_NODE_2
+          value: "redis-cluster-1.redis-cluster-service.ollamamax-redis"
+        - name: REDIS_NODE_3
+          value: "redis-cluster-2.redis-cluster-service.ollamamax-redis"
+        - name: REDIS_PASSWORD
+          value: "ollama_redis_pass"
+        - name: SEQUENCE_LENGTH
+          value: "120"
+        - name: PREDICTION_HORIZON
+          value: "30"
+        - name: BATCH_SIZE
+          value: "64"
+        - name: EPOCHS
+          value: "150"
+        command: ["/bin/sh"]
+        args:
+        - -c
+        - |
+          cd /app
+          npm install ioredis @tensorflow/tfjs-node express cors
+          node src/ml/predictive-scaling.js
+        volumeMounts:
+        - name: app-code
+          mountPath: /app
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1"
+          limits:
+            memory: "4Gi"
+            cpu: "2"
+        livenessProbe:
+          exec:
+            command: ["node", "-e", "process.exit(0)"]
+          initialDelaySeconds: 120
+          periodSeconds: 60
+        readinessProbe:
+          exec:
+            command: ["node", "-e", "process.exit(0)"]
+          initialDelaySeconds: 60
+          periodSeconds: 30
+      volumes:
+      - name: app-code
+        configMap:
+          name: ml-pipeline-code
+
+---
+# A/B Testing Framework Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ab-testing-framework
+  namespace: ollamamax-ml
+  labels:
+    app: ab-testing-framework
+    component: ml-pipeline
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ab-testing-framework
+  template:
+    metadata:
+      labels:
+        app: ab-testing-framework
+    spec:
+      containers:
+      - name: ab-testing-framework
+        image: node:18-alpine
+        ports:
+        - containerPort: 8083
+        env:
+        - name: REDIS_NODE_1
+          value: "redis-cluster-0.redis-cluster-service.ollamamax-redis"
+        - name: REDIS_NODE_2
+          value: "redis-cluster-1.redis-cluster-service.ollamamax-redis"
+        - name: REDIS_NODE_3
+          value: "redis-cluster-2.redis-cluster-service.ollamamax-redis"
+        - name: REDIS_PASSWORD
+          value: "ollama_redis_pass"
+        - name: TEST_DURATION
+          value: "604800000" # 7 days
+        - name: MIN_SAMPLE_SIZE
+          value: "200"
+        - name: SIGNIFICANCE_LEVEL
+          value: "0.05"
+        command: ["/bin/sh"]
+        args:
+        - -c
+        - |
+          cd /app
+          npm install ioredis express cors
+          # Create simple HTTP server for A/B testing
+          cat > server.js << 'EOF'
+          const ABTestingFramework = require('./src/ml/ab-testing-framework');
+          const express = require('express');
+          const cors = require('cors');
+          
+          const app = express();
+          app.use(cors());
+          app.use(express.json());
+          
+          const framework = new ABTestingFramework();
+          
+          app.get('/health', (req, res) => {
+            res.json({ status: 'healthy', timestamp: Date.now() });
+          });
+          
+          app.get('/tests', async (req, res) => {
+            try {
+              const tests = await framework.getActiveTests();
+              res.json(tests);
+            } catch (error) {
+              res.status(500).json({ error: error.message });
+            }
+          });
+          
+          app.post('/assign/:testId', async (req, res) => {
+            try {
+              const { testId } = req.params;
+              const { taskId, userId } = req.body;
+              const assignment = await framework.assignVariant(testId, taskId, userId);
+              res.json(assignment);
+            } catch (error) {
+              res.status(500).json({ error: error.message });
+            }
+          });
+          
+          app.post('/results/:testId', async (req, res) => {
+            try {
+              const { testId } = req.params;
+              const { taskId, metrics } = req.body;
+              await framework.recordResult(testId, taskId, metrics);
+              res.json({ success: true });
+            } catch (error) {
+              res.status(500).json({ error: error.message });
+            }
+          });
+          
+          const port = process.env.AB_PORT || 8083;
+          app.listen(port, () => {
+            console.log(`A/B Testing API listening on port ${port}`);
+          });
+          EOF
+          node server.js
+        volumeMounts:
+        - name: app-code
+          mountPath: /app
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8083
+          initialDelaySeconds: 30
+          periodSeconds: 15
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8083
+          initialDelaySeconds: 15
+          periodSeconds: 10
+      volumes:
+      - name: app-code
+        configMap:
+          name: ml-pipeline-code
+
+---
+# Feature Store Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: feature-store
+  namespace: ollamamax-ml
+  labels:
+    app: feature-store
+    component: ml-pipeline
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: feature-store
+  template:
+    metadata:
+      labels:
+        app: feature-store
+    spec:
+      containers:
+      - name: feature-store
+        image: node:18-alpine
+        ports:
+        - containerPort: 8084
+        env:
+        - name: REDIS_NODE_1
+          value: "redis-cluster-0.redis-cluster-service.ollamamax-redis"
+        - name: REDIS_NODE_2
+          value: "redis-cluster-1.redis-cluster-service.ollamamax-redis"
+        - name: REDIS_NODE_3
+          value: "redis-cluster-2.redis-cluster-service.ollamamax-redis"
+        - name: REDIS_PASSWORD
+          value: "ollama_redis_pass"
+        - name: FEATURE_TTL
+          value: "86400" # 24 hours
+        - name: BATCH_UPDATE_INTERVAL
+          value: "300000" # 5 minutes
+        command: ["/bin/sh"]
+        args:
+        - -c
+        - |
+          cd /app
+          npm install ioredis express cors
+          # Create Feature Store API server
+          cat > server.js << 'EOF'
+          const FeatureStore = require('./src/ml/feature-store');
+          const express = require('express');
+          const cors = require('cors');
+          
+          const app = express();
+          app.use(cors());
+          app.use(express.json());
+          
+          const featureStore = new FeatureStore();
+          
+          app.get('/health', (req, res) => {
+            res.json({ status: 'healthy', timestamp: Date.now() });
+          });
+          
+          app.get('/features/:featureName/:entityId', async (req, res) => {
+            try {
+              const { featureName, entityId } = req.params;
+              const context = req.query;
+              const feature = await featureStore.computeFeature(featureName, entityId, context);
+              res.json(feature);
+            } catch (error) {
+              res.status(500).json({ error: error.message });
+            }
+          });
+          
+          app.get('/feature-groups/:groupName/:entityId', async (req, res) => {
+            try {
+              const { groupName, entityId } = req.params;
+              const context = req.query;
+              const features = await featureStore.getFeatureGroup(groupName, entityId, context);
+              res.json(features);
+            } catch (error) {
+              res.status(500).json({ error: error.message });
+            }
+          });
+          
+          app.get('/stats', async (req, res) => {
+            try {
+              const stats = await featureStore.getFeatureStats();
+              res.json(stats);
+            } catch (error) {
+              res.status(500).json({ error: error.message });
+            }
+          });
+          
+          const port = process.env.FEATURE_PORT || 8084;
+          app.listen(port, () => {
+            console.log(`Feature Store API listening on port ${port}`);
+          });
+          EOF
+          node server.js
+        volumeMounts:
+        - name: app-code
+          mountPath: /app
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8084
+          initialDelaySeconds: 30
+          periodSeconds: 15
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8084
+          initialDelaySeconds: 15
+          periodSeconds: 10
+      volumes:
+      - name: app-code
+        configMap:
+          name: ml-pipeline-code
+
+---
+# ML Training Orchestrator Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ml-training-orchestrator
+  namespace: ollamamax-ml
+  labels:
+    app: ml-training-orchestrator
+    component: ml-pipeline
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ml-training-orchestrator
+  template:
+    metadata:
+      labels:
+        app: ml-training-orchestrator
+    spec:
+      containers:
+      - name: ml-training-orchestrator
+        image: node:18-alpine
+        ports:
+        - containerPort: 8085
+        env:
+        - name: REDIS_NODE_1
+          value: "redis-cluster-0.redis-cluster-service.ollamamax-redis"
+        - name: REDIS_NODE_2
+          value: "redis-cluster-1.redis-cluster-service.ollamamax-redis"
+        - name: REDIS_NODE_3
+          value: "redis-cluster-2.redis-cluster-service.ollamamax-redis"
+        - name: REDIS_PASSWORD
+          value: "ollama_redis_pass"
+        - name: MIN_DATA_POINTS
+          value: "1000"
+        - name: MAX_TRAINING_TIME
+          value: "1800000" # 30 minutes
+        - name: ACCURACY_THRESHOLD
+          value: "0.75"
+        command: ["/bin/sh"]
+        args:
+        - -c
+        - |
+          cd /app
+          npm install ioredis express cors ml-random-forest @tensorflow/tfjs-node
+          node src/ml/training-orchestrator.js
+        volumeMounts:
+        - name: app-code
+          mountPath: /app
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1"
+          limits:
+            memory: "4Gi"
+            cpu: "2"
+        livenessProbe:
+          exec:
+            command: ["node", "-e", "process.exit(0)"]
+          initialDelaySeconds: 120
+          periodSeconds: 60
+        readinessProbe:
+          exec:
+            command: ["node", "-e", "process.exit(0)"]
+          initialDelaySeconds: 60
+          periodSeconds: 30
+      volumes:
+      - name: app-code
+        configMap:
+          name: ml-pipeline-code
+
+---
+# Predictive Scaling Engine Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: predictive-scaling-engine
+  namespace: ollamamax-ml
+  labels:
+    app: predictive-scaling-engine
+    component: ml-pipeline
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: predictive-scaling-engine
+  template:
+    metadata:
+      labels:
+        app: predictive-scaling-engine
+    spec:
+      containers:
+      - name: predictive-scaling-engine
+        image: node:18-alpine
+        ports:
+        - containerPort: 8086
+        env:
+        - name: REDIS_NODE_1
+          value: "redis-cluster-0.redis-cluster-service.ollamamax-redis"
+        - name: REDIS_NODE_2
+          value: "redis-cluster-1.redis-cluster-service.ollamamax-redis"
+        - name: REDIS_NODE_3
+          value: "redis-cluster-2.redis-cluster-service.ollamamax-redis"
+        - name: REDIS_PASSWORD
+          value: "ollama_redis_pass"
+        - name: DECISION_INTERVAL
+          value: "30000" # 30 seconds
+        - name: SCALING_COOLDOWN
+          value: "300000" # 5 minutes
+        - name: MIN_AGENTS
+          value: "3"
+        - name: MAX_AGENTS
+          value: "50"
+        command: ["/bin/sh"]
+        args:
+        - -c
+        - |
+          cd /app
+          npm install ioredis express cors ml-random-forest @tensorflow/tfjs-node
+          # Create Scaling Engine API server
+          cat > server.js << 'EOF'
+          const PredictiveScalingEngine = require('./src/ml/scaling-engine');
+          const express = require('express');
+          const cors = require('cors');
+          
+          const app = express();
+          app.use(cors());
+          app.use(express.json());
+          
+          const engine = new PredictiveScalingEngine();
+          
+          app.get('/health', (req, res) => {
+            res.json({ status: 'healthy', timestamp: Date.now() });
+          });
+          
+          app.get('/status', async (req, res) => {
+            try {
+              const status = await engine.getEngineStatus();
+              res.json(status);
+            } catch (error) {
+              res.status(500).json({ error: error.message });
+            }
+          });
+          
+          const port = process.env.ENGINE_PORT || 8086;
+          app.listen(port, () => {
+            console.log(`Predictive Scaling Engine API listening on port ${port}`);
+          });
+          EOF
+          node server.js
+        volumeMounts:
+        - name: app-code
+          mountPath: /app
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8086
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8086
+          initialDelaySeconds: 30
+          periodSeconds: 15
+      volumes:
+      - name: app-code
+        configMap:
+          name: ml-pipeline-code
+
+---
+# Services for ML Pipeline Components
+
+# Agent Selection Model Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: agent-selection-model-service
+  namespace: ollamamax-ml
+  labels:
+    app: agent-selection-model
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8081
+    targetPort: 8081
+    protocol: TCP
+    name: http
+  selector:
+    app: agent-selection-model
+
+---
+# Predictive Scaling System Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: predictive-scaling-system-service
+  namespace: ollamamax-ml
+  labels:
+    app: predictive-scaling-system
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8082
+    targetPort: 8082
+    protocol: TCP
+    name: http
+  selector:
+    app: predictive-scaling-system
+
+---
+# A/B Testing Framework Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: ab-testing-framework-service
+  namespace: ollamamax-ml
+  labels:
+    app: ab-testing-framework
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8083
+    targetPort: 8083
+    protocol: TCP
+    name: http
+  selector:
+    app: ab-testing-framework
+
+---
+# Feature Store Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: feature-store-service
+  namespace: ollamamax-ml
+  labels:
+    app: feature-store
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8084
+    targetPort: 8084
+    protocol: TCP
+    name: http
+  selector:
+    app: feature-store
+
+---
+# ML Training Orchestrator Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: ml-training-orchestrator-service
+  namespace: ollamamax-ml
+  labels:
+    app: ml-training-orchestrator
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8085
+    targetPort: 8085
+    protocol: TCP
+    name: http
+  selector:
+    app: ml-training-orchestrator
+
+---
+# Predictive Scaling Engine Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: predictive-scaling-engine-service
+  namespace: ollamamax-ml
+  labels:
+    app: predictive-scaling-engine
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8086
+    targetPort: 8086
+    protocol: TCP
+    name: http
+  selector:
+    app: predictive-scaling-engine
+
+---
+# ServiceMonitor for Prometheus scraping
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: ml-pipeline-metrics
+  namespace: ollamamax-ml
+  labels:
+    app: ml-pipeline
+spec:
+  selector:
+    matchLabels:
+      component: ml-pipeline
+  endpoints:
+  - port: http
+    path: /metrics
+    interval: 15s
+  - port: http
+    path: /health
+    interval: 30s
+
+---
+# Network Policy for ML Pipeline
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ml-pipeline-network-policy
+  namespace: ollamamax-ml
+spec:
+  podSelector:
+    matchLabels:
+      component: ml-pipeline
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ollamamax-monitoring
+    ports:
+    - protocol: TCP
+      port: 8081
+    - protocol: TCP
+      port: 8082
+    - protocol: TCP
+      port: 8083
+    - protocol: TCP
+      port: 8084
+    - protocol: TCP
+      port: 8085
+    - protocol: TCP
+      port: 8086
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ollamamax-redis
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: ollamamax-redis
+    ports:
+    - protocol: TCP
+      port: 6379
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 53
+    - protocol: UDP
+      port: 53

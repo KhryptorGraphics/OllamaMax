@@ -1,0 +1,93 @@
+# Production Performance Configuration for OllamaMax
+performance:
+  target_metrics:
+    ttfb: "<200ms"           # Time to First Byte
+    fcp: "<1s"               # First Contentful Paint
+    lcp: "<2.5s"             # Largest Contentful Paint
+    cls: "<0.1"              # Cumulative Layout Shift
+    fid: "<100ms"            # First Input Delay
+    response_time: "<500ms"   # API Response Time
+    throughput: ">1000rps"   # Requests per second
+    
+  optimization:
+    caching:
+      enabled: true
+      type: aggressive
+      layers:
+        - browser
+        - cdn
+        - application
+        - database
+      ttl:
+        static_assets: "1 year"
+        api_responses: "5 minutes"
+        database_queries: "1 hour"
+        
+    compression:
+      algorithm: brotli
+      level: maximum
+      types:
+        - text/html
+        - text/css
+        - text/javascript
+        - application/json
+        - application/xml
+        
+    minification:
+      enabled: true
+      targets:
+        - javascript
+        - css
+        - html
+        - json
+        
+    lazy_loading:
+      enabled: true
+      threshold: "50px"
+      
+    code_splitting:
+      type: dynamic
+      chunks: optimized
+      
+    tree_shaking:
+      enabled: true
+      aggressive: true
+      
+    bundle_analysis:
+      enabled: true
+      size_budget: "250kb"
+      
+    database_optimization:
+      indexing: optimized
+      query_optimization: automatic
+      connection_pooling: tuned
+      read_replicas: 3
+      write_scaling: horizontal
+      
+    connection_pooling:
+      min_connections: 10
+      max_connections: 100
+      idle_timeout: "5 minutes"
+      
+  monitoring:
+    real_user_monitoring: true
+    synthetic_monitoring: true
+    performance_budgets: enabled
+    alerting: comprehensive
+    
+  load_balancing:
+    algorithm: least_connections
+    health_checks: enabled
+    failover: automatic
+    
+  cdn:
+    enabled: true
+    provider: cloudflare
+    edge_locations: global
+    
+  image_optimization:
+    formats:
+      - webp
+      - avif
+    responsive: true
+    lazy_loading: true

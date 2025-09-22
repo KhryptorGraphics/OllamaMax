@@ -46,6 +46,12 @@ type DataHandler struct {
 	callbacks map[string]DataCallback
 }
 
+// TensorStreamHandler handles tensor streaming protocol messages
+type TensorStreamHandler struct {
+	nodeID    peer.ID
+	callbacks map[string]TensorStreamCallback
+}
+
 // Callback function types
 type ConsensusCallback func(ctx context.Context, msg *ConsensusMessage) error
 type SchedulerCallback func(ctx context.Context, msg *SchedulerMessage) error
@@ -53,6 +59,7 @@ type ModelCallback func(ctx context.Context, msg *ModelMessage) error
 type DiscoveryCallback func(ctx context.Context, msg *DiscoveryMessage) error
 type HealthCallback func(ctx context.Context, msg *HealthMessage) error
 type DataCallback func(ctx context.Context, msg *DataMessage) error
+type TensorStreamCallback func(ctx context.Context, msg *TensorStreamMessage) error
 
 // Message payload structures
 
@@ -128,6 +135,28 @@ type DataMessage struct {
 	Checksum    string          `json:"checksum"`
 	IsLast      bool            `json:"is_last"`
 	Compressed  bool            `json:"compressed"`
+}
+
+// TensorStreamMessage represents a tensor streaming protocol message
+type TensorStreamMessage struct {
+	Type         TensorStreamMessageType `json:"type"`
+	InferenceID  string                  `json:"inference_id"`
+	StreamID     string                  `json:"stream_id"`
+	PartitionID  string                  `json:"partition_id"`
+	ChunkIndex   int32                   `json:"chunk_index,omitempty"`
+	TotalChunks  int32                   `json:"total_chunks,omitempty"`
+	ChunkSize    int32                   `json:"chunk_size,omitempty"`
+	TensorShape  []int64                 `json:"tensor_shape,omitempty"`
+	DType        string                  `json:"dtype,omitempty"`
+	Compression  string                  `json:"compression,omitempty"`
+	Data         []byte                  `json:"data,omitempty"`
+	Checksum     string                  `json:"checksum,omitempty"`
+	Priority     int32                   `json:"priority,omitempty"`
+	Metadata     map[string]interface{}  `json:"metadata,omitempty"`
+	Error        string                  `json:"error,omitempty"`
+	SourcePeer   peer.ID                 `json:"source_peer"`
+	TargetPeer   peer.ID                 `json:"target_peer"`
+	Timestamp    time.Time               `json:"timestamp"`
 }
 
 // Supporting data structures
@@ -289,6 +318,19 @@ const (
 	DataTransferAck      DataMessageType = "transfer_ack"
 	DataTransferComplete DataMessageType = "transfer_complete"
 	DataTransferError    DataMessageType = "transfer_error"
+)
+
+type TensorStreamMessageType string
+
+const (
+	TensorStreamStart      TensorStreamMessageType = "tensor_stream_start"
+	TensorStreamChunk      TensorStreamMessageType = "tensor_stream_chunk"
+	TensorStreamComplete   TensorStreamMessageType = "tensor_stream_complete"
+	TensorStreamAck        TensorStreamMessageType = "tensor_stream_ack"
+	TensorStreamError      TensorStreamMessageType = "tensor_stream_error"
+	TensorStreamCancel     TensorStreamMessageType = "tensor_stream_cancel"
+	TensorStreamHeartbeat  TensorStreamMessageType = "tensor_stream_heartbeat"
+	TensorStreamStatus     TensorStreamMessageType = "tensor_stream_status"
 )
 
 type TaskStatus string
@@ -525,6 +567,40 @@ func (dh *DataHandler) RegisterCallback(msgType DataMessageType, callback DataCa
 	dh.callbacks[string(msgType)] = callback
 }
 
+// NewTensorStreamHandler creates a new tensor stream protocol handler
+func NewTensorStreamHandler(nodeID peer.ID) *TensorStreamHandler {
+	return &TensorStreamHandler{
+		nodeID:    nodeID,
+		callbacks: make(map[string]TensorStreamCallback),
+	}
+}
+
+func (tsh *TensorStreamHandler) HandleMessage(ctx context.Context, msg *Message) error {
+	var tensorMsg TensorStreamMessage
+	if err := json.Unmarshal(msg.Payload, &tensorMsg); err != nil {
+		return fmt.Errorf("failed to unmarshal tensor stream message: %w", err)
+	}
+
+	callback, exists := tsh.callbacks[string(tensorMsg.Type)]
+	if !exists {
+		return fmt.Errorf("no callback registered for tensor stream message type: %s", tensorMsg.Type)
+	}
+
+	return callback(ctx, &tensorMsg)
+}
+
+func (tsh *TensorStreamHandler) GetProtocol() protocol.ID {
+	return ProtocolTensorStream
+}
+
+func (tsh *TensorStreamHandler) GetMessageTypes() []MessageType {
+	return []MessageType{MessageTypeTensorStream}
+}
+
+func (tsh *TensorStreamHandler) RegisterCallback(msgType TensorStreamMessageType, callback TensorStreamCallback) {
+	tsh.callbacks[string(msgType)] = callback
+}
+
 // Helper functions for creating messages
 
 // CreateConsensusMessage creates a consensus message
@@ -656,5 +732,47 @@ func CreateDataMessage(msgType DataMessageType, source, dest peer.ID, payload *D
 		TTL:         120 * time.Second,
 		Priority:    PriorityNormal,
 		RequiresAck: true,
+	}, nil
+}
+
+// CreateTensorStreamMessage creates a tensor stream message
+func CreateTensorStreamMessage(msgType TensorStreamMessageType, source, dest peer.ID, payload *TensorStreamMessage) (*Message, error) {
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal tensor stream message: %w", err)
+	}
+
+	// Determine priority based on message type
+	priority := PriorityNormal
+	if msgType == TensorStreamStart || msgType == TensorStreamError {
+		priority = PriorityHigh
+	} else if msgType == TensorStreamChunk {
+		priority = PriorityHigh // High priority for data chunks
+	}
+
+	// Determine TTL based on message type
+	ttl := 60 * time.Second
+	if msgType == TensorStreamChunk {
+		ttl = 30 * time.Second // Shorter TTL for chunks
+	} else if msgType == TensorStreamHeartbeat {
+		ttl = 10 * time.Second // Very short TTL for heartbeats
+	}
+
+	return &Message{
+		ID:          generateMessageID(),
+		Type:        MessageTypeTensorStream,
+		Protocol:    ProtocolTensorStream,
+		Source:      source,
+		Destination: dest,
+		Payload:     data,
+		Headers: map[string]string{
+			"tensor_stream_type": string(msgType),
+			"inference_id":       payload.InferenceID,
+			"stream_id":          payload.StreamID,
+		},
+		Timestamp:   time.Now(),
+		TTL:         ttl,
+		Priority:    priority,
+		RequiresAck: msgType != TensorStreamHeartbeat && msgType != TensorStreamStatus,
 	}, nil
 }

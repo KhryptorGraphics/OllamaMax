@@ -1,66 +1,10 @@
 [
   {
-    "id": "cmd-memory-1757524533962",
-    "type": "memory",
+    "id": "cmd-hive-mind-1757582785934",
+    "type": "hive-mind",
     "success": true,
-    "duration": 21.100325999999995,
-    "timestamp": 1757524533983,
-    "metadata": {}
-  },
-  {
-    "id": "cmd-memory-1757524534067",
-    "type": "memory",
-    "success": true,
-    "duration": 15.543697000000066,
-    "timestamp": 1757524534084,
-    "metadata": {}
-  },
-  {
-    "id": "cmd-memory-1757524534092",
-    "type": "memory",
-    "success": true,
-    "duration": 12.46370300000001,
-    "timestamp": 1757524534105,
-    "metadata": {}
-  },
-  {
-    "id": "cmd-memory-1757524534220",
-    "type": "memory",
-    "success": true,
-    "duration": 10.780579999999873,
-    "timestamp": 1757524534231,
-    "metadata": {}
-  },
-  {
-    "id": "cmd-memory-1757524534325",
-    "type": "memory",
-    "success": true,
-    "duration": 15.633151000000225,
-    "timestamp": 1757524534341,
-    "metadata": {}
-  },
-  {
-    "id": "cmd-memory-1757524534340",
-    "type": "memory",
-    "success": true,
-    "duration": 17.93175199999996,
-    "timestamp": 1757524534358,
-    "metadata": {}
-  },
-  {
-    "id": "cmd-memory-1757524534407",
-    "type": "memory",
-    "success": true,
-    "duration": 8.884769000000006,
-    "timestamp": 1757524534416,
-    "metadata": {}
-  },
-  {
-    "id": "cmd-memory-1757524534713",
-    "type": "memory",
-    "success": true,
-    "duration": 18.06868099999997,
-    "timestamp": 1757524534731,
+    "duration": 49.67115000000001,
+    "timestamp": 1757582785984,
     "metadata": {}
   }
 ]

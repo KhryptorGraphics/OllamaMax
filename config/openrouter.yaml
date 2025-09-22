@@ -1,0 +1,138 @@
+# OpenRouter Configuration for OllamaMax
+# Integrates Sonoma Sky Alpha model through OpenRouter API
+
+openrouter:
+  enabled: true
+  api_key: "${OPENROUTER_API_KEY}"  # Set your API key in environment
+  base_url: "https://openrouter.ai/api/v1"
+  timeout: "300s"  # 5 minutes for large model responses
+  max_retries: 3
+  retry_delay: "2s"
+  
+  # Sonoma Sky Alpha model configuration
+  models:
+    sonoma-sky-alpha:
+      name: "alpindale/sonoma-sky-alpha"
+      display_name: "Sonoma Sky Alpha"
+      description: "Advanced reasoning model with superior performance"
+      max_tokens: 131072  # 128k context window
+      cost_per_token:
+        prompt: 0.000003  # $3 per 1M prompt tokens
+        completion: 0.000015  # $15 per 1M completion tokens
+      capabilities:
+        - "text-generation"
+        - "reasoning"
+        - "code-generation"
+        - "analysis"
+        - "conversation"
+      parameters:
+        temperature:
+          default: 0.7
+          min: 0.0
+          max: 2.0
+        top_p:
+          default: 0.9
+          min: 0.0
+          max: 1.0
+        top_k:
+          default: 40
+          min: 1
+          max: 100
+        frequency_penalty:
+          default: 0.0
+          min: -2.0
+          max: 2.0
+        presence_penalty:
+          default: 0.0
+          min: -2.0
+          max: 2.0
+      
+  # Load balancing and routing
+  routing:
+    strategy: "priority"  # priority, round-robin, least-loaded
+    fallback_models: ["openai/gpt-4o", "anthropic/claude-3.5-sonnet"]
+    health_check_interval: "60s"
+    
+  # Request settings
+  requests:
+    max_concurrent: 10
+    queue_size: 100
+    timeout_per_request: "300s"
+    rate_limit:
+      requests_per_minute: 60
+      burst_size: 10
+      
+  # Caching configuration
+  cache:
+    enabled: true
+    ttl: "1h"
+    max_size: "1GB"
+    
+  # Monitoring and metrics
+  monitoring:
+    enabled: true
+    log_requests: true
+    track_usage: true
+    cost_tracking: true
+    
+# Integration with OllamaMax distributed system
+integration:
+  # Register OpenRouter models in the distributed registry
+  register_models: true
+  
+  # Priority settings
+  priority:
+    sonoma-sky-alpha: 100  # Highest priority
+    
+  # Fallback configuration
+  fallback:
+    enabled: true
+    local_models: ["llama3.2:latest", "qwen2.5:latest"]
+    fallback_threshold: 0.9  # Fallback if OpenRouter load > 90%
+    
+  # Load balancing with local models
+  hybrid_routing:
+    enabled: true
+    openrouter_weight: 0.7  # 70% to OpenRouter
+    local_weight: 0.3       # 30% to local models
+    
+# Security settings
+security:
+  api_key_rotation:
+    enabled: false  # Manual rotation for now
+    interval: "30d"
+    
+  request_validation:
+    enabled: true
+    max_prompt_length: 100000
+    blocked_patterns: []
+    
+  audit:
+    enabled: true
+    log_file: "./logs/openrouter-audit.log"
+    
+# Development and testing
+development:
+  debug_mode: false
+  log_level: "info"
+  mock_responses: false
+  test_mode: false
+  
+# Environment-specific settings
+env:
+  production:
+    timeout: "300s"
+    max_retries: 3
+    rate_limit:
+      requests_per_minute: 60
+      
+  development:
+    timeout: "60s"
+    max_retries: 1
+    rate_limit:
+      requests_per_minute: 100
+      
+  testing:
+    timeout: "30s"
+    max_retries: 1
+    mock_responses: true

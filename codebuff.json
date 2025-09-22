@@ -1,0 +1,44 @@
+{
+  "description": "OllamaMax - Enterprise-Grade Distributed AI Model Platform with Codebuff Integration",
+  "maxAgentSteps": 25,
+  "baseAgent": "buffy",
+  "spawnableAgents": [
+    "codebuff/file-explorer@0.0.2",
+    "codebuff/file-picker@0.0.2", 
+    "codebuff/researcher@0.0.2",
+    "codebuff/thinker@0.0.2",
+    "codebuff/reviewer@0.0.5",
+    "codebuff/context-pruner@0.0.6",
+    "codebuff/agent-builder@0.0.2"
+  ],
+  "startupProcesses": [
+    {
+      "name": "api-server",
+      "command": "node api-server/server.js",
+      "cwd": "./",
+      "enabled": true,
+      "stdoutFile": "logs/api-server.log"
+    },
+    {
+      "name": "openrouter-health",
+      "command": "npm run openrouter:test",
+      "cwd": "./",
+      "enabled": false,
+      "stdoutFile": "logs/openrouter-health.log"
+    }
+  ],
+  "fileChangeHooks": [
+    {
+      "name": "lint",
+      "command": "npm run lint",
+      "filePattern": "**/*.{js,ts,go}",
+      "enabled": true
+    },
+    {
+      "name": "test",
+      "command": "npm run test:unit",
+      "filePattern": "**/*.test.{js,ts}",
+      "enabled": false
+    }
+  ]
+}

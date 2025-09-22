@@ -3,7 +3,9 @@
  * Optimized for performance measurement and monitoring
  */
 
-module.exports = {
+import { devices } from '@playwright/test';
+
+export default {
   testDir: './tests',
   testMatch: ['**/performance-*.test.js'],
   timeout: 60000, // Extended timeout for performance tests
@@ -44,7 +46,7 @@ module.exports = {
     {
       name: 'performance-chrome',
       use: { 
-        ...require('@playwright/test').devices['Desktop Chrome'],
+        ...devices['Desktop Chrome'],
         launchOptions: {
           args: [
             '--no-sandbox',
@@ -59,7 +61,7 @@ module.exports = {
     {
       name: 'performance-mobile',
       use: { 
-        ...require('@playwright/test').devices['iPhone 12'],
+        ...devices['iPhone 12'],
         launchOptions: {
           args: [
             '--no-sandbox',
@@ -92,9 +94,8 @@ module.exports = {
     }
   ],
   
-  // Global setup for performance testing
-  globalSetup: require.resolve('./tests/global-performance-setup.js'),
-  globalTeardown: require.resolve('./tests/global-performance-teardown.js'),
+  // Note: globalSetup and globalTeardown will be handled differently for ES modules
+  // We'll need to update these files to use ES module imports
   
   // Expect configuration for performance assertions
   expect: {

@@ -1,28 +1,45 @@
-# Modern Docker Compose configuration - version field is deprecated
+version: '3.8'
 
 services:
-  # Enhanced Distributed Inference API Server (Development)
-  distributed-api:
-    build:
+  # OllamaMax API Server - Development Configuration
+  ollamamax-api:
+    build: 
       context: .
-      dockerfile: Dockerfile.api
+      dockerfile: Dockerfile
     ports:
-      - "13100:13100"  # API and Web Interface port
+      - "13100:13100"
+      - "9229:9229"  # Node.js debug port
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=development
       - PORT=13100
+      - API_PORT=13100
+      - WEB_PORT=3000
+      - JWT_SECRET=dev_jwt_secret_not_for_production
+      - SQLITE_DB_PATH=/app/data/users.db
       - REDIS_HOST=redis
-      - REDIS_PORT=16379
-      - REDIS_PASSWORD=ollama_dev_pass
-      - OLLAMA_PRIMARY=http://host.docker.internal:13000
-      - OLLAMA_WORKER_2=http://host.docker.internal:13001
-      - OLLAMA_WORKER_3=http://host.docker.internal:13002
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=dev_redis_password
+      - SMTP_HOST=localhost
+      - SMTP_PORT=1025
+      - SMTP_USER=dev@example.com
+      - SMTP_PASSWORD=dev_password
+      - SMTP_FROM=dev@example.com
+      - DB_TYPE=sqlite
+      - DEBUG_MODE=true
+      - VERBOSE_LOGGING=true
+      - ENABLE_SWAGGER=true
     depends_on:
-      redis:
-        condition: service_healthy
-    # No volume mounts for simplified development deployment
+      - redis
+      - mailcatcher
+    volumes:
+      - ollama_data:/app/data
+      - ollama_logs:/app/logs
+      - ollama_uploads:/app/uploads
+      - ollama_models:/app/models
+      - ./api-server:/app/api-server  # Live reload
+      - ./web-interface:/app/web-interface  # Live reload
     networks:
-      - ollama_dev
+      - ollama_network
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:13100/api/health"]
@@ -30,49 +47,110 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    command: ["node", "--inspect=0.0.0.0:9229", "server.js"]
 
-  # Redis for distributed state management
+  # Web Interface - Development
+  ollamamax-web:
+    build: 
+      context: .
+      dockerfile: web.Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - API_BASE_URL=http://localhost:13100
+      - WEB_PORT=8080
+      - NODE_ENV=development
+    depends_on:
+      - ollamamax-api
+    volumes:
+      - ./web-interface:/app/web  # Live reload
+    networks:
+      - ollama_network
+    restart: unless-stopped
+
+  # Redis Cache - Development
   redis:
     image: redis:7-alpine
     ports:
-      - "16379:16379"  # Redis port for development
-    command: redis-server --port 16379 --appendonly yes --requirepass ollama_dev_pass
+      - "6379:6379"
+    command: redis-server --appendonly yes --requirepass dev_redis_password
     volumes:
-      - redis_dev_data:/data
+      - redis_data:/data
     networks:
-      - ollama_dev
+      - ollama_network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "redis-cli", "-p", "16379", "--raw", "incr", "ping"]
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
       interval: 10s
-      timeout: 5s
+      timeout: 3s
       retries: 5
 
-  # Lightweight model storage for development
-  minio:
-    image: minio/minio:latest
+  # MailCatcher for email testing
+  mailcatcher:
+    image: sj26/mailcatcher:latest
     ports:
-      - "19000:19000"  # MinIO API
-      - "19001:19001"  # MinIO Console
-    environment:
-      - MINIO_ROOT_USER=dev
-      - MINIO_ROOT_PASSWORD=dev_minio_pass
-    command: server /data --address ":19000" --console-address ":19001"
-    volumes:
-      - minio_dev_data:/data
+      - "1080:1080"   # Web interface
+      - "1025:1025"   # SMTP
     networks:
-      - ollama_dev
+      - ollama_network
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 30s
-      timeout: 20s
-      retries: 3
+
+  # Ollama Primary Node - Development
+  ollama-primary:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+      - OLLAMA_ORIGINS=*
+      - OLLAMA_DEBUG=1
+    volumes:
+      - ollama_models:/root/.ollama
+    networks:
+      - ollama_network
+    restart: unless-stopped
+
+  # Optional development tools
+  # Uncomment these services as needed for development
+
+  # Database Admin Tool
+  # adminer:
+  #   image: adminer:latest
+  #   ports:
+  #     - "8081:8080"
+  #   networks:
+  #     - ollama_network
+  #   restart: unless-stopped
+
+  # Redis Admin Tool
+  # redis-commander:
+  #   image: rediscommander/redis-commander:latest
+  #   ports:
+  #     - "8082:8081"
+  #   environment:
+  #     - REDIS_HOSTS=local:redis:6379:0:dev_redis_password
+  #   networks:
+  #     - ollama_network
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - redis
 
 volumes:
-  redis_dev_data:
-  minio_dev_data:
+  ollama_data:
+    driver: local
+  ollama_logs:
+    driver: local
+  ollama_uploads:
+    driver: local
+  ollama_models:
+    driver: local
+  redis_data:
+    driver: local
 
 networks:
-  ollama_dev:
+  ollama_network:
     driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.21.0.0/16

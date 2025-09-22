@@ -49,37 +49,31 @@ func main() {
 	// Test creating enhanced partition manager
 	fmt.Println("\nTesting enhanced partition manager...")
 
-	// Create base partition manager
-	baseConfig := &partitioning.Config{
-		DefaultStrategy: "layerwise",
-		LayerThreshold:  10,
-		BatchSizeLimit:  32,
-	}
-
-	baseManager := partitioning.NewPartitionManager(baseConfig)
-	if baseManager == nil {
-		fmt.Println("❌ Failed to create base partition manager")
+	// Create enhanced partition manager using factory function
+	enhancedManager := partitioning.NewEnhancedPartitionManager()
+	if enhancedManager == nil {
+		fmt.Println("❌ Failed to create enhanced partition manager")
 	} else {
-		fmt.Println("✅ Created base partition manager")
+		fmt.Println("✅ Created enhanced partition manager")
 
-		// Create enhanced partition manager
-		enhancedManager := partitioning.NewEnhancedPartitionManager(baseManager)
-		if enhancedManager == nil {
-			fmt.Println("❌ Failed to create enhanced partition manager")
+		// Test available strategies
+		strategies := enhancedManager.GetAvailableStrategies()
+		fmt.Printf("Available strategies: %v\n", strategies)
+
+		// Test strategy metrics
+		metrics := enhancedManager.GetStrategyMetrics()
+		fmt.Printf("Strategy metrics count: %d\n", len(metrics))
+
+		// Test selection history
+		history := enhancedManager.GetSelectionHistory()
+		fmt.Printf("Selection history length: %d\n", len(history))
+
+		// Test basic manager creation as well
+		basicManager := partitioning.NewBasicPartitionManager()
+		if basicManager == nil {
+			fmt.Println("❌ Failed to create basic partition manager")
 		} else {
-			fmt.Println("✅ Created enhanced partition manager")
-
-			// Test available strategies
-			strategies := enhancedManager.GetAvailableStrategies()
-			fmt.Printf("Available strategies: %v\n", strategies)
-
-			// Test strategy metrics
-			metrics := enhancedManager.GetStrategyMetrics()
-			fmt.Printf("Strategy metrics count: %d\n", len(metrics))
-
-			// Test selection history
-			history := enhancedManager.GetSelectionHistory()
-			fmt.Printf("Selection history length: %d\n", len(history))
+			fmt.Println("✅ Created basic partition manager for comparison")
 		}
 	}
 

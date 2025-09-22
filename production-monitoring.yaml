@@ -1,0 +1,164 @@
+# Production Monitoring Configuration for OllamaMax
+monitoring:
+  apm:
+    tool: datadog
+    sampling_rate: 1.0
+    trace_analytics: true
+    profiling: true
+    
+  metrics:
+    prometheus:
+      enabled: true
+      port: 9090
+      scrape_interval: 15s
+      retention: 15d
+      
+    custom_metrics:
+      - name: api_requests_total
+        type: counter
+        labels: [method, endpoint, status_code]
+        
+      - name: api_request_duration_seconds
+        type: histogram
+        labels: [method, endpoint]
+        buckets: [0.1, 0.25, 0.5, 1, 2.5, 5, 10]
+        
+      - name: active_connections
+        type: gauge
+        labels: [service]
+        
+      - name: queue_size
+        type: gauge
+        labels: [queue_name]
+        
+      - name: database_connections_active
+        type: gauge
+        labels: [database]
+        
+  logging:
+    elk_stack:
+      enabled: true
+      elasticsearch:
+        host: "elasticsearch:9200"
+        index_pattern: "ollamamax-logs-*"
+        retention: 30d
+        
+      logstash:
+        host: "logstash:5044"
+        
+      kibana:
+        host: "kibana:5601"
+        
+    log_level: info
+    structured: true
+    format: json
+    
+  tracing:
+    jaeger:
+      enabled: true
+      endpoint: "jaeger:14268"
+      sampling_rate: 0.1
+      
+  error_tracking:
+    sentry:
+      enabled: true
+      environment: production
+      release: auto
+      
+  uptime_monitoring:
+    pingdom:
+      enabled: true
+      check_interval: 60s
+      locations: [us-east, us-west, eu-west, asia-pacific]
+      
+  synthetic_monitoring:
+    enabled: true
+    scenarios:
+      - name: user_login_flow
+        frequency: 5m
+        locations: [us-east, eu-west]
+        
+      - name: api_health_check
+        frequency: 1m
+        locations: [us-east, us-west, eu-west]
+        
+      - name: model_inference_test
+        frequency: 10m
+        locations: [us-east, eu-west]
+        
+  real_user_monitoring:
+    enabled: true
+    sampling_rate: 0.1
+    performance_budgets:
+      - metric: largest_contentful_paint
+        threshold: 2500ms
+        
+      - metric: first_input_delay
+        threshold: 100ms
+        
+      - metric: cumulative_layout_shift
+        threshold: 0.1
+        
+  alerting:
+    rules:
+      - name: high_error_rate
+        condition: error_rate > 1%
+        duration: 5m
+        severity: critical
+        
+      - name: high_response_time
+        condition: p95_response_time > 1s
+        duration: 5m
+        severity: warning
+        
+      - name: low_availability
+        condition: uptime < 99.9%
+        duration: 1m
+        severity: critical
+        
+      - name: database_connection_issues
+        condition: db_connection_errors > 0
+        duration: 1m
+        severity: critical
+        
+    channels:
+      - type: slack
+        webhook_url: "${SLACK_WEBHOOK_URL}"
+        
+      - type: email
+        recipients: ["ops@company.com", "dev@company.com"]
+        
+      - type: pagerduty
+        integration_key: "${PAGERDUTY_KEY}"
+        
+  dashboards:
+    - name: application_overview
+      metrics:
+        - api_requests_total
+        - api_request_duration_seconds
+        - error_rate
+        - active_users
+        
+    - name: infrastructure_health
+      metrics:
+        - cpu_usage
+        - memory_usage
+        - disk_usage
+        - network_io
+        
+    - name: database_performance
+      metrics:
+        - query_duration
+        - connection_pool_usage
+        - slow_queries
+        - deadlocks
+        
+  sla_tracking:
+    targets:
+      availability: 99.99%
+      response_time: p95<500ms
+      error_rate: <0.1%
+      
+    reporting:
+      frequency: monthly
+      recipients: ["leadership@company.com"]

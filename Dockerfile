@@ -1,25 +1,30 @@
+# Multi-stage Node.js Dockerfile for OllamaMax with Authentication System
 # Build stage
-FROM golang:1.21-alpine AS builder
+FROM node:20-alpine AS builder
 
 # Set up build environment
 WORKDIR /app
-RUN apk add --no-cache git ca-certificates
+RUN apk add --no-cache git ca-certificates python3 make g++
 
-# Copy go modules files
-COPY go.mod go.sum ./
-RUN go mod download
+# Copy package files
+COPY package*.json ./
+COPY api-server/package*.json ./api-server/
+
+# Install all dependencies (including dev dependencies for build)
+RUN npm install --only=production
+RUN cd api-server && npm install --only=production
 
 # Copy source code
 COPY . .
 
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o bin/ollamamax .
+# Create production build if needed
+RUN npm run build 2>/dev/null || echo "No build script found, continuing..."
 
 # Runtime stage
-FROM alpine:latest
+FROM node:20-alpine
 
 # Install runtime dependencies
-RUN apk --no-cache add ca-certificates tzdata
+RUN apk --no-cache add ca-certificates tzdata sqlite curl
 
 # Create non-root user
 RUN addgroup -g 1001 ollama && \
@@ -28,26 +33,42 @@ RUN addgroup -g 1001 ollama && \
 # Set working directory
 WORKDIR /app
 
-# Copy binary from builder stage
-COPY --from=builder /app/bin/ollamamax .
-COPY --from=builder /app/config.yaml ./config.yaml
+# Copy application from builder stage
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/api-server ./api-server
+COPY --from=builder /app/web-interface ./web-interface
+COPY --from=builder /app/src ./src
+COPY --from=builder /app/*.js ./
+COPY --from=builder /app/*.json ./
+COPY --from=builder /app/*.md ./
 
-# Change ownership
+# Create directories for data persistence
+RUN mkdir -p /app/data /app/logs /app/uploads
+
+# Create startup script as root
+RUN printf '#!/bin/sh\ncd /app/api-server && node server.js\n' > /app/start.sh && \
+    chmod +x /app/start.sh
+
+# Change ownership after creating all files
 RUN chown -R ollama:ollama /app
 
 # Switch to non-root user
 USER ollama
 
-# Expose ports (using ports above 10000 as requested)
-EXPOSE 11434 11435 11436
+# Expose ports
+EXPOSE 13100 3000 8080
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:11434/health || exit 1
+# Health check for the API server
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:13100/api/health || exit 1
 
 # Set environment variables
-ENV OLLAMA_HOST=0.0.0.0
-ENV OLLAMA_PORT=11434
+ENV NODE_ENV=production
+ENV PORT=13100
+ENV API_PORT=13100
+ENV WEB_PORT=3000
+ENV SQLITE_DB_PATH=/app/data/users.db
 
 # Run the application
-CMD ["./ollamamax"]
+CMD ["/app/start.sh"]

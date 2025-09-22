@@ -1,0 +1,17 @@
+file:///home/kp/ollamamax/pkg/openrouter/client.js:6
+const https = require('https');
+              ^
+
+ReferenceError: require is not defined
+    at file:///home/kp/ollamamax/pkg/openrouter/client.js:6:15
+    at ModuleJobSync.runSync (node:internal/modules/esm/module_job:400:35)
+    at ModuleLoader.importSyncForRequire (node:internal/modules/esm/loader:427:47)
+    at loadESMFromCJS (node:internal/modules/cjs/loader:1565:24)
+    at Module._compile (node:internal/modules/cjs/loader:1716:5)
+    at Object..js (node:internal/modules/cjs/loader:1899:10)
+    at Module.load (node:internal/modules/cjs/loader:1469:32)
+    at Function._load (node:internal/modules/cjs/loader:1286:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:235:24)
+
+Node.js v23.11.1

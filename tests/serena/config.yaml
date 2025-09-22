@@ -1,0 +1,97 @@
+version: 1.0.0
+project: ollamamax
+
+authentication:
+  method: claude-max
+  api_key_required: false
+  use_browser_session: true
+
+ai_configuration:
+  primary_model: 
+    name: claude-opus-4.1
+    access: claude-max
+    no_api_key: true
+    temperature: 0.7
+    use_for:
+      - complex_test_scenarios
+      - architecture_testing
+      - integration_testing
+      - performance_analysis
+  
+  secondary_model:
+    name: claude-sonnet-4
+    access: claude-max
+    no_api_key: true
+    temperature: 0.5
+    use_for:
+      - quick_tests
+      - unit_tests
+      - smoke_tests
+      - regression_tests
+  
+  learning_enabled: true
+  memory_persistence: true
+  model_switching: intelligent
+
+test_generation:
+  ai_model: claude-sonnet-4
+  auth: claude-max
+  automatic: true
+  coverage_target: 100
+
+test_execution:
+  ai_model: claude-opus-4.1
+  auth: claude-max
+  reasoning_depth: maximum
+  bug_analysis: comprehensive
+
+scenarios:
+  user_journey:
+    ai_model: claude-opus-4.1
+    auth: claude-max
+    enabled: true
+    paths: automatic
+    variations: 50
+  
+  edge_cases:
+    ai_model: claude-opus-4.1
+    auth: claude-max
+    enabled: true
+    discovery: aggressive
+  
+  performance:
+    ai_model: claude-sonnet-4
+    auth: claude-max
+    enabled: true
+    load_patterns:
+      - steady
+      - spike
+      - stress
+  
+  security:
+    ai_model: claude-opus-4.1
+    auth: claude-max
+    enabled: true
+    tests:
+      - sql_injection
+      - xss
+      - csrf
+      - authentication
+      - authorization
+
+browser_automation:
+  framework: playwright
+  ai_assistance: claude-sonnet-4
+  auth: claude-max
+  integration: deep
+  parallel_execution: true
+
+reporting:
+  ai_model: claude-opus-4.1
+  auth: claude-max
+  format:
+    - html
+    - json
+    - pdf
+  insights: detailed
+  recommendations: true

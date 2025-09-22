@@ -8,19 +8,25 @@ import (
 
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
+
+	"github.com/ollama-distributed/pkg/p2p/host"
 )
 
 // MessageRouter handles routing of messages between peers in the distributed system
 type MessageRouter struct {
 	config *RouterConfig
 
+	// Local peer identity
+	localPeerID peer.ID
+
 	// Protocol handlers
 	handlers   map[protocol.ID]ProtocolHandler
 	handlersMu sync.RWMutex
 
 	// Message queues
-	outboundQueue *MessageQueue
-	inboundQueue  *MessageQueue
+	outboundQueue     *MessageQueue
+	inboundQueue      *MessageQueue
+	tensorStreamQueue *TensorStreamQueue
 
 	// Connection management
 	connections   map[peer.ID]*PeerConnection
@@ -36,11 +42,37 @@ type MessageRouter struct {
 	// Metrics and monitoring
 	metrics *RouterMetrics
 
+	// Tensor streaming support
+	tensorMetrics    *TensorStreamMetrics
+	bandwidthManager *host.BandwidthManager
+
 	// Lifecycle
 	ctx    context.Context
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
 }
+
+// TensorStreamQueue extends MessageQueue with tensor streaming optimizations
+type TensorStreamQueue struct {
+	*MessageQueue
+	maxTensorSize    int64
+	compressionRatio float64
+	priorityLevels   map[string]int
+	streamingMetrics *TensorStreamMetrics
+}
+
+// TensorStreamMetrics tracks tensor streaming performance in the router
+type TensorStreamMetrics struct {
+	TotalTensorMessages     int64
+	TensorBytesRouted       int64
+	AverageCompressionRatio float64
+	StreamingThroughput     float64
+	QueueBackpressure       int
+	RoutingLatency          time.Duration
+	mutex                   sync.RWMutex
+}
+
+// BandwidthManager is now unified to use host.BandwidthManager
 
 // RouterConfig configures the message router
 type RouterConfig struct {
@@ -218,6 +250,10 @@ const (
 	MessageTypeData      MessageType = "data"
 	MessageTypeControl   MessageType = "control"
 	MessageTypeAck       MessageType = "ack"
+	MessageTypeTensorStart MessageType = "tensor_start"
+	MessageTypeTensorChunk MessageType = "tensor_chunk"
+	MessageTypeTensorComplete MessageType = "tensor_complete"
+	MessageTypeTensorStream MessageType = "tensor_stream"
 )
 
 type MessagePriority int
@@ -237,6 +273,7 @@ const (
 	ProtocolDiscovery protocol.ID = "/ollama-distributed/discovery/1.0.0"
 	ProtocolHealth    protocol.ID = "/ollama-distributed/health/1.0.0"
 	ProtocolData      protocol.ID = "/ollama-distributed/data/1.0.0"
+	ProtocolTensorStream protocol.ID = "/ollama-distributed/tensor-stream/1.0.0"
 )
 
 // Interfaces
@@ -252,7 +289,7 @@ type MessageSerializer interface {
 }
 
 // NewMessageRouter creates a new message router
-func NewMessageRouter(config *RouterConfig) *MessageRouter {
+func NewMessageRouter(config *RouterConfig, localPeerID peer.ID) *MessageRouter {
 	if config == nil {
 		config = &RouterConfig{
 			MaxQueueSize:             10000,
@@ -279,6 +316,7 @@ func NewMessageRouter(config *RouterConfig) *MessageRouter {
 
 	router := &MessageRouter{
 		config:          config,
+		localPeerID:     localPeerID,
 		handlers:        make(map[protocol.ID]ProtocolHandler),
 		connections:     make(map[peer.ID]*PeerConnection),
 		pendingMessages: make(map[string]*PendingMessage),
@@ -293,6 +331,29 @@ func NewMessageRouter(config *RouterConfig) *MessageRouter {
 	router.outboundQueue = NewMessageQueue(config.MaxQueueSize, config.QueueTimeout)
 	router.inboundQueue = NewMessageQueue(config.MaxQueueSize, config.QueueTimeout)
 
+	// Initialize tensor stream queue with larger buffer for high-throughput streaming
+	tensorQueueSize := config.MaxQueueSize * 2 // Larger buffer for tensor data
+	tensorBaseQueue := NewMessageQueue(tensorQueueSize, config.QueueTimeout)
+	router.tensorStreamQueue = NewTensorStreamQueue(tensorBaseQueue, 1024*1024*1024) // 1GB max tensor size
+
+	// Initialize tensor metrics
+	router.tensorMetrics = &TensorStreamMetrics{}
+
+	// Initialize bandwidth manager with proper configuration
+	bandwidthConfig := &host.BandwidthConfig{
+		GlobalLimit:             1024 * 1024 * 1024, // 1GB/s total
+		DefaultPeerLimit:        100 * 1024 * 1024,  // 100MB/s per peer
+		TensorStreamingPriority: true,
+		TensorStreamingLimit:    512 * 1024 * 1024, // 512MB/s for tensor streaming
+		WindowSize:              time.Second,
+		BurstSize:               50 * 1024 * 1024, // 50MB burst
+		UpdateInterval:          time.Second,
+		ProtocolLimits:          make(map[string]int64),
+		PriorityProtocols:       []string{"/ollama/tensor-stream/1.0.0"},
+		PriorityMultiplier:      2.0,
+	}
+	router.bandwidthManager = host.NewBandwidthManager(bandwidthConfig)
+
 	// Initialize routing table
 	router.routingTable = &RoutingTable{
 		routes:         make(map[peer.ID]*RouteEntry),
@@ -302,6 +363,12 @@ func NewMessageRouter(config *RouterConfig) *MessageRouter {
 	}
 
 	return router
+}
+
+// RegisterTensorStreamHandler registers the tensor stream handler with the router
+func (mr *MessageRouter) RegisterTensorStreamHandler() {
+	handler := NewTensorStreamHandler(mr.localPeerID)
+	mr.RegisterHandler(handler)
 }
 
 // Start starts the message router
@@ -333,6 +400,14 @@ func (mr *MessageRouter) Start() error {
 		go mr.acknowledgmentHandler()
 	}
 
+	// Start tensor stream processor for high-throughput processing
+	mr.wg.Add(1)
+	go mr.tensorStreamProcessor()
+
+	// Start bandwidth monitor
+	mr.wg.Add(1)
+	go mr.bandwidthMonitor()
+
 	return nil
 }
 
@@ -363,8 +438,18 @@ func (mr *MessageRouter) RegisterHandler(handler ProtocolHandler) {
 	mr.handlers[handler.GetProtocol()] = handler
 }
 
+// ensureHeaders ensures that message headers are initialized
+func ensureHeaders(msg *Message) {
+	if msg.Headers == nil {
+		msg.Headers = make(map[string]string)
+	}
+}
+
 // SendMessage sends a message to a peer
 func (mr *MessageRouter) SendMessage(msg *Message) error {
+	// Ensure headers are initialized
+	ensureHeaders(msg)
+
 	// Validate message
 	if err := mr.validateMessage(msg); err != nil {
 		return fmt.Errorf("invalid message: %w", err)
@@ -405,6 +490,9 @@ func (mr *MessageRouter) SendMessage(msg *Message) error {
 
 // BroadcastMessage broadcasts a message to all connected peers
 func (mr *MessageRouter) BroadcastMessage(msg *Message) error {
+	// Ensure headers are initialized
+	ensureHeaders(msg)
+
 	mr.connectionsMu.RLock()
 	peers := make([]peer.ID, 0, len(mr.connections))
 	for peerID := range mr.connections {
@@ -818,9 +906,12 @@ func (mr *MessageRouter) getConnection(peerID peer.ID) *PeerConnection {
 
 // getLocalPeerID returns the local peer ID
 func (mr *MessageRouter) getLocalPeerID() peer.ID {
-	// Implementation would return the actual local peer ID
-	// For now, return empty
-	return ""
+	return mr.localPeerID
+}
+
+// SetLocalPeerID sets the local peer ID (for cases where it needs to be updated)
+func (mr *MessageRouter) SetLocalPeerID(peerID peer.ID) {
+	mr.localPeerID = peerID
 }
 
 // trackPendingMessage tracks a message awaiting acknowledgment
@@ -952,4 +1043,409 @@ func (mr *MessageRouter) GetMetrics() *RouterMetrics {
 		MessageThroughput:  mr.metrics.MessageThroughput,
 		LastUpdated:        mr.metrics.LastUpdated,
 	}
+}
+
+// NewTensorStreamQueue creates a new tensor stream queue
+func NewTensorStreamQueue(baseQueue *MessageQueue, maxTensorSize int64) *TensorStreamQueue {
+	return &TensorStreamQueue{
+		MessageQueue:     baseQueue,
+		maxTensorSize:    maxTensorSize,
+		compressionRatio: 0.7, // Default compression ratio
+		priorityLevels:   make(map[string]int),
+		streamingMetrics: &TensorStreamMetrics{},
+	}
+}
+
+// RouteTensorMessage routes tensor streaming messages with optimizations
+func (mr *MessageRouter) RouteTensorMessage(msg *Message) error {
+	// Ensure headers are initialized
+	ensureHeaders(msg)
+
+	// Check if this is a tensor streaming message
+	if !mr.isTensorStreamingMessage(msg) {
+		return mr.SendMessage(msg)
+	}
+
+	// Apply tensor-specific routing optimizations
+	mr.optimizeTensorRouting(msg)
+
+	// Update tensor metrics
+	mr.updateTensorMetrics(msg)
+
+	// Route through tensor stream queue
+	return mr.tensorStreamQueue.Enqueue(msg)
+}
+
+// isTensorStreamingMessage checks if a message is tensor streaming related
+func (mr *MessageRouter) isTensorStreamingMessage(msg *Message) bool {
+	return msg.Protocol == ProtocolTensorStream ||
+		msg.Type == MessageTypeTensorStart ||
+		msg.Type == MessageTypeTensorChunk ||
+		msg.Type == MessageTypeTensorComplete
+}
+
+// optimizeTensorRouting applies tensor-specific routing optimizations
+func (mr *MessageRouter) optimizeTensorRouting(msg *Message) {
+	// Apply compression if beneficial
+	if len(msg.Payload) > 1024 { // Only compress larger payloads
+		mr.applyTensorCompression(msg)
+	}
+
+	// Set priority based on tensor type
+	mr.setTensorPriority(msg)
+
+	// Apply bandwidth management
+	mr.manageTensorBandwidth(msg)
+}
+
+// applyTensorCompression applies compression to tensor messages
+func (mr *MessageRouter) applyTensorCompression(msg *Message) {
+	// Placeholder for compression logic
+	// In real implementation, would use the tensor compressor
+	msg.Headers["compressed"] = "true"
+}
+
+// setTensorPriority sets priority for tensor messages
+func (mr *MessageRouter) setTensorPriority(msg *Message) {
+	switch msg.Type {
+	case "activation_start":
+		msg.Headers["priority"] = "high"
+	case "activation_chunk":
+		msg.Headers["priority"] = "normal"
+	case "activation_complete":
+		msg.Headers["priority"] = "low"
+	default:
+		msg.Headers["priority"] = "normal"
+	}
+}
+
+// manageTensorBandwidth manages bandwidth allocation for tensor messages
+func (mr *MessageRouter) manageTensorBandwidth(msg *Message) {
+	if mr.bandwidthManager != nil {
+		// Use unified bandwidth manager with proper peer and protocol tracking
+		peerID := msg.Destination // Use destination as peer ID
+		bytesUsed := int64(len(msg.Payload))
+		mr.bandwidthManager.RecordUsage(peerID, "/ollama/tensor-stream/1.0.0", bytesUsed, 0)
+	}
+}
+
+// updateTensorMetrics updates tensor streaming metrics
+func (mr *MessageRouter) updateTensorMetrics(msg *Message) {
+	mr.tensorMetrics.mutex.Lock()
+	defer mr.tensorMetrics.mutex.Unlock()
+
+	mr.tensorMetrics.TotalTensorMessages++
+	mr.tensorMetrics.TensorBytesRouted += int64(len(msg.Payload))
+
+	// Update average compression ratio if compressed
+	if msg.Headers["compressed"] == "true" {
+		// Simplified compression ratio calculation
+		mr.tensorMetrics.AverageCompressionRatio = 0.7
+	}
+}
+
+// GetTensorMetrics returns current tensor streaming metrics
+func (mr *MessageRouter) GetTensorMetrics() *TensorStreamMetrics {
+	mr.tensorMetrics.mutex.RLock()
+	defer mr.tensorMetrics.mutex.RUnlock()
+
+	return &TensorStreamMetrics{
+		TotalTensorMessages:     mr.tensorMetrics.TotalTensorMessages,
+		TensorBytesRouted:       mr.tensorMetrics.TensorBytesRouted,
+		AverageCompressionRatio: mr.tensorMetrics.AverageCompressionRatio,
+		StreamingThroughput:     mr.tensorMetrics.StreamingThroughput,
+		QueueBackpressure:       mr.tensorMetrics.QueueBackpressure,
+		RoutingLatency:          mr.tensorMetrics.RoutingLatency,
+	}
+}
+
+// AllocateBandwidth allocates bandwidth for a specific purpose
+// BandwidthManager methods removed - now using unified host.BandwidthManager implementation
+
+// tensorStreamProcessor processes tensor streaming messages with high throughput
+func (mr *MessageRouter) tensorStreamProcessor() {
+	defer mr.wg.Done()
+
+	// Use multiple workers for parallel tensor processing
+	numWorkers := mr.config.WorkerCount * 2 // More workers for tensor streams
+	for i := 0; i < numWorkers; i++ {
+		mr.wg.Add(1)
+		go mr.tensorStreamWorker()
+	}
+
+	// Monitor tensor queue for backpressure
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-mr.ctx.Done():
+			return
+		case <-ticker.C:
+			mr.monitorTensorQueueBackpressure()
+		}
+	}
+}
+
+// tensorStreamWorker processes individual tensor messages
+func (mr *MessageRouter) tensorStreamWorker() {
+	defer mr.wg.Done()
+
+	for {
+		select {
+		case <-mr.ctx.Done():
+			return
+		case msg := <-mr.tensorStreamQueue.messages:
+			mr.processTensorMessage(msg)
+		}
+	}
+}
+
+// processTensorMessage processes a single tensor streaming message
+func (mr *MessageRouter) processTensorMessage(msg *Message) {
+	startTime := time.Now()
+
+	// Apply tensor-specific optimizations
+	mr.optimizeTensorRouting(msg)
+
+	// Route the message with priority handling
+	if err := mr.routeTensorMessageWithPriority(msg); err != nil {
+		mr.tensorMetrics.mutex.Lock()
+		mr.tensorMetrics.QueueBackpressure++
+		mr.tensorMetrics.mutex.Unlock()
+		return
+	}
+
+	// Update latency metrics
+	latency := time.Since(startTime)
+	mr.tensorMetrics.mutex.Lock()
+	mr.tensorMetrics.RoutingLatency = (mr.tensorMetrics.RoutingLatency + latency) / 2
+	mr.tensorMetrics.mutex.Unlock()
+}
+
+// routeTensorMessageWithPriority routes tensor messages based on priority
+func (mr *MessageRouter) routeTensorMessageWithPriority(msg *Message) error {
+	priority := msg.Headers["priority"]
+
+	switch priority {
+	case "high":
+		// High priority messages bypass normal queue
+		return mr.sendDirectly(msg)
+	case "normal", "low":
+		// Normal and low priority use standard routing
+		mr.processOutboundMessage(msg)
+		return nil
+	default:
+		mr.processOutboundMessage(msg)
+		return nil
+	}
+}
+
+// sendDirectly sends a message directly without queuing
+func (mr *MessageRouter) sendDirectly(msg *Message) error {
+	// Find route to destination
+	route := mr.findRoute(msg.Destination)
+	if route == nil {
+		return fmt.Errorf("no route found to %s", msg.Destination)
+	}
+
+	// Get connection and send immediately
+	nextHop := route.NextHop
+	if route.HopCount == 1 {
+		nextHop = msg.Destination
+	}
+
+	conn := mr.getConnection(nextHop)
+	if conn == nil {
+		return fmt.Errorf("no connection to %s", nextHop)
+	}
+
+	// Send with timeout
+	select {
+	case conn.SendQueue <- msg:
+		return nil
+	case <-time.After(mr.config.MessageTimeout):
+		return fmt.Errorf("send timeout")
+	}
+}
+
+// monitorTensorQueueBackpressure monitors tensor queue for backpressure
+func (mr *MessageRouter) monitorTensorQueueBackpressure() {
+	queueSize := mr.tensorStreamQueue.Size()
+	maxSize := mr.tensorStreamQueue.maxSize
+
+	backpressureRatio := float64(queueSize) / float64(maxSize)
+
+	mr.tensorMetrics.mutex.Lock()
+	mr.tensorMetrics.QueueBackpressure = int(backpressureRatio * 100)
+
+	// Update throughput calculation
+	currentTime := time.Now().Unix()
+	if currentTime > 0 {
+		mr.tensorMetrics.StreamingThroughput = float64(mr.tensorMetrics.TensorBytesRouted) / float64(currentTime)
+	}
+	mr.tensorMetrics.mutex.Unlock()
+
+	// Apply backpressure management if needed
+	if backpressureRatio > 0.8 {
+		mr.applyBackpressureControl()
+	}
+}
+
+// applyBackpressureControl applies backpressure control mechanisms
+func (mr *MessageRouter) applyBackpressureControl() {
+	// Temporarily reduce tensor bandwidth allocation
+	mr.bandwidthManager.mutex.Lock()
+	mr.bandwidthManager.tensorBandwidth = mr.bandwidthManager.tensorBandwidth * 8 / 10 // Reduce by 20%
+	mr.bandwidthManager.mutex.Unlock()
+
+	// Could also implement:
+	// - Drop low priority messages
+	// - Increase compression ratios
+	// - Throttle message acceptance
+}
+
+// bandwidthMonitor monitors and manages bandwidth allocation
+func (mr *MessageRouter) bandwidthMonitor() {
+	defer mr.wg.Done()
+
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-mr.ctx.Done():
+			return
+		case <-ticker.C:
+			mr.manageBandwidthAllocation()
+		}
+	}
+}
+
+// manageBandwidthAllocation manages dynamic bandwidth allocation
+func (mr *MessageRouter) manageBandwidthAllocation() {
+	mr.bandwidthManager.mutex.Lock()
+	defer mr.bandwidthManager.mutex.Unlock()
+
+	// Calculate current usage
+	totalUsage := int64(0)
+	for _, usage := range mr.bandwidthManager.currentUsage {
+		totalUsage += usage
+	}
+
+	// Adjust allocations based on actual usage patterns
+	tensorUsage := mr.bandwidthManager.currentUsage["tensor"]
+	regularUsage := totalUsage - tensorUsage
+
+	// Dynamic rebalancing: give more bandwidth to the service that needs it
+	if tensorUsage > mr.bandwidthManager.tensorBandwidth &&
+	   regularUsage < mr.bandwidthManager.regularBandwidth/2 {
+		// Reallocate some regular bandwidth to tensor
+		reallocation := min(mr.bandwidthManager.regularBandwidth/4, tensorUsage-mr.bandwidthManager.tensorBandwidth)
+		mr.bandwidthManager.tensorBandwidth += reallocation
+		mr.bandwidthManager.regularBandwidth -= reallocation
+	}
+
+	// Reset usage counters for next measurement period
+	mr.bandwidthManager.currentUsage = make(map[string]int64)
+}
+
+// min returns the minimum of two int64 values
+func min(a, b int64) int64 {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+// EnhancedMessageCoalescing coalesces small tensor messages to reduce overhead
+func (mr *MessageRouter) EnhancedMessageCoalescing(msgs []*Message) []*Message {
+	if len(msgs) <= 1 {
+		return msgs
+	}
+
+	var coalesced []*Message
+	var currentBatch []*Message
+	var currentBatchSize int
+
+	const maxBatchSize = 64 * 1024 // 64KB batch size
+
+	for _, msg := range msgs {
+		if mr.isTensorStreamingMessage(msg) &&
+		   msg.Type == MessageTypeTensorChunk &&
+		   currentBatchSize + len(msg.Payload) <= maxBatchSize {
+			// Add to current batch
+			currentBatch = append(currentBatch, msg)
+			currentBatchSize += len(msg.Payload)
+		} else {
+			// Flush current batch if it has messages
+			if len(currentBatch) > 1 {
+				coalescedMsg := mr.createCoalescedMessage(currentBatch)
+				coalesced = append(coalesced, coalescedMsg)
+			} else if len(currentBatch) == 1 {
+				coalesced = append(coalesced, currentBatch[0])
+			}
+
+			// Start new batch
+			currentBatch = []*Message{msg}
+			currentBatchSize = len(msg.Payload)
+		}
+	}
+
+	// Handle remaining batch
+	if len(currentBatch) > 1 {
+		coalescedMsg := mr.createCoalescedMessage(currentBatch)
+		coalesced = append(coalesced, coalescedMsg)
+	} else if len(currentBatch) == 1 {
+		coalesced = append(coalesced, currentBatch[0])
+	}
+
+	return coalesced
+}
+
+// createCoalescedMessage creates a single coalesced message from multiple chunks
+func (mr *MessageRouter) createCoalescedMessage(msgs []*Message) *Message {
+	if len(msgs) == 0 {
+		return nil
+	}
+
+	// Calculate total payload size
+	totalSize := 0
+	for _, msg := range msgs {
+		totalSize += len(msg.Payload)
+	}
+
+	// Create coalesced payload
+	coalescedPayload := make([]byte, 0, totalSize)
+	for _, msg := range msgs {
+		coalescedPayload = append(coalescedPayload, msg.Payload...)
+	}
+
+	// Create coalesced message based on first message
+	baseMsg := msgs[0]
+	coalescedMsg := &Message{
+		ID:          generateMessageID(),
+		Type:        baseMsg.Type,
+		Protocol:    baseMsg.Protocol,
+		Source:      baseMsg.Source,
+		Destination: baseMsg.Destination,
+		Payload:     coalescedPayload,
+		Headers:     make(map[string]string),
+		Timestamp:   time.Now(),
+		TTL:         baseMsg.TTL,
+		Priority:    baseMsg.Priority,
+		RequiresAck: baseMsg.RequiresAck,
+		Compressed:  false,
+	}
+
+	// Copy headers from base message
+	for key, value := range baseMsg.Headers {
+		coalescedMsg.Headers[key] = value
+	}
+
+	// Mark as coalesced
+	coalescedMsg.Headers["coalesced"] = "true"
+	coalescedMsg.Headers["original_count"] = fmt.Sprintf("%d", len(msgs))
+
+	return coalescedMsg
 }

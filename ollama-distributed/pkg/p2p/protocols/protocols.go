@@ -25,6 +25,9 @@ const (
 	FileTransferProtocol = protocol.ID("/ollama-distributed/file-transfer/1.0.0")
 	ModelSyncProtocol    = protocol.ID("/ollama-distributed/model-sync/1.0.0")
 
+	// Tensor streaming protocols
+	TensorStreamProtocolID = protocol.ID("/ollama-distributed/tensor-stream/1.0.0")
+
 	// BitTorrent-style distribution protocols
 	ModelChunkProtocol    = protocol.ID("/ollama-distributed/model-chunk/1.0.0")
 	ChunkRequestProtocol  = protocol.ID("/ollama-distributed/chunk-request/1.0.0")

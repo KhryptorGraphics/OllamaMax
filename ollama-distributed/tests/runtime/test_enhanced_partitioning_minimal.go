@@ -34,7 +34,7 @@ func main() {
 
 	// Test enhanced partition manager
 	fmt.Println("\nTesting enhanced partition manager...")
-	manager := partitioning.NewEnhancedPartitionManager(nil)
+	manager := partitioning.NewEnhancedPartitionManager()
 	fmt.Printf("Enhanced partition manager created: %v\n", manager != nil)
 
 	if manager != nil {

@@ -8,6 +8,8 @@ const http = require('http');
 const express = require('express');
 const cors = require('cors');
 const Redis = require('ioredis');
+// const { OpenRouterClient } = require('../pkg/openrouter/client.js'); // Temporarily disabled due to ES module issues
+const AuthSystem = require('./auth-system.js');
 
 const app = express();
 app.use(cors());
@@ -28,6 +30,9 @@ const redis = new Redis({
     connectTimeout: 10000,
     maxRetriesPerRequest: 3
 });
+
+// Initialize Authentication System
+const auth = new AuthSystem();
 
 // Node registry
 class NodeRegistry {
@@ -224,8 +229,221 @@ class MessageQueue {
 const nodeRegistry = new NodeRegistry();
 const messageQueue = new MessageQueue();
 
+// Initialize OpenRouter integration
+let openRouterClient = null;
+/*
+if (process.env.OPENROUTER_API_KEY) {
+    openRouterClient = new OpenRouterClient({
+        apiKey: process.env.OPENROUTER_API_KEY,
+        baseURL: 'https://openrouter.ai/api/v1',
+        timeout: 300000, // 5 minutes
+        maxRetries: 3,
+        retryDelay: 2000
+    });
+    console.log('OpenRouter integration enabled with Sonoma Sky Alpha model');
+}
+*/
+
 // Create HTTP server
 const server = http.createServer(app);
+
+// =================== AUTHENTICATION ROUTES ===================
+
+// Middleware to authenticate requests
+async function authenticateToken(req, res, next) {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (token == null) {
+        return res.sendStatus(401);
+    }
+
+    try {
+        const user = await auth.validateSession(token);
+        if (!user) {
+            return res.sendStatus(403);
+        }
+        req.user = user;
+        next();
+    } catch (error) {
+        return res.sendStatus(403);
+    }
+}
+
+// User Registration
+app.post('/api/auth/register', async (req, res) => {
+    try {
+        const { username, email, password } = req.body;
+        
+        if (!username || !email || !password) {
+            return res.status(400).json({
+                success: false,
+                message: 'Username, email, and password are required'
+            });
+        }
+
+        if (password.length < 6) {
+            return res.status(400).json({
+                success: false,
+                message: 'Password must be at least 6 characters long'
+            });
+        }
+
+        const result = await auth.registerUser(username, email, password);
+        
+        // Send verification email
+        await auth.sendVerificationEmail(email, result.verificationToken, username);
+        
+        res.json({
+            success: true,
+            message: 'User registered successfully! Please check your email for verification.',
+            userId: result.userId
+        });
+
+    } catch (error) {
+        console.error('Registration error:', error.message);
+        res.status(400).json({
+            success: false,
+            message: error.message
+        });
+    }
+});
+
+// User Login
+app.post('/api/auth/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        
+        if (!email || !password) {
+            return res.status(400).json({
+                success: false,
+                message: 'Email and password are required'
+            });
+        }
+
+        const result = await auth.loginUser(email, password);
+        
+        res.json({
+            success: true,
+            message: 'Login successful',
+            token: result.token,
+            user: result.user
+        });
+
+    } catch (error) {
+        console.error('Login error:', error.message);
+        res.status(401).json({
+            success: false,
+            message: error.message
+        });
+    }
+});
+
+// Email Verification
+app.get('/api/verify-email', async (req, res) => {
+    try {
+        const { token } = req.query;
+        
+        if (!token) {
+            return res.status(400).send(`
+                <html><body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+                    <h2 style="color: #dc2626;">❌ Invalid Verification Link</h2>
+                    <p>The verification token is missing or invalid.</p>
+                    <a href="/" style="color: #2563eb;">Return to OllamaMax</a>
+                </body></html>
+            `);
+        }
+
+        const result = await auth.verifyEmail(token);
+        
+        res.send(`
+            <html><body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+                <div style="max-width: 600px; margin: 0 auto;">
+                    <h1 style="color: #2563eb;">🦙 OllamaMax</h1>
+                    <h2 style="color: #059669;">✅ Email Verified Successfully!</h2>
+                    <p style="color: #4b5563; line-height: 1.6;">
+                        Welcome to OllamaMax! Your account (${result.email}) has been verified.<br>
+                        You can now log in to access the distributed AI platform.
+                    </p>
+                    <a href="/" style="background: #2563eb; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block; margin-top: 20px;">
+                        Go to OllamaMax Dashboard
+                    </a>
+                </div>
+            </body></html>
+        `);
+
+    } catch (error) {
+        console.error('Email verification error:', error.message);
+        res.status(400).send(`
+            <html><body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+                <h2 style="color: #dc2626;">❌ Verification Failed</h2>
+                <p>${error.message}</p>
+                <a href="/" style="color: #2563eb;">Return to OllamaMax</a>
+            </body></html>
+        `);
+    }
+});
+
+// Get Current User
+app.get('/api/auth/user', authenticateToken, (req, res) => {
+    res.json({
+        success: true,
+        user: req.user
+    });
+});
+
+// Logout
+app.post('/api/auth/logout', authenticateToken, (req, res) => {
+    // In a more robust implementation, you'd invalidate the token in the database
+    res.json({
+        success: true,
+        message: 'Logged out successfully'
+    });
+});
+
+// Admin route to list all users (for testing)
+app.get('/api/auth/users', async (req, res) => {
+    try {
+        const users = await auth.getAllUsers();
+        res.json({
+            success: true,
+            users: users
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+});
+
+// Test email route
+app.post('/api/auth/test-email', async (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email) {
+            return res.status(400).json({
+                success: false,
+                message: 'Email address required'
+            });
+        }
+
+        await auth.sendTestEmail(email);
+        
+        res.json({
+            success: true,
+            message: `Test email sent to ${email}`
+        });
+    } catch (error) {
+        console.error('Test email error:', error.message);
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+});
+
+// =================== END AUTHENTICATION ROUTES ===================
 
 // Create WebSocket server
 const wss = new WebSocket.Server({ server });
@@ -275,6 +493,11 @@ wss.on('connection', (ws) => {
 // Inference handling
 async function handleInference(ws, data) {
     const startTime = Date.now();
+    
+    // Check if request should use OpenRouter (Sonoma Sky Alpha)
+    if (data.model === 'sonoma-sky-alpha' && openRouterClient) {
+        return handleOpenRouterInference(ws, data, startTime);
+    }
     
     // Select node using configured strategy
     const node = nodeRegistry.selectNode(data.loadBalancing || 'round-robin');
@@ -491,8 +714,39 @@ app.get('/api/health', (req, res) => {
         nodes: nodeRegistry.getHealthyNodes().length,
         totalNodes: nodeRegistry.nodes.size,
         queueLength: messageQueue.getLength(),
-        uptime: process.uptime()
+        uptime: process.uptime(),
+        openrouter: {
+            enabled: !!openRouterClient,
+            models: openRouterClient ? ['alpindale/sonoma-sky-alpha'] : []
+        }
     });
+});
+
+// OpenRouter-specific endpoints
+app.get('/api/openrouter/models', async (req, res) => {
+    if (!openRouterClient) {
+        return res.status(503).json({ error: 'OpenRouter not configured' });
+    }
+    
+    try {
+        const models = await openRouterClient.getModels();
+        res.json({ models });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/openrouter/chat', async (req, res) => {
+    if (!openRouterClient) {
+        return res.status(503).json({ error: 'OpenRouter not configured' });
+    }
+    
+    try {
+        const response = await openRouterClient.chatCompletion(req.body);
+        res.json(response);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 });
 
 // Periodic health checks
@@ -543,6 +797,80 @@ function initializeDefaultNodes() {
         const nodeId = `node-${index}`;
         nodeRegistry.addNode(nodeId, config);
     });
+}
+
+// OpenRouter inference handler
+async function handleOpenRouterInference(ws, data, startTime) {
+    try {
+        console.log('Routing request to OpenRouter Sonoma Sky Alpha model');
+        
+        // Prepare OpenRouter request
+        const openRouterRequest = {
+            model: 'alpindale/sonoma-sky-alpha',
+            messages: [
+                { role: 'user', content: data.content }
+            ],
+            max_tokens: data.settings.maxTokens || 4096,
+            temperature: data.settings.temperature || 0.7,
+            top_p: data.settings.topP || 0.9,
+            stream: data.settings.streaming || false
+        };
+        
+        // Send initial response
+        ws.send(JSON.stringify({
+            type: 'response',
+            id: data.timestamp,
+            node: 'openrouter-sonoma-sky-alpha',
+            streaming: data.settings.streaming
+        }));
+        
+        // Store in Redis for distributed tracking
+        await redis.set(`request:${data.timestamp}`, JSON.stringify({
+            node: 'openrouter-sonoma-sky-alpha',
+            model: 'alpindale/sonoma-sky-alpha',
+            startTime
+        }));
+        
+        if (data.settings.streaming) {
+            // Note: OpenRouter streaming would require different implementation
+            // For now, treat as complete response
+            const response = await openRouterClient.chatCompletion(openRouterRequest);
+            
+            ws.send(JSON.stringify({
+                type: 'stream_chunk',
+                id: data.timestamp,
+                chunk: response.choices[0].message.content,
+                done: true
+            }));
+        } else {
+            const response = await openRouterClient.chatCompletion(openRouterRequest);
+            
+            ws.send(JSON.stringify({
+                type: 'response',
+                id: data.timestamp,
+                content: response.choices[0].message.content,
+                node: 'openrouter-sonoma-sky-alpha',
+                streaming: false,
+                usage: response.usage
+            }));
+        }
+        
+        // Update metrics
+        const latency = Date.now() - startTime;
+        ws.send(JSON.stringify({
+            type: 'metrics',
+            latency,
+            node: 'openrouter-sonoma-sky-alpha',
+            model: 'alpindale/sonoma-sky-alpha'
+        }));
+        
+    } catch (error) {
+        console.error('OpenRouter inference error:', error);
+        ws.send(JSON.stringify({
+            type: 'error',
+            message: `OpenRouter inference failed: ${error.message}`
+        }));
+    }
 }
 
 // Start server

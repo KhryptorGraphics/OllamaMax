@@ -1,5 +1,9 @@
-module.exports = {
+import { devices } from '@playwright/test';
+
+export default {
   testDir: './tests',
+  testMatch: ['**/e2e/**/*.test.js', '**/playwright/**/*.test.js', '**/ui-*.test.js', '**/api-*.test.js'],
+  testIgnore: ['**/*.cjs', '**/node_modules/**'],
   timeout: 30000,
   fullyParallel: false, // Run sequentially for better debugging
   forbidOnly: !!process.env.CI,
@@ -7,8 +11,8 @@ module.exports = {
   workers: process.env.CI ? 1 : 2,
   reporter: [
     ['list'],
-    ['json', { outputFile: 'test-results/results.json' }],
-    ['html', { outputFolder: 'test-results/html-report' }]
+    ['json', { outputFile: 'test-results/playwright/results.json' }],
+    ['html', { outputFolder: 'test-results/playwright-report' }]
   ],
   use: {
     headless: process.env.CI ? true : false, // Show browser during development
@@ -21,15 +25,15 @@ module.exports = {
   projects: [
     {
       name: 'chromium',
-      use: { ...require('@playwright/test').devices['Desktop Chrome'] },
+      use: { ...devices['Desktop Chrome'] },
     },
     {
       name: 'firefox',
-      use: { ...require('@playwright/test').devices['Desktop Firefox'] },
+      use: { ...devices['Desktop Firefox'] },
     },
     {
       name: 'webkit',
-      use: { ...require('@playwright/test').devices['Desktop Safari'] },
+      use: { ...devices['Desktop Safari'] },
     },
   ],
   webServer: [

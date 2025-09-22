@@ -46,11 +46,13 @@ type BandwidthUsage struct {
 
 // BandwidthConfig configures bandwidth management
 type BandwidthConfig struct {
-	GlobalLimit      int64         // Global bandwidth limit (bytes/sec)
-	DefaultPeerLimit int64         // Default per-peer limit (bytes/sec)
-	WindowSize       time.Duration // Time window for rate limiting
-	BurstSize        int64         // Maximum burst size
-	UpdateInterval   time.Duration // How often to update usage stats
+	GlobalLimit             int64         // Global bandwidth limit (bytes/sec)
+	DefaultPeerLimit        int64         // Default per-peer limit (bytes/sec)
+	TensorStreamingPriority bool          // Prioritize tensor streaming traffic
+	TensorStreamingLimit    int64         // Dedicated bandwidth for tensor streaming (bytes/sec)
+	WindowSize              time.Duration // Time window for rate limiting
+	BurstSize               int64         // Maximum burst size
+	UpdateInterval          time.Duration // How often to update usage stats
 
 	// Protocol-specific limits
 	ProtocolLimits map[string]int64
@@ -370,6 +372,104 @@ func (bm *BandwidthManager) IsPriorityProtocol(protocol string) bool {
 		}
 	}
 	return false
+}
+
+// AllocateTensorStreamingBandwidth allocates bandwidth specifically for tensor streaming
+func (bm *BandwidthManager) AllocateTensorStreamingBandwidth(peerID peer.ID, bytes int64) bool {
+	bm.mu.Lock()
+	defer bm.mu.Unlock()
+
+	// Check if tensor streaming has dedicated bandwidth
+	if bm.config.TensorStreamingLimit > 0 {
+		// Use dedicated tensor streaming bandwidth
+		if bucket, exists := bm.protocolBuckets["tensor-stream"]; exists {
+			return bucket.TryConsume(bytes)
+		}
+	}
+
+	// Fall back to regular bandwidth allocation with priority
+	if bm.config.TensorStreamingPriority {
+		// Give tensor streaming higher priority
+		return bm.allocateBandwidthWithPriority(peerID, "tensor-stream", bytes)
+	}
+
+	return bm.CheckBandwidth(peerID, "tensor-stream", bytes)
+}
+
+// allocateBandwidthWithPriority allocates bandwidth with priority for tensor streaming
+func (bm *BandwidthManager) allocateBandwidthWithPriority(peerID peer.ID, protocol string, bytes int64) bool {
+	// Try global bucket first
+	if !bm.globalBucket.TryConsume(bytes) {
+		return false
+	}
+
+	// Try peer bucket with relaxed limits for tensor streaming
+	if bucket, exists := bm.peerBuckets[peerID]; exists {
+		if protocol == "tensor-stream" {
+			// Allow burst for tensor streaming
+			burstBytes := bytes * 2 // Allow 2x burst for tensor streaming
+			if bucket.TryConsume(burstBytes) {
+				return true
+			}
+		}
+		return bucket.TryConsume(bytes)
+	}
+
+	return true
+}
+
+// GetTensorStreamingMetrics returns metrics specific to tensor streaming
+func (bm *BandwidthManager) GetTensorStreamingMetrics() map[string]interface{} {
+	bm.mu.RLock()
+	defer bm.mu.RUnlock()
+
+	metrics := make(map[string]interface{})
+
+	// Get tensor streaming protocol usage
+	if usage, exists := bm.protocolUsage["tensor-stream"]; exists {
+		metrics["bytes_sent"] = usage.BytesSent
+		metrics["bytes_received"] = usage.BytesReceived
+		metrics["peak_usage"] = usage.PeakUsage
+		metrics["last_updated"] = usage.LastUpdated
+	}
+
+	// Get tensor streaming bandwidth allocation
+	if bm.config.TensorStreamingLimit > 0 {
+		metrics["dedicated_limit"] = bm.config.TensorStreamingLimit
+		metrics["priority_enabled"] = bm.config.TensorStreamingPriority
+	}
+
+	return metrics
+}
+
+// OptimizeForTensorStreaming optimizes bandwidth allocation for tensor streaming workloads
+func (bm *BandwidthManager) OptimizeForTensorStreaming() {
+	bm.mu.Lock()
+	defer bm.mu.Unlock()
+
+	// Enable tensor streaming priority
+	bm.config.TensorStreamingPriority = true
+
+	// Allocate 70% of global bandwidth to tensor streaming if not already set
+	if bm.config.TensorStreamingLimit == 0 {
+		bm.config.TensorStreamingLimit = int64(float64(bm.config.GlobalLimit) * 0.7)
+	}
+
+	// Create dedicated bucket for tensor streaming
+	if _, exists := bm.protocolBuckets["tensor-stream"]; !exists {
+		bm.protocolBuckets["tensor-stream"] = NewTokenBucket(
+			bm.config.TensorStreamingLimit,
+			bm.config.BurstSize*2, // Allow larger bursts for tensor streaming
+		)
+	}
+
+	// Initialize usage tracking for tensor streaming
+	if _, exists := bm.protocolUsage["tensor-stream"]; !exists {
+		bm.protocolUsage["tensor-stream"] = &BandwidthUsage{
+			LastUpdated: time.Now(),
+			WindowStart: time.Now(),
+		}
+	}
 }
 
 // Close closes the bandwidth manager

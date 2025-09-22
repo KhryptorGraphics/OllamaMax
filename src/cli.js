@@ -8,7 +8,27 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import fs from 'fs';
 import chalk from 'chalk';
+import { createLogger, format, transports } from 'winston';
+
+// Initialize structured logging
+const logger = createLogger({
+  level: process.env.LOG_LEVEL || 'info',
+  format: format.combine(
+    format.timestamp(),
+    format.errors({ stack: true }),
+    format.json()
+  ),
+  transports: [
+    new transports.Console({
+      format: format.combine(
+        format.colorize(),
+        format.simple()
+      )
+    })
+  ]
+});
 import { AnalyzeCommand } from './commands/analyze.js';
+import { HelpCommand } from './commands/help.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -17,7 +37,8 @@ class ClaudeFlowCLI {
   constructor() {
     this.commands = {
       analyze: new AnalyzeCommand(),
-      analyse: new AnalyzeCommand() // British spelling alias
+      analyse: new AnalyzeCommand(), // British spelling alias
+      help: new HelpCommand()
     };
   }
 
@@ -48,11 +69,19 @@ class ClaudeFlowCLI {
     if (this.commands[command]) {
       try {
         await this.commands[command].execute(commandArgs);
+        logger.info('Command executed successfully', { command, args: commandArgs });
       } catch (error) {
+        logger.error('Command execution failed', {
+          command,
+          args: commandArgs,
+          error: error.message,
+          stack: error.stack
+        });
         console.error(chalk.red(`Error executing ${command}:`), error.message);
         process.exit(1);
       }
     } else {
+      logger.warn('Unknown command attempted', { command, args: commandArgs });
       console.error(chalk.red(`Unknown command: ${command}`));
       console.log(chalk.yellow(`Run 'claude-flow --help' for available commands`));
       process.exit(1);
@@ -73,6 +102,10 @@ ${chalk.yellow('Commands:')}
     Modes: code, performance, security, architecture, hive-mind, all
     
   ${chalk.green('analyse')}                   British spelling alias for analyze
+  
+  ${chalk.green('help')} [topic]              Show comprehensive help and guidance
+    Topics: overview, getting-started, commands, agents, configuration,
+           api, tools, examples, troubleshooting, tips
 
 ${chalk.yellow('Analysis Examples:')}
   claude-flow analyze                    # Complete analysis of current directory
@@ -108,7 +141,21 @@ ${chalk.gray('For more information: https://github.com/ruvnet/claude-flow')}
 
 // Run CLI
 const cli = new ClaudeFlowCLI();
+// Graceful error handling and cleanup
+process.on('uncaughtException', (error) => {
+  logger.error('Uncaught exception', { error: error.message, stack: error.stack });
+  console.error(chalk.red('Fatal error:'), error.message);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('Unhandled promise rejection', { reason, promise });
+  console.error(chalk.red('Unhandled rejection:'), reason);
+  process.exit(1);
+});
+
 cli.run().catch(error => {
+  logger.error('CLI execution failed', { error: error.message, stack: error.stack });
   console.error(chalk.red('Fatal error:'), error.message);
   process.exit(1);
 });

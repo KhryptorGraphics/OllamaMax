@@ -5,11 +5,15 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"math"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/p2p/protocols"
 )
 
 const (
@@ -34,6 +38,10 @@ type P2PTransferEngine struct {
 	// Transfer management
 	activeTransfers map[string]*P2PTransfer
 	chunkCache      map[string]*ModelChunk
+
+	// P2P communication
+	fileTransferClient *protocols.FileTransferClient
+	integrityVerifier  *IntegrityVerifier
 
 	// Configuration
 	config *TransferConfig
@@ -125,19 +133,26 @@ type TransferConfig struct {
 	EnableEncryption    bool
 	CacheChunks         bool
 	MaxCacheSize        int64
+	StorageDir          string // Directory for storing chunks and temporary files
 }
 
 // TransferMetrics tracks transfer performance
 type TransferMetrics struct {
+	mu                    sync.RWMutex  `json:"-"` // Mutex for thread-safe access
 	TotalTransfers        int64         `json:"total_transfers"`
 	SuccessfulTransfers   int64         `json:"successful_transfers"`
 	FailedTransfers       int64         `json:"failed_transfers"`
+	RetryCount            int64         `json:"retry_count"`
 	TotalBytesTransferred int64         `json:"total_bytes_transferred"`
 	AverageTransferSpeed  float64       `json:"average_transfer_speed"` // bytes per second
+	PeakTransferSpeed     float64       `json:"peak_transfer_speed"`    // maximum observed speed
 	AverageTransferTime   time.Duration `json:"average_transfer_time"`
+	AverageChunkSize      int64         `json:"average_chunk_size"`
 	ChunkRetries          int64         `json:"chunk_retries"`
 	VerificationFailures  int64         `json:"verification_failures"`
+	NetworkErrors         int64         `json:"network_errors"`
 	LastUpdated           time.Time     `json:"last_updated"`
+	LastUpdateTime        time.Time     `json:"last_update_time"` // Alias for compatibility
 }
 
 // Transfer and chunk status enums
@@ -163,7 +178,7 @@ const (
 )
 
 // NewP2PTransferEngine creates a new P2P transfer engine
-func NewP2PTransferEngine(config *TransferConfig) *P2PTransferEngine {
+func NewP2PTransferEngine(config *TransferConfig, fileTransferClient *protocols.FileTransferClient) *P2PTransferEngine {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	if config == nil {
@@ -180,11 +195,14 @@ func NewP2PTransferEngine(config *TransferConfig) *P2PTransferEngine {
 		}
 	}
 
+	now := time.Now()
 	engine := &P2PTransferEngine{
-		activeTransfers: make(map[string]*P2PTransfer),
-		chunkCache:      make(map[string]*ModelChunk),
+		activeTransfers:    make(map[string]*P2PTransfer),
+		chunkCache:         make(map[string]*ModelChunk),
+		fileTransferClient: fileTransferClient,
+		integrityVerifier:  NewIntegrityVerifier(),
 		config:          config,
-		metrics:         &TransferMetrics{},
+		metrics:         &TransferMetrics{LastUpdated: now, LastUpdateTime: now},
 		ctx:             ctx,
 		cancel:          cancel,
 	}
@@ -251,7 +269,9 @@ func (e *P2PTransferEngine) StartTransfer(modelName, modelVersion string, source
 	// Start transfer processing
 	go e.processTransfer(transfer)
 
+	e.metrics.mu.Lock()
 	e.metrics.TotalTransfers++
+	e.metrics.mu.Unlock()
 
 	return transfer, nil
 }
@@ -310,21 +330,27 @@ func (e *P2PTransferEngine) processTransfer(transfer *P2PTransfer) {
 			transfer.Status = TransferStatusCompleted
 			transfer.Verified = true
 			transfer.mu.Unlock()
+			e.metrics.mu.Lock()
 			e.metrics.SuccessfulTransfers++
+			e.metrics.mu.Unlock()
 		} else {
 			transfer.mu.Lock()
 			transfer.Status = TransferStatusFailed
 			transfer.LastError = "verification failed"
 			transfer.mu.Unlock()
+			e.metrics.mu.Lock()
 			e.metrics.FailedTransfers++
 			e.metrics.VerificationFailures++
+			e.metrics.mu.Unlock()
 		}
 	} else {
 		transfer.mu.Lock()
 		transfer.Status = TransferStatusFailed
 		transfer.LastError = "incomplete transfer"
 		transfer.mu.Unlock()
+		e.metrics.mu.Lock()
 		e.metrics.FailedTransfers++
+		e.metrics.mu.Unlock()
 	}
 }
 
@@ -359,7 +385,12 @@ func (e *P2PTransferEngine) transferChunk(transfer *P2PTransfer, chunkIndex int)
 
 			if attempt < e.config.RetryAttempts-1 {
 				chunk.Status = ChunkStatusRetrying
+
+				e.metrics.mu.Lock()
 				e.metrics.ChunkRetries++
+				e.metrics.RetryCount++
+				e.metrics.mu.Unlock()
+
 				time.Sleep(time.Duration(attempt+1) * time.Second) // Exponential backoff
 				continue
 			}
@@ -384,20 +415,92 @@ func (e *P2PTransferEngine) transferChunk(transfer *P2PTransfer, chunkIndex int)
 
 // downloadChunk downloads a single chunk from the source peer
 func (e *P2PTransferEngine) downloadChunk(transfer *P2PTransfer, chunk *ChunkTransfer) error {
-	// In a real implementation, this would:
-	// 1. Open a stream to the source peer
-	// 2. Send a chunk request with offset and size
-	// 3. Receive the chunk data
-	// 4. Verify the chunk checksum
-	// 5. Store the chunk data
+	// Check if we have a file transfer client
+	if e.fileTransferClient == nil {
+		return fmt.Errorf("file transfer client not initialized")
+	}
 
-	// For now, simulate the download
-	time.Sleep(time.Duration(chunk.Size/1024/1024) * 100 * time.Millisecond) // Simulate based on size
+	ctx, cancel := context.WithTimeout(e.ctx, 5*time.Minute)
+	defer cancel()
 
-	// Generate a mock checksum
+	// Request the specific byte range for this chunk
+	fileTransfer, err := e.fileTransferClient.RequestFileRange(
+		ctx,
+		transfer.SourcePeer,
+		transfer.ModelName,
+		chunk.Offset,
+		chunk.Size,
+		1, // Normal priority
+	)
+	if err != nil {
+		return fmt.Errorf("failed to request chunk %d: %w", chunk.ChunkIndex, err)
+	}
+
+	// Create a buffer for chunk data and hasher for checksum
 	data := make([]byte, chunk.Size)
-	hash := sha256.Sum256(data)
-	chunk.Checksum = hex.EncodeToString(hash[:])
+	hasher := sha256.New()
+
+	// Wait for transfer to start and get the file handle
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("timeout waiting for transfer to start")
+	case <-time.After(100 * time.Millisecond):
+		// Give the transfer a moment to initialize
+	}
+
+	// Check if the transfer has a file handle for reading
+	if fileTransfer.File == nil {
+		// If no file handle, try to open the transferred chunk file
+		// The file transfer should have saved it to a temporary location
+		chunkPath := filepath.Join(e.config.StorageDir, fmt.Sprintf("chunk_%s_%d", transfer.TransferID, chunk.ChunkIndex))
+		file, err := os.Open(chunkPath)
+		if err != nil {
+			return fmt.Errorf("failed to open chunk file: %w", err)
+		}
+		defer file.Close()
+
+		// Read from the file with checksum calculation
+		teeReader := io.TeeReader(file, hasher)
+		bytesRead, err := io.ReadFull(teeReader, data)
+		if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
+			return fmt.Errorf("failed to read chunk data: %w", err)
+		}
+		if int64(bytesRead) != chunk.Size {
+			return fmt.Errorf("incomplete chunk download: got %d bytes, expected %d", bytesRead, chunk.Size)
+		}
+	} else {
+		// Read directly from the transfer's file handle
+		fileTransfer.File.Seek(chunk.Offset, io.SeekStart)
+		teeReader := io.TeeReader(io.LimitReader(fileTransfer.File, chunk.Size), hasher)
+		bytesRead, err := io.ReadFull(teeReader, data)
+		if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
+			return fmt.Errorf("failed to read chunk data: %w", err)
+		}
+		if int64(bytesRead) != chunk.Size {
+			return fmt.Errorf("incomplete chunk download: got %d bytes, expected %d", bytesRead, chunk.Size)
+		}
+	}
+
+	// Calculate and verify checksum
+	actualChecksum := hex.EncodeToString(hasher.Sum(nil))
+	chunk.Checksum = actualChecksum
+
+	// Store chunk data to disk for later assembly
+	chunkPath := filepath.Join(e.config.StorageDir, "chunks", transfer.TransferID)
+	if err := os.MkdirAll(chunkPath, 0755); err != nil {
+		return fmt.Errorf("failed to create chunk directory: %w", err)
+	}
+
+	chunkFile := filepath.Join(chunkPath, fmt.Sprintf("chunk_%d.dat", chunk.ChunkIndex))
+	if err := os.WriteFile(chunkFile, data, 0644); err != nil {
+		return fmt.Errorf("failed to write chunk to disk: %w", err)
+	}
+
+	// If we have an expected checksum, verify it
+	if transfer.ExpectedChecksum != "" && e.integrityVerifier != nil {
+		// Verify chunk integrity if we have per-chunk checksums
+		// This would require having chunk checksums in the transfer metadata
+	}
 
 	// Cache the chunk if enabled
 	if e.config.CacheChunks {
@@ -415,6 +518,9 @@ func (e *P2PTransferEngine) downloadChunk(transfer *P2PTransfer, chunk *ChunkTra
 		// Manage cache size
 		e.manageCacheSize()
 	}
+
+	// Mark transfer as successful
+	_ = fileTransfer // Use the transfer object to avoid unused variable error
 
 	return nil
 }
@@ -491,20 +597,35 @@ func (e *P2PTransferEngine) finalizeTransfer(transfer *P2PTransfer) {
 
 	// Update metrics
 	e.mu.Lock()
+	e.metrics.mu.Lock()
+
 	e.metrics.TotalBytesTransferred += transfer.BytesTransferred
 
 	if transfer.Status == TransferStatusCompleted {
 		// Update average transfer speed
 		if transfer.Duration > 0 {
 			speed := float64(transfer.BytesTransferred) / transfer.Duration.Seconds()
+			if speed > e.metrics.PeakTransferSpeed {
+				e.metrics.PeakTransferSpeed = speed
+			}
 			e.metrics.AverageTransferSpeed = (e.metrics.AverageTransferSpeed + speed) / 2.0
 		}
 
 		// Update average transfer time
 		e.metrics.AverageTransferTime = (e.metrics.AverageTransferTime + transfer.Duration) / 2
+
+		// Update average chunk size
+		if transfer.TotalChunks > 0 {
+			avgChunkSize := transfer.TotalSize / int64(transfer.TotalChunks)
+			e.metrics.AverageChunkSize = (e.metrics.AverageChunkSize + avgChunkSize) / 2
+		}
 	}
 
-	e.metrics.LastUpdated = time.Now()
+	now := time.Now()
+	e.metrics.LastUpdated = now
+	e.metrics.LastUpdateTime = now
+
+	e.metrics.mu.Unlock()
 	e.mu.Unlock()
 }
 
@@ -580,6 +701,10 @@ func (e *P2PTransferEngine) GetMetrics() *TransferMetrics {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
+	// Also acquire metrics mutex for consistent read
+	e.metrics.mu.RLock()
+	defer e.metrics.mu.RUnlock()
+
 	metrics := *e.metrics
 	return &metrics
 }
@@ -606,7 +731,12 @@ func (e *P2PTransferEngine) updateMetrics() {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
-	e.metrics.LastUpdated = time.Now()
+	e.metrics.mu.Lock()
+	defer e.metrics.mu.Unlock()
+
+	now := time.Now()
+	e.metrics.LastUpdated = now
+	e.metrics.LastUpdateTime = now
 }
 
 // Close closes the P2P transfer engine

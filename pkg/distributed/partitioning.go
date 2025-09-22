@@ -3,12 +3,14 @@ package distributed
 import (
 	"context"
 	"fmt"
-	"math"
-	"sync"
 	"time"
+
+	"github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/scheduler/partitioning"
+	api_types "github.com/khryptorgraphics/ollamamax/ollama-distributed/pkg/types"
 )
 
 // PartitionStrategy defines interface for different partitioning approaches
+// This is now a thin wrapper around the enhanced partitioning system
 type PartitionStrategy interface {
 	Partition(ctx context.Context, request *InferenceRequest, nodes []NodeInfo) (*PartitionPlan, error)
 	Validate(plan *PartitionPlan) error
@@ -36,13 +38,7 @@ type Partition struct {
 	Data      []byte
 }
 
-// LayerPartitionStrategy partitions by model layers
-type LayerPartitionStrategy struct {
-	layerMapping map[string][]LayerInfo
-	mu           sync.RWMutex
-}
-
-// LayerInfo contains layer information
+// LayerInfo contains layer information (kept for backward compatibility)
 type LayerInfo struct {
 	Name        string
 	Type        string
@@ -51,13 +47,7 @@ type LayerInfo struct {
 	ComputeCost float64
 }
 
-// TensorPartitionStrategy partitions by tensors
-type TensorPartitionStrategy struct {
-	tensorMapping map[string][]TensorInfo
-	mu            sync.RWMutex
-}
-
-// TensorInfo contains tensor information
+// TensorInfo contains tensor information (kept for backward compatibility)
 type TensorInfo struct {
 	Name   string
 	Shape  []int
@@ -65,13 +55,7 @@ type TensorInfo struct {
 	Device string
 }
 
-// PipelinePartitionStrategy implements pipeline parallelism
-type PipelinePartitionStrategy struct {
-	stageMapping map[string][]PipelineStage
-	mu           sync.RWMutex
-}
-
-// PipelineStage represents a pipeline stage
+// PipelineStage represents a pipeline stage (kept for backward compatibility)
 type PipelineStage struct {
 	ID          string
 	Name        string
@@ -81,408 +65,371 @@ type PipelineStage struct {
 	ComputeReq  float64
 }
 
-// DataPartitionStrategy partitions input data
-type DataPartitionStrategy struct {
-	chunkSize int
-	mu        sync.RWMutex
+// EnhancedPartitioningAdapter wraps the new enhanced partitioning system
+type EnhancedPartitioningAdapter struct {
+	manager partitioning.EnhancedPartitionManager
+}
+
+// NewEnhancedPartitioningAdapter creates a new adapter that uses the enhanced partitioning system
+func NewEnhancedPartitioningAdapter() *EnhancedPartitioningAdapter {
+	return &EnhancedPartitioningAdapter{
+		manager: partitioning.NewEnhancedPartitionManager(),
+	}
+}
+
+// Partition delegates to the enhanced partition manager
+func (epa *EnhancedPartitioningAdapter) Partition(ctx context.Context, request *InferenceRequest, nodes []NodeInfo) (*PartitionPlan, error) {
+	// Convert InferenceRequest to DistributedTask (minimal required fields)
+	task := &api_types.DistributedTask{
+		ID:        api_types.TaskID(request.ID),
+		ModelName: request.Model,
+		CreatedAt: time.Now(),
+	}
+	
+	// Extract preferred node IDs and capabilities from the nodes argument
+	var preferredNodeIDs []string
+	var nodeCapabilities []map[string]interface{}
+	for _, node := range nodes {
+		preferredNodeIDs = append(preferredNodeIDs, node.ID)
+
+		// Build capability snapshot for each node
+		capSnapshot := map[string]interface{}{
+			"id":           node.ID,
+			"cpu_cores":    node.CPUCores,
+			"mem_total":    node.TotalMemory,
+			"mem_available": node.AvailableMemory,
+			"gpu_count":    node.GPUCount,
+			"net_bw":       node.NetworkBandwidth,
+			"net_latency":  node.NetworkLatency,
+		}
+		nodeCapabilities = append(nodeCapabilities, capSnapshot)
+	}
+
+	// Store options, preferred node IDs, and capabilities in metadata
+	if task.Metadata == nil {
+		task.Metadata = make(map[string]interface{})
+	}
+
+	if request.Options != nil {
+		task.Metadata["options"] = request.Options
+	}
+
+	// Set preferred node IDs for the enhanced manager
+	if len(preferredNodeIDs) > 0 {
+		task.Metadata["preferred_node_ids"] = preferredNodeIDs
+	}
+
+	// Pass node capabilities through the adapter
+	if len(nodeCapabilities) > 0 {
+		task.Metadata["preferred_nodes_capabilities"] = nodeCapabilities
+	}
+
+	// Use the enhanced partition manager
+	enhancedPlan, err := epa.manager.Partition(ctx, task)
+	if err != nil {
+		return nil, fmt.Errorf("enhanced partitioning failed: %w", err)
+	}
+
+	// Convert back to legacy PartitionPlan
+	return convertEnhancedPlanToLegacy(enhancedPlan, request.ID), nil
+}
+
+// Validate validates the partition plan
+func (epa *EnhancedPartitioningAdapter) Validate(plan *PartitionPlan) error {
+	if plan == nil {
+		return fmt.Errorf("partition plan is nil")
+	}
+	if len(plan.Partitions) == 0 {
+		return fmt.Errorf("no partitions in plan")
+	}
+	return nil
+}
+
+// EstimateLatency estimates execution latency
+func (epa *EnhancedPartitioningAdapter) EstimateLatency(plan *PartitionPlan) time.Duration {
+	// Simple estimation based on partition count
+	return time.Duration(len(plan.Partitions)*100) * time.Millisecond
+}
+
+// EstimateMemoryUsage estimates memory usage
+func (epa *EnhancedPartitioningAdapter) EstimateMemoryUsage(plan *PartitionPlan) int64 {
+	// Simple estimation
+	return int64(len(plan.Partitions)) * 1_000_000_000 // 1GB per partition
+}
+
+// convertEnhancedPlanToLegacy converts an enhanced partition plan to legacy format
+func convertEnhancedPlanToLegacy(enhancedPlan *partitioning.PartitionPlan, requestID string) *PartitionPlan {
+	if enhancedPlan == nil {
+		return nil
+	}
+
+	plan := &PartitionPlan{
+		ID:        enhancedPlan.ID,
+		RequestID: requestID,
+		Strategy:  enhancedPlan.Strategy,
+		CreatedAt: enhancedPlan.CreatedAt,
+	}
+
+	// Convert assignments to partitions
+	for i, assignment := range enhancedPlan.Assignments {
+		partition := &Partition{
+			ID:     fmt.Sprintf("partition_%d", i),
+			NodeID: assignment.NodeID,
+		}
+
+		// Handle different work types
+		switch assignment.WorkType {
+		case partitioning.WorkTypePipelineStage:
+			// Handle pipeline stage ranges
+			if assignment.Assignment != nil && assignment.Assignment.PipelineStage != nil {
+				stage := assignment.Assignment.PipelineStage
+				if len(stage.LayerRange) >= 2 {
+					partition.StartIdx = stage.LayerRange[0]
+					partition.EndIdx = stage.LayerRange[1]
+					partition.ModelPart = fmt.Sprintf("pipeline_stage_%d_%d", stage.LayerRange[0], stage.LayerRange[1])
+				} else {
+					// Fallback to default range if LayerRange is incomplete
+					partition.StartIdx = 0
+					partition.EndIdx = 10
+					partition.ModelPart = "pipeline_stage_0_10"
+				}
+			} else {
+				// Default values for pipeline stage if no stage info available
+				partition.StartIdx = 0
+				partition.EndIdx = 10
+				partition.ModelPart = "pipeline_stage_0_10"
+			}
+		case partitioning.WorkTypeTensors:
+			// For tensor work type, don't use layer indices
+			partition.StartIdx = -1
+			partition.EndIdx = -1
+			partition.ModelPart = "tensors"
+		case partitioning.WorkTypeHybrid:
+			// For hybrid work type, don't use layer indices
+			partition.StartIdx = -1
+			partition.EndIdx = -1
+			partition.ModelPart = "hybrid"
+		case partitioning.WorkTypeLayers:
+			// Extract layer indices for layer-based assignments
+			if assignment.Assignment != nil && len(assignment.Assignment.Layers) > 0 {
+				layer := assignment.Assignment.Layers[0]
+				partition.StartIdx = layer.StartIndex
+				partition.EndIdx = layer.EndIndex
+				partition.ModelPart = fmt.Sprintf("layers_%d_%d", layer.StartIndex, layer.EndIndex)
+			} else {
+				// Default values if no layer info available
+				partition.StartIdx = 0
+				partition.EndIdx = 10
+				partition.ModelPart = "layers_0_10"
+			}
+		default:
+			// For unknown work types, use -1 to indicate not applicable
+			partition.StartIdx = -1
+			partition.EndIdx = -1
+			partition.ModelPart = string(assignment.WorkType)
+		}
+
+		plan.Partitions = append(plan.Partitions, partition)
+	}
+
+	// Set coordinator as the first node
+	if len(enhancedPlan.Assignments) > 0 {
+		plan.Coordinator = enhancedPlan.Assignments[0].NodeID
+	}
+
+	return plan
+}
+
+// Legacy strategy implementations that delegate to the enhanced system
+
+// LayerPartitionStrategy partitions by model layers (delegates to enhanced system)
+type LayerPartitionStrategy struct {
+	adapter *EnhancedPartitioningAdapter
 }
 
 // NewLayerPartitionStrategy creates layer-based partitioning strategy
 func NewLayerPartitionStrategy() *LayerPartitionStrategy {
 	return &LayerPartitionStrategy{
-		layerMapping: make(map[string][]LayerInfo),
+		adapter: NewEnhancedPartitioningAdapter(),
 	}
 }
 
 // Partition partitions work by model layers
 func (lps *LayerPartitionStrategy) Partition(ctx context.Context, request *InferenceRequest, nodes []NodeInfo) (*PartitionPlan, error) {
-	lps.mu.RLock()
-	layers, exists := lps.layerMapping[request.Model]
-	lps.mu.RUnlock()
-	
-	if !exists {
-		return nil, fmt.Errorf("no layer mapping found for model %s", request.Model)
-	}
-	
-	if len(nodes) == 0 {
-		return nil, fmt.Errorf("no nodes available")
-	}
-	
-	// Distribute layers across nodes
-	partitions := make([]*Partition, 0, len(nodes))
-	layersPerNode := int(math.Ceil(float64(len(layers)) / float64(len(nodes))))
-	
-	for i, node := range nodes {
-		startIdx := i * layersPerNode
-		endIdx := startIdx + layersPerNode
-		if endIdx > len(layers) {
-			endIdx = len(layers)
-		}
-		
-		if startIdx < len(layers) {
-			partition := &Partition{
-				ID:        fmt.Sprintf("layer_%s_%d", node.ID, i),
-				NodeID:    node.ID,
-				StartIdx:  startIdx,
-				EndIdx:    endIdx,
-				ModelPart: fmt.Sprintf("layers_%d_%d", startIdx, endIdx),
-			}
-			partitions = append(partitions, partition)
-		}
-	}
-	
-	plan := &PartitionPlan{
-		ID:          fmt.Sprintf("layer_plan_%s", request.ID),
-		RequestID:   request.ID,
-		Strategy:    "layer",
-		Partitions:  partitions,
-		Coordinator: nodes[0].ID, // First node coordinates
-		CreatedAt:   time.Now(),
-	}
-	
-	return plan, nil
+	return lps.adapter.Partition(ctx, request, nodes)
 }
 
-// Validate validates a layer partition plan
+// Validate validates the partition plan
 func (lps *LayerPartitionStrategy) Validate(plan *PartitionPlan) error {
-	if plan == nil {
-		return fmt.Errorf("plan is nil")
-	}
-	
-	if len(plan.Partitions) == 0 {
-		return fmt.Errorf("no partitions in plan")
-	}
-	
-	// Check for overlapping partitions
-	for i, p1 := range plan.Partitions {
-		for j, p2 := range plan.Partitions {
-			if i != j && p1.NodeID == p2.NodeID && p1.StartIdx < p2.EndIdx && p2.StartIdx < p1.EndIdx {
-				return fmt.Errorf("overlapping partitions on node %s", p1.NodeID)
-			}
-		}
-	}
-	
-	return nil
+	return lps.adapter.Validate(plan)
 }
 
 // EstimateLatency estimates execution latency
 func (lps *LayerPartitionStrategy) EstimateLatency(plan *PartitionPlan) time.Duration {
-	if plan == nil || len(plan.Partitions) == 0 {
-		return time.Hour // High latency for invalid plans
-	}
-	
-	// Estimate based on largest partition (pipeline bottleneck)
-	maxLayers := 0
-	for _, partition := range plan.Partitions {
-		layers := partition.EndIdx - partition.StartIdx
-		if layers > maxLayers {
-			maxLayers = layers
-		}
-	}
-	
-	// Rough estimate: 100ms per layer
-	return time.Duration(maxLayers*100) * time.Millisecond
+	return lps.adapter.EstimateLatency(plan)
 }
 
 // EstimateMemoryUsage estimates memory usage
 func (lps *LayerPartitionStrategy) EstimateMemoryUsage(plan *PartitionPlan) int64 {
-	if plan == nil || len(plan.Partitions) == 0 {
-		return 0
-	}
-	
-	// Sum memory across all partitions
-	var totalMemory int64
-	for _, partition := range plan.Partitions {
-		layers := partition.EndIdx - partition.StartIdx
-		// Rough estimate: 1GB per layer
-		totalMemory += int64(layers) * 1024 * 1024 * 1024
-	}
-	
-	return totalMemory
+	return lps.adapter.EstimateMemoryUsage(plan)
+}
+
+// TensorPartitionStrategy partitions by tensors (delegates to enhanced system)
+type TensorPartitionStrategy struct {
+	adapter *EnhancedPartitioningAdapter
 }
 
 // NewTensorPartitionStrategy creates tensor-based partitioning strategy
 func NewTensorPartitionStrategy() *TensorPartitionStrategy {
 	return &TensorPartitionStrategy{
-		tensorMapping: make(map[string][]TensorInfo),
+		adapter: NewEnhancedPartitioningAdapter(),
 	}
 }
 
 // Partition partitions work by tensors
 func (tps *TensorPartitionStrategy) Partition(ctx context.Context, request *InferenceRequest, nodes []NodeInfo) (*PartitionPlan, error) {
-	tps.mu.RLock()
-	tensors, exists := tps.tensorMapping[request.Model]
-	tps.mu.RUnlock()
-	
-	if !exists {
-		return nil, fmt.Errorf("no tensor mapping found for model %s", request.Model)
-	}
-	
-	if len(nodes) == 0 {
-		return nil, fmt.Errorf("no nodes available")
-	}
-	
-	// Distribute tensors across nodes by size
-	partitions := make([]*Partition, 0, len(nodes))
-	
-	// Sort tensors by size (largest first)
-	sortedTensors := make([]TensorInfo, len(tensors))
-	copy(sortedTensors, tensors)
-	
-	// Simple round-robin distribution
-	for i, tensor := range sortedTensors {
-		nodeIdx := i % len(nodes)
-		node := nodes[nodeIdx]
-		
-		partition := &Partition{
-			ID:        fmt.Sprintf("tensor_%s_%s", node.ID, tensor.Name),
-			NodeID:    node.ID,
-			StartIdx:  i,
-			EndIdx:    i + 1,
-			ModelPart: tensor.Name,
-		}
-		partitions = append(partitions, partition)
-	}
-	
-	plan := &PartitionPlan{
-		ID:          fmt.Sprintf("tensor_plan_%s", request.ID),
-		RequestID:   request.ID,
-		Strategy:    "tensor",
-		Partitions:  partitions,
-		Coordinator: nodes[0].ID,
-		CreatedAt:   time.Now(),
-	}
-	
-	return plan, nil
+	return tps.adapter.Partition(ctx, request, nodes)
 }
 
-// Validate validates a tensor partition plan
+// Validate validates the partition plan
 func (tps *TensorPartitionStrategy) Validate(plan *PartitionPlan) error {
-	if plan == nil {
-		return fmt.Errorf("plan is nil")
-	}
-	
-	if len(plan.Partitions) == 0 {
-		return fmt.Errorf("no partitions in plan")
-	}
-	
-	return nil
+	return tps.adapter.Validate(plan)
 }
 
-// EstimateLatency estimates tensor partition latency
+// EstimateLatency estimates execution latency
 func (tps *TensorPartitionStrategy) EstimateLatency(plan *PartitionPlan) time.Duration {
-	if plan == nil || len(plan.Partitions) == 0 {
-		return time.Hour
-	}
-	
-	// Tensor operations can be parallelized better
-	// Estimate: 50ms base + 10ms per partition
-	baseLatency := 50 * time.Millisecond
-	partitionLatency := time.Duration(len(plan.Partitions)*10) * time.Millisecond
-	
-	return baseLatency + partitionLatency
+	return tps.adapter.EstimateLatency(plan)
 }
 
-// EstimateMemoryUsage estimates tensor memory usage
+// EstimateMemoryUsage estimates memory usage
 func (tps *TensorPartitionStrategy) EstimateMemoryUsage(plan *PartitionPlan) int64 {
-	if plan == nil || len(plan.Partitions) == 0 {
-		return 0
-	}
-	
-	// Estimate: 500MB per tensor partition
-	return int64(len(plan.Partitions)) * 500 * 1024 * 1024
+	return tps.adapter.EstimateMemoryUsage(plan)
 }
 
-// NewPipelinePartitionStrategy creates pipeline partitioning strategy
+// PipelinePartitionStrategy implements pipeline parallelism (delegates to enhanced system)
+type PipelinePartitionStrategy struct {
+	adapter *EnhancedPartitioningAdapter
+}
+
+// NewPipelinePartitionStrategy creates pipeline-based partitioning strategy
 func NewPipelinePartitionStrategy() *PipelinePartitionStrategy {
 	return &PipelinePartitionStrategy{
-		stageMapping: make(map[string][]PipelineStage),
+		adapter: NewEnhancedPartitioningAdapter(),
 	}
 }
 
-// Partition partitions work using pipeline stages
+// Partition partitions work in pipeline stages
 func (pps *PipelinePartitionStrategy) Partition(ctx context.Context, request *InferenceRequest, nodes []NodeInfo) (*PartitionPlan, error) {
-	pps.mu.RLock()
-	stages, exists := pps.stageMapping[request.Model]
-	pps.mu.RUnlock()
-	
-	if !exists {
-		return nil, fmt.Errorf("no pipeline mapping found for model %s", request.Model)
-	}
-	
-	if len(nodes) == 0 {
-		return nil, fmt.Errorf("no nodes available")
-	}
-	
-	// Assign stages to nodes
-	partitions := make([]*Partition, 0, len(stages))
-	
-	for i, stage := range stages {
-		nodeIdx := i % len(nodes)
-		node := nodes[nodeIdx]
-		
-		partition := &Partition{
-			ID:        fmt.Sprintf("stage_%s_%s", node.ID, stage.ID),
-			NodeID:    node.ID,
-			StartIdx:  i,
-			EndIdx:    i + 1,
-			ModelPart: stage.Name,
-		}
-		partitions = append(partitions, partition)
-	}
-	
-	plan := &PartitionPlan{
-		ID:          fmt.Sprintf("pipeline_plan_%s", request.ID),
-		RequestID:   request.ID,
-		Strategy:    "pipeline",
-		Partitions:  partitions,
-		Coordinator: nodes[0].ID,
-		CreatedAt:   time.Now(),
-	}
-	
-	return plan, nil
+	return pps.adapter.Partition(ctx, request, nodes)
 }
 
-// Validate validates a pipeline partition plan
+// Validate validates the partition plan
 func (pps *PipelinePartitionStrategy) Validate(plan *PartitionPlan) error {
-	if plan == nil {
-		return fmt.Errorf("plan is nil")
-	}
-	
-	if len(plan.Partitions) == 0 {
-		return fmt.Errorf("no partitions in plan")
-	}
-	
-	return nil
+	return pps.adapter.Validate(plan)
 }
 
-// EstimateLatency estimates pipeline latency
+// EstimateLatency estimates execution latency
 func (pps *PipelinePartitionStrategy) EstimateLatency(plan *PartitionPlan) time.Duration {
-	if plan == nil || len(plan.Partitions) == 0 {
-		return time.Hour
-	}
-	
-	// Pipeline latency is sum of stage latencies
-	// Estimate: 80ms per stage
-	return time.Duration(len(plan.Partitions)*80) * time.Millisecond
+	return pps.adapter.EstimateLatency(plan)
 }
 
-// EstimateMemoryUsage estimates pipeline memory usage
+// EstimateMemoryUsage estimates memory usage
 func (pps *PipelinePartitionStrategy) EstimateMemoryUsage(plan *PartitionPlan) int64 {
-	if plan == nil || len(plan.Partitions) == 0 {
-		return 0
-	}
-	
-	// Pipeline stages share memory more efficiently
-	// Estimate: 2GB base + 200MB per stage
-	baseMemory := int64(2 * 1024 * 1024 * 1024)
-	stageMemory := int64(len(plan.Partitions)) * 200 * 1024 * 1024
-	
-	return baseMemory + stageMemory
+	return pps.adapter.EstimateMemoryUsage(plan)
 }
 
-// NewDataPartitionStrategy creates data partitioning strategy
+// DataPartitionStrategy partitions input data (simple implementation, not using enhanced system)
+type DataPartitionStrategy struct {
+	chunkSize int
+}
+
+// NewDataPartitionStrategy creates data-based partitioning strategy
 func NewDataPartitionStrategy(chunkSize int) *DataPartitionStrategy {
+	if chunkSize <= 0 {
+		chunkSize = 1024 // Default chunk size
+	}
 	return &DataPartitionStrategy{
 		chunkSize: chunkSize,
 	}
 }
 
-// Partition partitions input data
+// Partition partitions work by data chunks
 func (dps *DataPartitionStrategy) Partition(ctx context.Context, request *InferenceRequest, nodes []NodeInfo) (*PartitionPlan, error) {
 	if len(nodes) == 0 {
 		return nil, fmt.Errorf("no nodes available")
 	}
-	
-	// For data partitioning, we split the input
-	inputLength := len(request.Prompt)
-	if inputLength == 0 {
-		return nil, fmt.Errorf("no input data to partition")
-	}
-	
-	partitions := make([]*Partition, 0, len(nodes))
-	chunkSize := dps.chunkSize
-	if chunkSize <= 0 {
-		chunkSize = inputLength / len(nodes)
-		if chunkSize == 0 {
-			chunkSize = 1
-		}
-	}
-	
-	for i, node := range nodes {
-		startIdx := i * chunkSize
-		endIdx := startIdx + chunkSize
-		if endIdx > inputLength {
-			endIdx = inputLength
-		}
-		
-		if startIdx < inputLength {
-			partition := &Partition{
-				ID:        fmt.Sprintf("data_%s_%d", node.ID, i),
-				NodeID:    node.ID,
-				StartIdx:  startIdx,
-				EndIdx:    endIdx,
-				ModelPart: fmt.Sprintf("chunk_%d_%d", startIdx, endIdx),
-				Data:      []byte(request.Prompt[startIdx:endIdx]),
-			}
-			partitions = append(partitions, partition)
-		}
-	}
-	
+
 	plan := &PartitionPlan{
-		ID:          fmt.Sprintf("data_plan_%s", request.ID),
+		ID:          fmt.Sprintf("plan_%s_%d", request.ID, time.Now().Unix()),
 		RequestID:   request.ID,
 		Strategy:    "data",
-		Partitions:  partitions,
+		Partitions:  make([]*Partition, 0),
 		Coordinator: nodes[0].ID,
 		CreatedAt:   time.Now(),
 	}
-	
+
+	// Simple round-robin data partitioning
+	dataLen := len(request.Prompt)
+	nodeCount := len(nodes)
+	chunkSize := dataLen / nodeCount
+	if chunkSize < 1 {
+		chunkSize = 1
+	}
+
+	for i, node := range nodes {
+		startIdx := i * chunkSize
+		endIdx := startIdx + chunkSize
+		if i == nodeCount-1 {
+			endIdx = dataLen
+		}
+
+		partition := &Partition{
+			ID:        fmt.Sprintf("partition_%d", i),
+			NodeID:    node.ID,
+			StartIdx:  startIdx,
+			EndIdx:    endIdx,
+			ModelPart: "full",
+		}
+
+		if startIdx < dataLen {
+			partition.Data = []byte(request.Prompt[startIdx:min(endIdx, dataLen)])
+		}
+
+		plan.Partitions = append(plan.Partitions, partition)
+	}
+
 	return plan, nil
 }
 
-// Validate validates a data partition plan
+// Validate validates the partition plan
 func (dps *DataPartitionStrategy) Validate(plan *PartitionPlan) error {
 	if plan == nil {
-		return fmt.Errorf("plan is nil")
+		return fmt.Errorf("partition plan is nil")
 	}
-	
 	if len(plan.Partitions) == 0 {
 		return fmt.Errorf("no partitions in plan")
 	}
-	
 	return nil
 }
 
-// EstimateLatency estimates data partition latency
+// EstimateLatency estimates execution latency
 func (dps *DataPartitionStrategy) EstimateLatency(plan *PartitionPlan) time.Duration {
-	if plan == nil || len(plan.Partitions) == 0 {
-		return time.Hour
-	}
-	
-	// Data partitioning has parallel processing benefits
-	// Estimate: 30ms base + 5ms per partition
-	baseLatency := 30 * time.Millisecond
-	partitionLatency := time.Duration(len(plan.Partitions)*5) * time.Millisecond
-	
-	return baseLatency + partitionLatency
+	return time.Duration(len(plan.Partitions)*50) * time.Millisecond
 }
 
-// EstimateMemoryUsage estimates data partition memory usage
+// EstimateMemoryUsage estimates memory usage
 func (dps *DataPartitionStrategy) EstimateMemoryUsage(plan *PartitionPlan) int64 {
-	if plan == nil || len(plan.Partitions) == 0 {
-		return 0
-	}
-	
-	var totalMemory int64
+	var totalSize int64
 	for _, partition := range plan.Partitions {
-		if partition.Data != nil {
-			totalMemory += int64(len(partition.Data))
-		}
+		totalSize += int64(len(partition.Data))
 	}
-	
-	// Add base memory overhead: 100MB
-	totalMemory += 100 * 1024 * 1024
-	
-	return totalMemory
+	return totalSize * 2 // Estimate 2x for processing overhead
+}
+
+// Helper function
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }

@@ -1,0 +1,105 @@
+version: 1.0.0
+project: ollamamax
+testing:
+  ai_model: gpt-4
+  test_generation:
+    enabled: true
+    coverage_target: 100
+  scenarios:
+    - user_journey
+    - edge_cases
+    - security_testing
+    - performance_testing
+    - chaos_engineering
+  browser_automation:
+    framework: playwright
+    browsers:
+      - chromium
+      - firefox
+      - webkit
+    devices:
+      - desktop
+      - mobile
+      - tablet
+  validation:
+    production_checklist:
+      - security_scan
+      - performance_benchmark
+      - integration_tests
+      - compliance_verification
+    thresholds:
+      coverage: 95
+      performance: p95<500ms
+      error_rate: <1%
+      availability: 99.99%
+
+security:
+  vulnerability_scanning: true
+  dependency_checks: true
+  code_analysis: sonarqube
+  penetration_testing: automated
+  owasp_compliance: full
+  ssl_configuration: a_plus
+  waf_rules: strict
+  rate_limiting: adaptive
+  ddos_protection: enabled
+  encryption: everywhere
+  secrets_rotation: automatic
+
+performance:
+  target_metrics:
+    ttfb: "<200ms"
+    fcp: "<1s"
+    lcp: "<2.5s"
+    cls: "<0.1"
+  optimization:
+    caching: aggressive
+    compression: brotli
+    minification: maximum
+    lazy_loading: true
+    code_splitting: dynamic
+    tree_shaking: true
+    bundle_analysis: true
+    database_indexing: optimized
+    query_optimization: automatic
+    connection_pooling: tuned
+
+monitoring:
+  apm_tool: datadog
+  metrics: prometheus
+  logging: elk
+  tracing: jaeger
+  error_tracking: sentry
+  uptime_monitoring: pingdom
+  synthetic_monitoring: true
+  real_user_monitoring: true
+  custom_dashboards: generated
+  alerting_rules: comprehensive
+  sla_tracking: 99.99%
+
+deployment:
+  strategy: canary
+  rollback_automatic: true
+  health_checks: comprehensive
+  smoke_tests: mandatory
+  approval_required: true
+  notifications:
+    - slack
+    - email
+    - pagerduty
+  artifact_signing: true
+  compliance_checks: automated
+
+database:
+  setup: complete
+  replication: multi_master
+  backup_strategy:
+    - continuous
+    - point_in_time
+  disaster_recovery: true
+  failover: automatic
+  monitoring: comprehensive
+  slow_query_log: true
+  connection_pool_size: optimized
+  read_replicas: 3
+  write_scaling: horizontal

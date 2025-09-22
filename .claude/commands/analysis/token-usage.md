@@ -2,24 +2,56 @@
 
 Analyze token usage patterns and optimize for efficiency.
 
-## Usage
-```bash
-npx claude-flow analysis token-usage [options]
+## MCP Tool Usage
+```javascript
+// Analyze token usage
+mcp__claude-flow__token_usage({
+  "operation": "analysis",
+  "timeframe": "24h"  // Options: 1h, 24h, 7d, 30d
+})
 ```
 
-## Options
-- `--period <time>` - Analysis period (1h, 24h, 7d, 30d)
-- `--by-agent` - Break down by agent
-- `--by-operation` - Break down by operation type
+## Analysis Options
+- `operation` - Type of analysis ("analysis", "session", "agent")
+- `timeframe` - Analysis period ("1h", "24h", "7d", "30d")
 
 ## Examples
-```bash
-# Last 24 hours token usage
-npx claude-flow analysis token-usage --period 24h
 
-# By agent breakdown
-npx claude-flow analysis token-usage --by-agent
+### Last 24 hours token usage
+```javascript
+mcp__claude-flow__token_usage({
+  "operation": "analysis",
+  "timeframe": "24h"
+})
 
-# Export detailed report
-npx claude-flow analysis token-usage --period 7d --export tokens.csv
+// Returns:
+{
+  "totalTokens": 45632,
+  "byOperation": {
+    "search": 12450,
+    "analysis": 18320,
+    "generation": 14862
+  },
+  "efficiency": "312 tokens/operation"
+}
+```
+
+### By agent breakdown
+```javascript
+mcp__claude-flow__token_usage({
+  "operation": "agent",
+  "timeframe": "24h"
+})
+
+// Returns agent-specific metrics
+```
+
+### Session analysis
+```javascript
+mcp__claude-flow__token_usage({
+  "operation": "session",
+  "timeframe": "7d"
+})
+
+// Returns session-based token metrics
 ```

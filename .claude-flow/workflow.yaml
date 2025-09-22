@@ -1,0 +1,122 @@
+name: ollamamax-complete-development
+version: 1.0.0
+description: Complete development workflow with Claude Max subscription
+
+authentication:
+  method: claude-max-subscription
+  api_key_required: false
+  use_browser_session: true
+  subscription_tier: max
+
+ai_models:
+  primary:
+    name: claude-opus-4.1
+    access_via: claude-max
+    no_api_key: true
+    temperature: 0.7
+    use_cases:
+      - complex_reasoning
+      - architecture_design
+      - code_generation
+      - testing_strategy
+  
+  secondary:
+    name: claude-sonnet-4
+    access_via: claude-max
+    no_api_key: true
+    temperature: 0.5
+    use_cases:
+      - quick_analysis
+      - code_review
+      - test_generation
+      - documentation
+
+phases:
+  - name: analysis
+    ai_model: claude-opus-4.1
+    auth: claude-max
+    description: Deep codebase analysis and planning
+    tasks:
+      - analyze_codebase
+      - identify_requirements
+      - generate_architecture
+      - create_roadmap
+    
+  - name: development
+    ai_model: claude-opus-4.1
+    auth: claude-max
+    description: Iterative development with Claude AI assistance
+    tasks:
+      - implement_features
+      - refactor_code
+      - optimize_performance
+      - integrate_services
+    
+  - name: testing
+    ai_model: claude-sonnet-4
+    auth: claude-max
+    description: Comprehensive testing with Playwright and Serena
+    tasks:
+      - unit_tests
+      - integration_tests
+      - playwright_e2e
+      - serena_ai_testing
+    
+  - name: deployment
+    ai_model: claude-sonnet-4
+    auth: claude-max
+    description: Production deployment preparation
+    tasks:
+      - build_artifacts
+      - security_scan
+      - deploy_staging
+      - production_release
+
+agents:
+  coordinator:
+    role: orchestrator
+    ai_model: claude-opus-4.1
+    auth: claude-max
+    capabilities:
+      - task_distribution
+      - progress_monitoring
+      - decision_making
+  
+  developer:
+    role: implementation
+    count: 5
+    ai_model: claude-opus-4.1
+    auth: claude-max
+    capabilities:
+      - code_generation
+      - refactoring
+      - optimization
+  
+  tester:
+    role: quality_assurance
+    count: 3
+    ai_model: claude-sonnet-4
+    auth: claude-max
+    capabilities:
+      - test_generation
+      - test_execution
+      - bug_detection
+  
+  reviewer:
+    role: code_review
+    ai_model: claude-sonnet-4
+    auth: claude-max
+    capabilities:
+      - quality_check
+      - security_audit
+      - best_practices
+
+settings:
+  auth_provider: claude-max
+  api_key_required: false
+  models_only: ["claude-opus-4.1", "claude-sonnet-4"]
+  parallel_execution: true
+  auto_retry: true
+  max_retries: 3
+  verification_mode: strict
+  reporting: comprehensive

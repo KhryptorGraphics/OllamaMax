@@ -2,8 +2,8 @@ module.exports = {
   testEnvironment: 'node',
   roots: ['<rootDir>/tests'],
   testMatch: [
-    '**/__tests__/**/*.(test|spec).cjs',
-    '**/?(*.)+(spec|test).cjs'
+    '**/__tests__/**/*.(test|spec).(js|cjs)',
+    '**/?(*.)+(spec|test).(js|cjs)'
   ],
   collectCoverageFrom: [
     'api-server/**/*.js',

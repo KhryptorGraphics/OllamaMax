@@ -75,6 +75,10 @@ type FileTransfer struct {
 	ChunkSize   int    `json:"chunk_size"`
 	TotalChunks int    `json:"total_chunks"`
 
+	// Range support for partial transfers
+	RangeOffset int64 `json:"range_offset,omitempty"` // Starting byte offset in original file
+	RangeSize   int64 `json:"range_size,omitempty"`   // Total bytes in this range
+
 	// Transfer state
 	Status           TransferStatus    `json:"status"`
 	Direction        TransferDirection `json:"direction"`
@@ -226,19 +230,42 @@ func (fth *FileTransferHandler) handleFileRequest(ctx context.Context, stream ne
 		return fth.sendErrorResponse(stream, msg.ID, "file_error", err.Error())
 	}
 
+	// Handle range requests
+	var actualOffset, actualSize int64
+	if req.RangeOffset > 0 || req.RangeSize > 0 {
+		// Validate range
+		if req.RangeOffset >= fileSize {
+			return fth.sendErrorResponse(stream, msg.ID, "invalid_range", "Range offset exceeds file size")
+		}
+		actualOffset = req.RangeOffset
+		if req.RangeSize > 0 {
+			actualSize = req.RangeSize
+			if actualOffset+actualSize > fileSize {
+				actualSize = fileSize - actualOffset
+			}
+		} else {
+			actualSize = fileSize - actualOffset
+		}
+	} else {
+		actualOffset = 0
+		actualSize = fileSize
+	}
+
 	checksum, err := fth.fileStore.GetFileChecksum(req.FileName)
 	if err != nil {
 		return fth.sendErrorResponse(stream, msg.ID, "checksum_error", err.Error())
 	}
 
-	// Create transfer
+	// Create transfer (use actual size for ranges)
 	transfer := &FileTransfer{
 		ID:           generateMessageID(),
 		FileName:     req.FileName,
-		FileSize:     fileSize,
+		FileSize:     actualSize,
 		Checksum:     checksum,
 		ChunkSize:    fth.config.ChunkSize,
-		TotalChunks:  int((fileSize + int64(fth.config.ChunkSize) - 1) / int64(fth.config.ChunkSize)),
+		TotalChunks:  int((actualSize + int64(fth.config.ChunkSize) - 1) / int64(fth.config.ChunkSize)),
+		RangeOffset:  actualOffset,
+		RangeSize:    actualSize,
 		Status:       TransferStatusInitiating,
 		Direction:    TransferDirectionUpload,
 		PeerID:       peerID,
@@ -292,10 +319,144 @@ func (fth *FileTransferHandler) handleFileRequest(ctx context.Context, stream ne
 	return nil
 }
 
-// handleFileChunk handles incoming chunk requests
+// handleFileChunk handles incoming chunk requests from downloading peers
 func (fth *FileTransferHandler) handleFileChunk(ctx context.Context, stream network.Stream, msg *Message) error {
-	// This would handle chunk requests from downloading peers
-	// For now, we'll focus on the upload side
+	data := msg.Data
+
+	// Parse chunk request parameters
+	fileName, ok := data["file_name"].(string)
+	if !ok {
+		return fth.sendErrorResponse(stream, msg.ID, "invalid_request", "file_name is required")
+	}
+
+	rangeOffset, ok := data["range_offset"].(float64)
+	if !ok {
+		rangeOffset = 0
+	}
+	rangeSize, ok := data["range_size"].(float64)
+	if !ok {
+		return fth.sendErrorResponse(stream, msg.ID, "invalid_request", "range_size is required")
+	}
+
+	// Validate range parameters
+	if rangeOffset < 0 || rangeSize <= 0 {
+		return fth.sendErrorResponse(stream, msg.ID, "invalid_range", "invalid range parameters")
+	}
+
+	// Check if file exists
+	if !fth.fileStore.FileExists(fileName) {
+		return fth.sendErrorResponse(stream, msg.ID, "file_not_found", fmt.Sprintf("file %s not found", fileName))
+	}
+
+	// Get file size and validate range
+	fileSize, err := fth.fileStore.GetFileSize(fileName)
+	if err != nil {
+		return fth.sendErrorResponse(stream, msg.ID, "file_error", fmt.Sprintf("failed to get file size: %v", err))
+	}
+
+	if int64(rangeOffset) >= fileSize || int64(rangeOffset+rangeSize) > fileSize {
+		return fth.sendErrorResponse(stream, msg.ID, "invalid_range",
+			fmt.Sprintf("range [%d-%d] exceeds file size %d", int64(rangeOffset), int64(rangeOffset+rangeSize), fileSize))
+	}
+
+	// Open file for reading
+	file, err := fth.fileStore.OpenFileForReading(fileName)
+	if err != nil {
+		return fth.sendErrorResponse(stream, msg.ID, "file_error", fmt.Sprintf("failed to open file: %v", err))
+	}
+	defer file.Close()
+
+	// Seek to the requested offset
+	if _, err := file.Seek(int64(rangeOffset), io.SeekStart); err != nil {
+		return fth.sendErrorResponse(stream, msg.ID, "file_error", fmt.Sprintf("failed to seek to offset: %v", err))
+	}
+
+	// Create handler for sending messages
+	handler := NewProtocolHandler(FileTransferProtocol)
+
+	// Stream data in chunks
+	const packetSize = 64 * 1024 // 64KB packets
+	remaining := int64(rangeSize)
+	bytesRead := int64(0)
+	hasher := sha256.New()
+	chunkIndex := 0
+
+	buffer := make([]byte, packetSize)
+	for remaining > 0 {
+		// Determine how much to read
+		toRead := packetSize
+		if int64(toRead) > remaining {
+			toRead = int(remaining)
+		}
+
+		// Read data from file
+		n, err := file.Read(buffer[:toRead])
+		if err != nil && err != io.EOF {
+			return fth.sendErrorResponse(stream, msg.ID, "read_error", fmt.Sprintf("failed to read chunk: %v", err))
+		}
+		if n == 0 {
+			break
+		}
+
+		// Update hash
+		hasher.Write(buffer[:n])
+
+		// Create chunk message
+		chunkMsg := &Message{
+			Type:      MsgTypeFileChunk,
+			ID:        generateMessageID(),
+			Timestamp: time.Now(),
+			Data: map[string]interface{}{
+				"request_id":    msg.ID,
+				"file_name":     fileName,
+				"chunk_index":   chunkIndex,
+				"chunk_data":    buffer[:n],
+				"range_offset":  int64(rangeOffset) + bytesRead,
+				"range_size":    int64(n),
+				"bytes_read":    bytesRead + int64(n),
+				"total_bytes":   int64(rangeSize),
+				"is_last_chunk": int64(n) >= remaining,
+			},
+		}
+
+		// For the final chunk, include the overall checksum
+		if int64(n) >= remaining {
+			checksum := hex.EncodeToString(hasher.Sum(nil))
+			chunkMsg.Data["checksum"] = fmt.Sprintf("sha256:%s", checksum)
+		}
+
+		// Send chunk message
+		if err := handler.SendMessage(stream, chunkMsg); err != nil {
+			return fmt.Errorf("failed to send chunk message: %w", err)
+		}
+
+		bytesRead += int64(n)
+		remaining -= int64(n)
+		chunkIndex++
+
+		// Break on EOF or when we've sent all requested data
+		if err == io.EOF || remaining <= 0 {
+			break
+		}
+	}
+
+	// Send completion message
+	if remaining <= 0 {
+		completionMsg := &Message{
+			Type:      MsgTypeFileComplete,
+			ID:        generateMessageID(),
+			Timestamp: time.Now(),
+			Data: map[string]interface{}{
+				"request_id":   msg.ID,
+				"file_name":    fileName,
+				"total_bytes":  bytesRead,
+				"checksum":     fmt.Sprintf("sha256:%s", hex.EncodeToString(hasher.Sum(nil))),
+				"success":      true,
+			},
+		}
+		return handler.SendMessage(stream, completionMsg)
+	}
+
 	return nil
 }
 
@@ -345,6 +506,14 @@ func (fth *FileTransferHandler) parseFileRequest(msg *Message) (*FileRequest, er
 
 	if resumeTransfer, ok := data["resume_transfer"].(bool); ok {
 		req.ResumeTransfer = resumeTransfer
+	}
+
+	// Parse range parameters
+	if rangeOffset, ok := data["range_offset"].(float64); ok {
+		req.RangeOffset = int64(rangeOffset)
+	}
+	if rangeSize, ok := data["range_size"].(float64); ok {
+		req.RangeSize = int64(rangeSize)
 	}
 
 	if existingTransferID, ok := data["existing_transfer_id"].(string); ok {
@@ -694,6 +863,9 @@ type FileRequest struct {
 	Priority           int    `json:"priority"`
 	ResumeTransfer     bool   `json:"resume_transfer"`
 	ExistingTransferID string `json:"existing_transfer_id,omitempty"`
+	// Range support for partial file reads
+	RangeOffset int64 `json:"range_offset,omitempty"` // Starting byte offset
+	RangeSize   int64 `json:"range_size,omitempty"`   // Number of bytes to read (0 = until EOF)
 }
 
 // FileTransferClient provides client-side file transfer functionality
@@ -729,6 +901,33 @@ func (ftc *FileTransferClient) RequestFile(ctx context.Context, peerID peer.ID, 
 		errorCode, _ := responseMsg.Data["error_code"].(string)
 		errorMessage, _ := responseMsg.Data["error_message"].(string)
 		return nil, fmt.Errorf("file request error [%s]: %s", errorCode, errorMessage)
+	}
+
+	// Parse file response
+	return ftc.parseFileResponse(responseMsg, peerID)
+}
+
+// RequestFileRange requests a specific byte range of a file from a peer
+func (ftc *FileTransferClient) RequestFileRange(ctx context.Context, peerID peer.ID, fileName string, offset int64, size int64, priority int) (*FileTransfer, error) {
+	// Create file request message with range
+	requestMsg := CreateRequestMessage(MsgTypeFileRequest, map[string]interface{}{
+		"file_name":    fileName,
+		"priority":     priority,
+		"range_offset": offset,
+		"range_size":   size,
+	})
+
+	// Send request and wait for response
+	responseMsg, err := ftc.protocolClient.SendRequest(ctx, peerID, requestMsg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send file range request: %w", err)
+	}
+
+	// Handle error response
+	if responseMsg.Type == "error" {
+		errorCode, _ := responseMsg.Data["error_code"].(string)
+		errorMessage, _ := responseMsg.Data["error_message"].(string)
+		return nil, fmt.Errorf("file range request error [%s]: %s", errorCode, errorMessage)
 	}
 
 	// Parse file response

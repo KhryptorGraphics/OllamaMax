@@ -147,11 +147,10 @@ Typical improvements after bottleneck resolution:
 
 ```javascript
 // Check for bottlenecks in Claude Code
-mcp__claude-flow__bottleneck_detect {
-  timeRange: "1h",
-  threshold: 20,
-  autoFix: false
-}
+mcp__claude-flow__bottleneck_analyze({
+  "component": "swarm",
+  "metrics": ["execution_time", "coordination", "memory"]
+})
 ```
 
 ## See Also

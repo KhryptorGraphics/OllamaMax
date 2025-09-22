@@ -1,0 +1,33 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'ollamamax-api'
+    dns_sd_configs:
+      - names:
+          - 'tasks.ollamamax-api'
+        type: 'A'
+        port: 3000
+
+  - job_name: 'swarm-workers'
+    dns_sd_configs:
+      - names:
+          - 'tasks.swarm-worker'
+        type: 'A'
+        port: 8080
+
+  - job_name: 'ml-workers'
+    dns_sd_configs:
+      - names:
+          - 'tasks.ml-worker'
+        type: 'A'
+        port: 8081
+
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-master:6379']
+
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres:5432']
