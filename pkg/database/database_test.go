@@ -1,8 +1,8 @@
 package database
 
 import (
-	"context"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 )
@@ -12,6 +12,7 @@ type MockDatabase struct {
 	data      map[string]interface{}
 	connected bool
 	latency   time.Duration
+	mu        sync.RWMutex // Protects data map and connected flag
 }
 
 func NewMockDatabase() *MockDatabase {
@@ -24,22 +25,33 @@ func NewMockDatabase() *MockDatabase {
 
 func (m *MockDatabase) Connect() error {
 	time.Sleep(m.latency) // Simulate connection latency
+	m.mu.Lock()
 	m.connected = true
+	m.mu.Unlock()
 	return nil
 }
 
 func (m *MockDatabase) Disconnect() error {
+	m.mu.Lock()
 	m.connected = false
+	m.mu.Unlock()
 	return nil
 }
 
 func (m *MockDatabase) Get(key string) (interface{}, error) {
-	if !m.connected {
+	m.mu.RLock()
+	connected := m.connected
+	m.mu.RUnlock()
+
+	if !connected {
 		return nil, fmt.Errorf("database not connected")
 	}
 	time.Sleep(m.latency)
-	
+
+	m.mu.RLock()
 	value, exists := m.data[key]
+	m.mu.RUnlock()
+
 	if !exists {
 		return nil, fmt.Errorf("key not found: %s", key)
 	}
@@ -47,24 +59,40 @@ func (m *MockDatabase) Get(key string) (interface{}, error) {
 }
 
 func (m *MockDatabase) Set(key string, value interface{}) error {
-	if !m.connected {
+	m.mu.RLock()
+	connected := m.connected
+	m.mu.RUnlock()
+
+	if !connected {
 		return fmt.Errorf("database not connected")
 	}
 	time.Sleep(m.latency)
+
+	m.mu.Lock()
 	m.data[key] = value
+	m.mu.Unlock()
 	return nil
 }
 
 func (m *MockDatabase) Delete(key string) error {
-	if !m.connected {
+	m.mu.RLock()
+	connected := m.connected
+	m.mu.RUnlock()
+
+	if !connected {
 		return fmt.Errorf("database not connected")
 	}
 	time.Sleep(m.latency)
+
+	m.mu.Lock()
 	delete(m.data, key)
+	m.mu.Unlock()
 	return nil
 }
 
 func (m *MockDatabase) IsConnected() bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	return m.connected
 }
 

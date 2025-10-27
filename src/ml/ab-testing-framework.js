@@ -93,8 +93,8 @@ class ABTestingFramework {
       results: null
     };
 
-    // Store test configuration
-    await this.redis.hset(`ab_test:${testId}:config`, test);
+    // Store test configuration using SET with JSON string
+    await this.redis.set(`ab_test:${testId}:config`, JSON.stringify(test));
     await this.redis.sadd('ab_tests:active', testId);
     
     this.activeTests.set(testId, test);
@@ -321,8 +321,8 @@ class ABTestingFramework {
       timestamp: Date.now()
     };
 
-    // Store analysis results
-    await this.redis.hset(`ab_test:${testId}:analysis`, JSON.stringify(analysis));
+    // Store analysis results using SET with JSON string
+    await this.redis.set(`ab_test:${testId}:analysis`, JSON.stringify(analysis));
     
     return analysis;
   }
@@ -515,8 +515,8 @@ class ABTestingFramework {
     test.status = 'completed';
     test.endTime = Date.now();
     test.results = finalResults;
-    
-    await this.redis.hset(`ab_test:${testId}:config`, test);
+
+    await this.redis.set(`ab_test:${testId}:config`, JSON.stringify(test));
     await this.redis.srem('ab_tests:active', testId);
     await this.redis.sadd('ab_tests:completed', testId);
     
@@ -532,12 +532,12 @@ class ABTestingFramework {
 
   async loadTest(testId) {
     try {
-      const testData = await this.redis.hgetall(`ab_test:${testId}:config`);
-      if (!testData || Object.keys(testData).length === 0) {
+      const testData = await this.redis.get(`ab_test:${testId}:config`);
+      if (!testData) {
         return null;
       }
-      
-      const test = JSON.parse(Object.values(testData)[0]);
+
+      const test = JSON.parse(testData);
       return test;
     } catch (error) {
       console.error(`❌ Error loading test ${testId}:`, error.message);
@@ -573,7 +573,7 @@ class ABTestingFramework {
     if (test.status === 'active') {
       return await this.analyzeTest(testId);
     } else {
-      const analysisData = await this.redis.hget(`ab_test:${testId}:analysis`);
+      const analysisData = await this.redis.get(`ab_test:${testId}:analysis`);
       return analysisData ? JSON.parse(analysisData) : null;
     }
   }

@@ -7,3 +7,31 @@ datasources:
     url: http://prometheus:9090
     isDefault: true
     editable: true
+
+  - name: Jaeger
+    type: jaeger
+    access: proxy
+    url: http://jaeger:16686
+    editable: true
+    jsonData:
+      tracesToLogs:
+        datasourceUid: elasticsearch
+        tags:
+          - trace_id
+          - span_id
+
+  - name: Elasticsearch
+    type: elasticsearch
+    access: proxy
+    url: http://elasticsearch:9200
+    database: ollamamax-logs-*
+    editable: true
+    jsonData:
+      timeField: '@timestamp'
+      esVersion: '8.0.0'
+      logMessageField: message
+      logLevelField: level
+      logsToTraces:
+        datasourceUid: jaeger
+        tags:
+          - key: trace_id

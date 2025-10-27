@@ -19,22 +19,22 @@ data:
       external_labels:
         cluster: 'ollamamax-cluster'
         environment: 'production'
-    
+
     rule_files:
       - "/etc/prometheus/rules/*.yml"
-    
+
     alerting:
       alertmanagers:
         - static_configs:
             - targets:
               - alertmanager:9093
-    
+
     scrape_configs:
       # Prometheus itself
       - job_name: 'prometheus'
         static_configs:
           - targets: ['localhost:9090']
-      
+
       # OllamaMax API Server
       - job_name: 'ollamamax-api'
         static_configs:
@@ -42,11 +42,11 @@ data:
         metrics_path: '/metrics'
         scrape_interval: 10s
         scrape_timeout: 10s
-      
+
       # Redis Cluster
       - job_name: 'redis-cluster'
         static_configs:
-          - targets: 
+          - targets:
             - 'redis-cluster-0.redis-cluster-service.ollamamax-redis:6379'
             - 'redis-cluster-1.redis-cluster-service.ollamamax-redis:6379'
             - 'redis-cluster-2.redis-cluster-service.ollamamax-redis:6379'
@@ -55,7 +55,7 @@ data:
             - 'redis-cluster-5.redis-cluster-service.ollamamax-redis:6379'
         metrics_path: '/metrics'
         scrape_interval: 15s
-      
+
       # Agent Metrics Collector
       - job_name: 'agent-metrics'
         static_configs:
@@ -68,7 +68,7 @@ data:
             regex: 'agent_.*'
             target_label: component
             replacement: 'agent-system'
-      
+
       # Kubernetes API Server
       - job_name: 'kubernetes-apiservers'
         kubernetes_sd_configs:
@@ -84,7 +84,7 @@ data:
         - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
           action: keep
           regex: default;kubernetes;https
-      
+
       # Node Exporter
       - job_name: 'node-exporter'
         kubernetes_sd_configs:
@@ -118,7 +118,7 @@ data:
         annotations:
           summary: "High error rate detected for agent {{ $labels.agent_id }}"
           description: "Agent {{ $labels.agent_id }} has error rate {{ $value }} which is above threshold of 0.1"
-      
+
       - alert: AgentPerformanceDegraded
         expr: agent_avg_execution_time > 5000
         for: 10m
@@ -127,7 +127,7 @@ data:
         annotations:
           summary: "Agent performance degraded"
           description: "Agent {{ $labels.agent_id }} average execution time is {{ $value }}ms"
-      
+
       - alert: SwarmUtilizationHigh
         expr: swarm_utilization > 0.85
         for: 2m
@@ -136,7 +136,7 @@ data:
         annotations:
           summary: "Swarm utilization critically high"
           description: "Swarm utilization is {{ $value }}, scaling action needed"
-      
+
       - alert: RedisClusterDown
         expr: redis_up == 0
         for: 1m
@@ -504,3 +504,770 @@ spec:
     protocol: TCP
   selector:
     app: grafana
+---
+# ============================================================================
+# JAEGER DISTRIBUTED TRACING
+# ============================================================================
+# Jaeger ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jaeger-config
+  namespace: ollamamax-monitoring
+data:
+  collector.yaml: |
+    receivers:
+      jaeger:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:14250
+          thrift_http:
+            endpoint: 0.0.0.0:14268
+          thrift_compact:
+            endpoint: 0.0.0.0:6831
+          thrift_binary:
+            endpoint: 0.0.0.0:6832
+      zipkin:
+        endpoint: 0.0.0.0:9411
+
+    exporters:
+      logging:
+        loglevel: info
+
+    service:
+      pipelines:
+        traces:
+          receivers: [jaeger, zipkin]
+          exporters: [logging]
+
+  query.yaml: |
+    query:
+      base-path: /
+      static-files: /go/jaeger-ui/
+      ui-config: /etc/jaeger/ui-config.json
+
+    storage:
+      type: memory
+      memory:
+        max-traces: 100000
+---
+# Jaeger Deployment (All-in-One)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jaeger
+  namespace: ollamamax-monitoring
+  labels:
+    app: jaeger
+    component: all-in-one
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jaeger
+      component: all-in-one
+  template:
+    metadata:
+      labels:
+        app: jaeger
+        component: all-in-one
+    spec:
+      containers:
+      - name: jaeger
+        image: jaegertracing/all-in-one:1.51
+        ports:
+        - containerPort: 5775
+          protocol: UDP
+          name: zipkin-compact
+        - containerPort: 6831
+          protocol: UDP
+          name: jaeger-compact
+        - containerPort: 6832
+          protocol: UDP
+          name: jaeger-binary
+        - containerPort: 5778
+          protocol: TCP
+          name: config-rest
+        - containerPort: 16686
+          protocol: TCP
+          name: query-http
+        - containerPort: 14268
+          protocol: TCP
+          name: collector-http
+        - containerPort: 14250
+          protocol: TCP
+          name: collector-grpc
+        - containerPort: 9411
+          protocol: TCP
+          name: zipkin-http
+        env:
+        - name: COLLECTOR_ZIPKIN_HTTP_PORT
+          value: "9411"
+        - name: SPAN_STORAGE_TYPE
+          value: "memory"
+        - name: MEMORY_MAX_TRACES
+          value: "100000"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 16686
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 16686
+          initialDelaySeconds: 10
+          periodSeconds: 5
+---
+# Jaeger Service (Internal)
+apiVersion: v1
+kind: Service
+metadata:
+  name: jaeger
+  namespace: ollamamax-monitoring
+  labels:
+    app: jaeger
+    component: all-in-one
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5775
+    protocol: UDP
+    targetPort: 5775
+    name: zipkin-compact
+  - port: 6831
+    protocol: UDP
+    targetPort: 6831
+    name: jaeger-compact
+  - port: 6832
+    protocol: UDP
+    targetPort: 6832
+    name: jaeger-binary
+  - port: 5778
+    protocol: TCP
+    targetPort: 5778
+    name: config-rest
+  - port: 16686
+    protocol: TCP
+    targetPort: 16686
+    name: query-http
+  - port: 14268
+    protocol: TCP
+    targetPort: 14268
+    name: collector-http
+  - port: 14250
+    protocol: TCP
+    targetPort: 14250
+    name: collector-grpc
+  - port: 9411
+    protocol: TCP
+    targetPort: 9411
+    name: zipkin-http
+  selector:
+    app: jaeger
+    component: all-in-one
+---
+# Jaeger UI Service (LoadBalancer)
+apiVersion: v1
+kind: Service
+metadata:
+  name: jaeger-ui
+  namespace: ollamamax-monitoring
+  labels:
+    app: jaeger
+    component: ui
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 16686
+    targetPort: 16686
+    protocol: TCP
+    name: query-http
+  selector:
+    app: jaeger
+    component: all-in-one
+---
+# ============================================================================
+# ELASTICSEARCH (ELK STACK)
+# ============================================================================
+# Elasticsearch StatefulSet (3-node cluster)
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: elasticsearch
+  namespace: ollamamax-monitoring
+  labels:
+    app: elasticsearch
+spec:
+  serviceName: elasticsearch
+  replicas: 3
+  selector:
+    matchLabels:
+      app: elasticsearch
+  template:
+    metadata:
+      labels:
+        app: elasticsearch
+    spec:
+      containers:
+      - name: elasticsearch
+        image: elasticsearch:8.11.0
+        ports:
+        - containerPort: 9200
+          name: http
+          protocol: TCP
+        - containerPort: 9300
+          name: transport
+          protocol: TCP
+        env:
+        - name: cluster.name
+          value: "ollamamax"
+        - name: node.name
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: discovery.seed_hosts
+          value: "elasticsearch-0.elasticsearch,elasticsearch-1.elasticsearch,elasticsearch-2.elasticsearch"
+        - name: cluster.initial_master_nodes
+          value: "elasticsearch-0,elasticsearch-1,elasticsearch-2"
+        - name: ES_JAVA_OPTS
+          value: "-Xms512m -Xmx512m"
+        - name: xpack.security.enabled
+          value: "false"
+        - name: xpack.security.enrollment.enabled
+          value: "false"
+        - name: xpack.security.http.ssl.enabled
+          value: "false"
+        - name: xpack.security.transport.ssl.enabled
+          value: "false"
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+        volumeMounts:
+        - name: elasticsearch-data
+          mountPath: /usr/share/elasticsearch/data
+        livenessProbe:
+          httpGet:
+            path: /_cluster/health
+            port: 9200
+          initialDelaySeconds: 90
+          periodSeconds: 30
+          timeoutSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /_cluster/health?wait_for_status=yellow&timeout=5s
+            port: 9200
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+  volumeClaimTemplates:
+  - metadata:
+      name: elasticsearch-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 50Gi
+---
+# Elasticsearch Headless Service (for StatefulSet)
+apiVersion: v1
+kind: Service
+metadata:
+  name: elasticsearch
+  namespace: ollamamax-monitoring
+  labels:
+    app: elasticsearch
+spec:
+  clusterIP: None
+  ports:
+  - port: 9200
+    name: http
+  - port: 9300
+    name: transport
+  selector:
+    app: elasticsearch
+---
+# Elasticsearch HTTP Service (for external access)
+apiVersion: v1
+kind: Service
+metadata:
+  name: elasticsearch-http
+  namespace: ollamamax-monitoring
+  labels:
+    app: elasticsearch
+spec:
+  type: ClusterIP
+  ports:
+  - port: 9200
+    targetPort: 9200
+    protocol: TCP
+    name: http
+  selector:
+    app: elasticsearch
+---
+# ============================================================================
+# LOGSTASH
+# ============================================================================
+# Logstash Pipeline ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: logstash-pipeline
+  namespace: ollamamax-monitoring
+data:
+  logstash.conf: |
+    input {
+      beats {
+        port => 5044
+        host => "0.0.0.0"
+      }
+    }
+
+    filter {
+      # Parse JSON logs
+      if [message] =~ /^\{.*\}$/ {
+        json {
+          source => "message"
+          remove_field => ["message"]
+        }
+      }
+
+      # Add Kubernetes metadata
+      if [kubernetes] {
+        mutate {
+          add_field => {
+            "k8s_namespace" => "%{[kubernetes][namespace]}"
+            "k8s_pod" => "%{[kubernetes][pod][name]}"
+            "k8s_container" => "%{[kubernetes][container][name]}"
+            "k8s_node" => "%{[kubernetes][node][name]}"
+          }
+        }
+      }
+
+      # Parse timestamp
+      date {
+        match => [ "timestamp", "ISO8601" ]
+        target => "@timestamp"
+      }
+
+      # Add component tags
+      if [k8s_namespace] == "ollamamax" {
+        mutate {
+          add_tag => ["ollamamax"]
+        }
+      }
+
+      if [k8s_container] =~ /redis/ {
+        mutate {
+          add_tag => ["redis"]
+        }
+      }
+
+      if [k8s_container] =~ /ollamamax/ {
+        mutate {
+          add_tag => ["api"]
+        }
+      }
+    }
+
+    output {
+      elasticsearch {
+        hosts => ["http://elasticsearch-http:9200"]
+        index => "ollamamax-logs-%{+YYYY.MM.dd}"
+        manage_template => true
+        template_name => "ollamamax"
+        template_overwrite => true
+      }
+
+      # Debug output (can be removed in production)
+      stdout {
+        codec => rubydebug
+      }
+    }
+
+  logstash.yml: |
+    http.host: "0.0.0.0"
+    path.config: /usr/share/logstash/pipeline
+    xpack.monitoring.enabled: false
+---
+# Logstash Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: logstash
+  namespace: ollamamax-monitoring
+  labels:
+    app: logstash
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: logstash
+  template:
+    metadata:
+      labels:
+        app: logstash
+    spec:
+      containers:
+      - name: logstash
+        image: logstash:8.11.0
+        ports:
+        - containerPort: 5044
+          name: beats
+          protocol: TCP
+        - containerPort: 9600
+          name: http
+          protocol: TCP
+        env:
+        - name: ELASTICSEARCH_HOSTS
+          value: "http://elasticsearch-http:9200"
+        - name: LS_JAVA_OPTS
+          value: "-Xmx512m -Xms512m"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "200m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        volumeMounts:
+        - name: logstash-pipeline
+          mountPath: /usr/share/logstash/pipeline
+        - name: logstash-config
+          mountPath: /usr/share/logstash/config/logstash.yml
+          subPath: logstash.yml
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 9600
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 9600
+          initialDelaySeconds: 30
+          periodSeconds: 10
+      volumes:
+      - name: logstash-pipeline
+        configMap:
+          name: logstash-pipeline
+          items:
+          - key: logstash.conf
+            path: logstash.conf
+      - name: logstash-config
+        configMap:
+          name: logstash-pipeline
+          items:
+          - key: logstash.yml
+            path: logstash.yml
+---
+# Logstash Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: logstash
+  namespace: ollamamax-monitoring
+  labels:
+    app: logstash
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5044
+    targetPort: 5044
+    protocol: TCP
+    name: beats
+  - port: 9600
+    targetPort: 9600
+    protocol: TCP
+    name: http
+  selector:
+    app: logstash
+---
+# ============================================================================
+# KIBANA
+# ============================================================================
+# Kibana Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kibana
+  namespace: ollamamax-monitoring
+  labels:
+    app: kibana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kibana
+  template:
+    metadata:
+      labels:
+        app: kibana
+    spec:
+      containers:
+      - name: kibana
+        image: kibana:8.11.0
+        ports:
+        - containerPort: 5601
+          name: http
+          protocol: TCP
+        env:
+        - name: ELASTICSEARCH_HOSTS
+          value: "http://elasticsearch-http:9200"
+        - name: SERVER_NAME
+          value: "kibana"
+        - name: SERVER_HOST
+          value: "0.0.0.0"
+        - name: XPACK_SECURITY_ENABLED
+          value: "false"
+        - name: XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY
+          value: "min-32-byte-long-string-for-encryption-key-here-please"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "200m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /api/status
+            port: 5601
+          initialDelaySeconds: 120
+          periodSeconds: 30
+          timeoutSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /api/status
+            port: 5601
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+---
+# Kibana Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: kibana
+  namespace: ollamamax-monitoring
+  labels:
+    app: kibana
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 5601
+    targetPort: 5601
+    protocol: TCP
+    name: http
+  selector:
+    app: kibana
+---
+# ============================================================================
+# FILEBEAT
+# ============================================================================
+# Filebeat ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: filebeat-config
+  namespace: ollamamax-monitoring
+data:
+  filebeat.yml: |
+    filebeat.inputs:
+    - type: container
+      enabled: true
+      paths:
+        - /var/log/containers/*.log
+      processors:
+      - add_kubernetes_metadata:
+          host: ${NODE_NAME}
+          matchers:
+          - logs_path:
+              logs_path: "/var/log/containers/"
+      - drop_event:
+          when:
+            or:
+              - equals:
+                  kubernetes.namespace: "kube-system"
+              - equals:
+                  kubernetes.namespace: "kube-public"
+
+    # Collect pod logs
+    - type: log
+      enabled: true
+      paths:
+        - /var/log/pods/*/*/*.log
+      processors:
+      - add_kubernetes_metadata:
+          host: ${NODE_NAME}
+          matchers:
+          - logs_path:
+              logs_path: "/var/log/pods/"
+
+    # Output to Logstash
+    output.logstash:
+      hosts: ["logstash:5044"]
+      compression_level: 3
+      bulk_max_size: 2048
+      worker: 2
+
+    # Logging configuration
+    logging.level: info
+    logging.to_files: true
+    logging.files:
+      path: /var/log/filebeat
+      name: filebeat
+      keepfiles: 7
+      permissions: 0644
+
+    # Monitoring
+    monitoring.enabled: false
+
+    # Processors
+    processors:
+    - add_cloud_metadata: ~
+    - add_docker_metadata: ~
+    - add_host_metadata: ~
+---
+# Filebeat ServiceAccount
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: filebeat
+  namespace: ollamamax-monitoring
+---
+# Filebeat ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: filebeat
+rules:
+- apiGroups: [""]
+  resources:
+  - namespaces
+  - pods
+  - nodes
+  verbs:
+  - get
+  - watch
+  - list
+- apiGroups: ["apps"]
+  resources:
+  - replicasets
+  verbs:
+  - get
+  - watch
+  - list
+---
+# Filebeat ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: filebeat
+subjects:
+- kind: ServiceAccount
+  name: filebeat
+  namespace: ollamamax-monitoring
+roleRef:
+  kind: ClusterRole
+  name: filebeat
+  apiGroup: rbac.authorization.k8s.io
+---
+# Filebeat DaemonSet
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: filebeat
+  namespace: ollamamax-monitoring
+  labels:
+    app: filebeat
+spec:
+  selector:
+    matchLabels:
+      app: filebeat
+  template:
+    metadata:
+      labels:
+        app: filebeat
+    spec:
+      serviceAccountName: filebeat
+      terminationGracePeriodSeconds: 30
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+      - name: filebeat
+        image: elastic/filebeat:8.11.0
+        args: [
+          "-c", "/etc/filebeat.yml",
+          "-e",
+        ]
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: ELASTICSEARCH_HOST
+          value: elasticsearch-http
+        - name: ELASTICSEARCH_PORT
+          value: "9200"
+        - name: LOGSTASH_HOST
+          value: logstash
+        - name: LOGSTASH_PORT
+          value: "5044"
+        securityContext:
+          runAsUser: 0
+          privileged: true
+        resources:
+          requests:
+            memory: "200Mi"
+            cpu: "100m"
+          limits:
+            memory: "400Mi"
+            cpu: "200m"
+        volumeMounts:
+        - name: config
+          mountPath: /etc/filebeat.yml
+          readOnly: true
+          subPath: filebeat.yml
+        - name: data
+          mountPath: /usr/share/filebeat/data
+        - name: varlibdockercontainers
+          mountPath: /var/lib/docker/containers
+          readOnly: true
+        - name: varlog
+          mountPath: /var/log
+          readOnly: true
+        - name: varglog
+          mountPath: /var/log/pods
+          readOnly: true
+      volumes:
+      - name: config
+        configMap:
+          defaultMode: 0640
+          name: filebeat-config
+      - name: varlibdockercontainers
+        hostPath:
+          path: /var/lib/docker/containers
+      - name: varlog
+        hostPath:
+          path: /var/log
+      - name: varglog
+        hostPath:
+          path: /var/log/pods
+      - name: data
+        hostPath:
+          path: /var/lib/filebeat-data
+          type: DirectoryOrCreate

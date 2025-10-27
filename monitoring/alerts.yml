@@ -1,77 +1,104 @@
 groups:
-- name: ollamamax-performance
+- name: ollamamax-api
   rules:
-  
-  # Startup Time Alerts
-  - alert: SlowStartup
-    expr: startup_duration_seconds > 130
-    for: 0m
-    labels:
-      severity: warning
-    annotations:
-      summary: "Cluster startup time exceeded target"
-      description: "Cluster took {{ $value }}s to start (target: ≤110s)"
-      
-  - alert: CriticalStartupFailure
-    expr: startup_duration_seconds > 200
-    for: 0m
-    labels:
-      severity: critical
-    annotations:
-      summary: "Cluster startup critically slow"
-      description: "Cluster took {{ $value }}s to start (critical threshold: 200s)"
-      
-  # Resource Efficiency Alerts
-  - alert: LowResourceUtilization
-    expr: resource_efficiency_percent < 70
+
+  # API Performance Alerts
+  - alert: APIHighLatency
+    expr: http_request_duration_seconds{quantile="0.95"} > 1.0
     for: 5m
     labels:
       severity: warning
     annotations:
-      summary: "Resource utilization below target"
-      description: "Resource efficiency is {{ $value }}% (target: ≥85%)"
-      
-  - alert: HighMemoryUsage
-    expr: (node_memory_used / node_memory_total) * 100 > 90
+      summary: "API latency is high"
+      description: "95th percentile API latency is {{ $value }}s (threshold: 1.0s)"
+
+  - alert: APIHighErrorRate
+    expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.05
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "API error rate is high"
+      description: "API 5xx error rate is {{ $value }} (threshold: 0.05)"
+
+- name: ollamamax-database
+  rules:
+
+  # Database Performance Alerts
+  - alert: DatabasePoolExhausted
+    expr: db_connections_in_use / db_connections_open > 0.9
     for: 2m
     labels:
       severity: critical
     annotations:
-      summary: "High memory usage on node"
-      description: "Memory usage is {{ $value }}% on {{ $labels.instance }}"
-      
-  # Network Performance Alerts
-  - alert: HighNetworkLatency
-    expr: network_latency_ms > 20
+      summary: "Database connection pool nearly exhausted"
+      description: "{{ $value | humanizePercentage }} of database connections in use (threshold: 90%)"
+
+  - alert: DatabaseCacheHitRateLow
+    expr: rate(cache_hits_total[5m]) / (rate(cache_hits_total[5m]) + rate(cache_misses_total[5m])) < 0.7
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Database cache hit rate is low"
+      description: "Cache hit rate is {{ $value | humanizePercentage }} (threshold: 70%)"
+
+  - alert: PostgresConnectionsHigh
+    expr: postgres_connections_active / postgres_connections_max > 0.8
     for: 1m
     labels:
       severity: warning
     annotations:
-      summary: "Network latency above target"
-      description: "Network latency is {{ $value }}ms (target: ≤12ms)"
-      
-  # Training Module Performance
-  - alert: TrainingModuleFailure
-    expr: training_module_success_rate < 0.95
-    for: 0m
-    labels:
-      severity: critical
-    annotations:
-      summary: "Training module success rate low"
-      description: "Success rate is {{ $value }} (target: ≥95%)"
-      
-  - alert: TrainingFlowSlow
-    expr: training_flow_duration_seconds > 1800
-    for: 0m
+      summary: "High PostgreSQL connection usage"
+      description: "{{ $value | humanizePercentage }} of max connections in use (threshold: 80%)"
+
+- name: ollamamax-p2p
+  rules:
+
+  # P2P Network Alerts
+  - alert: P2PPeerCountLow
+    expr: p2p_connected_peers < 3
+    for: 5m
     labels:
       severity: warning
     annotations:
-      summary: "Training flow slower than expected"
-      description: "Training took {{ $value }}s (target: ≤1500s)"
+      summary: "P2P peer count is low"
+      description: "Only {{ $value }} peers connected (threshold: 3)"
+
+  - alert: P2PHighLatency
+    expr: p2p_message_latency_seconds{quantile="0.95"} > 0.5
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "P2P message latency is high"
+      description: "95th percentile P2P latency is {{ $value }}s (threshold: 0.5s)"
+
+- name: ollamamax-loadbalancer
+  rules:
+
+  # Load Balancer Alerts
+  - alert: LoadBalancerImbalance
+    expr: stddev(lb_node_utilization) > 0.3
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Load balancer has uneven distribution"
+      description: "Load standard deviation is {{ $value }} (threshold: 0.3)"
+
+  - alert: LoadBalancerUnhealthyUpstreams
+    expr: nginx_upstream_servers{state!="up"} > 0
+    for: 30s
+    labels:
+      severity: critical
+    annotations:
+      summary: "Load balancer has unhealthy upstreams"
+      description: "{{ $value }} upstream servers are unhealthy"
 
 - name: ollamamax-system
   rules:
-  
+
   # Service Health Alerts
   - alert: ServiceDown
     expr: up == 0
@@ -81,7 +108,7 @@ groups:
     annotations:
       summary: "Service is down"
       description: "{{ $labels.job }} service is down on {{ $labels.instance }}"
-      
+
   - alert: HighCPUUsage
     expr: (100 - (avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)) > 80
     for: 2m
@@ -89,24 +116,13 @@ groups:
       severity: warning
     annotations:
       summary: "High CPU usage"
-      description: "CPU usage is {{ $value }}% on {{ $labels.instance }}"
-      
-  # Database Performance
-  - alert: PostgresConnectionsHigh
-    expr: postgres_connections_active / postgres_connections_max > 0.8
-    for: 1m
-    labels:
-      severity: warning
-    annotations:
-      summary: "High PostgreSQL connection usage"
-      description: "{{ $value }}% of max connections in use"
-      
-  # Load Balancer Health
-  - alert: LoadBalancerUnhealthyUpstreams
-    expr: nginx_upstream_servers{state!="up"} > 0
-    for: 30s
+      description: "CPU usage is {{ $value }}% on {{ $labels.instance }} (threshold: 80%)"
+
+  - alert: HighMemoryUsage
+    expr: (node_memory_used / node_memory_total) * 100 > 90
+    for: 2m
     labels:
       severity: critical
     annotations:
-      summary: "Load balancer has unhealthy upstreams"
-      description: "{{ $value }} upstream servers are unhealthy"
+      summary: "High memory usage on node"
+      description: "Memory usage is {{ $value }}% on {{ $labels.instance }} (threshold: 90%)"

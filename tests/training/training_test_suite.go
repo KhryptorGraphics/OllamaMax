@@ -40,11 +40,56 @@ type TestResult struct {
 	Details     interface{}   `json:"details,omitempty"`
 }
 
+// getProjectRoot attempts to find the project root dynamically
+func getProjectRoot() string {
+	// Try environment variable first
+	if root := os.Getenv("OLLAMA_PROJECT_ROOT"); root != "" {
+		return root
+	}
+
+	// Try to find go.mod in current or parent directories
+	currentDir, err := os.Getwd()
+	if err == nil {
+		dir := currentDir
+		for i := 0; i < 5; i++ { // Check up to 5 levels up
+			if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+				return dir
+			}
+			parentDir := filepath.Dir(dir)
+			if parentDir == dir {
+				break // Reached filesystem root
+			}
+			dir = parentDir
+		}
+	}
+
+	// Fallback to current working directory
+	if currentDir != "" {
+		return currentDir
+	}
+
+	// Last resort: use home directory path
+	if home := os.Getenv("HOME"); home != "" {
+		possiblePath := filepath.Join(home, "OllamaMax")
+		if _, err := os.Stat(possiblePath); err == nil {
+			return possiblePath
+		}
+	}
+
+	// Final fallback
+	return "/home/kp/OllamaMax"
+}
+
 // NewTrainingTestSuite creates a new training test suite
 func NewTrainingTestSuite(t *testing.T) *TrainingTestSuite {
-	projectRoot := "/home/kp/ollamamax"
+	projectRoot := getProjectRoot()
 	trainingRoot := filepath.Join(projectRoot, "ollama-distributed", "training")
 	binaryPath := filepath.Join(projectRoot, "ollama-distributed", "bin", "ollama-distributed")
+
+	// Validate paths exist
+	if _, err := os.Stat(projectRoot); err != nil {
+		t.Logf("Warning: Project root not found at %s: %v", projectRoot, err)
+	}
 
 	return &TrainingTestSuite{
 		ProjectRoot:   projectRoot,
@@ -723,6 +768,25 @@ func (ts *TrainingTestSuite) testKnowledgeAssessment(t *testing.T, module, exerc
 
 // Utility functions
 
+// sanitize converts module names to safe filenames by lowercasing and removing/replacing non-alphanumeric characters
+func sanitize(name string) string {
+	// Convert to lowercase
+	name = strings.ToLower(name)
+	// Replace spaces with hyphens
+	name = strings.ReplaceAll(name, " ", "-")
+	// Remove colons and other problematic characters
+	name = strings.ReplaceAll(name, ":", "")
+	name = strings.ReplaceAll(name, "/", "-")
+	name = strings.ReplaceAll(name, "\\", "-")
+	// Replace multiple consecutive hyphens with a single hyphen
+	for strings.Contains(name, "--") {
+		name = strings.ReplaceAll(name, "--", "-")
+	}
+	// Trim leading/trailing hyphens
+	name = strings.Trim(name, "-")
+	return name
+}
+
 func (ts *TrainingTestSuite) saveModuleResults(t *testing.T, module string) {
 	// Filter results for this module
 	moduleResults := make([]TestResult, 0)
@@ -731,7 +795,7 @@ func (ts *TrainingTestSuite) saveModuleResults(t *testing.T, module string) {
 			moduleResults = append(moduleResults, result)
 		}
 	}
-	
+
 	// Generate report
 	report := map[string]interface{}{
 		"module":      module,
@@ -742,10 +806,9 @@ func (ts *TrainingTestSuite) saveModuleResults(t *testing.T, module string) {
 		"skipped":     ts.countResultsByStatus(moduleResults, "skip"),
 		"results":     moduleResults,
 	}
-	
-	// Save to file
-	filename := fmt.Sprintf("test-results/training-%s-results.json", 
-		strings.ReplaceAll(strings.ToLower(module), " ", "-"))
+
+	// Save to file with training/ subdirectory and sanitized filename
+	filename := fmt.Sprintf("training/%s-results.json", sanitize(module))
 	ts.saveResultsToFile(report, filename)
 }
 
@@ -763,106 +826,186 @@ func (ts *TrainingTestSuite) saveResultsToFile(data interface{}, filename string
 	// Create results directory
 	resultsDir := filepath.Join(ts.ProjectRoot, "test-results")
 	os.MkdirAll(resultsDir, 0755)
-	
-	// Write results
+
+	// Build full path and ensure any nested directories exist
 	resultPath := filepath.Join(resultsDir, filename)
+	resultDir := filepath.Dir(resultPath)
+	if err := os.MkdirAll(resultDir, 0755); err != nil {
+		return err
+	}
+
+	// Write results
 	jsonData, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		return err
 	}
-	
+
 	return ioutil.WriteFile(resultPath, jsonData, 0644)
 }
 
 // Final comprehensive report
 func TestTrainingSystemComprehensiveReport(t *testing.T) {
 	ts := NewTrainingTestSuite(t)
-	
+
+	// Load per-module results from test-results/training/*.json
+	resultsDir := filepath.Join(ts.ProjectRoot, "test-results", "training")
+	allResults := make([]TestResult, 0)
+
+	if files, err := filepath.Glob(filepath.Join(resultsDir, "*-results.json")); err == nil {
+		for _, file := range files {
+			data, err := ioutil.ReadFile(file)
+			if err != nil {
+				t.Logf("Warning: Could not read results file %s: %v", file, err)
+				continue
+			}
+
+			var moduleReport map[string]interface{}
+			if err := json.Unmarshal(data, &moduleReport); err != nil {
+				t.Logf("Warning: Could not parse results file %s: %v", file, err)
+				continue
+			}
+
+			// Extract results array from the module report
+			if resultsArray, ok := moduleReport["results"].([]interface{}); ok {
+				for _, resultItem := range resultsArray {
+					// Convert to JSON and back to TestResult
+					resultJSON, _ := json.Marshal(resultItem)
+					var result TestResult
+					if err := json.Unmarshal(resultJSON, &result); err == nil {
+						allResults = append(allResults, result)
+					}
+				}
+			}
+		}
+	}
+
+	// If no results were loaded from files, use in-memory results (for backwards compatibility)
+	if len(allResults) == 0 {
+		allResults = ts.TestResults
+	}
+
+	// Calculate totals
+	totalTests := len(allResults)
+	passedTests := 0
+	failedTests := 0
+	skippedTests := 0
+
+	for _, result := range allResults {
+		switch result.Status {
+		case "pass":
+			passedTests++
+		case "fail":
+			failedTests++
+		case "skip":
+			skippedTests++
+		}
+	}
+
+	successRate := 0.0
+	if totalTests > 0 {
+		successRate = float64(passedTests) / float64(totalTests) * 100
+	}
+
 	// Generate comprehensive report
 	report := map[string]interface{}{
 		"timestamp":        time.Now(),
 		"training_system":  "Ollama Distributed Training",
 		"test_summary": map[string]interface{}{
-			"total_tests":  len(ts.TestResults),
-			"passed":       ts.countResultsByStatus(ts.TestResults, "pass"),
-			"failed":       ts.countResultsByStatus(ts.TestResults, "fail"),
-			"skipped":      ts.countResultsByStatus(ts.TestResults, "skip"),
-			"success_rate": float64(ts.countResultsByStatus(ts.TestResults, "pass")) / float64(len(ts.TestResults)) * 100,
+			"total_tests":  totalTests,
+			"passed":       passedTests,
+			"failed":       failedTests,
+			"skipped":      skippedTests,
+			"success_rate": successRate,
 		},
-		"module_summary": ts.generateModuleSummary(),
-		"recommendations": ts.generateRecommendations(),
-		"all_results":    ts.TestResults,
+		"module_summary": ts.generateModuleSummaryFromResults(allResults),
+		"recommendations": ts.generateRecommendationsFromResults(allResults, passedTests, failedTests, totalTests),
+		"all_results":    allResults,
 	}
-	
-	ts.saveResultsToFile(report, "comprehensive-training-test-report.json")
-	
+
+	ts.saveResultsToFile(report, "training/comprehensive-training-test-report.json")
+
 	// Print summary
 	t.Logf("Training System Test Summary:")
-	t.Logf("Total Tests: %d", len(ts.TestResults))
-	t.Logf("Passed: %d", ts.countResultsByStatus(ts.TestResults, "pass"))
-	t.Logf("Failed: %d", ts.countResultsByStatus(ts.TestResults, "fail"))
-	t.Logf("Success Rate: %.1f%%", float64(ts.countResultsByStatus(ts.TestResults, "pass"))/float64(len(ts.TestResults))*100)
+	t.Logf("Total Tests: %d", totalTests)
+	t.Logf("Passed: %d", passedTests)
+	t.Logf("Failed: %d", failedTests)
+	t.Logf("Success Rate: %.1f%%", successRate)
 }
 
 func (ts *TrainingTestSuite) generateModuleSummary() map[string]interface{} {
+	return ts.generateModuleSummaryFromResults(ts.TestResults)
+}
+
+func (ts *TrainingTestSuite) generateModuleSummaryFromResults(allResults []TestResult) map[string]interface{} {
 	modules := make(map[string]interface{})
-	
+
 	moduleNames := []string{
 		"Module 1: Installation and Setup",
-		"Module 2: Configuration Management", 
+		"Module 2: Configuration Management",
 		"Module 3: Basic Operations",
 		"Module 4: API Integration",
 		"Module 5: Validation and Testing",
 		"Certification Assessment",
 	}
-	
+
 	for _, module := range moduleNames {
 		moduleResults := make([]TestResult, 0)
-		for _, result := range ts.TestResults {
+		for _, result := range allResults {
 			if result.Module == module {
 				moduleResults = append(moduleResults, result)
 			}
 		}
-		
+
 		if len(moduleResults) > 0 {
+			passedCount := 0
+			failedCount := 0
+			for _, r := range moduleResults {
+				if r.Status == "pass" {
+					passedCount++
+				} else if r.Status == "fail" {
+					failedCount++
+				}
+			}
+
 			modules[module] = map[string]interface{}{
 				"total":    len(moduleResults),
-				"passed":   ts.countResultsByStatus(moduleResults, "pass"),
-				"failed":   ts.countResultsByStatus(moduleResults, "fail"),
-				"success":  float64(ts.countResultsByStatus(moduleResults, "pass")) / float64(len(moduleResults)) * 100,
+				"passed":   passedCount,
+				"failed":   failedCount,
+				"success":  float64(passedCount) / float64(len(moduleResults)) * 100,
 			}
 		}
 	}
-	
+
 	return modules
 }
 
 func (ts *TrainingTestSuite) generateRecommendations() []string {
+	return ts.generateRecommendationsFromResults(ts.TestResults, ts.countResultsByStatus(ts.TestResults, "pass"), ts.countResultsByStatus(ts.TestResults, "fail"), len(ts.TestResults))
+}
+
+func (ts *TrainingTestSuite) generateRecommendationsFromResults(allResults []TestResult, passedTests, failedTests, totalTests int) []string {
 	recommendations := make([]string, 0)
-	
-	failedTests := 0
-	for _, result := range ts.TestResults {
-		if result.Status == "fail" {
-			failedTests++
-		}
-	}
-	
+
 	if failedTests > 0 {
 		recommendations = append(recommendations, fmt.Sprintf("Address %d failed tests before production deployment", failedTests))
 	}
-	
-	if len(ts.TestResults) == 0 {
+
+	if totalTests == 0 {
 		recommendations = append(recommendations, "No tests were executed - verify test framework setup")
 	}
-	
-	successRate := float64(ts.countResultsByStatus(ts.TestResults, "pass")) / float64(len(ts.TestResults)) * 100
-	if successRate < 95.0 {
+
+	successRate := 0.0
+	if totalTests > 0 {
+		successRate = float64(passedTests) / float64(totalTests) * 100
+	}
+
+	if successRate < 95.0 && totalTests > 0 {
 		recommendations = append(recommendations, fmt.Sprintf("Success rate %.1f%% is below recommended 95%% - review failed tests", successRate))
 	}
-	
+
 	if successRate >= 95.0 {
 		recommendations = append(recommendations, "Training system validation passed - ready for production use")
 	}
-	
+
 	return recommendations
 }

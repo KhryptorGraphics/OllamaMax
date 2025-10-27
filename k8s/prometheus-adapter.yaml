@@ -1,0 +1,295 @@
+---
+# Prometheus Adapter for Custom Metrics API
+# Exposes custom metrics from Prometheus to Kubernetes HPA
+# Reference: https://github.com/kubernetes-sigs/prometheus-adapter
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ollamamax-monitoring
+---
+# ServiceAccount for Prometheus Adapter
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus-adapter
+  namespace: ollamamax-monitoring
+---
+# ClusterRole for Prometheus Adapter
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus-adapter
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - nodes
+  - namespaces
+  - pods
+  - services
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - custom.metrics.k8s.io
+  resources:
+  - "*"
+  verbs:
+  - "*"
+---
+# ClusterRoleBinding for Prometheus Adapter
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus-adapter
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus-adapter
+subjects:
+- kind: ServiceAccount
+  name: prometheus-adapter
+  namespace: ollamamax-monitoring
+---
+# ClusterRole for HPA to access custom metrics
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: custom-metrics-reader
+rules:
+- apiGroups:
+  - custom.metrics.k8s.io
+  resources:
+  - "*"
+  verbs:
+  - get
+  - list
+---
+# ClusterRoleBinding for HPA
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: hpa-custom-metrics-reader
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: custom-metrics-reader
+subjects:
+- kind: ServiceAccount
+  name: horizontal-pod-autoscaler
+  namespace: kube-system
+---
+# ClusterRole for resource metrics
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: resource-metrics-reader
+rules:
+- apiGroups:
+  - metrics.k8s.io
+  resources:
+  - "*"
+  verbs:
+  - get
+  - list
+---
+# ClusterRoleBinding for resource metrics
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus-adapter-resource-metrics
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: resource-metrics-reader
+subjects:
+- kind: ServiceAccount
+  name: prometheus-adapter
+  namespace: ollamamax-monitoring
+---
+# RoleBinding for auth delegation
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: prometheus-adapter-auth-reader
+  namespace: kube-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: extension-apiserver-authentication-reader
+subjects:
+- kind: ServiceAccount
+  name: prometheus-adapter
+  namespace: ollamamax-monitoring
+---
+# ClusterRoleBinding for system auth delegator
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus-adapter-system-auth-delegator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:auth-delegator
+subjects:
+- kind: ServiceAccount
+  name: prometheus-adapter
+  namespace: ollamamax-monitoring
+---
+# ConfigMap for Prometheus Adapter Rules
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-adapter-config
+  namespace: ollamamax-monitoring
+data:
+  config.yaml: |
+    rules:
+    # Agent utilization metric for swarm worker HPA
+    - seriesQuery: 'agent_utilization{namespace!="",pod!=""}'
+      resources:
+        overrides:
+          namespace: {resource: "namespace"}
+          pod: {resource: "pod"}
+      name:
+        matches: "^(.*)$"
+        as: "agent_utilization"
+      metricsQuery: 'avg_over_time(agent_utilization{<<.LabelMatchers>>}[2m])'
+
+    # Prometheus query rate for Prometheus HPA
+    - seriesQuery: 'prometheus_http_requests_total{namespace="ollamamax-monitoring",pod!=""}'
+      resources:
+        overrides:
+          namespace: {resource: "namespace"}
+          pod: {resource: "pod"}
+      name:
+        matches: "^(.*)$"
+        as: "prometheus_query_rate"
+      metricsQuery: 'rate(prometheus_http_requests_total{<<.LabelMatchers>>}[2m])'
+
+    # Swarm utilization metric for scaling decisions
+    - seriesQuery: 'swarm_utilization{namespace!="",pod!=""}'
+      resources:
+        overrides:
+          namespace: {resource: "namespace"}
+          pod: {resource: "pod"}
+      name:
+        matches: "^(.*)$"
+        as: "swarm_utilization"
+      metricsQuery: 'avg_over_time(swarm_utilization{<<.LabelMatchers>>}[2m])'
+
+    # Task queue depth for reactive scaling
+    - seriesQuery: 'task_queue_depth{namespace!="",pod!=""}'
+      resources:
+        overrides:
+          namespace: {resource: "namespace"}
+          pod: {resource: "pod"}
+      name:
+        matches: "^(.*)$"
+        as: "task_queue_depth"
+      metricsQuery: 'sum(task_queue_depth{<<.LabelMatchers>>})'
+---
+# Prometheus Adapter Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus-adapter
+  namespace: ollamamax-monitoring
+  labels:
+    app: prometheus-adapter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus-adapter
+  template:
+    metadata:
+      labels:
+        app: prometheus-adapter
+    spec:
+      serviceAccountName: prometheus-adapter
+      containers:
+      - name: prometheus-adapter
+        image: registry.k8s.io/prometheus-adapter/prometheus-adapter:v0.11.1
+        args:
+        - --cert-dir=/var/run/serving-cert
+        - --config=/etc/adapter/config.yaml
+        - --logtostderr=true
+        - --metrics-relist-interval=1m
+        - --prometheus-url=http://prometheus.ollamamax-monitoring.svc:9090
+        - --secure-port=6443
+        ports:
+        - containerPort: 6443
+          name: https
+        - containerPort: 8080
+          name: http
+        volumeMounts:
+        - name: temp-vol
+          mountPath: /tmp
+        - name: config
+          mountPath: /etc/adapter
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: https
+            scheme: HTTPS
+          initialDelaySeconds: 30
+          periodSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: https
+            scheme: HTTPS
+          initialDelaySeconds: 30
+          periodSeconds: 5
+      volumes:
+      - name: temp-vol
+        emptyDir: {}
+      - name: config
+        configMap:
+          name: prometheus-adapter-config
+---
+# Prometheus Adapter Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus-adapter
+  namespace: ollamamax-monitoring
+  labels:
+    app: prometheus-adapter
+spec:
+  type: ClusterIP
+  ports:
+  - name: https
+    port: 443
+    targetPort: 6443
+  - name: http
+    port: 80
+    targetPort: 8080
+  selector:
+    app: prometheus-adapter
+---
+# APIService for custom metrics
+apiVersion: apiregistration.k8s.io/v1
+kind: APIService
+metadata:
+  name: v1beta2.custom.metrics.k8s.io
+spec:
+  service:
+    name: prometheus-adapter
+    namespace: ollamamax-monitoring
+    port: 443
+  group: custom.metrics.k8s.io
+  version: v1beta2
+  insecureSkipTLSVerify: true
+  groupPriorityMinimum: 100
+  versionPriority: 100

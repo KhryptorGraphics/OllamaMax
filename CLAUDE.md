@@ -1,361 +1,352 @@
-# Claude Code Configuration - Truth Verification & Pair Programming Environment
+# Claude Code Configuration - SPARC Development Environment
 
-## 🔍 VERIFICATION-FIRST DEVELOPMENT
+## 🚨 CRITICAL: CONCURRENT EXECUTION & FILE MANAGEMENT
 
-This project enforces **"truth is enforced, not assumed"** with mandatory verification for all operations.
+**ABSOLUTE RULES**:
+1. ALL operations MUST be concurrent/parallel in a single message
+2. **NEVER save working files, text/mds and tests to the root folder**
+3. ALWAYS organize files in appropriate subdirectories
+4. **USE CLAUDE CODE'S TASK TOOL** for spawning agents concurrently, not just MCP
 
-### 🎯 Truth Verification System Active
-- **Threshold**: 0.95 (95% accuracy required)
-- **Mode**: Strict verification with auto-rollback
-- **Pair Programming**: Real-time collaborative development
-- **Background Monitoring**: Continuous validation enabled
+### ⚡ GOLDEN RULE: "1 MESSAGE = ALL RELATED OPERATIONS"
 
-## 🚨 CRITICAL: VERIFICATION COMMANDS
+**MANDATORY PATTERNS:**
+- **TodoWrite**: ALWAYS batch ALL todos in ONE call (5-10+ todos minimum)
+- **Task tool (Claude Code)**: ALWAYS spawn ALL agents in ONE message with full instructions
+- **File operations**: ALWAYS batch ALL reads/writes/edits in ONE message
+- **Bash commands**: ALWAYS batch ALL terminal operations in ONE message
+- **Memory operations**: ALWAYS batch ALL memory store/retrieve in ONE message
 
-### Initialize Verification System
-```bash
-# Set verification mode (strict/moderate/development)
-./claude-flow verify init strict     # 95% threshold, auto-rollback
-./claude-flow verify init moderate   # 85% threshold, no auto-rollback
-./claude-flow verify init development # 75% threshold, for prototyping
-```
+### 🎯 CRITICAL: Claude Code Task Tool for Agent Execution
 
-### Run Verification
-```bash
-# Verify specific tasks
-./claude-flow verify verify task-123 --agent coder
-./claude-flow verify verify task-456 --agent reviewer --threshold 0.90
-
-# Check truth scores
-./claude-flow truth                  # View current truth scores
-./claude-flow truth --report         # Generate detailed report
-./claude-flow truth --analyze        # Analyze failure patterns
-```
-
-### Pair Programming Mode
-```bash
-# Start pair programming with real-time verification
-./claude-flow pair --start           # Begin collaborative session
-./claude-flow pair --start --mode strict  # Production-quality pairing
-./claude-flow pair --verify --threshold 0.90  # Custom threshold
-
-# Background monitoring (use run_in_background: true)
-./claude-flow pair --start --monitor # Continuous monitoring dashboard
-```
-
-## 📊 VERIFICATION REQUIREMENTS BY AGENT TYPE
-
-### Coder Agents
-- **Compile**: Code must compile without errors (35% weight)
-- **Test**: All tests must pass (25% weight)
-- **Lint**: Code quality checks (20% weight)
-- **Typecheck**: Type safety verification (20% weight)
-
-### Reviewer Agents
-- **Code Analysis**: Static code analysis
-- **Security Scan**: Vulnerability detection
-- **Performance Check**: Regression testing
-
-### Tester Agents
-- **Unit Tests**: Component-level testing
-- **Integration Tests**: System-wide validation
-- **Coverage Check**: Minimum coverage thresholds
-
-### Planner Agents
-- **Task Decomposition**: Valid task breakdown
-- **Dependency Check**: Dependency validation
-- **Feasibility**: Resource analysis
-
-## 🔄 BACKGROUND TASK MANAGEMENT
-
-### Running Verification in Background
+**Claude Code's Task tool is the PRIMARY way to spawn agents:**
 ```javascript
-// Use run_in_background parameter for continuous monitoring
-{
-  "tool": "Bash",
-  "command": "./claude-flow pair --start --monitor",
-  "run_in_background": true  // Enables background execution
-}
-```
-
-### Managing Background Tasks
-```bash
-# Interactive management
-/bashes                      # View all background tasks
-
-# Check specific verification task
-"Check status of bash_1"     # Via prompt to Claude
-
-# Monitor verification output
-"Show output from bash_1"    # Real-time monitoring
-
-# Kill verification session
-"Kill bash_1"                # Stop background verification
-```
-
-## 🚨 CRITICAL: CONCURRENT VERIFICATION
-
-**MANDATORY**: All verification operations MUST be concurrent:
-
-### ✅ CORRECT - Parallel Verification
-```javascript
+// ✅ CORRECT: Use Claude Code's Task tool for parallel agent execution
 [Single Message]:
-  // Initialize verification for multiple tasks
-  - Bash("./claude-flow verify verify task-1 --agent coder")
-  - Bash("./claude-flow verify verify task-2 --agent reviewer")
-  - Bash("./claude-flow verify verify task-3 --agent tester")
+  Task("Research agent", "Analyze requirements and patterns...", "researcher")
+  Task("Coder agent", "Implement core features...", "coder")
+  Task("Tester agent", "Create comprehensive tests...", "tester")
+  Task("Reviewer agent", "Review code quality...", "reviewer")
+  Task("Architect agent", "Design system architecture...", "system-architect")
+```
+
+**MCP tools are ONLY for coordination setup:**
+- `mcp__claude-flow__swarm_init` - Initialize coordination topology
+- `mcp__claude-flow__agent_spawn` - Define agent types for coordination
+- `mcp__claude-flow__task_orchestrate` - Orchestrate high-level workflows
+
+### 📁 File Organization Rules
+
+**NEVER save to root folder. Use these directories:**
+- `/src` - Source code files
+- `/tests` - Test files
+- `/docs` - Documentation and markdown files
+- `/config` - Configuration files
+- `/scripts` - Utility scripts
+- `/examples` - Example code
+
+## Project Overview
+
+This project uses SPARC (Specification, Pseudocode, Architecture, Refinement, Completion) methodology with Claude-Flow orchestration for systematic Test-Driven Development.
+
+## SPARC Commands
+
+### Core Commands
+- `npx claude-flow sparc modes` - List available modes
+- `npx claude-flow sparc run <mode> "<task>"` - Execute specific mode
+- `npx claude-flow sparc tdd "<feature>"` - Run complete TDD workflow
+- `npx claude-flow sparc info <mode>` - Get mode details
+
+### Batchtools Commands
+- `npx claude-flow sparc batch <modes> "<task>"` - Parallel execution
+- `npx claude-flow sparc pipeline "<task>"` - Full pipeline processing
+- `npx claude-flow sparc concurrent <mode> "<tasks-file>"` - Multi-task processing
+
+### Build Commands
+- `npm run build` - Build project
+- `npm run test` - Run tests
+- `npm run lint` - Linting
+- `npm run typecheck` - Type checking
+
+## SPARC Workflow Phases
+
+1. **Specification** - Requirements analysis (`sparc run spec-pseudocode`)
+2. **Pseudocode** - Algorithm design (`sparc run spec-pseudocode`)
+3. **Architecture** - System design (`sparc run architect`)
+4. **Refinement** - TDD implementation (`sparc tdd`)
+5. **Completion** - Integration (`sparc run integration`)
+
+## Code Style & Best Practices
+
+- **Modular Design**: Files under 500 lines
+- **Environment Safety**: Never hardcode secrets
+- **Test-First**: Write tests before implementation
+- **Clean Architecture**: Separate concerns
+- **Documentation**: Keep updated
+
+## 🚀 Available Agents (54 Total)
+
+### Core Development
+`coder`, `reviewer`, `tester`, `planner`, `researcher`
+
+### Swarm Coordination
+`hierarchical-coordinator`, `mesh-coordinator`, `adaptive-coordinator`, `collective-intelligence-coordinator`, `swarm-memory-manager`
+
+### Consensus & Distributed
+`byzantine-coordinator`, `raft-manager`, `gossip-coordinator`, `consensus-builder`, `crdt-synchronizer`, `quorum-manager`, `security-manager`
+
+### Performance & Optimization
+`perf-analyzer`, `performance-benchmarker`, `task-orchestrator`, `memory-coordinator`, `smart-agent`
+
+### GitHub & Repository
+`github-modes`, `pr-manager`, `code-review-swarm`, `issue-tracker`, `release-manager`, `workflow-automation`, `project-board-sync`, `repo-architect`, `multi-repo-swarm`
+
+### SPARC Methodology
+`sparc-coord`, `sparc-coder`, `specification`, `pseudocode`, `architecture`, `refinement`
+
+### Specialized Development
+`backend-dev`, `mobile-dev`, `ml-developer`, `cicd-engineer`, `api-docs`, `system-architect`, `code-analyzer`, `base-template-generator`
+
+### Testing & Validation
+`tdd-london-swarm`, `production-validator`
+
+### Migration & Planning
+`migration-planner`, `swarm-init`
+
+## 🎯 Claude Code vs MCP Tools
+
+### Claude Code Handles ALL EXECUTION:
+- **Task tool**: Spawn and run agents concurrently for actual work
+- File operations (Read, Write, Edit, MultiEdit, Glob, Grep)
+- Code generation and programming
+- Bash commands and system operations
+- Implementation work
+- Project navigation and analysis
+- TodoWrite and task management
+- Git operations
+- Package management
+- Testing and debugging
+
+### MCP Tools ONLY COORDINATE:
+- Swarm initialization (topology setup)
+- Agent type definitions (coordination patterns)
+- Task orchestration (high-level planning)
+- Memory management
+- Neural features
+- Performance tracking
+- GitHub integration
+
+**KEY**: MCP coordinates the strategy, Claude Code's Task tool executes with real agents.
+
+## 🚀 Quick Setup
+
+```bash
+# Add MCP servers (Claude Flow required, others optional)
+claude mcp add claude-flow npx claude-flow@alpha mcp start
+claude mcp add ruv-swarm npx ruv-swarm mcp start  # Optional: Enhanced coordination
+claude mcp add flow-nexus npx flow-nexus@latest mcp start  # Optional: Cloud features
+```
+
+## MCP Tool Categories
+
+### Coordination
+`swarm_init`, `agent_spawn`, `task_orchestrate`
+
+### Monitoring
+`swarm_status`, `agent_list`, `agent_metrics`, `task_status`, `task_results`
+
+### Memory & Neural
+`memory_usage`, `neural_status`, `neural_train`, `neural_patterns`
+
+### GitHub Integration
+`github_swarm`, `repo_analyze`, `pr_enhance`, `issue_triage`, `code_review`
+
+### System
+`benchmark_run`, `features_detect`, `swarm_monitor`
+
+### Flow-Nexus MCP Tools (Optional Advanced Features)
+Flow-Nexus extends MCP capabilities with 70+ cloud-based orchestration tools:
+
+**Key MCP Tool Categories:**
+- **Swarm & Agents**: `swarm_init`, `swarm_scale`, `agent_spawn`, `task_orchestrate`
+- **Sandboxes**: `sandbox_create`, `sandbox_execute`, `sandbox_upload` (cloud execution)
+- **Templates**: `template_list`, `template_deploy` (pre-built project templates)
+- **Neural AI**: `neural_train`, `neural_patterns`, `seraphina_chat` (AI assistant)
+- **GitHub**: `github_repo_analyze`, `github_pr_manage` (repository management)
+- **Real-time**: `execution_stream_subscribe`, `realtime_subscribe` (live monitoring)
+- **Storage**: `storage_upload`, `storage_list` (cloud file management)
+
+**Authentication Required:**
+- Register: `mcp__flow-nexus__user_register` or `npx flow-nexus@latest register`
+- Login: `mcp__flow-nexus__user_login` or `npx flow-nexus@latest login`
+- Access 70+ specialized MCP tools for advanced orchestration
+
+## 🚀 Agent Execution Flow with Claude Code
+
+### The Correct Pattern:
+
+1. **Optional**: Use MCP tools to set up coordination topology
+2. **REQUIRED**: Use Claude Code's Task tool to spawn agents that do actual work
+3. **REQUIRED**: Each agent runs hooks for coordination
+4. **REQUIRED**: Batch all operations in single messages
+
+### Example Full-Stack Development:
+
+```javascript
+// Single message with all agent spawning via Claude Code's Task tool
+[Parallel Agent Execution]:
+  Task("Backend Developer", "Build REST API with Express. Use hooks for coordination.", "backend-dev")
+  Task("Frontend Developer", "Create React UI. Coordinate with backend via memory.", "coder")
+  Task("Database Architect", "Design PostgreSQL schema. Store schema in memory.", "code-analyzer")
+  Task("Test Engineer", "Write Jest tests. Check memory for API contracts.", "tester")
+  Task("DevOps Engineer", "Setup Docker and CI/CD. Document in memory.", "cicd-engineer")
+  Task("Security Auditor", "Review authentication. Report findings via hooks.", "reviewer")
   
-  // Check all truth scores
-  - Bash("./claude-flow truth --json")
+  // All todos batched together
+  TodoWrite { todos: [...8-10 todos...] }
   
-  // Start monitoring in background
-  - Bash("./claude-flow pair --start --monitor", run_in_background: true)
+  // All file operations together
+  Write "backend/server.js"
+  Write "frontend/App.jsx"
+  Write "database/schema.sql"
 ```
 
-### ❌ WRONG - Sequential Verification
+## 📋 Agent Coordination Protocol
+
+### Every Agent Spawned via Task Tool MUST:
+
+**1️⃣ BEFORE Work:**
+```bash
+npx claude-flow@alpha hooks pre-task --description "[task]"
+npx claude-flow@alpha hooks session-restore --session-id "swarm-[id]"
+```
+
+**2️⃣ DURING Work:**
+```bash
+npx claude-flow@alpha hooks post-edit --file "[file]" --memory-key "swarm/[agent]/[step]"
+npx claude-flow@alpha hooks notify --message "[what was done]"
+```
+
+**3️⃣ AFTER Work:**
+```bash
+npx claude-flow@alpha hooks post-task --task-id "[task]"
+npx claude-flow@alpha hooks session-end --export-metrics true
+```
+
+## 🎯 Concurrent Execution Examples
+
+### ✅ CORRECT WORKFLOW: MCP Coordinates, Claude Code Executes
+
 ```javascript
-Message 1: Verify task-1
-Message 2: Verify task-2
-Message 3: Check truth score
-// This is 3x slower!
+// Step 1: MCP tools set up coordination (optional, for complex tasks)
+[Single Message - Coordination Setup]:
+  mcp__claude-flow__swarm_init { topology: "mesh", maxAgents: 6 }
+  mcp__claude-flow__agent_spawn { type: "researcher" }
+  mcp__claude-flow__agent_spawn { type: "coder" }
+  mcp__claude-flow__agent_spawn { type: "tester" }
+
+// Step 2: Claude Code Task tool spawns ACTUAL agents that do the work
+[Single Message - Parallel Agent Execution]:
+  // Claude Code's Task tool spawns real agents concurrently
+  Task("Research agent", "Analyze API requirements and best practices. Check memory for prior decisions.", "researcher")
+  Task("Coder agent", "Implement REST endpoints with authentication. Coordinate via hooks.", "coder")
+  Task("Database agent", "Design and implement database schema. Store decisions in memory.", "code-analyzer")
+  Task("Tester agent", "Create comprehensive test suite with 90% coverage.", "tester")
+  Task("Reviewer agent", "Review code quality and security. Document findings.", "reviewer")
+  
+  // Batch ALL todos in ONE call
+  TodoWrite { todos: [
+    {id: "1", content: "Research API patterns", status: "in_progress", priority: "high"},
+    {id: "2", content: "Design database schema", status: "in_progress", priority: "high"},
+    {id: "3", content: "Implement authentication", status: "pending", priority: "high"},
+    {id: "4", content: "Build REST endpoints", status: "pending", priority: "high"},
+    {id: "5", content: "Write unit tests", status: "pending", priority: "medium"},
+    {id: "6", content: "Integration tests", status: "pending", priority: "medium"},
+    {id: "7", content: "API documentation", status: "pending", priority: "low"},
+    {id: "8", content: "Performance optimization", status: "pending", priority: "low"}
+  ]}
+  
+  // Parallel file operations
+  Bash "mkdir -p app/{src,tests,docs,config}"
+  Write "app/package.json"
+  Write "app/src/server.js"
+  Write "app/tests/server.test.js"
+  Write "app/docs/API.md"
 ```
 
-## 📈 VERIFICATION METRICS & THRESHOLDS
-
-### Target Metrics
-- **Truth Accuracy Rate**: >95%
-- **Integration Success Rate**: >90%
-- **Automated Rollback Frequency**: <5%
-- **Human Intervention Rate**: <10%
-
-### Verification Modes
-| Mode | Threshold | Auto-Rollback | Use Case |
-|------|-----------|---------------|----------|
-| **Strict** | 0.95 | ✅ Enabled | Production |
-| **Moderate** | 0.85 | ❌ Disabled | Development |
-| **Development** | 0.75 | ❌ Disabled | Prototyping |
-
-## 🤝 PAIR PROGRAMMING WORKFLOW
-
-### 1. Start Session
-```bash
-# Initialize pair programming with verification
-./claude-flow pair --start --mode strict
-```
-
-### 2. Real-time Verification Cycle
-```
-Developer writes code
-    ↓
-AI agent reviews in real-time
-    ↓
-Verification engine checks:
-  - Compilation (35%)
-  - Tests (25%)
-  - Linting (20%)
-  - Type safety (20%)
-    ↓
-Truth score calculated
-    ↓
-Pass (>0.95) → Accept change
-Fail (<0.95) → Suggest fixes or rollback
-```
-
-### 3. Continuous Monitoring
-```bash
-# Monitor in background
-./claude-flow pair --start --monitor &
-
-# Check verification output
-/bashes  # Interactive view
-"Check bash_1 output"  # Via prompt
-```
-
-## 🔧 SERENA MCP SERVER INTEGRATION
-
-Serena MCP server is installed and configured for this project:
-
-### Available Capabilities
-- **Semantic Code Understanding**: LSP-powered code analysis across 15+ languages
-- **Symbol-Level Operations**: Precise code navigation and editing
-- **Project Indexing**: Fast semantic search and retrieval
-- **Multi-Language Support**: Go, TypeScript/JavaScript, Python, Rust, C/C++, and more
-
-### Usage Guidelines
-- **Primary Use Cases**: Symbol operations, code navigation, semantic search
-- **Preferred Over**: Manual text search for code understanding
-- **Integration**: Works seamlessly with Claude Code and other MCP servers
-- **Performance**: Optimized for large codebases and complex projects
-
-### Commands Available
-Serena is automatically available through the MCP interface when using Claude Code.
-Use Serena for:
-- Finding symbol definitions and references
-- Navigating complex codebases
-- Understanding code relationships
-- Performing semantic code operations
-
-## 🔒 SECURITY & AUDIT FEATURES
-
-### Cryptographic Verification
-- All verification results are cryptographically signed
-- SHA256 checksums for integrity
-- Immutable audit trail
-
-### Byzantine Fault Tolerance
-- Protection against incorrect agents
-- Consensus requirements (2/3+ majority)
-- Automatic agent quarantine
-
-### Audit Trail
-```bash
-# View verification history
-cat .swarm/verification-memory.json | jq .history
-
-# Check agent reliability
-./claude-flow truth --agent coder --detailed
-```
-
-## 🚀 QUICK START VERIFICATION WORKFLOW
-
-### Step 1: Initialize Project with Verification
-```bash
-# Initialize with verification-first approach
-npx claude-flow@alpha init --verify --pair
-
-# Set up strict verification
-./claude-flow verify init strict
-```
-
-### Step 2: Start Development with Pair Programming
-```bash
-# Start pair programming session
-./claude-flow pair --start --mode strict --monitor &
-
-# Monitor verification (background task)
-/bashes  # Check bash_1 status
-```
-
-### Step 3: Develop with Continuous Verification
-```bash
-# All changes are automatically verified
-# Truth scores maintained above 0.95
-# Auto-rollback on verification failures
-```
-
-### Step 4: Check Truth Metrics
-```bash
-# View current truth scores
-./claude-flow truth
-
-# Generate detailed report
-./claude-flow truth --report --export metrics.json
-```
-
-## 📋 VERIFICATION CHECKLIST
-
-Before ANY operation:
-- ✅ Is verification system initialized?
-- ✅ Is pair programming mode active?
-- ✅ Are background monitors running?
-- ✅ Is truth threshold configured correctly?
-- ✅ Are all agents configured for verification?
-
-## 🛠️ BUILD COMMANDS WITH VERIFICATION
-
-### Standard Commands (with verification)
-- `npm run build`: Build with verification checks
-- `npm run test`: Test with truth scoring
-- `npm run lint`: Lint with verification tracking
-- `npm run typecheck`: Type check with validation
-
-### Verification Commands
-- `./claude-flow verify status`: Check system status
-- `./claude-flow verify verify <task>`: Run verification
-- `./claude-flow truth`: View truth scores
-- `./claude-flow pair --start`: Begin pair programming
-
-## 💾 PERSISTENT VERIFICATION MEMORY
-
-Verification data stored in:
-- `.swarm/verification-memory.json`: Verification history
-- `.swarm/memory.db`: Persistent swarm memory
-- `.claude/verification-config.json`: Custom configuration
-
-## 🎯 AGENT VERIFICATION PATTERNS
-
-### Full-Stack Development with Verification
+### ❌ WRONG (Multiple Messages):
 ```javascript
-// Deploy agents with verification requirements
-Task("System architecture", "Design with verification", "system-architect")
-Task("Backend APIs", "Implement with 95% accuracy", "backend-dev")
-Task("Frontend", "Build with validation", "mobile-dev")
-Task("Testing", "Comprehensive verification", "tester")
-Task("Review", "Verify all changes", "reviewer")
+Message 1: mcp__claude-flow__swarm_init
+Message 2: Task("agent 1")
+Message 3: TodoWrite { todos: [single todo] }
+Message 4: Write "file.js"
+// This breaks parallel coordination!
 ```
 
-### Verification-First TDD
-```javascript
-// TDD with mandatory verification
-Task("Write failing tests", "Verify test quality", "tester")
-Task("Implement code", "Verify implementation", "coder")
-Task("Refactor", "Verify improvements", "reviewer")
-Task("Validate", "Final verification", "production-validator")
-```
+## Performance Benefits
 
-## ⚡ PERFORMANCE WITH VERIFICATION
+- **84.8% SWE-Bench solve rate**
+- **32.3% token reduction**
+- **2.8-4.4x speed improvement**
+- **27+ neural models**
 
-### Optimized Verification
-- **Parallel Checks**: Run all verifications concurrently
-- **Cached Results**: Skip unchanged file verification
-- **Smart Batching**: Group related verifications
-- **Background Execution**: Non-blocking verification
+## Hooks Integration
 
-### Expected Performance
-- Verification overhead: <10% for most operations
-- Truth score calculation: <500ms
-- Rollback execution: <2 seconds
-- Background monitoring: Minimal impact
+### Pre-Operation
+- Auto-assign agents by file type
+- Validate commands for safety
+- Prepare resources automatically
+- Optimize topology by complexity
+- Cache searches
 
-## 🔄 AUTOMATED WORKFLOWS
+### Post-Operation
+- Auto-format code
+- Train neural patterns
+- Update memory
+- Analyze performance
+- Track token usage
 
-### CI/CD Integration
-```yaml
-# .github/workflows/verification.yml
-- name: Run Verification
-  run: |
-    npx claude-flow verify init strict
-    npx claude-flow verify verify ${{ github.run_id }}
-    npx claude-flow truth --threshold 0.95
-```
+### Session Management
+- Generate summaries
+- Persist state
+- Track metrics
+- Restore context
+- Export workflows
 
-### Pre-commit Hooks
-```bash
-# .git/hooks/pre-commit
-#!/bin/bash
-npx claude-flow verify verify pre-commit --agent coder
-SCORE=$(npx claude-flow truth --json | jq .averageScore)
-if [ "$SCORE" -lt "0.85" ]; then
-  echo "❌ Commit blocked: Truth score $SCORE below threshold"
-  exit 1
-fi
-```
+## Advanced Features (v2.0.0)
 
-## 📚 DOCUMENTATION
+- 🚀 Automatic Topology Selection
+- ⚡ Parallel Execution (2.8-4.4x speed)
+- 🧠 Neural Training
+- 📊 Bottleneck Analysis
+- 🤖 Smart Auto-Spawning
+- 🛡️ Self-Healing Workflows
+- 💾 Cross-Session Memory
+- 🔗 GitHub Integration
 
-- [Truth Verification System](https://github.com/ruvnet/claude-flow/wiki/Truth-Verification-System)
-- [Pair Programming Guide](https://github.com/ruvnet/claude-flow/wiki/Pair-Programming-System)
-- [Background Commands](https://github.com/ruvnet/claude-flow/wiki/background-commands)
-- [Agent Verification](https://github.com/ruvnet/claude-flow/wiki/Agent-Verification)
+## Integration Tips
 
-## 🚨 IMPORTANT REMINDERS
+1. Start with basic swarm init
+2. Scale agents gradually
+3. Use memory for context
+4. Monitor progress regularly
+5. Train patterns from success
+6. Enable hooks automation
+7. Use GitHub tools first
 
-1. **Truth is Enforced**: Every operation requires verification
-2. **Parallel Execution**: All verifications run concurrently
-3. **Background Monitoring**: Use run_in_background for continuous checks
-4. **Persistent Memory**: All verification data is saved
-5. **Auto-Rollback**: Failed verifications trigger automatic recovery
+## Support
+
+- Documentation: https://github.com/ruvnet/claude-flow
+- Issues: https://github.com/ruvnet/claude-flow/issues
+- Flow-Nexus Platform: https://flow-nexus.ruv.io (registration required for cloud features)
 
 ---
 
-Remember: **"Truth is enforced, not assumed"** - All operations require verification!
+Remember: **Claude Flow coordinates, Claude Code creates!**
+
+# important-instruction-reminders
+Do what has been asked; nothing more, nothing less.
+NEVER create files unless they're absolutely necessary for achieving your goal.
+ALWAYS prefer editing an existing file to creating a new one.
+NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
+Never save working files, text/mds and tests to the root folder.

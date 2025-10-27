@@ -15,6 +15,8 @@ const NeuralLearningSystem = require('../../agents/neural-learning');
 const { AgentSpecializations, AgentSelector } = require('../../agents/agent-specializations');
 const ClaudeAgentIntegration = require('./claude-integration');
 const SPARCIntegration = require('./sparc-integration');
+const AgentPerformanceForecaster = require('../../src/agents/agent-performance-forecaster');
+const AgentLSTMPredictor = require('../../src/agents/agent-lstm-predictor');
 
 class EnhancedSmartAgentsSwarm {
   constructor(options = {}) {

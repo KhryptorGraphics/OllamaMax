@@ -1,5 +1,8 @@
 # Ollama Distributed Test Suite Makefile
 
+# Use bash shell for pipefail support
+SHELL := /bin/bash
+
 .PHONY: test test-unit test-integration test-e2e test-performance test-chaos test-all
 .PHONY: test-ci test-coverage test-race test-bench test-security
 .PHONY: setup-test-env clean-test-env
@@ -11,6 +14,7 @@
 # Variables
 GO_VERSION ?= 1.21
 BINARY_NAME ?= ollama-distributed
+BINARY_UNIX ?= $(BINARY_NAME)-linux-amd64
 DOCKER_IMAGE ?= ollama-distributed
 DOCKER_TAG ?= latest
 TEST_TIMEOUT ?= 30m
@@ -18,6 +22,7 @@ TEST_NODE_COUNT ?= 3
 ARTIFACTS_DIR ?= ./test-artifacts
 COVERAGE_DIR ?= $(ARTIFACTS_DIR)/coverage
 LOG_DIR ?= $(ARTIFACTS_DIR)/logs
+COVERAGE_THRESHOLD ?= 90
 
 # Test flags
 TEST_FLAGS ?= -v
@@ -142,7 +147,7 @@ test-integration: setup-test-env ## Run integration tests
 	@echo "$(BLUE)Running integration tests...$(NC)"
 	OLLAMA_TEST_ARTIFACTS_DIR=$(ARTIFACTS_DIR) \
 	OLLAMA_TEST_NODE_COUNT=$(TEST_NODE_COUNT) \
-	go test $(TEST_FLAGS) -timeout=$(TEST_TIMEOUT) -tags=integration ./tests/integration/...
+	go test $(TEST_FLAGS) -timeout=$(TEST_TIMEOUT) -coverprofile=$(COVERAGE_DIR)/go-integration-coverage.out -covermode=atomic -tags=integration ./tests/integration/...
 	@echo "$(GREEN)Integration tests completed$(NC)"
 
 test-e2e: setup-test-env ## Run end-to-end tests
@@ -180,9 +185,67 @@ test-bench: setup-test-env ## Run benchmarks
 
 test-coverage: setup-test-env ## Generate coverage report
 	@echo "$(BLUE)Generating coverage report...$(NC)"
-	go test $(COVERAGE_FLAGS) ./...
-	go tool cover -html=$(COVERAGE_DIR)/coverage.out -o $(COVERAGE_DIR)/coverage.html
-	@echo "$(GREEN)Coverage report generated: $(COVERAGE_DIR)/coverage.html$(NC)"
+	@# Run unit tests with coverage and capture exit status
+	@UNIT_STATUS=0; \
+	go test $(COVERAGE_FLAGS) ./pkg/... ./internal/... ./cmd/... || UNIT_STATUS=$$?; \
+	echo "Unit tests exit status: $$UNIT_STATUS"
+	@# Run integration tests with coverage and capture exit status
+	@INTEG_STATUS=0; \
+	OLLAMA_TEST_ARTIFACTS_DIR=$(ARTIFACTS_DIR) \
+	OLLAMA_TEST_NODE_COUNT=$(TEST_NODE_COUNT) \
+	go test -timeout=$(TEST_TIMEOUT) -coverprofile=$(COVERAGE_DIR)/go-integration-coverage.out -covermode=atomic -tags=integration ./tests/integration/... || INTEG_STATUS=$$?; \
+	echo "Integration tests exit status: $$INTEG_STATUS"
+	@# Merge coverage files (even if tests failed, we want to see partial coverage)
+	@echo "$(BLUE)Merging coverage files...$(NC)"
+	@echo "mode: atomic" > $(COVERAGE_DIR)/go-merged-coverage.out
+	@tail -n +2 $(COVERAGE_DIR)/coverage.out >> $(COVERAGE_DIR)/go-merged-coverage.out 2>/dev/null || true
+	@if [ -f $(COVERAGE_DIR)/go-integration-coverage.out ]; then \
+		tail -n +2 $(COVERAGE_DIR)/go-integration-coverage.out >> $(COVERAGE_DIR)/go-merged-coverage.out 2>/dev/null || true; \
+	fi
+	@# Generate HTML report from merged coverage (if coverage exists)
+	@if [ -f $(COVERAGE_DIR)/go-merged-coverage.out ]; then \
+		go tool cover -html=$(COVERAGE_DIR)/go-merged-coverage.out -o $(COVERAGE_DIR)/coverage.html; \
+		echo "$(GREEN)Coverage report generated: $(COVERAGE_DIR)/coverage.html$(NC)"; \
+	fi
+	@# Validate coverage threshold with robust numeric comparison
+	@echo "$(BLUE)Validating coverage threshold ($(COVERAGE_THRESHOLD)%)...$(NC)"
+	@COVERAGE_STATUS=0; \
+	set -o pipefail; \
+	if [ ! -f "$(COVERAGE_DIR)/go-merged-coverage.out" ]; then \
+		echo "$(RED)❌ Coverage file not found: $(COVERAGE_DIR)/go-merged-coverage.out$(NC)"; \
+		COVERAGE_STATUS=1; \
+	else \
+		COVERAGE=$$(go tool cover -func=$(COVERAGE_DIR)/go-merged-coverage.out 2>/dev/null | grep total | grep -Eo '[0-9]+\.[0-9]+' || echo ""); \
+		if [ -z "$$COVERAGE" ] || [ "$$COVERAGE" = "" ]; then \
+			echo "$(RED)❌ No coverage data found or coverage file is empty$(NC)"; \
+			COVERAGE_STATUS=1; \
+		elif ! echo "$$COVERAGE" | grep -qE '^[0-9]+(\.[0-9]+)?$$'; then \
+			echo "$(RED)❌ Invalid coverage value: '$$COVERAGE' (not a number)$(NC)"; \
+			COVERAGE_STATUS=1; \
+		elif awk "BEGIN {exit !($$COVERAGE < $(COVERAGE_THRESHOLD))}"; then \
+			echo "$(RED)❌ Coverage $$COVERAGE% is below threshold $(COVERAGE_THRESHOLD)%$(NC)"; \
+			COVERAGE_STATUS=1; \
+		else \
+			echo "$(GREEN)✅ Coverage $$COVERAGE% meets threshold $(COVERAGE_THRESHOLD)%$(NC)"; \
+		fi; \
+	fi; \
+	@# Fail if any test suite failed
+	@UNIT_STATUS=$${UNIT_STATUS:-0}; \
+	INTEG_STATUS=$${INTEG_STATUS:-0}; \
+	COVERAGE_STATUS=$${COVERAGE_STATUS:-0}; \
+	if [ $$UNIT_STATUS -ne 0 ]; then \
+		echo "$(RED)❌ Unit tests failed (exit code: $$UNIT_STATUS)$(NC)"; \
+		echo "$(YELLOW)Check logs at: $(ARTIFACTS_DIR)/logs$(NC)"; \
+		exit 1; \
+	fi; \
+	if [ $$INTEG_STATUS -ne 0 ]; then \
+		echo "$(RED)❌ Integration tests failed (exit code: $$INTEG_STATUS)$(NC)"; \
+		echo "$(YELLOW)Check logs at: $(ARTIFACTS_DIR)/logs$(NC)"; \
+		exit 1; \
+	fi; \
+	if [ $$COVERAGE_STATUS -ne 0 ]; then \
+		exit 1; \
+	fi
 
 test-security: ## Run security tests
 	@echo "$(BLUE)Running security tests...$(NC)"
@@ -289,8 +352,6 @@ check: fmt vet lint security staticcheck ## Run all code quality checks
 
 pre-commit: check test-unit ## Run pre-commit checks
 	@echo "$(GREEN)✅ Pre-commit checks passed!$(NC)"
-
-check: fmt vet lint staticcheck ## Run all code quality checks
 
 
 
@@ -429,6 +490,58 @@ test-api: setup-test-env ## Run API related tests
 	@echo "$(BLUE)Running API tests...$(NC)"
 	go test $(TEST_FLAGS) -run=".*API.*|.*HTTP.*|.*REST.*" ./tests/unit/...
 	go test $(TEST_FLAGS) -run=".*API.*|.*HTTP.*|.*REST.*" ./tests/integration/...
+
+## Training Tests
+test-training: setup-test-env ## Run all training tests
+	@echo "$(BLUE)Running all training tests...$(NC)"
+	@mkdir -p ../test-results/training
+	cd ../tests/training && go test -v -coverprofile=../../test-results/training/training-coverage.out ./...
+	SKIP_GO_TESTS=1 bash ../scripts/run-training-tests.sh
+
+test-training-modules: setup-test-env ## Run training module tests
+	@echo "$(BLUE)Running training module tests...$(NC)"
+	cd ../tests/training && go test $(TEST_FLAGS) -run="TestTrainingModule.*" ./...
+
+test-training-performance: setup-test-env ## Run training performance benchmarks
+	@echo "$(BLUE)Running training performance benchmarks...$(NC)"
+	@mkdir -p ../test-results/training
+	cd ../tests/training && go test $(BENCH_FLAGS) -run=Benchmark -benchtime=10s ./... | tee ../test-results/training/performance-benchmarks.log
+
+test-certification: setup-test-env ## Run certification assessment tests
+	@echo "$(BLUE)Running certification assessment tests...$(NC)"
+	cd ../tests/training && go test $(TEST_FLAGS) -run="TestCertification.*" ./...
+	bash docs/certification/assessment-validation.sh
+
+test-training-validation: ## Run training validation scripts
+	@echo "$(BLUE)Running training validation scripts...$(NC)"
+	bash ../tests/training/validation_scripts_enhanced.sh full
+
+test-training-examples: ## Validate training code examples
+	@echo "$(BLUE)Validating training code examples...$(NC)"
+	@if [ -d "training/code-examples" ]; then \
+		EXAMPLES_CHECKED=0; \
+		echo "Checking shell scripts..."; \
+		for script in $$(find training/code-examples -name "*.sh" 2>/dev/null); do \
+			bash -n "$$script" && echo "  ✓ $$(basename $$script)" || echo "  ✗ $$(basename $$script)"; \
+			EXAMPLES_CHECKED=$$((EXAMPLES_CHECKED + 1)); \
+		done; \
+		echo "Checking Go files..."; \
+		for gofile in $$(find training/code-examples -name "*.go" 2>/dev/null); do \
+			go build -o /dev/null "$$gofile" && echo "  ✓ $$(basename $$gofile)" || echo "  ✗ $$(basename $$gofile)"; \
+			EXAMPLES_CHECKED=$$((EXAMPLES_CHECKED + 1)); \
+		done; \
+		echo "$(GREEN)✓ Validated $$EXAMPLES_CHECKED code examples$(NC)"; \
+	else \
+		echo "$(YELLOW)⚠ Code examples directory not found$(NC)"; \
+	fi
+
+test-training-all: test-training test-certification test-training-examples ## Run complete training test suite
+	@echo "$(GREEN)Complete training test suite finished!$(NC)"
+	@echo "Generating comprehensive training quality report..."
+	SKIP_METRICS_GENERATION=1 bash ../scripts/run-training-tests.sh || true
+	bash ../scripts/generate-training-metrics.sh
+	bash ../scripts/generate-training-dashboard.sh
+	@echo "$(GREEN)Training quality report generated: ../docs/TRAINING_QUALITY_DASHBOARD.md$(NC)"
 
 ## Test Runners
 test-runner: ## Run the test runner

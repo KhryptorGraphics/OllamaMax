@@ -3,15 +3,104 @@ package database
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/crypto/bcrypt"
 )
+
+// Prometheus metrics for query-level instrumentation
+var (
+	dbQueryDuration = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "db_query_duration_seconds",
+			Help:    "Database query duration in seconds",
+			Buckets: prometheus.ExponentialBuckets(0.001, 2, 10), // 1ms to ~1s
+		},
+		[]string{"operation", "table"},
+	)
+
+	dbQueriesTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "db_queries_total",
+			Help: "Total number of database queries executed",
+		},
+		[]string{"operation", "table", "status"},
+	)
+
+	cacheHitsTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "cache_hits_total",
+			Help: "Total number of cache hits",
+		},
+		[]string{"cache_type", "table"},
+	)
+
+	cacheMissesTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "cache_misses_total",
+			Help: "Total number of cache misses",
+		},
+		[]string{"cache_type", "table"},
+	)
+
+	cacheOperationDuration = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "cache_operation_duration_seconds",
+			Help:    "Cache operation duration in seconds",
+			Buckets: prometheus.ExponentialBuckets(0.0001, 2, 10), // 0.1ms to ~100ms
+		},
+		[]string{"operation", "cache_type", "table"},
+	)
+)
+
+// recordQueryMetrics wraps a query execution with metrics recording
+func recordQueryMetrics(operation, table string, queryFunc func() error) error {
+	start := time.Now()
+	err := queryFunc()
+	duration := time.Since(start).Seconds()
+
+	// Record duration histogram
+	dbQueryDuration.WithLabelValues(operation, table).Observe(duration)
+
+	// Record counter with status
+	status := "success"
+	if err != nil {
+		status = "error"
+	}
+	dbQueriesTotal.WithLabelValues(operation, table, status).Inc()
+
+	return err
+}
+
+// recordCacheOperation wraps a cache operation with metrics recording
+func recordCacheOperation(operation, cacheType, table string, cacheFunc func() error) error {
+	start := time.Now()
+	err := cacheFunc()
+	duration := time.Since(start).Seconds()
+
+	// Record duration histogram
+	cacheOperationDuration.WithLabelValues(operation, cacheType, table).Observe(duration)
+
+	return err
+}
+
+// recordCacheHit increments cache hit counter
+func recordCacheHit(cacheType, table string) {
+	cacheHitsTotal.WithLabelValues(cacheType, table).Inc()
+}
+
+// recordCacheMiss increments cache miss counter
+func recordCacheMiss(cacheType, table string) {
+	cacheMissesTotal.WithLabelValues(cacheType, table).Inc()
+}
 
 // Repository interfaces for better testability and abstraction
 
@@ -83,23 +172,33 @@ func (r *ModelRepository) Create(ctx context.Context, model *Model) error {
 	model.UpdatedAt = time.Now()
 
 	query := `
-		INSERT INTO models (id, name, version, size, hash, content_type, description, tags, parameters, 
-		                   model_file_path, quantization_level, parameter_size, family, status, created_by, 
+		INSERT INTO models (id, name, version, size, hash, content_type, description, tags, parameters,
+		                   model_file_path, quantization_level, parameter_size, family, status, created_by,
 		                   created_at, updated_at)
-		VALUES (:id, :name, :version, :size, :hash, :content_type, :description, :tags, :parameters, 
-		        :model_file_path, :quantization_level, :parameter_size, :family, :status, :created_by, 
+		VALUES (:id, :name, :version, :size, :hash, :content_type, :description, :tags, :parameters,
+		        :model_file_path, :quantization_level, :parameter_size, :family, :status, :created_by,
 		        :created_at, :updated_at)`
 
-	_, err := r.db.NamedExecContext(ctx, query, model)
+	// Wrap query execution with metrics
+	err := recordQueryMetrics("create", "models", func() error {
+		_, err := r.db.NamedExecContext(ctx, query, model)
+		return err
+	})
+
 	if err != nil {
 		return fmt.Errorf("failed to create model: %w", err)
 	}
 
-	// Cache the model in Redis for 1 hour
+	// Cache the model in Redis for 1 hour with metrics
 	if r.redis != nil {
 		key := fmt.Sprintf("model:%s", model.ID.String())
-		if err := r.redis.Set(ctx, key, model, time.Hour).Err(); err != nil {
-			r.logger.Warn("Failed to cache model in Redis", "error", err, "model_id", model.ID)
+		modelJSON, err := json.Marshal(model)
+		if err != nil {
+			r.logger.Warn("Failed to marshal model for cache", "error", err, "model_id", model.ID)
+		} else {
+			recordCacheOperation("set", "redis", "models", func() error {
+				return r.redis.Set(ctx, key, modelJSON, time.Hour).Err()
+			})
 		}
 	}
 
@@ -107,20 +206,38 @@ func (r *ModelRepository) Create(ctx context.Context, model *Model) error {
 }
 
 func (r *ModelRepository) GetByID(ctx context.Context, id uuid.UUID) (*Model, error) {
-	// Try to get from cache first
+	// Try to get from cache first with metrics
 	if r.redis != nil {
 		key := fmt.Sprintf("model:%s", id.String())
-		var model Model
-		err := r.redis.Get(ctx, key).Scan(&model)
-		if err == nil {
-			return &model, nil
+		var modelJSON []byte
+		var cacheErr error
+
+		recordCacheOperation("get", "redis", "models", func() error {
+			result := r.redis.Get(ctx, key)
+			modelJSON, cacheErr = result.Bytes()
+			return cacheErr
+		})
+
+		if cacheErr == nil {
+			// Cache hit
+			recordCacheHit("redis", "models")
+			var model Model
+			if err := json.Unmarshal(modelJSON, &model); err == nil {
+				return &model, nil
+			}
+		} else if cacheErr == redis.Nil {
+			// Cache miss
+			recordCacheMiss("redis", "models")
 		}
 	}
 
 	var model Model
 	query := `SELECT * FROM models WHERE id = $1`
-	
-	err := r.db.GetContext(ctx, &model, query, id)
+
+	err := recordQueryMetrics("get", "models", func() error {
+		return r.db.GetContext(ctx, &model, query, id)
+	})
+
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("model not found")
@@ -128,11 +245,14 @@ func (r *ModelRepository) GetByID(ctx context.Context, id uuid.UUID) (*Model, er
 		return nil, fmt.Errorf("failed to get model: %w", err)
 	}
 
-	// Cache the model
+	// Cache the model with metrics
 	if r.redis != nil {
 		key := fmt.Sprintf("model:%s", id.String())
-		if err := r.redis.Set(ctx, key, model, time.Hour).Err(); err != nil {
-			r.logger.Warn("Failed to cache model in Redis", "error", err, "model_id", id)
+		modelJSON, err := json.Marshal(model)
+		if err == nil {
+			recordCacheOperation("set", "redis", "models", func() error {
+				return r.redis.Set(ctx, key, modelJSON, time.Hour).Err()
+			})
 		}
 	}
 
@@ -142,8 +262,11 @@ func (r *ModelRepository) GetByID(ctx context.Context, id uuid.UUID) (*Model, er
 func (r *ModelRepository) GetByName(ctx context.Context, name string) (*Model, error) {
 	var model Model
 	query := `SELECT * FROM models WHERE name = $1 ORDER BY created_at DESC LIMIT 1`
-	
-	err := r.db.GetContext(ctx, &model, query, name)
+
+	err := recordQueryMetrics("get", "models", func() error {
+		return r.db.GetContext(ctx, &model, query, name)
+	})
+
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("model not found")
@@ -189,7 +312,14 @@ func (r *ModelRepository) List(ctx context.Context, filters *ModelFilters) ([]*M
 	}
 
 	var models []*Model
-	rows, err := r.db.NamedQueryContext(ctx, query, args)
+	var rows *sqlx.Rows
+
+	err := recordQueryMetrics("list", "models", func() error {
+		var err error
+		rows, err = r.db.NamedQueryContext(ctx, query, args)
+		return err
+	})
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to list models: %w", err)
 	}
@@ -214,12 +344,18 @@ func (r *ModelRepository) Update(ctx context.Context, model *Model) error {
 	model.UpdatedAt = time.Now()
 
 	query := `
-		UPDATE models 
-		SET name = :name, version = :version, description = :description, tags = :tags, 
+		UPDATE models
+		SET name = :name, version = :version, description = :description, tags = :tags,
 		    parameters = :parameters, status = :status, updated_at = :updated_at
 		WHERE id = :id`
 
-	result, err := r.db.NamedExecContext(ctx, query, model)
+	var result sql.Result
+	err := recordQueryMetrics("update", "models", func() error {
+		var err error
+		result, err = r.db.NamedExecContext(ctx, query, model)
+		return err
+	})
+
 	if err != nil {
 		return fmt.Errorf("failed to update model: %w", err)
 	}
@@ -233,12 +369,12 @@ func (r *ModelRepository) Update(ctx context.Context, model *Model) error {
 		return fmt.Errorf("model not found")
 	}
 
-	// Invalidate cache
+	// Invalidate cache with metrics
 	if r.redis != nil {
 		key := fmt.Sprintf("model:%s", model.ID.String())
-		if err := r.redis.Del(ctx, key).Err(); err != nil {
-			r.logger.Warn("Failed to invalidate model cache", "error", err, "model_id", model.ID)
-		}
+		recordCacheOperation("delete", "redis", "models", func() error {
+			return r.redis.Del(ctx, key).Err()
+		})
 	}
 
 	return nil
@@ -246,8 +382,14 @@ func (r *ModelRepository) Update(ctx context.Context, model *Model) error {
 
 func (r *ModelRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	query := `DELETE FROM models WHERE id = $1`
-	
-	result, err := r.db.ExecContext(ctx, query, id)
+
+	var result sql.Result
+	err := recordQueryMetrics("delete", "models", func() error {
+		var err error
+		result, err = r.db.ExecContext(ctx, query, id)
+		return err
+	})
+
 	if err != nil {
 		return fmt.Errorf("failed to delete model: %w", err)
 	}
@@ -261,12 +403,12 @@ func (r *ModelRepository) Delete(ctx context.Context, id uuid.UUID) error {
 		return fmt.Errorf("model not found")
 	}
 
-	// Invalidate cache
+	// Invalidate cache with metrics
 	if r.redis != nil {
 		key := fmt.Sprintf("model:%s", id.String())
-		if err := r.redis.Del(ctx, key).Err(); err != nil {
-			r.logger.Warn("Failed to invalidate model cache", "error", err, "model_id", id)
-		}
+		recordCacheOperation("delete", "redis", "models", func() error {
+			return r.redis.Del(ctx, key).Err()
+		})
 	}
 
 	return nil
@@ -275,8 +417,11 @@ func (r *ModelRepository) Delete(ctx context.Context, id uuid.UUID) error {
 func (r *ModelRepository) GetReplicas(ctx context.Context, modelID uuid.UUID) ([]*ModelReplica, error) {
 	var replicas []*ModelReplica
 	query := `SELECT * FROM model_replicas WHERE model_id = $1 AND status = 'active' ORDER BY created_at`
-	
-	err := r.db.SelectContext(ctx, &replicas, query, modelID)
+
+	err := recordQueryMetrics("get", "model_replicas", func() error {
+		return r.db.SelectContext(ctx, &replicas, query, modelID)
+	})
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to get model replicas: %w", err)
 	}
@@ -311,12 +456,16 @@ func (r *UserRepository) Create(ctx context.Context, user *User, password string
 	user.UpdatedAt = time.Now()
 
 	query := `
-		INSERT INTO users (id, username, email, password_hash, roles, permissions, active, metadata, 
+		INSERT INTO users (id, username, email, password_hash, roles, permissions, active, metadata,
 		                  failed_login_attempts, created_at, updated_at)
 		VALUES (:id, :username, :email, :password_hash, :roles, :permissions, :active, :metadata,
 		        :failed_login_attempts, :created_at, :updated_at)`
 
-	_, err = r.db.NamedExecContext(ctx, query, user)
+	err = recordQueryMetrics("create", "users", func() error {
+		_, err := r.db.NamedExecContext(ctx, query, user)
+		return err
+	})
+
 	if err != nil {
 		return fmt.Errorf("failed to create user: %w", err)
 	}
@@ -327,8 +476,11 @@ func (r *UserRepository) Create(ctx context.Context, user *User, password string
 func (r *UserRepository) GetByID(ctx context.Context, id uuid.UUID) (*User, error) {
 	var user User
 	query := `SELECT * FROM users WHERE id = $1`
-	
-	err := r.db.GetContext(ctx, &user, query, id)
+
+	err := recordQueryMetrics("get", "users", func() error {
+		return r.db.GetContext(ctx, &user, query, id)
+	})
+
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("user not found")
@@ -342,8 +494,11 @@ func (r *UserRepository) GetByID(ctx context.Context, id uuid.UUID) (*User, erro
 func (r *UserRepository) GetByUsername(ctx context.Context, username string) (*User, error) {
 	var user User
 	query := `SELECT * FROM users WHERE username = $1`
-	
-	err := r.db.GetContext(ctx, &user, query, username)
+
+	err := recordQueryMetrics("get", "users", func() error {
+		return r.db.GetContext(ctx, &user, query, username)
+	})
+
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("user not found")
@@ -380,18 +535,26 @@ func (r *UserRepository) Authenticate(ctx context.Context, username, password st
 
 func (r *UserRepository) incrementFailedAttempts(ctx context.Context, userID uuid.UUID) {
 	query := `UPDATE users SET failed_login_attempts = failed_login_attempts + 1 WHERE id = $1`
-	_, err := r.db.ExecContext(ctx, query, userID)
-	if err != nil {
-		r.logger.Error("Failed to increment failed login attempts", "error", err, "user_id", userID)
-	}
+
+	recordQueryMetrics("update", "users", func() error {
+		_, err := r.db.ExecContext(ctx, query, userID)
+		if err != nil {
+			r.logger.Error("Failed to increment failed login attempts", "error", err, "user_id", userID)
+		}
+		return err
+	})
 }
 
 func (r *UserRepository) resetFailedAttempts(ctx context.Context, userID uuid.UUID) {
 	query := `UPDATE users SET failed_login_attempts = 0 WHERE id = $1`
-	_, err := r.db.ExecContext(ctx, query, userID)
-	if err != nil {
-		r.logger.Error("Failed to reset failed login attempts", "error", err, "user_id", userID)
-	}
+
+	recordQueryMetrics("update", "users", func() error {
+		_, err := r.db.ExecContext(ctx, query, userID)
+		if err != nil {
+			r.logger.Error("Failed to reset failed login attempts", "error", err, "user_id", userID)
+		}
+		return err
+	})
 }
 
 func (r *UserRepository) Update(ctx context.Context, user *User) error {
@@ -402,12 +565,18 @@ func (r *UserRepository) Update(ctx context.Context, user *User) error {
 	user.UpdatedAt = time.Now()
 
 	query := `
-		UPDATE users 
+		UPDATE users
 		SET username = :username, email = :email, roles = :roles, permissions = :permissions,
 		    active = :active, metadata = :metadata, updated_at = :updated_at
 		WHERE id = :id`
 
-	result, err := r.db.NamedExecContext(ctx, query, user)
+	var result sql.Result
+	err := recordQueryMetrics("update", "users", func() error {
+		var err error
+		result, err = r.db.NamedExecContext(ctx, query, user)
+		return err
+	})
+
 	if err != nil {
 		return fmt.Errorf("failed to update user: %w", err)
 	}
@@ -465,7 +634,11 @@ func (r *AuditRepository) Create(ctx context.Context, entry *AuditLogEntry) erro
 		VALUES (:id, :table_name, :operation, :row_id, :old_values, :new_values,
 		        :user_id, :ip_address, :user_agent, :timestamp)`
 
-	_, err := r.db.NamedExecContext(ctx, query, entry)
+	err := recordQueryMetrics("create", "audit_log_entries", func() error {
+		_, err := r.db.NamedExecContext(ctx, query, entry)
+		return err
+	})
+
 	if err != nil {
 		return fmt.Errorf("failed to create audit log entry: %w", err)
 	}
@@ -524,7 +697,14 @@ func (r *NodeRepository) List(ctx context.Context, filters *NodeFilters) ([]*Nod
 	}
 
 	var nodes []*Node
-	rows, err := r.db.NamedQueryContext(ctx, query, args)
+	var rows *sqlx.Rows
+
+	err := recordQueryMetrics("list", "nodes", func() error {
+		var err error
+		rows, err = r.db.NamedQueryContext(ctx, query, args)
+		return err
+	})
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to list nodes: %w", err)
 	}
@@ -539,4 +719,101 @@ func (r *NodeRepository) List(ctx context.Context, filters *NodeFilters) ([]*Nod
 	}
 
 	return nodes, nil
+}
+
+func (r *NodeRepository) GetByID(ctx context.Context, id uuid.UUID) (*Node, error) {
+	var node Node
+	query := `SELECT * FROM nodes WHERE id = $1`
+
+	err := recordQueryMetrics("get", "nodes", func() error {
+		return r.db.GetContext(ctx, &node, query, id)
+	})
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("node not found")
+		}
+		return nil, fmt.Errorf("failed to get node: %w", err)
+	}
+
+	return &node, nil
+}
+
+func (r *NodeRepository) Create(ctx context.Context, node *Node) error {
+	node.ID = uuid.New()
+	node.CreatedAt = time.Now()
+	node.UpdatedAt = time.Now()
+
+	query := `
+		INSERT INTO nodes (id, name, url, region, status, capabilities, metrics, metadata, created_at, updated_at)
+		VALUES (:id, :name, :url, :region, :status, :capabilities, :metrics, :metadata, :created_at, :updated_at)`
+
+	err := recordQueryMetrics("create", "nodes", func() error {
+		_, err := r.db.NamedExecContext(ctx, query, node)
+		return err
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to create node: %w", err)
+	}
+
+	return nil
+}
+
+func (r *NodeRepository) Update(ctx context.Context, node *Node) error {
+	node.UpdatedAt = time.Now()
+
+	query := `
+		UPDATE nodes
+		SET name = :name, url = :url, region = :region, status = :status,
+		    capabilities = :capabilities, metrics = :metrics, metadata = :metadata, updated_at = :updated_at
+		WHERE id = :id`
+
+	var result sql.Result
+	err := recordQueryMetrics("update", "nodes", func() error {
+		var err error
+		result, err = r.db.NamedExecContext(ctx, query, node)
+		return err
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to update node: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("node not found")
+	}
+
+	return nil
+}
+
+func (r *NodeRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	query := `DELETE FROM nodes WHERE id = $1`
+
+	var result sql.Result
+	err := recordQueryMetrics("delete", "nodes", func() error {
+		var err error
+		result, err = r.db.ExecContext(ctx, query, id)
+		return err
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to delete node: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("node not found")
+	}
+
+	return nil
 }

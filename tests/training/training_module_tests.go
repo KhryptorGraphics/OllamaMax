@@ -111,25 +111,60 @@ func TestTrainingModule1Installation(t *testing.T) {
 	})
 
 	t.Run("BuildValidation", func(t *testing.T) {
+		// Check if TRAINING_BUILD_CHECK is enabled
+		if os.Getenv("TRAINING_BUILD_CHECK") != "1" {
+			t.Skip("Build check disabled. Set TRAINING_BUILD_CHECK=1 to enable build validation.")
+			return
+		}
+
 		// Test that the project can be built
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 		defer cancel()
 
-		cmd := exec.CommandContext(ctx, "go", "build", "-o", "/tmp/ollama-distributed-test", "./main.go")
-		output, err := cmd.CombinedOutput()
-		
-		if err != nil {
-			t.Logf("Build output: %s", string(output))
-			t.Logf("Build error: %v", err)
-			t.Skip("Build issues detected - this is a known limitation documented in training")
+		// Determine the correct build path - use the actual main entrypoint
+		projectRoot := os.Getenv("PROJECT_ROOT")
+		if projectRoot == "" {
+			projectRoot = os.Getenv("OLLAMA_PROJECT_ROOT")
+		}
+		if projectRoot == "" {
+			// Try to detect from current working directory
+			if cwd, err := os.Getwd(); err == nil {
+				projectRoot = filepath.Join(cwd, "../..")
+			}
 		}
 
-		// If build succeeds, validate binary
-		if err == nil {
-			assert.FileExists(t, "/tmp/ollama-distributed-test")
-			// Clean up
-			os.Remove("/tmp/ollama-distributed-test")
+		var buildPath string
+		if projectRoot != "" {
+			// Use the real entrypoint: ollama-distributed/cmd/node/main.go
+			mainGoPath := filepath.Join(projectRoot, "ollama-distributed", "cmd", "node", "main.go")
+			if _, err := os.Stat(mainGoPath); err == nil {
+				buildPath = mainGoPath
+				t.Logf("Using build path: %s", buildPath)
+			}
 		}
+
+		if buildPath == "" {
+			t.Skip("Could not detect project root or main.go entrypoint. Set PROJECT_ROOT environment variable.")
+			return
+		}
+
+		// Attempt the build
+		outputBinary := filepath.Join(os.TempDir(), "ollama-distributed-test-"+fmt.Sprintf("%d", time.Now().Unix()))
+		cmd := exec.CommandContext(ctx, "go", "build", "-o", outputBinary, buildPath)
+		output, err := cmd.CombinedOutput()
+
+		if err != nil {
+			t.Logf("Build output:\n%s", string(output))
+			t.Logf("Build error: %v", err)
+			t.Fatalf("Build failed when TRAINING_BUILD_CHECK=1: %v", err)
+		}
+
+		// If build succeeds, validate binary exists
+		assert.FileExists(t, outputBinary, "Build binary should exist")
+		t.Logf("✅ Build successful: %s", outputBinary)
+
+		// Clean up
+		os.Remove(outputBinary)
 	})
 
 	t.Run("ConfigurationSetup", func(t *testing.T) {
@@ -549,13 +584,18 @@ func TestTrainingModule5APIIntegration(t *testing.T) {
 // Helper Functions
 
 func isPortAvailable(port string) bool {
-	// Simple port availability check
+	// Try netstat first
 	cmd := exec.Command("netstat", "-ln")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return true // Assume available if can't check
+		// Fallback to ss if netstat fails
+		cmd = exec.Command("ss", "-ln")
+		output, err = cmd.CombinedOutput()
+		if err != nil {
+			return true // Assume available if neither command works
+		}
 	}
-	
+
 	portPattern := ":" + port
 	return !strings.Contains(string(output), portPattern)
 }

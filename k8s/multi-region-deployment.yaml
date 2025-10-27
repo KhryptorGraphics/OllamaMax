@@ -1,0 +1,517 @@
+---
+# Multi-Region Deployment Configuration for OllamaMax
+# References: k8s/redis-cluster.yaml, production-performance.yaml
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ollamamax-multiregion
+  labels:
+    topology.kubernetes.io/region-aware: "true"
+
+---
+# Regional Redis Cluster with Cross-Region Replication
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis-cluster-us-east
+  namespace: ollamamax-multiregion
+  labels:
+    app: redis-cluster
+    region: us-east-1
+spec:
+  serviceName: redis-cluster-us-east
+  replicas: 3
+  selector:
+    matchLabels:
+      app: redis-cluster
+      region: us-east-1
+  template:
+    metadata:
+      labels:
+        app: redis-cluster
+        region: us-east-1
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: topology.kubernetes.io/region
+                operator: In
+                values:
+                - us-east-1
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - redis-cluster
+            topologyKey: kubernetes.io/hostname
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        ports:
+        - containerPort: 6379
+          name: client
+        - containerPort: 16379
+          name: gossip
+        command:
+        - redis-server
+        args:
+        - "--cluster-enabled yes"
+        - "--cluster-config-file /data/nodes.conf"
+        - "--cluster-node-timeout 5000"
+        - "--appendonly yes"
+        - "--protected-mode no"
+        volumeMounts:
+        - name: redis-data
+          mountPath: /data
+        resources:
+          requests:
+            cpu: 250m
+            memory: 512Mi
+          limits:
+            cpu: 500m
+            memory: 1Gi
+  volumeClaimTemplates:
+  - metadata:
+      name: redis-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 10Gi
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis-cluster-us-west
+  namespace: ollamamax-multiregion
+  labels:
+    app: redis-cluster
+    region: us-west-2
+spec:
+  serviceName: redis-cluster-us-west
+  replicas: 3
+  selector:
+    matchLabels:
+      app: redis-cluster
+      region: us-west-2
+  template:
+    metadata:
+      labels:
+        app: redis-cluster
+        region: us-west-2
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: topology.kubernetes.io/region
+                operator: In
+                values:
+                - us-west-2
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - redis-cluster
+            topologyKey: kubernetes.io/hostname
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        ports:
+        - containerPort: 6379
+          name: client
+        - containerPort: 16379
+          name: gossip
+        command:
+        - redis-server
+        args:
+        - "--cluster-enabled yes"
+        - "--cluster-config-file /data/nodes.conf"
+        - "--cluster-node-timeout 5000"
+        - "--appendonly yes"
+        - "--protected-mode no"
+        - "--replicaof redis-cluster-us-east-0.redis-cluster-us-east.ollamamax-multiregion.svc.cluster.local 6379"
+        volumeMounts:
+        - name: redis-data
+          mountPath: /data
+        resources:
+          requests:
+            cpu: 250m
+            memory: 512Mi
+          limits:
+            cpu: 500m
+            memory: 1Gi
+  volumeClaimTemplates:
+  - metadata:
+      name: redis-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 10Gi
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis-cluster-eu-west
+  namespace: ollamamax-multiregion
+  labels:
+    app: redis-cluster
+    region: eu-west-1
+spec:
+  serviceName: redis-cluster-eu-west
+  replicas: 3
+  selector:
+    matchLabels:
+      app: redis-cluster
+      region: eu-west-1
+  template:
+    metadata:
+      labels:
+        app: redis-cluster
+        region: eu-west-1
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: topology.kubernetes.io/region
+                operator: In
+                values:
+                - eu-west-1
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - redis-cluster
+            topologyKey: kubernetes.io/hostname
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        ports:
+        - containerPort: 6379
+          name: client
+        - containerPort: 16379
+          name: gossip
+        command:
+        - redis-server
+        args:
+        - "--cluster-enabled yes"
+        - "--cluster-config-file /data/nodes.conf"
+        - "--cluster-node-timeout 5000"
+        - "--appendonly yes"
+        - "--protected-mode no"
+        - "--replicaof redis-cluster-us-east-0.redis-cluster-us-east.ollamamax-multiregion.svc.cluster.local 6379"
+        volumeMounts:
+        - name: redis-data
+          mountPath: /data
+        resources:
+          requests:
+            cpu: 250m
+            memory: 512Mi
+          limits:
+            cpu: 500m
+            memory: 1Gi
+  volumeClaimTemplates:
+  - metadata:
+      name: redis-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 10Gi
+
+---
+# Headless Services for StatefulSets
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-cluster-us-east
+  namespace: ollamamax-multiregion
+  labels:
+    region: us-east-1
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: true
+  ports:
+  - port: 6379
+    name: client
+  - port: 16379
+    name: gossip
+  selector:
+    app: redis-cluster
+    region: us-east-1
+
+---
+# LoadBalancer Service for External Access (us-east)
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-cluster-us-east-lb
+  namespace: ollamamax-multiregion
+  labels:
+    region: us-east-1
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 6379
+    name: client
+  - port: 16379
+    name: gossip
+  selector:
+    app: redis-cluster
+    region: us-east-1
+
+---
+# Headless Service for us-west StatefulSet
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-cluster-us-west
+  namespace: ollamamax-multiregion
+  labels:
+    region: us-west-2
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: true
+  ports:
+  - port: 6379
+    name: client
+  - port: 16379
+    name: gossip
+  selector:
+    app: redis-cluster
+    region: us-west-2
+
+---
+# LoadBalancer Service for External Access (us-west)
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-cluster-us-west-lb
+  namespace: ollamamax-multiregion
+  labels:
+    region: us-west-2
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 6379
+    name: client
+  - port: 16379
+    name: gossip
+  selector:
+    app: redis-cluster
+    region: us-west-2
+
+---
+# Headless Service for eu-west StatefulSet
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-cluster-eu-west
+  namespace: ollamamax-multiregion
+  labels:
+    region: eu-west-1
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: true
+  ports:
+  - port: 6379
+    name: client
+  - port: 16379
+    name: gossip
+  selector:
+    app: redis-cluster
+    region: eu-west-1
+
+---
+# LoadBalancer Service for External Access (eu-west)
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-cluster-eu-west-lb
+  namespace: ollamamax-multiregion
+  labels:
+    region: eu-west-1
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 6379
+    name: client
+  - port: 16379
+    name: gossip
+  selector:
+    app: redis-cluster
+    region: eu-west-1
+
+---
+# Global Service with GeoDNS
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-cluster-global
+  namespace: ollamamax-multiregion
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: redis-global.ollamamax.io
+    service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 6379
+    name: client
+  selector:
+    app: redis-cluster
+
+---
+# Multi-Region API Deployment with Topology Spread
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ollamamax-api-multiregion
+  namespace: ollamamax-multiregion
+spec:
+  replicas: 9
+  selector:
+    matchLabels:
+      app: ollamamax-api
+  template:
+    metadata:
+      labels:
+        app: ollamamax-api
+    spec:
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: topology.kubernetes.io/region
+        whenUnsatisfiable: DoNotSchedule
+        labelSelector:
+          matchLabels:
+            app: ollamamax-api
+      - maxSkew: 1
+        topologyKey: topology.kubernetes.io/zone
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            app: ollamamax-api
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - ollamamax-api
+              topologyKey: kubernetes.io/hostname
+      containers:
+      - name: api
+        image: ollamamax/api:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: REDIS_URL
+          value: "redis://redis-cluster-global.ollamamax-multiregion:6379"
+        - name: REGION
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+          limits:
+            cpu: 1000m
+            memory: 2Gi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+
+---
+# Regional Priority Routing ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: region-routing
+  namespace: ollamamax-multiregion
+data:
+  routing.conf: |
+    # Regional priority routing configuration
+    regions:
+      us-east-1:
+        priority: 1
+        backup: ["us-west-2", "eu-west-1"]
+        latency_threshold_ms: 100
+      us-west-2:
+        priority: 1
+        backup: ["us-east-1", "eu-west-1"]
+        latency_threshold_ms: 100
+      eu-west-1:
+        priority: 1
+        backup: ["us-east-1", "us-west-2"]
+        latency_threshold_ms: 150
+
+    circuit_breaker:
+      failure_threshold: 5
+      timeout_seconds: 60
+      half_open_requests: 3
+
+---
+# Network Policy for Cross-Region Communication
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-cross-region
+  namespace: ollamamax-multiregion
+spec:
+  podSelector:
+    matchLabels:
+      app: redis-cluster
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          topology.kubernetes.io/region-aware: "true"
+    ports:
+    - protocol: TCP
+      port: 6379
+    - protocol: TCP
+      port: 16379
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          topology.kubernetes.io/region-aware: "true"
+    ports:
+    - protocol: TCP
+      port: 6379
+    - protocol: TCP
+      port: 16379

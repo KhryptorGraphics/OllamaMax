@@ -105,6 +105,11 @@ test.describe('Security Testing', () => {
   });
 
   test('SQL injection prevention', async ({ request }) => {
+    const backendEnabled = process.env.BACKEND_UP === '1';
+
+    // Create API request context with API base URL
+    const api = await request.newContext({ baseURL: process.env.API_BASE_URL || 'http://localhost:11434' });
+
     // Test API endpoints for SQL injection vulnerabilities
     const sqlPayloads = [
       "'; DROP TABLE users; --",
@@ -114,7 +119,7 @@ test.describe('Security Testing', () => {
       "admin' /*",
       "' OR 1=1#"
     ];
-    
+
     const endpoints = [
       '/api/v1/models',
       '/api/v1/health',
@@ -122,41 +127,60 @@ test.describe('Security Testing', () => {
       '/search',
       '/query'
     ];
-    
+
     for (const endpoint of endpoints) {
       for (const payload of sqlPayloads.slice(0, 2)) { // Test first 2 payloads per endpoint
         try {
           // Test as query parameter
-          const response1 = await request.get(`${endpoint}?q=${encodeURIComponent(payload)}`);
-          
+          const response1 = await api.get(`${endpoint}?q=${encodeURIComponent(payload)}`);
+
           // Test as POST body
-          const response2 = await request.post(endpoint, {
+          const response2 = await api.post(endpoint, {
             data: { query: payload, search: payload },
             headers: { 'Content-Type': 'application/json' }
           }).catch(() => ({ ok: () => false, status: () => 400 }));
-          
+
           // Should not return database errors or sensitive information
           if (response1.ok()) {
             const text1 = await response1.text();
             expect(text1).not.toMatch(/sql|database|mysql|postgres|sqlite|error|exception|stack trace/i);
+
+            // When BACKEND_UP=1, response must be well-formed
+            if (backendEnabled) {
+              expect(response1.status()).toBeLessThan(500);
+            }
           }
-          
+
           if (response2.ok && response2.ok()) {
             const text2 = await response2.text();
             expect(text2).not.toMatch(/sql|database|mysql|postgres|sqlite|error|exception|stack trace/i);
+
+            // When BACKEND_UP=1, response must be well-formed
+            if (backendEnabled && response2.status) {
+              expect(response2.status()).toBeLessThan(500);
+            }
           }
-          
+
         } catch (error) {
-          // Network errors are acceptable - means endpoint doesn't exist
+          if (backendEnabled) {
+            // When backend is enabled, network errors for known endpoints are not acceptable
+            if (['/api/v1/health', '/api/v1/status'].includes(endpoint)) {
+              throw error;
+            }
+          }
+          // Network errors are acceptable for other endpoints
           continue;
         }
       }
     }
-    
+
     console.log('✅ SQL injection prevention tests completed');
   });
 
   test('authentication bypass attempts', async ({ request, page }) => {
+    // Create API request context with API base URL
+    const api = await request.newContext({ baseURL: process.env.API_BASE_URL || 'http://localhost:11434' });
+
     // Test common authentication bypass techniques
     const bypassAttempts = [
       { headers: { 'X-Forwarded-For': '127.0.0.1' } },
@@ -166,7 +190,7 @@ test.describe('Security Testing', () => {
       { headers: { 'Authorization': 'Bearer invalid-token' } },
       { headers: { 'Cookie': 'admin=true; session=admin; authenticated=true' } }
     ];
-    
+
     const protectedEndpoints = [
       '/admin',
       '/api/v1/admin',
@@ -174,11 +198,11 @@ test.describe('Security Testing', () => {
       '/config',
       '/settings'
     ];
-    
+
     for (const endpoint of protectedEndpoints) {
       for (const attempt of bypassAttempts) {
         try {
-          const response = await request.get(endpoint, attempt);
+          const response = await api.get(endpoint, attempt);
           
           // Should not grant unauthorized access
           if (response.ok()) {
@@ -204,46 +228,62 @@ test.describe('Security Testing', () => {
   });
 
   test('rate limiting and DoS protection', async ({ request }) => {
+    const backendEnabled = process.env.BACKEND_UP === '1';
+
+    // Create API request context with API base URL
+    const api = await request.newContext({ baseURL: process.env.API_BASE_URL || 'http://localhost:11434' });
+
     const endpoint = '/api/v1/health';
     const requestCount = 20;
     const requests = [];
-    
+
     // Send rapid requests
     const startTime = Date.now();
-    
+
     for (let i = 0; i < requestCount; i++) {
       requests.push(
-        request.get(endpoint, { timeout: 5000 }).catch(error => ({ 
-          error: error.message, 
+        api.get(endpoint, { timeout: 5000 }).catch(error => ({
+          error: error.message,
           status: () => 0,
-          ok: () => false 
+          ok: () => false
         }))
       );
     }
-    
+
     const responses = await Promise.all(requests);
     const endTime = Date.now();
-    
+
     const successCount = responses.filter(r => r.ok && r.ok()).length;
     const rateLimitedCount = responses.filter(r => r.status && (r.status() === 429 || r.status() === 503)).length;
     const errorCount = responses.filter(r => r.error).length;
-    
+
     console.log(`Rate limiting test: ${successCount} success, ${rateLimitedCount} rate-limited, ${errorCount} errors`);
     console.log(`Total time: ${endTime - startTime}ms`);
-    
+
+    // When BACKEND_UP=1, health endpoint must respond to most requests
+    if (backendEnabled) {
+      expect(successCount + rateLimitedCount).toBeGreaterThan(requestCount * 0.8); // At least 80% should get valid responses
+      expect(errorCount).toBeLessThan(requestCount * 0.2); // Less than 20% network errors
+    }
+
     // If rate limiting is implemented, should see some 429 responses
     if (rateLimitedCount > 0) {
       console.log('✅ Rate limiting is active');
       expect(rateLimitedCount).toBeGreaterThan(0);
+    } else if (backendEnabled) {
+      console.log('ℹ️  No rate limiting detected - all requests succeeded (rate limiting may not be implemented)');
     } else {
-      console.log('ℹ️  No rate limiting detected - may not be implemented');
+      console.log('ℹ️  Backend not enabled, rate limiting test skipped');
     }
-    
+
     // At least some requests should complete
     expect(successCount + rateLimitedCount + errorCount).toBe(requestCount);
   });
 
   test('information disclosure prevention', async ({ request }) => {
+    // Create API request context with API base URL
+    const api = await request.newContext({ baseURL: process.env.API_BASE_URL || 'http://localhost:11434' });
+
     // Test for information leakage in error responses
     const sensitiveEndpoints = [
       '/api/v1/debug',
@@ -256,10 +296,10 @@ test.describe('Security Testing', () => {
       '/metrics',
       '/health/detailed'
     ];
-    
+
     for (const endpoint of sensitiveEndpoints) {
       try {
-        const response = await request.get(endpoint);
+        const response = await api.get(endpoint);
         
         if (response.ok()) {
           const content = await response.text();
@@ -359,14 +399,17 @@ test.describe('Security Testing', () => {
           
           // Try to submit if there's a submit button nearby
           const submitButton = page.locator('button[type="submit"], button:has-text("Upload"), input[type="submit"]').first();
-          const submitVisible = await submitButton.isVisible({ timeout: 2000 }).catch(() => false);
+          await submitButton.waitFor({ state: 'visible', timeout: 2000 }).catch(() => {});
+          const submitVisible = await submitButton.isVisible();
           
           if (submitVisible) {
             await submitButton.click();
             await page.waitForTimeout(2000);
             
             // Check for error messages (good) or success (potentially bad)
-            const hasError = await page.locator('.error, .alert-danger, [role="alert"]').first().isVisible({ timeout: 3000 }).catch(() => false);
+            const errorLocator = page.locator('.error, .alert-danger, [role="alert"]').first();
+            await errorLocator.waitFor({ state: 'visible', timeout: 3000 }).catch(() => {});
+            const hasError = await errorLocator.isVisible();
             
             if (hasError) {
               console.log('✅ File upload validation working - rejected dangerous file');
@@ -387,40 +430,44 @@ test.describe('Security Testing', () => {
   test('session management security', async ({ page, context }) => {
     // Test session security if authentication exists
     const loginForm = page.locator('form[action*="login"], form:has(input[type="password"]), .login-form').first();
-    const hasLogin = await loginForm.isVisible({ timeout: 3000 }).catch(() => false);
-    
+    await loginForm.waitFor({ state: 'visible', timeout: 3000 }).catch(() => {});
+    const hasLogin = await loginForm.isVisible();
+
     if (hasLogin) {
       // Test session fixation
       const initialCookies = await context.cookies();
-      
+
       // Attempt login (won't succeed but might set cookies)
       const usernameField = loginForm.locator('input[type="text"], input[type="email"], input[name*="user"], input[name*="email"]').first();
       const passwordField = loginForm.locator('input[type="password"]').first();
-      
-      if (await usernameField.isVisible({ timeout: 1000 }).catch(() => false)) {
+
+      await usernameField.waitFor({ state: 'visible', timeout: 1000 }).catch(() => {});
+      const usernameVisible = await usernameField.isVisible();
+
+      if (usernameVisible) {
         await usernameField.fill('test@test.com');
         await passwordField.fill('testpassword123');
-        
+
         const submitBtn = loginForm.locator('button[type="submit"], input[type="submit"]').first();
         await submitBtn.click();
         await page.waitForTimeout(2000);
-        
+
         const finalCookies = await context.cookies();
-        
+
         // Check if session cookies changed after login attempt
         const sessionCookiesChanged = finalCookies.length !== initialCookies.length ||
-          finalCookies.some(cookie => !initialCookies.find(initial => 
+          finalCookies.some(cookie => !initialCookies.find(initial =>
             initial.name === cookie.name && initial.value === cookie.value
           ));
-        
+
         if (sessionCookiesChanged) {
           console.log('✅ Session cookies changed after login attempt');
         }
-        
+
         // Check for secure cookie flags
         const secureCookies = finalCookies.filter(cookie => cookie.secure);
         const httpOnlyCookies = finalCookies.filter(cookie => cookie.httpOnly);
-        
+
         console.log(`Secure cookies: ${secureCookies.length}/${finalCookies.length}`);
         console.log(`HttpOnly cookies: ${httpOnlyCookies.length}/${finalCookies.length}`);
       }

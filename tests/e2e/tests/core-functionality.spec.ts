@@ -31,9 +31,17 @@ test.describe('OllamaMax Core Functionality', () => {
     await expect(page).toHaveTitle(/OllamaMax|Distributed AI|Ollama/);
     
     // Check for key UI elements
-    const hasHealthIndicator = await page.locator('[data-testid="health-status"], .health-indicator, #health').first().isVisible({ timeout: 5000 }).catch(() => false);
-    const hasMetrics = await page.locator('[data-testid="metrics"], .metrics-panel, #metrics').first().isVisible({ timeout: 5000 }).catch(() => false);
-    const hasNodeStatus = await page.locator('[data-testid="node-status"], .node-list, .cluster-nodes').first().isVisible({ timeout: 5000 }).catch(() => false);
+    const healthIndicatorLocator = page.locator('[data-testid="health-status"], .health-indicator, #health').first();
+    await healthIndicatorLocator.waitFor({ state: 'visible', timeout: 3000 }).catch(() => {});
+    const hasHealthIndicator = await healthIndicatorLocator.isVisible();
+
+    const metricsLocator = page.locator('[data-testid="metrics"], .metrics-panel, #metrics').first();
+    await metricsLocator.waitFor({ state: 'visible', timeout: 3000 }).catch(() => {});
+    const hasMetrics = await metricsLocator.isVisible();
+
+    const nodeStatusLocator = page.locator('[data-testid="node-status"], .node-list, .cluster-nodes').first();
+    await nodeStatusLocator.waitFor({ state: 'visible', timeout: 3000 }).catch(() => {});
+    const hasNodeStatus = await nodeStatusLocator.isVisible();
     
     // At least one key element should be present
     expect(hasHealthIndicator || hasMetrics || hasNodeStatus).toBeTruthy();
@@ -48,22 +56,40 @@ test.describe('OllamaMax Core Functionality', () => {
   });
 
   test('API health endpoint validation', async ({ page, request }) => {
-    // Test direct API call
-    const healthResponse = await request.get('/api/v1/health');
+    const backendEnabled = process.env.BACKEND_UP === '1';
+
+    if (!backendEnabled) {
+      console.log('⚠️  Backend not enabled, skipping API health endpoint test');
+      return;
+    }
+
+    // Create API request context with API base URL
+    const api = await request.newContext({ baseURL: process.env.API_BASE_URL || 'http://localhost:11434' });
+
+    // Test direct API call using canonical endpoint
+    // When BACKEND_UP=1, assert success strictly
+    const healthResponse = await api.get('/api/v1/health');
+
     expect(healthResponse.ok()).toBeTruthy();
-    
+    expect(healthResponse.status()).toBe(200);
+
     const healthData = await healthResponse.json();
     expect(healthData).toHaveProperty('status');
-    
+    expect(healthData.status).toMatch(/ok|healthy|up/i);
+    console.log('✅ API health endpoint (/api/v1/health) validated successfully')
+
     // Test health check through web interface
     const apiTestButton = page.locator('button:has-text("Test API"), [data-testid="test-api"], #test-api').first();
-    if (await apiTestButton.isVisible({ timeout: 3000 }).catch(() => false)) {
+    await apiTestButton.waitFor({ state: 'visible', timeout: 3000 }).catch(() => {});
+    const buttonVisible = await apiTestButton.isVisible();
+
+    if (buttonVisible) {
       await apiTestButton.click();
-      
+
       // Wait for response
       const responseElement = page.locator('#api-response, .api-result, [data-testid="api-response"]').first();
       await expect(responseElement).toBeVisible({ timeout: 10000 });
-      
+
       const responseText = await responseElement.textContent();
       expect(responseText).toMatch(/health|status|ok|success/i);
     }
@@ -72,19 +98,22 @@ test.describe('OllamaMax Core Functionality', () => {
   test('model management interface', async ({ page }) => {
     // Look for model management section
     const modelSection = page.locator('[data-testid="models"], .models-panel, #models, .model-list').first();
-    const modelsVisible = await modelSection.isVisible({ timeout: 5000 }).catch(() => false);
-    
+    await modelSection.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
+    const modelsVisible = await modelSection.isVisible();
+
     if (modelsVisible) {
       await screenshotHelper.captureElement(modelSection, 'models-interface');
-      
+
       // Check for model-related actions
-      const hasModelActions = await page.locator('button:has-text("Load"), button:has-text("Download"), button:has-text("Deploy")').first().isVisible({ timeout: 3000 }).catch(() => false);
-      
+      const modelActionsLocator = page.locator('button:has-text("Load"), button:has-text("Download"), button:has-text("Deploy")').first();
+      await modelActionsLocator.waitFor({ state: 'visible', timeout: 3000 }).catch(() => {});
+      const hasModelActions = await modelActionsLocator.isVisible();
+
       if (hasModelActions) {
         // Test model loading interface (without actually loading)
         const loadButton = page.locator('button:has-text("Load"), button:has-text("Deploy")').first();
         await expect(loadButton).toBeVisible();
-        
+
         // Check if clicking reveals model selection
         await loadButton.click();
         await page.waitForTimeout(1000);
@@ -98,21 +127,22 @@ test.describe('OllamaMax Core Functionality', () => {
   test('distributed node status monitoring', async ({ page }) => {
     // Look for distributed nodes information
     const nodeElements = page.locator('.node, [data-testid="node"], .cluster-node, .worker-node');
-    const nodesVisible = await nodeElements.first().isVisible({ timeout: 5000 }).catch(() => false);
-    
+    await nodeElements.first().waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
+    const nodesVisible = await nodeElements.first().isVisible();
+
     if (nodesVisible) {
       const nodeCount = await nodeElements.count();
       expect(nodeCount).toBeGreaterThan(0);
-      
+
       // Check each visible node for status information
       for (let i = 0; i < Math.min(nodeCount, 5); i++) {
         const node = nodeElements.nth(i);
         const nodeText = await node.textContent();
-        
+
         // Should contain some status information
         expect(nodeText).toMatch(/online|offline|active|inactive|healthy|unhealthy|running|stopped/i);
       }
-      
+
       await screenshotHelper.captureElement(nodeElements.first(), 'distributed-nodes-status');
     } else {
       console.warn('Distributed node status interface not found');
@@ -222,28 +252,47 @@ test.describe('OllamaMax Core Functionality', () => {
   });
 
   test('error handling and graceful degradation', async ({ page }) => {
+    const backendEnabled = process.env.BACKEND_UP === '1';
+
     // Test 404 error handling
     const response = await page.goto('/non-existent-page', { waitUntil: 'networkidle' });
-    expect(response?.status()).toBe(404);
-    
+
+    if (backendEnabled) {
+      // When backend is enabled, strictly assert 404
+      expect(response?.status()).toBe(404);
+    } else {
+      // When backend is disabled, be tolerant
+      const status = response?.status() ?? 'network_error';
+      expect([404, 'network_error']).toContain(status);
+    }
+
     // Should show some kind of error page
-    const hasErrorMessage = await page.locator('h1:has-text("404"), .error, .not-found').first().isVisible({ timeout: 3000 }).catch(() => false);
-    
+    const errorMessageLocator = page.locator('h1:has-text("404"), .error, .not-found').first();
+    await errorMessageLocator.waitFor({ state: 'visible', timeout: 3000 }).catch(() => {});
+    const hasErrorMessage = await errorMessageLocator.isVisible();
+
     if (hasErrorMessage) {
       await screenshotHelper.captureFullPage('error-404-page');
     }
-    
-    // Test API error handling
-    await page.goto('/');
-    const errorResponse = await page.evaluate(async () => {
-      try {
-        const response = await fetch('/api/v1/non-existent-endpoint');
-        return response.status;
-      } catch (error) {
-        return 'network_error';
-      }
-    });
-    
-    expect(errorResponse).toBeOneOf([404, 500, 'network_error']);
+
+    // Test API error handling (only if backend is enabled)
+    if (backendEnabled) {
+      await page.goto('/');
+      const errorResponse = await page.evaluate(async () => {
+        try {
+          const response = await fetch('/api/v1/non-existent-endpoint');
+          return response.status;
+        } catch (error) {
+          return 'network_error';
+        }
+      });
+
+      // Strictly assert proper error code when backend is enabled
+      expect([404, 500]).toContain(errorResponse);
+      expect(errorResponse).not.toBe('network_error');
+      console.log('✅ API error handling validated');
+    } else {
+      console.log('ℹ️  Skipping API error handling test (backend not enabled)');
+    }
   });
 });

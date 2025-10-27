@@ -1,7 +1,9 @@
 global:
-  smtp_smarthost: 'localhost:587'
-  smtp_from: 'alerts@ollamamax.local'
-  slack_api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+  smtp_smarthost: '${SMTP_HOST:localhost}:${SMTP_PORT:587}'
+  smtp_from: '${SMTP_FROM:alerts@ollamamax.local}'
+  smtp_auth_username: '${SMTP_USER}'
+  smtp_auth_password: '${SMTP_PASSWORD}'
+  slack_api_url: '${SLACK_WEBHOOK_URL}'
 
 route:
   group_by: ['alertname']
@@ -16,6 +18,9 @@ route:
   - match:
       severity: warning
     receiver: 'warning-alerts'
+  - match:
+      component: p2p
+    receiver: 'p2p-alerts'
 
 receivers:
 - name: 'web.hook'
@@ -23,8 +28,15 @@ receivers:
   - url: 'http://localhost:5001/'
 
 - name: 'critical-alerts'
+  pagerduty_configs:
+  - service_key: '${PAGERDUTY_SERVICE_KEY}'
+    description: 'Critical Alert: {{ .GroupLabels.alertname }}'
+    details:
+      summary: '{{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
+      description: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+      severity: '{{ .CommonLabels.severity }}'
   email_configs:
-  - to: 'admin@ollamamax.local'
+  - to: '${ALERT_EMAIL_CRITICAL}'
     subject: '[CRITICAL] OllamaMax Alert: {{ .GroupLabels.alertname }}'
     body: |
       {{ range .Alerts }}
@@ -34,13 +46,13 @@ receivers:
       Severity: {{ .Labels.severity }}
       {{ end }}
   slack_configs:
-  - channel: '#ollamamax-critical'
+  - channel: '${SLACK_CHANNEL_CRITICAL:#ollamamax-critical}'
     title: 'Critical Alert: {{ .GroupLabels.alertname }}'
     text: '{{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
 
 - name: 'warning-alerts'
   email_configs:
-  - to: 'monitoring@ollamamax.local'
+  - to: '${ALERT_EMAIL_WARNING:monitoring@ollamamax.local}'
     subject: '[WARNING] OllamaMax Alert: {{ .GroupLabels.alertname }}'
     body: |
       {{ range .Alerts }}
@@ -49,6 +61,26 @@ receivers:
       Instance: {{ .Labels.instance }}
       Severity: {{ .Labels.severity }}
       {{ end }}
+  slack_configs:
+  - channel: '${SLACK_CHANNEL_WARNING:#ollamamax-warnings}'
+    title: 'Warning Alert: {{ .GroupLabels.alertname }}'
+    text: '{{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
+
+- name: 'p2p-alerts'
+  email_configs:
+  - to: '${ALERT_EMAIL_P2P:p2p@ollamamax.local}'
+    subject: '[P2P] OllamaMax Alert: {{ .GroupLabels.alertname }}'
+    body: |
+      {{ range .Alerts }}
+      Alert: {{ .Annotations.summary }}
+      Description: {{ .Annotations.description }}
+      Instance: {{ .Labels.instance }}
+      Component: {{ .Labels.component }}
+      {{ end }}
+  slack_configs:
+  - channel: '${SLACK_CHANNEL_P2P:#ollamamax-p2p}'
+    title: 'P2P Alert: {{ .GroupLabels.alertname }}'
+    text: '{{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
 
 inhibit_rules:
   - source_match:

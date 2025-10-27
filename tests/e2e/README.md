@@ -68,16 +68,53 @@ npm run install-browsers
 ### Environment Configuration
 Create `.env` file or set environment variables:
 ```bash
-BASE_URL=http://localhost:8080  # Your OllamaMax instance URL
+BASE_URL=http://localhost:8080          # UI server URL for browser navigation
+API_BASE_URL=http://localhost:11434     # Backend API server URL for API calls
+BACKEND_UP=1                            # 1 = backend required (default), 0 = UI-only mode
 NODE_ENV=test
+```
+
+**Note**: The `test:e2e` npm script now respects existing environment variables. If you've already set `BASE_URL`, `API_BASE_URL`, or `BACKEND_UP` in your shell, they will be used. Only unset variables will use defaults.
+
+#### URL Architecture
+
+The OllamaMax platform uses a **dual-server architecture**:
+
+1. **UI Server (port 8080)**: Serves the static web interface
+   - Used for browser navigation (`page.goto('/')`)
+   - Set via `BASE_URL` environment variable
+   - Configured as Playwright's `baseURL`
+
+2. **API Server (port 11434)**: Handles backend API requests
+   - Used for direct API calls in tests and helpers
+   - Set via `API_BASE_URL` environment variable
+   - Independent from browser navigation
+
+**Why Two URLs?**
+- Separates UI and API concerns for better scalability
+- Allows independent deployment and testing of each layer
+- Browser tests navigate to UI while helpers call API directly
+- Matches production architecture with separate UI/API services
+
+**Example Usage:**
+```typescript
+// Browser navigation uses BASE_URL (8080) automatically
+await page.goto('/dashboard');  // → http://localhost:8080/dashboard
+
+// API calls use API_BASE_URL explicitly
+const apiUrl = process.env.API_BASE_URL || 'http://localhost:11434';
+const response = await fetch(`${apiUrl}/api/v1/health`);
 ```
 
 ## 🎯 Running Tests
 
 ### Quick Start
 ```bash
-# Run all tests
+# Run all tests (with backend)
 npm test
+
+# Run all tests (UI-only mode, no backend required)
+npm run test:e2e:ui-only
 
 # Run with UI (interactive mode)
 npm run test:ui
@@ -88,6 +125,22 @@ npm run test:inference
 npm run test:security
 npm run test:performance
 ```
+
+### Test Modes
+
+The E2E test suite supports two modes via the `BACKEND_UP` environment variable:
+
+1. **Full Backend Mode** (`BACKEND_UP=1`, default):
+   - Tests require a live backend server
+   - API endpoints are validated strictly
+   - Health checks are enforced
+   - Best for integration and API testing
+
+2. **UI-Only Mode** (`BACKEND_UP=0`):
+   - Tests run against frontend only
+   - API calls are gracefully handled/skipped
+   - Best for frontend-only development
+   - Use: `npm run test:e2e:ui-only`
 
 ### Browser-Specific Testing
 ```bash
@@ -219,11 +272,18 @@ Edit `playwright.config.ts` to customize:
 
 ### Environment Variables
 ```bash
-BASE_URL=http://localhost:8080    # Target application URL
-NODE_ENV=test                     # Environment mode
-CI=true                          # CI mode flag
-HEADLESS=true                    # Run headless browsers
+BASE_URL=http://localhost:8080        # UI server URL (browser navigation)
+API_BASE_URL=http://localhost:11434   # API server URL (backend calls)
+BACKEND_UP=1                          # 1 = backend required, 0 = UI-only mode
+NODE_ENV=test                         # Environment mode
+CI=true                               # CI mode flag
+HEADLESS=true                         # Run headless browsers
 ```
+
+**Important**:
+- Always set both `BASE_URL` and `API_BASE_URL` to ensure tests use the correct endpoints for UI and API operations
+- The `npm run test:e2e` script now respects existing environment variables (no hard-coded overrides)
+- Use `BACKEND_UP=0` for frontend-only testing or when backend is unavailable
 
 ### Test Data Configuration
 Test data is automatically configured in `global-setup.ts`:
@@ -295,7 +355,8 @@ jobs:
           cd tests/e2e
           npm test
         env:
-          BASE_URL: http://localhost:8080
+          BASE_URL: http://localhost:8080          # UI server
+          API_BASE_URL: http://localhost:11434     # API server
       - uses: actions/upload-artifact@v3
         if: always()
         with:

@@ -1,0 +1,91 @@
+name: Coverage Gate
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+
+env:
+  COVERAGE_THRESHOLD: 90
+
+jobs:
+  coverage-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: |
+          go mod download
+          npm ci
+      
+      - name: Run Go tests with coverage
+        run: |
+          mkdir -p test-artifacts/coverage
+          go test -coverprofile=test-artifacts/coverage/go-coverage.out -covermode=atomic ./...
+          go tool cover -html=test-artifacts/coverage/go-coverage.out -o test-artifacts/coverage/go-coverage.html
+      
+      - name: Validate Go coverage threshold
+        run: |
+          COVERAGE=$(go tool cover -func=test-artifacts/coverage/go-coverage.out | grep total | grep -Eo '[0-9]+\.[0-9]+')
+          echo "Go Coverage: ${COVERAGE}%"
+          if (( $(echo "${COVERAGE} < ${COVERAGE_THRESHOLD}" | bc -l) )); then
+            echo "❌ Go coverage ${COVERAGE}% is below threshold ${COVERAGE_THRESHOLD}%"
+            exit 1
+          fi
+          echo "✅ Go coverage ${COVERAGE}% meets threshold"
+      
+      - name: Run JavaScript tests with coverage
+        run: npm run test:coverage:ci
+      
+      - name: Validate JavaScript coverage threshold
+        run: npm run validate:coverage
+      
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports
+          path: |
+            test-artifacts/coverage/
+            coverage/
+      
+      - name: Comment PR with coverage
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const coverageSummary = JSON.parse(fs.readFileSync('coverage/coverage-summary.json', 'utf8'));
+            const total = coverageSummary.total;
+            
+            const comment = `
+            ## Coverage Report
+            
+            | Metric | Coverage | Status |
+            |--------|----------|--------|
+            | Lines | ${total.lines.pct}% | ${total.lines.pct >= 90 ? '✅' : '❌'} |
+            | Statements | ${total.statements.pct}% | ${total.statements.pct >= 90 ? '✅' : '❌'} |
+            | Functions | ${total.functions.pct}% | ${total.functions.pct >= 90 ? '✅' : '❌'} |
+            | Branches | ${total.branches.pct}% | ${total.branches.pct >= 90 ? '✅' : '❌'} |
+            
+            **Threshold**: 90%
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });

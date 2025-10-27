@@ -24,6 +24,16 @@ test.describe('Distributed AI Inference', () => {
   });
 
   test('model inference API endpoints', async ({ request, page }) => {
+    const backendEnabled = process.env.BACKEND_UP === '1';
+
+    if (!backendEnabled) {
+      console.log('⚠️  Backend not enabled, skipping inference API endpoint test');
+      return;
+    }
+
+    // Create API request context with API base URL
+    const api = await request.newContext({ baseURL: process.env.API_BASE_URL || 'http://localhost:11434' });
+
     // Test basic inference endpoint availability
     const inferenceEndpoints = [
       '/api/v1/generate',
@@ -34,10 +44,11 @@ test.describe('Distributed AI Inference', () => {
     ];
 
     let workingEndpoint = null;
-    
+    let workingResponse = null;
+
     for (const endpoint of inferenceEndpoints) {
       try {
-        const response = await request.post(endpoint, {
+        const response = await api.post(endpoint, {
           data: {
             model: 'test-model',
             prompt: 'Hello, world!',
@@ -47,78 +58,98 @@ test.describe('Distributed AI Inference', () => {
             'Content-Type': 'application/json'
           }
         });
-        
+
         if (response.ok()) {
           workingEndpoint = endpoint;
+          workingResponse = response;
           break;
         } else if (response.status() === 400 || response.status() === 422) {
           // Bad request might mean endpoint exists but needs different format
           workingEndpoint = endpoint;
+          workingResponse = response;
           break;
         }
       } catch (error) {
         continue;
       }
     }
-    
-    if (workingEndpoint) {
-      console.log(`✅ Found working inference endpoint: ${workingEndpoint}`);
-    } else {
-      console.warn('⚠️  No inference endpoints found - may not be implemented yet');
-    }
-    
-    // Test should pass even if inference isn't implemented yet
-    expect(true).toBeTruthy();
+
+    // When BACKEND_UP=1, at least one inference endpoint must work
+    expect(workingEndpoint).not.toBeNull();
+    expect(workingResponse).not.toBeNull();
+    expect([200, 400, 422]).toContain(workingResponse?.status());
+    console.log(`✅ Found working inference endpoint: ${workingEndpoint}`);
   });
 
   test('distributed node load balancing', async ({ page, request }) => {
+    const backendEnabled = process.env.BACKEND_UP === '1';
+
     // Check if multiple nodes are available
     await page.goto('/');
-    
+
     const nodeElements = page.locator('.node, [data-testid="node"], .cluster-node');
     const nodeCount = await nodeElements.count();
-    
-    if (nodeCount > 1) {
+
+    if (nodeCount > 1 && backendEnabled) {
       console.log(`Found ${nodeCount} distributed nodes`);
-      
+
+      // Create API request context
+      const api = await request.newContext({ baseURL: process.env.API_BASE_URL || 'http://localhost:11434' });
+
       // Test load distribution across nodes
       const requests = [];
-      
+
       for (let i = 0; i < 5; i++) {
         requests.push(
-          request.get('/api/v1/health').then(async (response) => {
+          api.get('/api/v1/health').then(async (response) => {
+            // When BACKEND_UP=1, health requests must succeed
+            expect(response.ok()).toBeTruthy();
             const headers = response.headers();
             return {
               nodeId: headers['x-node-id'] || headers['x-server-id'] || 'unknown',
-              timestamp: Date.now()
+              timestamp: Date.now(),
+              success: true
             };
-          })
+          }).catch(() => ({ nodeId: 'error', timestamp: Date.now(), success: false }))
         );
       }
-      
+
       const results = await Promise.all(requests);
-      
+
+      // When BACKEND_UP=1, all health requests must succeed
+      const successCount = results.filter(r => r.success).length;
+      expect(successCount).toBe(5);
+
       // Check if requests were distributed (if load balancing headers exist)
-      const uniqueNodes = new Set(results.map(r => r.nodeId).filter(id => id !== 'unknown'));
-      
+      const uniqueNodes = new Set(results.map(r => r.nodeId).filter(id => id !== 'unknown' && id !== 'error'));
+
       if (uniqueNodes.size > 1) {
         console.log(`✅ Load balancing detected across ${uniqueNodes.size} nodes`);
         expect(uniqueNodes.size).toBeGreaterThan(1);
       } else {
         console.log('ℹ️  Load balancing headers not detected - may use different strategy');
       }
+    } else if (backendEnabled) {
+      // When BACKEND_UP=1 but only one node, verify that node works
+      const api = await request.newContext({ baseURL: process.env.API_BASE_URL || 'http://localhost:11434' });
+      const response = await api.get('/api/v1/health');
+      expect(response.ok()).toBeTruthy();
+      console.log('ℹ️  Single node detected but confirmed working');
     } else {
-      console.log('ℹ️  Single node detected or nodes not visible in UI');
+      console.log('ℹ️  Backend not enabled, skipping load balancing test');
     }
   });
 
   test('concurrent inference request handling', async ({ request }) => {
+    // Create API request context
+    const api = await request.newContext({ baseURL: process.env.API_BASE_URL || 'http://localhost:11434' });
+
     const concurrentRequests = 10;
     const requestPromises = [];
-    
+
     // Create multiple concurrent requests
     for (let i = 0; i < concurrentRequests; i++) {
-      const promise = request.post('/api/v1/generate', {
+      const promise = api.post('/api/v1/generate', {
         data: {
           model: 'test',
           prompt: `Test prompt ${i}`,
@@ -214,34 +245,37 @@ test.describe('Distributed AI Inference', () => {
   test('model management and switching', async ({ page }) => {
     // Test model management interface
     const modelSelector = page.locator('select[name="model"], .model-select, [data-testid="model-selector"]').first();
-    const modelSelectorVisible = await modelSelector.isVisible({ timeout: 5000 }).catch(() => false);
-    
+    await modelSelector.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
+    const modelSelectorVisible = await modelSelector.isVisible();
+
     if (modelSelectorVisible) {
       const options = await modelSelector.locator('option').count();
       expect(options).toBeGreaterThan(0);
-      
+
       // Try selecting different models
       if (options > 1) {
         await modelSelector.selectOption({ index: 1 });
         await page.waitForTimeout(1000);
-        
+
         // Check if selection triggered any updates
         const selectedValue = await modelSelector.inputValue();
         expect(selectedValue).toBeTruthy();
       }
     }
-    
+
     // Test model loading/unloading buttons
     const loadButton = page.locator('button:has-text("Load Model"), button:has-text("Load"), [data-testid="load-model"]').first();
-    const loadButtonVisible = await loadButton.isVisible({ timeout: 3000 }).catch(() => false);
-    
+    await loadButton.waitFor({ state: 'visible', timeout: 3000 }).catch(() => {});
+    const loadButtonVisible = await loadButton.isVisible();
+
     if (loadButtonVisible) {
       await loadButton.click();
-      
+
       // Look for loading indicator
       const loadingIndicator = page.locator('.loading, .spinner, [data-testid="loading"]').first();
-      const hasLoading = await loadingIndicator.isVisible({ timeout: 2000 }).catch(() => false);
-      
+      await loadingIndicator.waitFor({ state: 'visible', timeout: 2000 }).catch(() => {});
+      const hasLoading = await loadingIndicator.isVisible();
+
       if (hasLoading) {
         console.log('✅ Model loading interface working');
         await page.waitForTimeout(3000); // Wait for loading to potentially complete
@@ -250,20 +284,23 @@ test.describe('Distributed AI Inference', () => {
   });
 
   test('inference performance metrics', async ({ page, request }) => {
+    // Create API request context
+    const api = await request.newContext({ baseURL: process.env.API_BASE_URL || 'http://localhost:11434' });
+
     const performanceData = [];
-    
+
     // Test different prompt sizes
     const prompts = [
       'Hello',
       'Tell me a short story about artificial intelligence.',
       'Explain the concept of distributed computing in detail, covering architecture patterns, benefits, and challenges.'
     ];
-    
+
     for (const prompt of prompts) {
       const startTime = Date.now();
-      
+
       try {
-        const response = await request.post('/api/v1/generate', {
+        const response = await api.post('/api/v1/generate', {
           data: {
             model: 'test',
             prompt: prompt,
@@ -310,8 +347,11 @@ test.describe('Distributed AI Inference', () => {
   });
 
   test('error handling and recovery', async ({ request }) => {
+    // Create API request context
+    const api = await request.newContext({ baseURL: process.env.API_BASE_URL || 'http://localhost:11434' });
+
     // Test invalid model request
-    const invalidModelResponse = await request.post('/api/v1/generate', {
+    const invalidModelResponse = await api.post('/api/v1/generate', {
       data: {
         model: 'non-existent-model-12345',
         prompt: 'Test',
@@ -324,20 +364,20 @@ test.describe('Distributed AI Inference', () => {
     }
     
     // Test malformed request
-    const malformedResponse = await request.post('/api/v1/generate', {
+    const malformedResponse = await api.post('/api/v1/generate', {
       data: {
         invalid_field: 'test',
         // Missing required fields
       }
     }).catch(error => ({ error: error.message, ok: () => false }));
-    
+
     if (!malformedResponse.ok()) {
       console.log('✅ Malformed request properly rejected');
     }
-    
+
     // Test oversized request
     const oversizedPrompt = 'A'.repeat(100000); // 100KB prompt
-    const oversizedResponse = await request.post('/api/v1/generate', {
+    const oversizedResponse = await api.post('/api/v1/generate', {
       data: {
         model: 'test',
         prompt: oversizedPrompt,

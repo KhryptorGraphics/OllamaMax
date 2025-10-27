@@ -8,6 +8,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -55,6 +56,26 @@ type DatabaseManager struct {
 	Inference *InferenceRepository
 	Audit     *AuditRepository
 	Config    *ConfigRepository
+
+	// Prometheus metrics
+	registry                    *prometheus.Registry
+	dbConnectionsOpen           prometheus.Gauge
+	dbConnectionsInUse          prometheus.Gauge
+	dbConnectionsIdle           prometheus.Gauge
+	dbConnectionsWaitCount      prometheus.Gauge
+	dbConnectionsWaitDuration   prometheus.Gauge
+	dbConnectionsMax            prometheus.Gauge
+	dbQueriesTotal              *prometheus.CounterVec
+	dbQueryDuration             *prometheus.HistogramVec
+	redisPoolSize               prometheus.Gauge
+	redisCommandsTotal          *prometheus.CounterVec
+	redisCommandDuration        *prometheus.HistogramVec
+	cacheHitsTotal              prometheus.Counter
+	cacheMissesTotal            prometheus.Counter
+	cacheOperationDuration      prometheus.Histogram
+
+	// Lifecycle management
+	metricsCancel context.CancelFunc
 }
 
 // NewDatabaseManager creates a new database manager with all repositories
@@ -105,6 +126,12 @@ func NewDatabaseManager(config *DatabaseConfig, logger *slog.Logger) (*DatabaseM
 
 	// Initialize repositories
 	dm.initializeRepositories()
+
+	// Initialize Prometheus metrics
+	dm.initializeMetrics()
+
+	// Start periodic metrics collection
+	dm.startMetricsCollection()
 
 	logger.Info("Database manager initialized successfully",
 		"postgres_host", config.Host,
@@ -179,6 +206,193 @@ func (dm *DatabaseManager) initializeRepositories() {
 	dm.Config = NewConfigRepository(dm.DB, dm.Redis, dm.logger)
 }
 
+// initializeMetrics creates and registers Prometheus metrics
+func (dm *DatabaseManager) initializeMetrics() {
+	dm.registry = prometheus.NewRegistry()
+
+	// Database connection pool metrics with ollamamax_database_ namespace
+	dm.dbConnectionsOpen = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "ollamamax_database_db_connections_open",
+		Help: "Number of open database connections",
+	})
+
+	dm.dbConnectionsInUse = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "ollamamax_database_db_connections_active",
+		Help: "Number of database connections currently in use",
+	})
+
+	dm.dbConnectionsIdle = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "ollamamax_database_db_connections_idle",
+		Help: "Number of idle database connections",
+	})
+
+	// Additional connection pool metrics
+	dm.dbConnectionsWaitCount = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "ollamamax_database_db_connections_wait_count",
+		Help: "Total number of connections waited for",
+	})
+
+	dm.dbConnectionsWaitDuration = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "ollamamax_database_db_connections_wait_duration_seconds",
+		Help: "Total time waited for connections in seconds",
+	})
+
+	dm.dbConnectionsMax = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "ollamamax_database_db_connections_max",
+		Help: "Maximum number of open connections to the database",
+	})
+
+	// Query metrics
+	dm.dbQueriesTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "ollamamax_database_db_queries_total",
+			Help: "Total number of database queries executed",
+		},
+		[]string{"operation", "table"},
+	)
+
+	dm.dbQueryDuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "ollamamax_database_db_query_duration_seconds",
+			Help:    "Database query duration in seconds",
+			Buckets: []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0},
+		},
+		[]string{"operation", "table"},
+	)
+
+	// Redis pool metrics
+	dm.redisPoolSize = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "ollamamax_database_redis_pool_size",
+		Help: "Configured Redis connection pool size",
+	})
+
+	dm.redisCommandsTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "ollamamax_database_redis_commands_total",
+			Help: "Total number of Redis commands executed",
+		},
+		[]string{"command"},
+	)
+
+	dm.redisCommandDuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "ollamamax_database_redis_command_duration_seconds",
+			Help:    "Redis command duration in seconds",
+			Buckets: []float64{0.0001, 0.0005, 0.001, 0.0025, 0.005, 0.01, 0.025, 0.05, 0.1},
+		},
+		[]string{"command"},
+	)
+
+	// Cache metrics
+	dm.cacheHitsTotal = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "ollamamax_database_cache_hits_total",
+		Help: "Total number of cache hits",
+	})
+
+	dm.cacheMissesTotal = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "ollamamax_database_cache_misses_total",
+		Help: "Total number of cache misses",
+	})
+
+	dm.cacheOperationDuration = prometheus.NewHistogram(prometheus.HistogramOpts{
+		Name:    "ollamamax_database_cache_operation_duration_seconds",
+		Help:    "Cache operation duration in seconds",
+		Buckets: []float64{0.0001, 0.0005, 0.001, 0.0025, 0.005, 0.01, 0.025, 0.05, 0.1},
+	})
+
+	// Register all metrics
+	dm.registry.MustRegister(
+		dm.dbConnectionsOpen,
+		dm.dbConnectionsInUse,
+		dm.dbConnectionsIdle,
+		dm.dbConnectionsWaitCount,
+		dm.dbConnectionsWaitDuration,
+		dm.dbConnectionsMax,
+		dm.dbQueriesTotal,
+		dm.dbQueryDuration,
+		dm.redisPoolSize,
+		dm.redisCommandsTotal,
+		dm.redisCommandDuration,
+		dm.cacheHitsTotal,
+		dm.cacheMissesTotal,
+		dm.cacheOperationDuration,
+	)
+
+	// Set initial static values
+	dm.dbConnectionsMax.Set(float64(config.MaxOpenConns))
+	dm.redisPoolSize.Set(float64(config.RedisPoolSize))
+
+	dm.logger.Info("Prometheus metrics initialized and registered")
+}
+
+// startMetricsCollection starts a background goroutine to update pool metrics periodically
+func (dm *DatabaseManager) startMetricsCollection() {
+	ctx, cancel := context.WithCancel(context.Background())
+	dm.metricsCancel = cancel
+
+	go func() {
+		ticker := time.NewTicker(15 * time.Second)
+		defer ticker.Stop()
+
+		// Initial collection
+		dm.updatePoolMetrics()
+
+		for {
+			select {
+			case <-ctx.Done():
+				dm.logger.Info("Stopping metrics collection")
+				return
+			case <-ticker.C:
+				dm.updatePoolMetrics()
+			}
+		}
+	}()
+
+	dm.logger.Info("Started periodic metrics collection (every 15 seconds)")
+}
+
+// updatePoolMetrics updates database connection pool metrics
+func (dm *DatabaseManager) updatePoolMetrics() {
+	stats := dm.DB.Stats()
+
+	dm.dbConnectionsOpen.Set(float64(stats.OpenConnections))
+	dm.dbConnectionsInUse.Set(float64(stats.InUse))
+	dm.dbConnectionsIdle.Set(float64(stats.Idle))
+	dm.dbConnectionsWaitCount.Set(float64(stats.WaitCount))
+	dm.dbConnectionsWaitDuration.Set(stats.WaitDuration.Seconds())
+
+	dm.logger.Debug("Updated database pool metrics",
+		"open", stats.OpenConnections,
+		"in_use", stats.InUse,
+		"idle", stats.Idle,
+		"wait_count", stats.WaitCount,
+		"wait_duration_seconds", stats.WaitDuration.Seconds(),
+	)
+}
+
+// GetPrometheusRegistry returns the Prometheus registry for metrics exposure
+func (dm *DatabaseManager) GetPrometheusRegistry() *prometheus.Registry {
+	return dm.registry
+}
+
+// RecordQuery records a database query for metrics
+func (dm *DatabaseManager) RecordQuery(operation, table string, duration time.Duration) {
+	dm.dbQueriesTotal.WithLabelValues(operation, table).Inc()
+	dm.dbQueryDuration.WithLabelValues(operation, table).Observe(duration.Seconds())
+}
+
+// RecordCacheHit records a cache hit
+func (dm *DatabaseManager) RecordCacheHit(duration time.Duration) {
+	dm.cacheHitsTotal.Inc()
+	dm.cacheOperationDuration.Observe(duration.Seconds())
+}
+
+// RecordCacheMiss records a cache miss
+func (dm *DatabaseManager) RecordCacheMiss(duration time.Duration) {
+	dm.cacheMissesTotal.Inc()
+	dm.cacheOperationDuration.Observe(duration.Seconds())
+}
+
 // Health returns the health status of database connections
 func (dm *DatabaseManager) Health(ctx context.Context) (*HealthStatus, error) {
 	health := &HealthStatus{
@@ -238,6 +452,12 @@ func (dm *DatabaseManager) Stats() *DatabaseStats {
 // Close gracefully closes all database connections
 func (dm *DatabaseManager) Close() error {
 	var errors []error
+
+	// Stop metrics collection goroutine
+	if dm.metricsCancel != nil {
+		dm.metricsCancel()
+		dm.logger.Info("Metrics collection stopped")
+	}
 
 	// Close PostgreSQL connection
 	if dm.DB != nil {

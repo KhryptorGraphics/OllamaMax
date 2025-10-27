@@ -6,12 +6,16 @@
 
 
 
+
 # Claude Flow generated files
 .claude/settings.local.json
 .mcp.json
 claude-flow.config.json
 .swarm/
 .hive-mind/
+.claude-flow/
+memory/
+coordination/
 memory/claude-flow-data.json
 memory/sessions/*
 !memory/sessions/README.md
@@ -27,7 +31,71 @@ coordination/orchestration/*
 *.sqlite-journal
 *.sqlite-wal
 claude-flow
-claude-flow.bat
-claude-flow.ps1
+# Removed Windows wrapper files per user request
 hive-mind-prompt-*.txt
 node_modules
+
+# Test coverage artifacts
+coverage/
+coverage.out
+coverage.html
+*.coverprofile
+.nyc_output/
+
+# Test result directories
+test-results/
+test-artifacts/
+playwright-report/
+allure-results/
+allure-report/
+
+# Training test artifacts
+test-results/training/*.out
+test-results/training/*.html
+test-results/training/*.json
+test-results/training/*.csv
+test-results/training/*.log
+training-coverage.out
+
+# Keep committed training documentation
+!docs/TRAINING_QUALITY_DASHBOARD.md
+!docs/TRAINING_QUALITY_METRICS.md
+!docs/TRAINING_COMPLETION_RATES.md
+!docs/TRAINING_SATISFACTION_SCORES.md
+
+# Training environment
+~/.ollama-distributed/profiles/
+/tmp/ollama-test-*
+/tmp/training-*
+
+# Test logs
+*.test.log
+test-logs/
+junit-results.xml
+
+# Temporary test files
+/tmp/ollama-test-*
+*.prof
+*.test
+
+# Deployment validation artifacts
+deployment-results/
+deployment-reports/
+*.deployment.log
+deployment-validation-*.json
+deployment-validation-*.md
+
+# Security scan results
+trivy-results.sarif
+security-scan-*.json
+vulnerability-report-*.html
+
+# Load test results
+load-test-report.json
+load-test-summary.txt
+k6-results/
+
+# Temporary deployment files
+.deployment-temp/
+*.deployment.tmp
+rollback-backup-*/

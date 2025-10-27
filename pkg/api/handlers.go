@@ -8,6 +8,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/khryptorgraphics/ollamamax/pkg/database"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // Health check handler
@@ -34,8 +38,8 @@ func (s *Server) healthHandler(c *gin.Context) {
 	})
 }
 
-// Metrics handler
-func (s *Server) metricsHandler(c *gin.Context) {
+// JSON metrics handler for backward compatibility
+func (s *Server) metricsJSONHandler(c *gin.Context) {
 	stats := s.db.Stats()
 	c.JSON(http.StatusOK, gin.H{
 		"database": stats,
@@ -45,6 +49,9 @@ func (s *Server) metricsHandler(c *gin.Context) {
 
 // Authentication handlers
 func (s *Server) loginHandler(c *gin.Context) {
+	ctx := c.Request.Context()
+	tracer := otel.Tracer("ollamamax-api")
+
 	var req struct {
 		Username string `json:"username" binding:"required"`
 		Password string `json:"password" binding:"required"`
@@ -58,9 +65,21 @@ func (s *Server) loginHandler(c *gin.Context) {
 		return
 	}
 
+	// Create span for user authentication
+	ctx, authSpan := tracer.Start(ctx, "db.users.authenticate",
+		trace.WithAttributes(
+			attribute.String("db.operation", "authenticate"),
+			attribute.String("db.table", "users"),
+			attribute.String("username", req.Username),
+		),
+	)
+	defer authSpan.End()
+
 	// Authenticate user
-	user, err := s.db.Users.Authenticate(c.Request.Context(), req.Username, req.Password)
+	user, err := s.db.Users.Authenticate(ctx, req.Username, req.Password)
 	if err != nil {
+		authSpan.SetStatus(codes.Error, "Authentication failed")
+		authSpan.RecordError(err)
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error":   "authentication_failed",
 			"message": "Invalid username or password",
@@ -68,9 +87,22 @@ func (s *Server) loginHandler(c *gin.Context) {
 		return
 	}
 
+	authSpan.SetAttributes(attribute.String("user.id", user.ID.String()))
+	authSpan.SetStatus(codes.Ok, "Authentication successful")
+
 	// Generate JWT tokens
+	ctx, tokenSpan := tracer.Start(ctx, "jwt.generate_tokens",
+		trace.WithAttributes(
+			attribute.String("user.id", user.ID.String()),
+			attribute.String("username", user.Username),
+		),
+	)
 	accessToken, refreshToken, err := s.jwtSvc.GenerateTokens(user.ID.String(), user.Username, user.Roles)
+	tokenSpan.End()
+
 	if err != nil {
+		tokenSpan.SetStatus(codes.Error, "Token generation failed")
+		tokenSpan.RecordError(err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "token_generation_failed",
 			"message": "Failed to generate authentication tokens",
@@ -78,7 +110,15 @@ func (s *Server) loginHandler(c *gin.Context) {
 		return
 	}
 
-	// Create session
+	// Create session with span
+	ctx, sessionSpan := tracer.Start(ctx, "db.sessions.create",
+		trace.WithAttributes(
+			attribute.String("db.operation", "create"),
+			attribute.String("db.table", "sessions"),
+			attribute.String("user.id", user.ID.String()),
+		),
+	)
+
 	session := &database.UserSession{
 		UserID:           user.ID,
 		TokenID:          accessToken[:32], // Use first 32 chars as token ID
@@ -89,9 +129,14 @@ func (s *Server) loginHandler(c *gin.Context) {
 		LastUsedAt:       time.Now(),
 	}
 
-	if err := s.db.Sessions.Create(c.Request.Context(), session); err != nil {
+	if err := s.db.Sessions.Create(ctx, session); err != nil {
+		sessionSpan.SetStatus(codes.Error, "Session creation failed")
+		sessionSpan.RecordError(err)
 		s.logger.Error("Failed to create session", "error", err)
+	} else {
+		sessionSpan.SetStatus(codes.Ok, "Session created")
 	}
+	sessionSpan.End()
 
 	c.JSON(http.StatusOK, gin.H{
 		"access_token":  accessToken,
@@ -230,6 +275,9 @@ func (s *Server) logoutHandler(c *gin.Context) {
 
 // User management handlers
 func (s *Server) getUserProfileHandler(c *gin.Context) {
+	ctx := c.Request.Context()
+	tracer := otel.Tracer("ollamamax-api")
+
 	userID, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
@@ -240,14 +288,30 @@ func (s *Server) getUserProfileHandler(c *gin.Context) {
 	}
 
 	uid, _ := uuid.Parse(userID.(string))
-	user, err := s.db.Users.GetByID(c.Request.Context(), uid)
+
+	// Create span for database query
+	ctx, dbSpan := tracer.Start(ctx, "db.users.get_by_id",
+		trace.WithAttributes(
+			attribute.String("db.operation", "select"),
+			attribute.String("db.table", "users"),
+			attribute.String("user.id", uid.String()),
+		),
+	)
+	defer dbSpan.End()
+
+	user, err := s.db.Users.GetByID(ctx, uid)
 	if err != nil {
+		dbSpan.SetStatus(codes.Error, "User not found")
+		dbSpan.RecordError(err)
 		c.JSON(http.StatusNotFound, gin.H{
 			"error":   "user_not_found",
 			"message": "User not found",
 		})
 		return
 	}
+
+	dbSpan.SetStatus(codes.Ok, "User retrieved successfully")
+	dbSpan.SetAttributes(attribute.String("user.username", user.Username))
 
 	c.JSON(http.StatusOK, gin.H{
 		"user": gin.H{
@@ -320,6 +384,9 @@ func (s *Server) updateUserProfileHandler(c *gin.Context) {
 
 // Model management handlers
 func (s *Server) listModelsHandler(c *gin.Context) {
+	ctx := c.Request.Context()
+	tracer := otel.Tracer("ollamamax-api")
+
 	// Parse query parameters
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
@@ -333,14 +400,34 @@ func (s *Server) listModelsHandler(c *gin.Context) {
 		filters.Status = &status
 	}
 
-	models, err := s.db.Models.List(c.Request.Context(), filters)
+	// Create span for database query
+	ctx, dbSpan := tracer.Start(ctx, "db.models.list",
+		trace.WithAttributes(
+			attribute.String("db.operation", "select"),
+			attribute.String("db.table", "models"),
+			attribute.Int("query.limit", limit),
+			attribute.Int("query.offset", offset),
+		),
+	)
+	defer dbSpan.End()
+
+	if status != "" {
+		dbSpan.SetAttributes(attribute.String("query.status", status))
+	}
+
+	models, err := s.db.Models.List(ctx, filters)
 	if err != nil {
+		dbSpan.SetStatus(codes.Error, "Failed to list models")
+		dbSpan.RecordError(err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "list_failed",
 			"message": "Failed to list models",
 		})
 		return
 	}
+
+	dbSpan.SetStatus(codes.Ok, "Models retrieved successfully")
+	dbSpan.SetAttributes(attribute.Int("result.count", len(models)))
 
 	c.JSON(http.StatusOK, gin.H{
 		"models": models,

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -12,6 +14,16 @@ import (
 	"github.com/khryptorgraphics/ollamamax/internal/config"
 	"github.com/khryptorgraphics/ollamamax/pkg/auth"
 	"github.com/khryptorgraphics/ollamamax/pkg/database"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/exporters/jaeger"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // Server represents the API server
@@ -22,6 +34,13 @@ type Server struct {
 	logger   *slog.Logger
 	server   *http.Server
 	websocket *WebSocketHub
+	registry *prometheus.Registry
+	tracerProvider *sdktrace.TracerProvider
+
+	// Prometheus metrics
+	httpRequestsTotal          *prometheus.CounterVec
+	httpRequestDuration        *prometheus.HistogramVec
+	httpRequestsInFlight       prometheus.Gauge
 }
 
 // NewServer creates a new API server instance
@@ -35,12 +54,95 @@ func NewServer(cfg *config.Config, db *database.DatabaseManager, logger *slog.Lo
 	// Initialize WebSocket hub
 	websocketHub := NewWebSocketHub(logger)
 
+	// Initialize Prometheus registry
+	registry := prometheus.NewRegistry()
+
+	// Define Prometheus metrics
+	httpRequestsTotal := prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "http_requests_total",
+			Help: "Total number of HTTP requests",
+		},
+		[]string{"method", "endpoint", "status"},
+	)
+
+	httpRequestDuration := prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "http_request_duration_seconds",
+			Help:    "HTTP request duration in seconds",
+			Buckets: prometheus.DefBuckets,
+		},
+		[]string{"method", "endpoint", "status"},
+	)
+
+	httpRequestsInFlight := prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "http_requests_in_flight",
+			Help: "Number of HTTP requests currently being processed",
+		},
+	)
+
+	// Register metrics with the registry
+	if err := registry.Register(httpRequestsTotal); err != nil {
+		return nil, fmt.Errorf("failed to register http_requests_total: %w", err)
+	}
+	if err := registry.Register(httpRequestDuration); err != nil {
+		return nil, fmt.Errorf("failed to register http_request_duration_seconds: %w", err)
+	}
+	if err := registry.Register(httpRequestsInFlight); err != nil {
+		return nil, fmt.Errorf("failed to register http_requests_in_flight: %w", err)
+	}
+
+	// Initialize OpenTelemetry/Jaeger tracing
+	jaegerEndpoint := os.Getenv("JAEGER_ENDPOINT")
+	if jaegerEndpoint == "" {
+		jaegerEndpoint = "http://localhost:14268/api/traces"
+	}
+
+	// Create Jaeger exporter
+	jaegerExporter, err := jaeger.New(
+		jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(jaegerEndpoint)),
+	)
+	if err != nil {
+		logger.Warn("Failed to create Jaeger exporter, tracing disabled", "error", err)
+	}
+
+	// Create TracerProvider
+	var tracerProvider *sdktrace.TracerProvider
+	if jaegerExporter != nil {
+		tracerProvider = sdktrace.NewTracerProvider(
+			sdktrace.WithBatcher(jaegerExporter),
+			sdktrace.WithResource(resource.NewWithAttributes(
+				semconv.SchemaURL,
+				semconv.ServiceName("ollamamax-api"),
+				semconv.ServiceVersion("1.0.0"),
+				attribute.String("environment", "production"),
+			)),
+		)
+
+		// Set global TracerProvider
+		otel.SetTracerProvider(tracerProvider)
+
+		// Set global TextMapPropagator for context propagation
+		otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+			propagation.TraceContext{},
+			propagation.Baggage{},
+		))
+
+		logger.Info("OpenTelemetry tracing initialized", "jaeger_endpoint", jaegerEndpoint)
+	}
+
 	server := &Server{
-		config:    cfg,
-		db:        db,
-		jwtSvc:    jwtSvc,
-		logger:    logger,
-		websocket: websocketHub,
+		config:              cfg,
+		db:                  db,
+		jwtSvc:              jwtSvc,
+		logger:              logger,
+		websocket:           websocketHub,
+		registry:            registry,
+		tracerProvider:      tracerProvider,
+		httpRequestsTotal:   httpRequestsTotal,
+		httpRequestDuration: httpRequestDuration,
+		httpRequestsInFlight: httpRequestsInFlight,
 	}
 
 	return server, nil
@@ -81,6 +183,13 @@ func (s *Server) Stop(ctx context.Context) error {
 	// Stop WebSocket hub
 	s.websocket.Stop()
 
+	// Shutdown TracerProvider to flush remaining spans
+	if s.tracerProvider != nil {
+		if err := s.tracerProvider.Shutdown(ctx); err != nil {
+			s.logger.Error("Failed to shutdown TracerProvider", "error", err)
+		}
+	}
+
 	// Shutdown HTTP server
 	if s.server != nil {
 		return s.server.Shutdown(ctx)
@@ -99,9 +208,11 @@ func (s *Server) setupRouter() *gin.Engine {
 
 	router := gin.New()
 
-	// Global middleware
+	// Global middleware (tracing must be first to capture all requests)
+	router.Use(s.tracingMiddleware())
 	router.Use(s.loggingMiddleware())
 	router.Use(gin.Recovery())
+	router.Use(s.prometheusMiddleware())
 	router.Use(s.corsMiddleware())
 	router.Use(s.securityMiddleware())
 
@@ -112,7 +223,10 @@ func (s *Server) setupRouter() *gin.Engine {
 
 	// Health check endpoint (no auth required)
 	router.GET("/health", s.healthHandler)
-	router.GET("/metrics", s.metricsHandler)
+
+	// Metrics endpoints
+	router.GET("/metrics", gin.WrapH(promhttp.HandlerFor(s.registry, promhttp.HandlerOpts{})))
+	router.GET("/metrics.json", s.metricsJSONHandler)
 
 	// API routes
 	v1 := router.Group("/api/v1")
@@ -187,4 +301,104 @@ func (s *Server) setupRouter() *gin.Engine {
 	router.StaticFile("/", "./web/dist/index.html")
 
 	return router
+}
+
+// tracingMiddleware extracts trace context and creates spans for HTTP requests
+func (s *Server) tracingMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Skip tracing if TracerProvider is not initialized
+		if s.tracerProvider == nil {
+			c.Next()
+			return
+		}
+
+		// Skip metrics endpoints to reduce noise
+		if c.Request.URL.Path == "/metrics" || c.Request.URL.Path == "/metrics.json" {
+			c.Next()
+			return
+		}
+
+		// Get tracer
+		tracer := otel.Tracer("ollamamax-api")
+
+		// Extract context from request headers (for distributed tracing)
+		ctx := otel.GetTextMapPropagator().Extract(c.Request.Context(), propagation.HeaderCarrier(c.Request.Header))
+
+		// Start a new span for the request
+		spanName := fmt.Sprintf("%s %s", c.Request.Method, c.FullPath())
+		if c.FullPath() == "" {
+			spanName = fmt.Sprintf("%s %s", c.Request.Method, c.Request.URL.Path)
+		}
+
+		ctx, span := tracer.Start(ctx, spanName,
+			trace.WithSpanKind(trace.SpanKindServer),
+			trace.WithAttributes(
+				semconv.HTTPMethod(c.Request.Method),
+				semconv.HTTPTarget(c.Request.URL.Path),
+				semconv.HTTPRoute(c.FullPath()),
+				semconv.HTTPScheme(c.Request.URL.Scheme),
+				semconv.HTTPUserAgent(c.Request.UserAgent()),
+				semconv.HTTPClientIP(c.ClientIP()),
+			),
+		)
+		defer span.End()
+
+		// Store span in context
+		c.Request = c.Request.WithContext(ctx)
+
+		// Process request
+		c.Next()
+
+		// Set response attributes
+		span.SetAttributes(
+			semconv.HTTPStatusCode(c.Writer.Status()),
+			attribute.Int("http.response.size", c.Writer.Size()),
+		)
+
+		// Inject trace context into response headers for downstream services
+		otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(c.Writer.Header()))
+
+		// Record error if present
+		if len(c.Errors) > 0 {
+			span.SetAttributes(attribute.Bool("error", true))
+			span.SetAttributes(attribute.String("error.message", c.Errors.String()))
+		}
+	}
+}
+
+// prometheusMiddleware tracks HTTP request metrics
+func (s *Server) prometheusMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Skip metrics endpoint to avoid recursion
+		if c.Request.URL.Path == "/metrics" || c.Request.URL.Path == "/metrics.json" {
+			c.Next()
+			return
+		}
+
+		// Increment in-flight requests
+		s.httpRequestsInFlight.Inc()
+		defer s.httpRequestsInFlight.Dec()
+
+		// Record start time
+		start := time.Now()
+
+		// Process request
+		c.Next()
+
+		// Calculate duration
+		duration := time.Since(start).Seconds()
+
+		// Get endpoint path (normalized to avoid high cardinality)
+		endpoint := c.FullPath()
+		if endpoint == "" {
+			endpoint = c.Request.URL.Path
+		}
+
+		// Record metrics
+		status := strconv.Itoa(c.Writer.Status())
+		method := c.Request.Method
+
+		s.httpRequestsTotal.WithLabelValues(method, endpoint, status).Inc()
+		s.httpRequestDuration.WithLabelValues(method, endpoint, status).Observe(duration)
+	}
 }

@@ -1,452 +1,805 @@
-# Distributed Llama Chat - Testing Guide
+# OllamaMax Testing Guide
 
-## 🧪 Complete Testing Documentation
-
-### Overview
-This guide provides comprehensive testing procedures for the Distributed Llama Chat Interface, including API testing, WebSocket validation, and multi-node deployment verification.
+**Comprehensive guide for running, maintaining, and understanding the OllamaMax test suite.**
 
 ---
 
-## 1. Local Development Testing
+## Table of Contents
 
-### Prerequisites
-- Docker and Docker Compose installed
-- Node.js 18+ for API server
-- Ollama service running on port 13000
-- Redis running on port 13001
+1. [Overview](#overview)
+2. [Setup and Prerequisites](#setup-and-prerequisites)
+3. [Test Categories](#test-categories)
+4. [Executing Tests](#executing-tests)
+5. [Coverage Generation and Interpretation](#coverage-generation-and-interpretation)
+6. [CI Workflow Integration](#ci-workflow-integration)
+7. [Troubleshooting](#troubleshooting)
+8. [Best Practices](#best-practices)
 
-### A. Web Interface Testing
+---
 
-#### Access Points
-- **Web Interface**: http://localhost:13080
-- **BMad Dashboard**: http://localhost:13002
-- **API Gateway**: http://localhost:13000
+## Overview
 
-#### Manual Testing Steps
+OllamaMax employs a comprehensive, multi-layered testing strategy covering:
 
-1. **Interface Load Test**
+- **Unit Tests**: Go (pkg/*, internal/*) and JavaScript (Jest)
+- **Integration Tests**: Go distributed components testing
+- **E2E Tests**: Playwright-based browser automation
+- **Performance Tests**: Load testing and benchmarking
+
+### Testing Philosophy
+
+- **Test-Driven Development**: Write tests before implementation
+- **High Coverage**: Maintain >90% code coverage across all languages
+- **Automated CI/CD**: All tests run automatically on every commit
+- **Production Readiness**: Comprehensive validation before deployment
+
+### Key Metrics
+
+- **Current Coverage Target**: 90% (both Go and JavaScript)
+- **Test Execution Time**: ~5-10 minutes (full suite)
+- **CI Integration**: GitHub Actions with parallel execution
+- **Test Count**: 100+ unit tests, 50+ integration tests, 30+ E2E tests
+
+---
+
+## Setup and Prerequisites
+
+### System Requirements
+
+- **Node.js**: 18+ (for JavaScript tests and Playwright)
+- **Go**: 1.21+ (for Go tests)
+- **npm**: Latest version
+- **Git**: For version control
+- **Docker**: Optional, for integration test environments
+
+### Initial Setup
+
 ```bash
-# Verify web interface is accessible
-curl -I http://localhost:13080
+# Clone the repository
+git clone <repository-url>
+cd OllamaMax
 
-# Expected: HTTP/1.1 200 OK
+# Install Node dependencies
+npm ci
+
+# Install Go dependencies
+go mod download
+
+# Install Playwright browsers (for E2E tests)
+npx playwright install --with-deps
+
+# Install development tools
+cd ollama-distributed
+make deps-dev
 ```
 
-2. **Static Asset Loading**
+### Environment Variables
+
+Create a `.env` file in the project root (for local testing):
+
 ```bash
-# Check CSS loading
-curl -I http://localhost:13080/styles.css
+# API Configuration
+BASE_URL=http://localhost:8080
+API_URL=http://localhost:11434
 
-# Check JavaScript loading
-curl -I http://localhost:13080/app.js
-```
+# Database (for integration tests)
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=ollamamax_test
+DB_USER=test_user
+DB_PASSWORD=test_password
 
-3. **Browser Testing**
-- Open http://localhost:13080 in Chrome/Firefox/Safari
-- Verify all tabs (Chat, Nodes, Settings) are clickable
-- Check responsive design at different viewport sizes
-- Test dark/light theme if implemented
+# Redis (for integration tests)
+REDIS_HOST=localhost
+REDIS_PORT=6379
 
-### B. WebSocket Connection Testing
-
-#### Using wscat
-```bash
-# Install wscat if not available
-npm install -g wscat
-
-# Connect to WebSocket endpoint
-wscat -c ws://localhost:13000/chat
-
-# Send test message
-{"type":"inference","content":"Hello, test","model":"llama2","settings":{"streaming":true,"maxTokens":50,"temperature":0.7}}
-
-# Expected: Receive streaming response chunks
-```
-
-#### Using curl
-```bash
-# Test WebSocket upgrade
-curl -i -N \
-  -H "Connection: Upgrade" \
-  -H "Upgrade: websocket" \
-  -H "Sec-WebSocket-Version: 13" \
-  -H "Sec-WebSocket-Key: SGVsbG8sIHdvcmxkIQ==" \
-  http://localhost:13000/chat
-```
-
-### C. REST API Testing
-
-#### Health Check
-```bash
-# API health endpoint
-curl http://localhost:13000/api/health | python3 -m json.tool
-
-# Expected response:
-{
-  "status": "healthy",
-  "nodes": 3,
-  "totalNodes": 3,
-  "queueLength": 0,
-  "uptime": 123.456
-}
-```
-
-#### Node Management
-```bash
-# Get all nodes
-curl http://localhost:13000/api/nodes | python3 -m json.tool
-
-# Add new node
-curl -X POST http://localhost:13000/api/nodes \
-  -H "Content-Type: application/json" \
-  -d '{"name":"llama-04","url":"http://localhost:13030"}'
-
-# Remove node
-curl -X DELETE http://localhost:13000/api/nodes/node-1
+# Test Configuration
+NODE_ENV=test
+CI=false
+HEADLESS=true
 ```
 
 ---
 
-## 2. Docker Swarm Testing
+## Test Categories
 
-### Initialize Swarm
+### 1. Unit Tests
+
+#### Go Unit Tests
+
+**Location**: `pkg/**/*_test.go`, `internal/**/*_test.go`
+
+**Purpose**: Test individual Go packages and functions in isolation
+
+**Execution**:
 ```bash
-# Check if Swarm is active
-docker info | grep Swarm
+# Run all Go unit tests
+go test -v ./pkg/... ./internal/...
 
-# If not initialized
-docker swarm init
+# With coverage
+go test -v -coverprofile=coverage.out ./pkg/... ./internal/...
 
-# Deploy the stack
-./deploy-swarm.sh deploy
+# Specific package
+go test -v ./pkg/api/...
 ```
 
-### Verify Services
+**Examples**:
+- API handler tests (`pkg/api/server_test.go`)
+- Configuration validation tests
+- Database operation tests
+- P2P network tests
+
+#### JavaScript Unit Tests
+
+**Location**: `tests/**/*.test.cjs`, `tests/**/*.test.js`
+
+**Purpose**: Test JavaScript modules, API servers, and utilities
+
+**Execution**:
 ```bash
-# List all services
-docker service ls
+# Run all Jest tests
+npm test
 
-# Check service logs
-docker service logs llama-swarm_api-gateway
-docker service logs llama-swarm_ollama
+# With coverage
+npm run test:coverage
 
-# Scale Ollama nodes
-./deploy-swarm.sh scale 5
+# Watch mode (for development)
+npm run test:watch
 
-# Check node distribution
-docker service ps llama-swarm_ollama
+# Specific test file
+npm test tests/critical-fixes/prewarming.test.cjs
 ```
 
-### Load Testing
+**Test Files**:
+- `tests/critical-fixes/prewarming.test.cjs` - Agent pool prewarming
+- API server tests
+- WebSocket connection tests
+- Configuration parsing tests
+
+### 2. Integration Tests
+
+**Location**: `ollama-distributed/tests/integration/`
+
+**Purpose**: Test interaction between distributed components
+
+**Execution**:
 ```bash
-# Install Apache Bench if not available
-apt-get install apache2-utils
+cd ollama-distributed
 
-# Simple load test
-ab -n 100 -c 10 http://localhost:13000/api/health
+# Run integration tests
+make test-integration
 
-# WebSocket load test with multiple connections
-for i in {1..10}; do
-  wscat -c ws://localhost:13000/chat &
-done
+# With specific node count
+OLLAMA_TEST_NODE_COUNT=5 make test-integration
+
+# With coverage (now enabled!)
+make test-integration  # Coverage enabled by default
+```
+
+**Test Scenarios**:
+- Multi-node cluster communication
+- Load balancing across nodes
+- Failover and recovery
+- Model synchronization
+- P2P network discovery
+
+### 3. E2E (End-to-End) Tests
+
+**Location**: `tests/e2e/tests/`
+
+**Purpose**: Browser-based testing of complete user workflows
+
+**Execution**:
+```bash
+# Run all E2E tests
+npm run test:e2e
+
+# UI mode (interactive)
+npm run test:e2e:ui
+
+# Specific browser
+npx playwright test --project=chromium
+npx playwright test --project=firefox
+npx playwright test --project=webkit
+
+# Debug mode
+npm run test:e2e:debug
+
+# Headed mode (visible browser)
+npx playwright test --headed
+```
+
+**Test Suites**:
+- `core-functionality.spec.ts` - System health, dashboard, API
+- `distributed-inference.spec.ts` - AI model inference, load balancing
+- `security.spec.ts` - XSS, SQL injection, authentication
+
+**Reports**:
+```bash
+# View HTML report
+npm run test:e2e:report
+
+# Reports location
+test-results/playwright-report/index.html
+```
+
+### 4. Performance Tests
+
+**Location**: `tests/performance/`, `ollama-distributed/tests/performance/`
+
+**Purpose**: Benchmark and validate performance under load
+
+**Execution**:
+```bash
+# Go performance benchmarks
+cd ollama-distributed
+make test-performance
+
+# JavaScript performance tests (now wired into CI!)
+jest tests/performance-*.test.js --config=jest.config.cjs
+
+# Run all performance tests
+npm run test:performance
+```
+
+**Metrics Tracked**:
+- Request latency
+- Throughput (requests/second)
+- Memory usage
+- CPU utilization
+- Concurrent user handling
+
+---
+
+## Executing Tests
+
+### Running Complete Test Suite
+
+#### Using Unified Script (Recommended)
+
+```bash
+# Run all tests with coverage aggregation
+./scripts/run-all-tests.sh
+```
+
+This script executes:
+1. Go unit tests with coverage
+2. Go integration tests with coverage (now included!)
+3. JavaScript unit tests with coverage
+4. E2E tests (Playwright)
+5. Performance benchmarks
+6. Coverage validation and merging
+
+#### Using Makefile (Go-specific)
+
+```bash
+cd ollama-distributed
+
+# Quick test (unit only)
+make quick-test
+
+# All tests except performance/chaos
+make test-all
+
+# Full test suite (including performance/chaos)
+make test-full
+
+# CI mode
+make test-ci
+```
+
+#### Using npm Scripts
+
+```bash
+# JavaScript unit tests
+npm test
+
+# E2E tests
+npm run test:e2e
+
+# Coverage generation
+npm run test:coverage
+
+# All JavaScript tests
+npm run test:all
+```
+
+### Running Specific Test Suites
+
+#### By Test Type
+
+```bash
+# Go unit tests only
+go test ./pkg/... ./internal/...
+
+# Go integration tests only
+cd ollama-distributed && make test-integration
+
+# E2E core functionality only
+npx playwright test tests/core-functionality.spec.ts
+
+# Performance tests only
+cd ollama-distributed && make test-performance
+```
+
+#### By Component
+
+```bash
+# API tests
+go test ./pkg/api/...
+
+# Database tests
+go test ./internal/database/...
+
+# P2P network tests
+cd ollama-distributed && make test-p2p
+
+# Consensus tests
+cd ollama-distributed && make test-consensus
+```
+
+### Test Filtering
+
+```bash
+# Go: Run specific test
+go test -v -run TestServerCreation ./pkg/api/
+
+# Jest: Run specific test
+npm test -- --testNamePattern="AgentPoolManager"
+
+# Playwright: Run specific test
+npx playwright test --grep "should load dashboard"
 ```
 
 ---
 
-## 3. Distributed Inference Testing
+## Coverage Generation and Interpretation
 
-### A. Single Node Test
+### Go Coverage
+
+#### Generate Coverage Report
+
 ```bash
-# Direct Ollama API test
-curl http://localhost:13000/api/generate \
-  -d '{
-    "model": "llama2",
-    "prompt": "Why is the sky blue?",
-    "stream": false
-  }'
+# Unit tests coverage
+go test -coverprofile=coverage.out ./pkg/... ./internal/...
+
+# Integration tests coverage (now included!)
+cd ollama-distributed
+make test-integration  # Generates go-integration-coverage.out
+
+# Merge coverage files
+./scripts/run-all-tests.sh  # Automatically merges to go-merged-coverage.out
+
+# HTML report
+go tool cover -html=coverage.out -o coverage.html
+open coverage.html  # macOS
+xdg-open coverage.html  # Linux
 ```
 
-### B. Multi-Node Load Balancing
-```bash
-# Send multiple requests to verify round-robin
-for i in {1..10}; do
-  curl -X POST http://localhost:13000/api/inference \
-    -H "Content-Type: application/json" \
-    -d '{
-      "content": "Test message '$i'",
-      "model": "llama2",
-      "loadBalancing": "round-robin"
-    }'
-done
+#### Interpret Go Coverage
 
-# Check which nodes handled requests
-docker service logs llama-swarm_ollama | grep "Test message"
+```bash
+# Function-level coverage summary
+go tool cover -func=coverage.out
+
+# Example output:
+# github.com/khryptorgraphics/ollamamax/pkg/api/server.go:42:    NewServer       100.0%
+# github.com/khryptorgraphics/ollamamax/pkg/api/server.go:67:    Start           85.7%
+# total:                                                         (statements)    92.3%
 ```
 
-### C. Failover Testing
+**Coverage Threshold**: 90% (enforced in CI and Makefile)
+
+### JavaScript Coverage
+
+#### Generate Coverage Report
+
 ```bash
-# Stop one node
-docker service scale llama-swarm_ollama=2
+# Run tests with coverage
+npm run test:coverage
 
-# Send requests - should still work
-curl http://localhost:13000/api/health
+# Coverage reports generated in:
+# - coverage/lcov-report/index.html (HTML)
+# - coverage/coverage-summary.json (JSON)
+# - coverage/lcov.info (LCOV format)
+```
 
-# Restore nodes
-docker service scale llama-swarm_ollama=3
+#### Interpret JavaScript Coverage
+
+Open `coverage/lcov-report/index.html` in a browser to see:
+
+- **Line Coverage**: Percentage of lines executed
+- **Branch Coverage**: Percentage of conditional branches taken
+- **Function Coverage**: Percentage of functions called
+- **Statement Coverage**: Percentage of statements executed
+
+**Coverage Validation**:
+```bash
+# Automatic validation against 90% threshold
+npm run validate:coverage
+
+# Uses scripts/validate-coverage.js
+```
+
+### Merged Coverage Reports
+
+The unified test script (`./scripts/run-all-tests.sh`) now merges:
+
+1. **Go unit coverage** → `coverage/go-unit-coverage.out`
+2. **Go integration coverage** → `coverage/go-integration-coverage.out` ✅ NEW!
+3. **Merged Go coverage** → `coverage/go-merged-coverage.out`
+4. **JavaScript coverage** → `coverage/` directory
+
+**Access Merged Reports**:
+```bash
+# Go merged HTML report
+open test-artifacts/coverage/go-coverage.html
+
+# JavaScript HTML report
+open coverage/lcov-report/index.html
+
+# Check logs
+cat test-artifacts/logs/test-execution.log
 ```
 
 ---
 
-## 4. Performance Testing
+## CI Workflow Integration
 
-### Memory and CPU Monitoring
-```bash
-# Monitor resource usage
-docker stats --no-stream
+### GitHub Actions Workflows
 
-# Check specific service
-docker service inspect llama-swarm_ollama --pretty
+#### 1. Main CI/CD Pipeline (`.github/workflows/ci-cd-pipeline.yml`)
 
-# Prometheus metrics
-curl http://localhost:13090/metrics
+**Triggers**: Push to `main`/`develop`, Pull Requests to `main`
+
+**Jobs**:
+- **test**: Runs all tests with coverage validation
+  - ✅ NEW: Playwright E2E tests now included!
+- **build-and-test-docker**: Docker image build and integration tests
+- **security-scan**: Trivy vulnerability scanning
+- **deploy-staging**: Auto-deploy to staging (develop branch)
+- **deploy-production**: Auto-deploy to production (main branch)
+
+**Key Steps**:
+```yaml
+- Run Go tests with coverage
+- Validate Go coverage threshold (90%)
+- Run JavaScript tests with coverage
+- Validate JavaScript coverage threshold (90%)
+- Install Playwright browsers  # ✅ NEW!
+- Run Playwright E2E tests  # ✅ NEW!
+- Upload Playwright report  # ✅ NEW!
+- Run linting
+- Build application
+- Run security audit
 ```
 
-### Response Time Testing
+#### 2. Production Pipeline (`.github/workflows/production-pipeline.yml`)
+
+**Triggers**: Push/PR to `main`/`production`
+
+**Jobs**:
+- **security-scan**: Snyk, OWASP ZAP
+- **code-quality**: Linting, coverage validation
+- **performance-testing**: Playwright performance tests + Jest benchmarks ✅ NEW!
+- **browser-testing**: Multi-browser E2E tests
+- **load-testing**: k6 load tests
+- **database-validation**: PostgreSQL/Redis tests
+- **docker-build**: Docker image creation
+
+**Performance Tests** (now wired in!):
+```yaml
+- name: Run performance tests
+  run: |
+    npm run test:performance
+    npm run test:performance:stress
+
+- name: Run Jest performance benchmarks  # ✅ NEW!
+  run: jest tests/performance-*.test.js --config=jest.config.cjs
+```
+
+#### 3. Coverage Gate Workflow (`.github/workflows/coverage-gate.yml`)
+
+**Purpose**: Enforce 90% coverage threshold
+
+**Execution**:
+```yaml
+- Validate Go coverage >= 90%
+- Validate JavaScript coverage >= 90%
+- Fail build if thresholds not met
+```
+
+### Running Tests Locally Like CI
+
+```bash
+# Simulate CI environment
+CI=true npm test
+
+# Run with same parallelism as CI
+CI=true npm run test:coverage
+
+# Go tests in CI mode
+cd ollama-distributed
+OLLAMA_TEST_CI=true make test-ci
+```
+
+### CI Artifacts
+
+**Generated Artifacts** (downloadable from GitHub Actions):
+- Coverage reports (HTML and LCOV)
+- Test execution logs
+- Playwright test reports and videos ✅ NEW!
+- Performance benchmark results
+- Security scan results
+
+---
+
+## Troubleshooting
+
+### Common Issues
+
+#### 1. Go Tests Failing: "package not found"
+
+**Symptom**: `package github.com/khryptorgraphics/ollamamax/... is not in GOROOT`
+
+**Solution**: ✅ FIXED! Import paths corrected in `pkg/api/server_test.go`
+```bash
+# Verify go.mod module path
+cat go.mod  # Should show: module github.com/khryptorgraphics/ollamamax
+
+# Re-download dependencies
+go mod download
+go mod tidy
+
+# Clear module cache if persistent
+go clean -modcache
+go mod download
+```
+
+#### 2. Integration Tests Timing Out
+
+**Symptom**: Tests exceed 30-minute timeout
+
+**Solution**:
+```bash
+# Increase timeout
+cd ollama-distributed
+TEST_TIMEOUT=60m make test-integration
+
+# Reduce node count for faster execution
+OLLAMA_TEST_NODE_COUNT=2 make test-integration
+```
+
+#### 3. Playwright Browser Installation Issues
+
+**Symptom**: `Executable doesn't exist at /path/to/browser`
+
+**Solution**:
+```bash
+# Reinstall browsers with system dependencies
+npx playwright install --with-deps
+
+# Or specific browser
+npx playwright install chromium --with-deps
+```
+
+#### 4. Coverage Below Threshold
+
+**Symptom**: `❌ Coverage X% is below threshold 90%`
+
+**Solution**: ✅ IMPROVED! Coverage validation now uses merged file with proper error handling
+```bash
+# Identify uncovered code
+go tool cover -html=coverage.out  # Go
+open coverage/lcov-report/index.html  # JavaScript
+
+# Add tests for uncovered lines/functions
+# Run coverage again to verify
+```
+
+#### 5. E2E Tests Failing: "Application Not Available"
+
+**Symptom**: `Error: Services not ready for testing`
+
+**Solution**:
+```bash
+# Ensure application is running
+npm run start &  # Or appropriate start command
+sleep 10  # Wait for startup
+
+# Verify BASE_URL is correct
+export BASE_URL=http://localhost:8080
+npm run test:e2e
+
+# Check webServer config in playwright.config.js
+```
+
+#### 6. Flaky Prewarming Tests
+
+**Symptom**: Intermittent failures in `prewarming.test.cjs`
+
+**Solution**: ✅ FIXED! Tests now use Jest fake timers for deterministic timing
 ```javascript
-// test-performance.js
-const WebSocket = require('ws');
-const ws = new WebSocket('ws://localhost:13000/chat');
-
-const startTime = Date.now();
-
-ws.on('open', () => {
-  ws.send(JSON.stringify({
-    type: 'inference',
-    content: 'Explain quantum computing in one sentence',
-    model: 'llama2',
-    settings: { streaming: true, maxTokens: 50 }
-  }));
+// Tests use jest.useFakeTimers() for deterministic timing
+// No real delays, faster and more reliable execution
+beforeEach(() => {
+  jest.useFakeTimers();
 });
 
-ws.on('message', (data) => {
-  const message = JSON.parse(data);
-  if (message.type === 'stream_chunk' && message.done) {
-    console.log(`Response time: ${Date.now() - startTime}ms`);
-    ws.close();
-  }
+afterEach(() => {
+  jest.clearAllTimers();
+  jest.useRealTimers();
 });
 ```
 
----
+### Debug Mode
 
-## 5. Integration Testing
-
-### A. Redis State Management
+#### Go Tests Debug
 ```bash
-# Connect to Redis
-docker exec -it ollamamax-redis redis-cli
+# Verbose output
+go test -v ./pkg/api/...
 
-# Check stored requests
-KEYS request:*
+# With race detection
+go test -race ./pkg/api/...
 
-# Get specific request data
-GET request:1234567890
-
-# Monitor real-time commands
-MONITOR
+# With trace
+go test -trace=trace.out ./pkg/api/...
+go tool trace trace.out
 ```
 
-### B. End-to-End Test Script
+#### Jest Tests Debug
 ```bash
-#!/bin/bash
-# e2e-test.sh
+# Run single test with debug
+node --inspect-brk node_modules/.bin/jest tests/critical-fixes/prewarming.test.cjs
 
-echo "Starting E2E Test..."
+# Verbose output
+npm test -- --verbose
 
-# 1. Check services
-echo "Checking services..."
-curl -f http://localhost:13000/api/health || exit 1
-curl -f http://localhost:13080 || exit 1
-
-# 2. Test inference
-echo "Testing inference..."
-response=$(curl -s -X POST http://localhost:13000/api/inference \
-  -H "Content-Type: application/json" \
-  -d '{"content":"Test","model":"llama2","settings":{"streaming":false}}')
-
-if [[ $response == *"error"* ]]; then
-  echo "Inference failed"
-  exit 1
-fi
-
-# 3. Test WebSocket
-echo "Testing WebSocket..."
-echo '{"type":"get_nodes"}' | wscat -c ws://localhost:13000/chat -x exit
-
-echo "E2E Test Passed!"
+# No coverage (faster debugging)
+npm test -- --no-coverage
 ```
 
----
-
-## 6. Troubleshooting
-
-### Common Issues and Solutions
-
-#### WebSocket Connection Fails
+#### Playwright Tests Debug
 ```bash
-# Check if port is open
-netstat -tuln | grep 13000
+# Debug mode with inspector
+npm run test:e2e:debug
 
-# Check Docker network
-docker network ls
-docker network inspect ollamamax-custom_ollamamax-network
+# Step through with UI
+npx playwright test --ui
 
-# Restart services
-docker restart ollama-engine
-docker restart llama-web-interface
+# Headed mode (watch browser)
+npx playwright test --headed --project=chromium
 ```
 
-#### Ollama Not Responding
+### Logging
+
+Enable verbose logging for detailed diagnostics:
+
 ```bash
-# Check Ollama logs
-docker logs ollama-engine
+# Go tests
+OLLAMA_TEST_LOG_LEVEL=debug go test -v ./...
 
-# Test direct Ollama API
-curl http://localhost:13000/api/tags
+# Playwright
+DEBUG=pw:* npm run test:e2e
 
-# Pull a model if none exists
-docker exec ollama-engine ollama pull llama2
-```
-
-#### Redis Connection Issues
-```bash
-# Test Redis connection
-docker exec ollamamax-redis redis-cli ping
-
-# Check Redis logs
-docker logs ollamamax-redis
-
-# Flush Redis if needed (CAUTION)
-docker exec ollamamax-redis redis-cli FLUSHALL
+# Check test execution logs
+cat test-artifacts/logs/test-execution.log
 ```
 
 ---
 
-## 7. Automated Testing
+## Best Practices
 
-### Jest Test Suite
-```javascript
-// api.test.js
-const WebSocket = require('ws');
-const fetch = require('node-fetch');
+### Writing Tests
 
-describe('Distributed Llama API', () => {
-  test('Health check returns healthy status', async () => {
-    const response = await fetch('http://localhost:13000/api/health');
-    const data = await response.json();
-    expect(data.status).toBe('healthy');
-  });
+1. **Follow AAA Pattern**: Arrange, Act, Assert
+   ```javascript
+   test('should do something', () => {
+     // Arrange: Setup test data
+     const input = createTestData();
 
-  test('WebSocket connection establishes', (done) => {
-    const ws = new WebSocket('ws://localhost:13000/chat');
-    ws.on('open', () => {
-      expect(ws.readyState).toBe(WebSocket.OPEN);
-      ws.close();
-      done();
-    });
-  });
+     // Act: Execute functionality
+     const result = functionUnderTest(input);
 
-  test('Node list returns array', async () => {
-    const response = await fetch('http://localhost:13000/api/nodes');
-    const data = await response.json();
-    expect(Array.isArray(data.nodes)).toBe(true);
-  });
-});
-```
+     // Assert: Verify expectations
+     expect(result).toBe(expected);
+   });
+   ```
 
-### Playwright E2E Tests
-```javascript
-// e2e.spec.js
-const { test, expect } = require('@playwright/test');
+2. **Keep Tests Independent**: Each test should run in isolation
+3. **Use Descriptive Names**: Test names should explain what is being tested
+4. **Test Edge Cases**: Include boundary conditions and error scenarios
+5. **Mock External Dependencies**: Use mocks for databases, APIs, network calls
+6. **Use Fake Timers**: For tests involving setTimeout/setInterval (see prewarming.test.cjs)
 
-test.describe('Chat Interface', () => {
-  test('loads and displays welcome message', async ({ page }) => {
-    await page.goto('http://localhost:13080');
-    await expect(page.locator('h1')).toContainText('Distributed Llama Chat');
-    await expect(page.locator('.welcome-message')).toBeVisible();
-  });
+### Maintaining Tests
 
-  test('can switch between tabs', async ({ page }) => {
-    await page.goto('http://localhost:13080');
-    
-    // Click Nodes tab
-    await page.click('[data-tab="nodes"]');
-    await expect(page.locator('#nodesTab')).toBeVisible();
-    
-    // Click Settings tab
-    await page.click('[data-tab="settings"]');
-    await expect(page.locator('#settingsTab')).toBeVisible();
-  });
+1. **Run Tests Before Commits**: Ensure all tests pass locally
+2. **Update Tests with Code Changes**: Keep tests in sync with implementation
+3. **Monitor Coverage Trends**: Don't let coverage drop below 90%
+4. **Review Test Failures**: Investigate and fix flaky tests immediately
+5. **Clean Up Obsolete Tests**: Remove or update tests for removed features
 
-  test('can send a message', async ({ page }) => {
-    await page.goto('http://localhost:13080');
-    
-    // Type message
-    await page.fill('#messageInput', 'Test message');
-    
-    // Send message
-    await page.click('#sendButton');
-    
-    // Verify message appears
-    await expect(page.locator('.message.user')).toContainText('Test message');
-  });
-});
-```
+### Performance Optimization
+
+1. **Parallelize Where Possible**: Use Jest `--maxWorkers` and Playwright projects
+2. **Use Test Fixtures**: Reuse setup/teardown code
+3. **Minimize I/O**: Mock file system operations in unit tests
+4. **Optimize Test Data**: Use minimal, realistic test data
+5. **Profile Slow Tests**: Identify and optimize long-running tests
+6. **Use Fake Timers**: Avoid real delays in tests (faster, more reliable)
+
+### CI/CD Integration
+
+1. **Fast Feedback**: Prioritize fast-running tests in CI
+2. **Fail Fast**: Configure CI to stop on first failure (where appropriate)
+3. **Artifact Retention**: Save test reports and logs for debugging
+4. **Threshold Enforcement**: Use coverage gates to maintain quality
+5. **Regular Maintenance**: Update dependencies and tools regularly
 
 ---
 
-## 8. Production Deployment Testing
+## Summary of Recent Improvements
 
-### Pre-Production Checklist
-- [ ] All unit tests passing
-- [ ] E2E tests successful
-- [ ] Load testing completed (100+ concurrent users)
-- [ ] Security scan performed
-- [ ] SSL/TLS certificates configured
-- [ ] Environment variables secured
-- [ ] Backup strategy tested
-- [ ] Monitoring alerts configured
-- [ ] Documentation updated
+### ✅ Comment 1: TESTING_GUIDE.md Created
+Comprehensive testing guide with setup, execution, coverage, CI integration, and troubleshooting.
 
-### Production Monitoring
-```bash
-# Grafana Dashboard
-http://localhost:13091
-# Default: admin/admin123
+### ✅ Comment 2: Integration Coverage Added
+- Makefile updated: `test-integration` now generates coverage with `-coverprofile`
+- `run-all-tests.sh` merges integration coverage into `go-merged-coverage.out`
 
-# Prometheus Queries
-http://localhost:13090
-- up{job="ollama"}
-- node_memory_usage_bytes
-- http_requests_total
-```
+### ✅ Comment 3: E2E Tests in CI
+- Added dedicated Playwright E2E job to `ci-cd-pipeline.yml`
+- Installs browsers, runs tests, uploads reports as artifacts
 
----
+### ✅ Comment 4: Performance Tests in CI
+- `production-pipeline.yml` now runs `jest tests/performance-*.test.js`
+- Performance benchmarks integrated into CI workflow
 
-## Summary
+### ✅ Comment 5: Go Import Paths Fixed
+- `pkg/api/server_test.go` updated to use correct module path
+- Changed from `internal/config` to `ollama-distributed/internal/config`
 
-This testing guide covers:
-1. ✅ Local development testing
-2. ✅ WebSocket and API validation
-3. ✅ Docker Swarm deployment
-4. ✅ Distributed inference verification
-5. ✅ Performance monitoring
-6. ✅ Integration testing
-7. ✅ Troubleshooting procedures
-8. ✅ Automated test suites
+### ✅ Comment 6: Fake Timers for Prewarming Tests
+- `prewarming.test.cjs` switched to `jest.useFakeTimers()`
+- Deterministic timing, faster execution, no flakiness
 
-The distributed Llama chat interface is now fully tested and ready for production deployment with comprehensive monitoring and failover capabilities.
+### ✅ Comment 7: Coverage Gating Normalized
+- Makefile `test-coverage` target merges unit + integration coverage
+- Uses `set -o pipefail` for proper error handling
+- Single merged file validation with explicit fallbacks
 
 ---
 
-*Testing documentation created by Sally (UX Expert) - BMAD Framework*
+## Additional Resources
+
+- **Test Strategy**: [TEST_STRATEGY.md](../TEST_STRATEGY.md) - Overall testing approach
+- **E2E Testing**: [tests/e2e/README.md](../tests/e2e/README.md) - Playwright setup and usage
+- **Coverage Scripts**: [scripts/validate-coverage.js](../scripts/validate-coverage.js) - Coverage validation logic
+- **Makefile Targets**: [ollama-distributed/Makefile](../ollama-distributed/Makefile) - Go test commands
+
+### External Documentation
+
+- **Jest**: https://jestjs.io/docs/getting-started
+- **Playwright**: https://playwright.dev/docs/intro
+- **Go Testing**: https://golang.org/pkg/testing/
+- **Coverage Tools**: https://go.dev/blog/cover
+
+---
+
+## Pre-Commit Checklist
+
+Before committing code, ensure:
+
+- [ ] All tests pass locally (`./scripts/run-all-tests.sh`)
+- [ ] Coverage is ≥90% (Go and JavaScript)
+- [ ] New features have corresponding tests
+- [ ] Tests follow naming conventions
+- [ ] No hardcoded credentials or secrets in tests
+- [ ] E2E tests pass in headless mode
+- [ ] Performance benchmarks show no regressions
+- [ ] CI pipeline passes on PR
+- [ ] Fake timers used for time-dependent tests
+- [ ] Integration coverage included in merged reports
+
+**Happy Testing! 🧪**

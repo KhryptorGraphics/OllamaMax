@@ -1,6 +1,6 @@
 module github.com/khryptorgraphics/ollamamax/ollama-distributed
 
-go 1.24.5
+go 1.21
 
 require (
 	github.com/coreos/go-oidc/v3 v3.15.0

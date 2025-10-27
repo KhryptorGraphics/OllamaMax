@@ -153,7 +153,8 @@ class AgentPoolManager extends EventEmitter {
 
   async createWarmAgent(agentType, agentId) {
     try {
-      const creationDelay = Math.random() * 200 + 100;
+      // Use deterministic delay with fake timers
+      const creationDelay = 150;  // Fixed delay for testing
       await new Promise(resolve => setTimeout(resolve, creationDelay));
 
       const agent = {
@@ -516,12 +517,10 @@ describe('AgentPoolManager', () => {
   let poolManager;
 
   beforeEach(() => {
-    jest.useFakeTimers();
     jest.clearAllMocks();
-    
-    // Mock setInterval to prevent actual intervals from running
-    jest.spyOn(global, 'setInterval').mockImplementation(() => 12345);
-    
+    // Use fake timers for deterministic, faster tests
+    jest.useFakeTimers();
+
     poolManager = new AgentPoolManager({
       poolSize: 10,
       minPoolSize: 5,
@@ -533,11 +532,12 @@ describe('AgentPoolManager', () => {
   });
 
   afterEach(() => {
-    // Clear any running intervals to prevent timeouts
+    // Clear any running intervals and timers
     if (poolManager && poolManager.intervalIds) {
       poolManager.intervalIds.forEach(id => clearInterval(id));
       poolManager.intervalIds = [];
     }
+    jest.clearAllTimers();
     jest.useRealTimers();
   });
 
@@ -580,8 +580,11 @@ describe('AgentPoolManager', () => {
 
   describe('Agent Creation and Warming', () => {
     test('should create warm agent with correct properties', async () => {
-      const agent = await poolManager.createWarmAgent('coder', 'test-agent-1');
-      
+      jest.advanceTimersByTime(150);
+      const agentPromise = poolManager.createWarmAgent('coder', 'test-agent-1');
+      jest.advanceTimersByTime(150);
+      const agent = await agentPromise;
+
       expect(agent).toBeDefined();
       expect(agent.id).toBe('test-agent-1');
       expect(agent.type).toBe('coder');
@@ -590,18 +593,22 @@ describe('AgentPoolManager', () => {
     });
 
     test('should warmup multiple agents', async () => {
-      const result = await poolManager.warmupAgentType('coder', 3);
-      
+      const resultPromise = poolManager.warmupAgentType('coder', 3);
+      jest.advanceTimersByTime(500);
+      const result = await resultPromise;
+
       expect(result).toBe(3);
-      
+
       const coderPool = poolManager.agentPools.get('coder');
       expect(coderPool.available.length).toBe(3);
       expect(coderPool.warming.size).toBe(0);
     });
 
     test('should track warmup metrics', async () => {
-      await poolManager.warmupAgentType('tester', 2);
-      
+      const warmupPromise = poolManager.warmupAgentType('tester', 2);
+      jest.advanceTimersByTime(400);
+      await warmupPromise;
+
       const testerPool = poolManager.agentPools.get('tester');
       expect(testerPool.spawnTime).toBeGreaterThan(0);
     });

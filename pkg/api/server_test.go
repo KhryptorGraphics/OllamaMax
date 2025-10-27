@@ -2,12 +2,10 @@ package api
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
 	"github.com/khryptorgraphics/ollamamax/internal/config"
-	"github.com/khryptorgraphics/ollamamax/pkg/p2p"
 )
 
 // Basic test to verify API package compiles and server can be created
@@ -35,7 +33,7 @@ func TestServerCreation(t *testing.T) {
 	if apiConfig.Listen == "" {
 		t.Error("API config should have a listen address")
 	}
-	
+
 	if apiConfig.MaxBodySize <= 0 {
 		t.Error("API config should have a positive max body size")
 	}
@@ -99,7 +97,7 @@ func TestCorsConfig(t *testing.T) {
 func TestConfigValidation(t *testing.T) {
 	// Test default configuration
 	defaultConfig := config.DefaultConfig()
-	
+
 	if defaultConfig == nil {
 		t.Fatal("Default config should not be nil")
 	}
@@ -128,13 +126,13 @@ func TestConfigValidation(t *testing.T) {
 func TestPerformanceBenchmarks(t *testing.T) {
 	// Basic performance test for config creation
 	start := time.Now()
-	
+
 	for i := 0; i < 1000; i++ {
 		_ = config.DefaultConfig()
 	}
-	
+
 	duration := time.Since(start)
-	
+
 	if duration > time.Millisecond*100 {
 		t.Logf("Config creation took %v for 1000 iterations, consider optimization", duration)
 	}
