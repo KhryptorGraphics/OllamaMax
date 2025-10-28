@@ -183,7 +183,7 @@ if [ $FAILED_TESTS -eq 0 ]; then
     echo "     docker-compose up -d"
     echo ""
     echo "  2. Verify metrics endpoint:"
-    echo "     curl http://localhost:13100/metrics | grep ollamamax_database"
+    echo "     curl http://localhost:13000/metrics | grep ollamamax_database"
     echo ""
     echo "  3. Check Prometheus targets:"
     echo "     curl http://localhost:9090/api/v1/targets | jq"

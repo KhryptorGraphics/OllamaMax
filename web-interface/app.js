@@ -33,7 +33,7 @@ class DistributedLlamaClient {
 
     // WebSocket Connection Management
     connect() {
-        const endpoint = this.settings.apiEndpoint || 'ws://localhost:13100/chat';
+        const endpoint = this.settings.apiEndpoint || 'ws://localhost:13000/chat';
         this.updateConnectionStatus('connecting');
         
         try {
@@ -296,8 +296,20 @@ class DistributedLlamaClient {
     }
 
     formatMessage(content) {
-        // Simple markdown-like formatting
-        return content
+        // Simple markdown-like formatting with XSS protection
+        // Note: For production, use a proper Markdown library with built-in sanitization
+        // This is a basic implementation - consider using DOMPurify in production
+
+        // Escape HTML entities first to prevent XSS
+        const escaped = content
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+
+        // Then apply markdown-like formatting on escaped content
+        return escaped
             .replace(/```(\w+)?\n([\s\S]+?)```/g, '<pre class="code-block language-$1">$2</pre>')
             .replace(/`([^`]+)`/g, '<code>$1</code>')
             .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
@@ -318,7 +330,7 @@ class DistributedLlamaClient {
     // Node Management
     async loadNodes() {
         try {
-            const response = await fetch('http://localhost:13100/api/nodes/detailed');
+            const response = await fetch('http://localhost:13000/api/nodes/detailed');
             const data = await response.json();
             this.nodes = data.nodes || [];
             this.updateNodeDisplay();
@@ -619,7 +631,7 @@ class DistributedLlamaClient {
     loadSettings() {
         const stored = localStorage.getItem('llamaChatSettings');
         return stored ? JSON.parse(stored) : {
-            apiEndpoint: 'ws://localhost:13100/chat',
+            apiEndpoint: 'ws://localhost:13000/chat',
             streamingEnabled: true,
             autoScroll: true,
             maxTokens: 2048,
@@ -774,7 +786,7 @@ class DistributedLlamaClient {
     // Model Management
     async loadModels() {
         try {
-            const response = await fetch('http://localhost:13100/api/models');
+            const response = await fetch('http://localhost:13000/api/models');
             const data = await response.json();
             
             this.updateModelSelector(data.availableModels);
@@ -895,7 +907,7 @@ class DistributedLlamaClient {
 
     async downloadModel(modelName, targetWorkers = []) {
         try {
-            const response = await fetch('http://localhost:13100/api/models/pull', {
+            const response = await fetch('http://localhost:13000/api/models/pull', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -921,9 +933,9 @@ class DistributedLlamaClient {
             this.showToast('No source nodes available');
             return;
         }
-        
+
         try {
-            const response = await fetch('http://localhost:13100/api/models/propagate', {
+            const response = await fetch('http://localhost:13000/api/models/propagate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -949,9 +961,9 @@ class DistributedLlamaClient {
         if (!confirm(`Delete model "${modelName}" from all nodes?`)) {
             return;
         }
-        
+
         try {
-            const response = await fetch(`http://localhost:13100/api/models/${encodeURIComponent(modelName)}`, {
+            const response = await fetch(`http://localhost:13000/api/models/${encodeURIComponent(modelName)}`, {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ workers: null }) // delete from all workers
@@ -999,7 +1011,7 @@ class DistributedLlamaClient {
     // Enhanced Node Management
     async loadDetailedNodes() {
         try {
-            const response = await fetch('http://localhost:13100/api/nodes/detailed');
+            const response = await fetch('http://localhost:13000/api/nodes/detailed');
             const data = await response.json();
             
             this.detailedNodes = data.nodes;
@@ -1405,9 +1417,9 @@ class DistributedLlamaClient {
     // Node Control Operations
     async restartNode(nodeId) {
         if (!confirm('Are you sure you want to restart this node?')) return;
-        
+
         try {
-            const response = await fetch(`http://localhost:13100/api/nodes/${nodeId}/control`, {
+            const response = await fetch(`http://localhost:13000/api/nodes/${nodeId}/control`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'restart' })
@@ -1432,9 +1444,9 @@ class DistributedLlamaClient {
             autoModelMigration: document.getElementById(`autoMigration-${nodeId}`).checked,
             healthCheckInterval: parseInt(document.getElementById(`healthInterval-${nodeId}`).value) * 1000
         };
-        
+
         try {
-            const response = await fetch(`http://localhost:13100/api/nodes/${nodeId}/config`, {
+            const response = await fetch(`http://localhost:13000/api/nodes/${nodeId}/config`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(config)
@@ -1451,7 +1463,7 @@ class DistributedLlamaClient {
 
     async loadModel(nodeId, modelName) {
         try {
-            const response = await fetch(`http://localhost:13100/api/nodes/${nodeId}/control`, {
+            const response = await fetch(`http://localhost:13000/api/nodes/${nodeId}/control`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'load_model', model: modelName })
@@ -1468,7 +1480,7 @@ class DistributedLlamaClient {
 
     async unloadModel(nodeId, modelName) {
         try {
-            const response = await fetch(`http://localhost:13100/api/nodes/${nodeId}/control`, {
+            const response = await fetch(`http://localhost:13000/api/nodes/${nodeId}/control`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'unload_model', model: modelName })

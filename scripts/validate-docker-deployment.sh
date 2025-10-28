@@ -254,7 +254,7 @@ done
 log_info "Testing health check endpoints..."
 
 # Detect actual mapped ports dynamically
-API_PORT=$(docker compose -f "${COMPOSE_FILE}" port ollamamax-api 13100 2>/dev/null | cut -d: -f2 || echo "13100")
+API_PORT=$(docker compose -f "${COMPOSE_FILE}" port ollamamax-api 13000 2>/dev/null | cut -d: -f2 || echo "13000")
 WEB_PORT=$(docker compose -f "${COMPOSE_FILE}" port ollamamax-web 8080 2>/dev/null | cut -d: -f2 || echo "8080")
 OLLAMA_PORT=$(docker compose -f "${COMPOSE_FILE}" port ollama-primary 11434 2>/dev/null | cut -d: -f2 || echo "11434")
 

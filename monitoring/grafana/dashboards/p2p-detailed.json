@@ -81,7 +81,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "p2p_connected_peers",
+          "expr": "ollamamax_p2p_connected_peers",
           "legendFormat": "Connected Peers",
           "range": true,
           "refId": "A"
@@ -201,7 +201,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "rate(p2p_messages_sent_total[5m])",
+          "expr": "rate(ollamamax_p2p_messages_sent_total[5m])",
           "legendFormat": "Sent",
           "range": true,
           "refId": "A"
@@ -212,7 +212,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "rate(p2p_messages_received_total[5m])",
+          "expr": "rate(ollamamax_p2p_messages_received_total[5m])",
           "legendFormat": "Received",
           "range": true,
           "refId": "B"
@@ -309,7 +309,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, rate(p2p_message_latency_seconds_bucket[5m])) * 1000",
+          "expr": "histogram_quantile(0.95, rate(ollamamax_p2p_message_latency_seconds_bucket[5m])) * 1000",
           "legendFormat": "P95 {{topic}}",
           "range": true,
           "refId": "A"
@@ -408,7 +408,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum by (topic) (p2p_messages_sent_total)",
+          "expr": "sum by (topic) (ollamamax_p2p_messages_sent_total)",
           "format": "time_series",
           "instant": true,
           "legendFormat": "{{topic}}",
@@ -507,7 +507,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "rate(p2p_connection_errors_total[5m])",
+          "expr": "rate(ollamamax_p2p_connection_errors_total[5m])",
           "legendFormat": "{{error_type}}",
           "range": true,
           "refId": "A"
@@ -627,7 +627,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "rate(p2p_bytes_sent_total[5m])",
+          "expr": "rate(ollamamax_p2p_bytes_sent_total[5m])",
           "legendFormat": "Sent",
           "range": true,
           "refId": "A"
@@ -638,7 +638,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "rate(p2p_bytes_received_total[5m])",
+          "expr": "rate(ollamamax_p2p_bytes_received_total[5m])",
           "legendFormat": "Received",
           "range": true,
           "refId": "B"

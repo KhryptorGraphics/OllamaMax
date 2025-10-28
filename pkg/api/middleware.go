@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -69,31 +70,181 @@ func (s *Server) securityMiddleware() gin.HandlerFunc {
 	}
 }
 
-// rateLimitMiddleware implements rate limiting per IP
+// limiterEntry tracks a rate limiter with its last access time for LRU eviction
+type limiterEntry struct {
+	limiter    *rate.Limiter
+	lastAccess time.Time
+}
+
+// rateLimitMiddleware implements rate limiting per IP with endpoint-specific limits
 func (s *Server) rateLimitMiddleware() gin.HandlerFunc {
-	// Create rate limiter map for different IPs
-	limiters := make(map[string]*rate.Limiter)
+	// SECURITY FIX (ISSUE-007): Endpoint-specific rate limiting for auth routes
+	// MEMORY FIX (ISSUE-008): LRU cache with TTL eviction to prevent unbounded growth
+
+	// Create separate limiter maps for general and auth-specific endpoints
+	generalLimiters := make(map[string]*limiterEntry)
+	loginLimiters := make(map[string]*limiterEntry)
+	registerLimiters := make(map[string]*limiterEntry)
+	resetPasswordLimiters := make(map[string]*limiterEntry)
+
+	// Mutex to protect concurrent access to limiter maps
+	var mu sync.RWMutex
+
+	// Configuration for LRU cache with TTL
+	const (
+		maxIPEntries  = 10000           // Maximum number of IP entries to store
+		ipEntryTTL    = 1 * time.Hour   // TTL for inactive IP entries
+		cleanupPeriod = 10 * time.Minute // How often to run cleanup
+	)
+
+	// Background goroutine for periodic cleanup of expired entries
+	go func() {
+		ticker := time.NewTicker(cleanupPeriod)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			now := time.Now()
+			mu.Lock()
+
+			// Cleanup function for a single map
+			cleanupMap := func(limiters map[string]*limiterEntry) int {
+				removed := 0
+				for ip, entry := range limiters {
+					if now.Sub(entry.lastAccess) > ipEntryTTL {
+						delete(limiters, ip)
+						removed++
+					}
+				}
+				return removed
+			}
+
+			// Clean up all limiter maps
+			generalRemoved := cleanupMap(generalLimiters)
+			loginRemoved := cleanupMap(loginLimiters)
+			registerRemoved := cleanupMap(registerLimiters)
+			resetRemoved := cleanupMap(resetPasswordLimiters)
+
+			totalRemoved := generalRemoved + loginRemoved + registerRemoved + resetRemoved
+			if totalRemoved > 0 {
+				s.logger.Info("Rate limiter cache cleanup",
+					"removed_entries", totalRemoved,
+					"general", generalRemoved,
+					"login", loginRemoved,
+					"register", registerRemoved,
+					"reset_password", resetRemoved,
+				)
+			}
+
+			mu.Unlock()
+		}
+	}()
+
+	// Helper function to get or create limiter with LRU+TTL
+	getLimiter := func(limiters map[string]*limiterEntry, clientIP string, requestsPer int, duration time.Duration, burstSize int) *rate.Limiter {
+		mu.RLock()
+		entry, exists := limiters[clientIP]
+		mu.RUnlock()
+
+		if exists {
+			// Update last access time
+			mu.Lock()
+			entry.lastAccess = time.Now()
+			mu.Unlock()
+			return entry.limiter
+		}
+
+		// Create new limiter
+		limiter := rate.NewLimiter(
+			rate.Limit(requestsPer)/rate.Limit(duration.Seconds()),
+			burstSize,
+		)
+
+		mu.Lock()
+		defer mu.Unlock()
+
+		// Check if we need to evict entries (LRU eviction)
+		if len(limiters) >= maxIPEntries {
+			// Find and remove oldest entry
+			var oldestIP string
+			var oldestTime time.Time = time.Now()
+
+			for ip, entry := range limiters {
+				if entry.lastAccess.Before(oldestTime) {
+					oldestTime = entry.lastAccess
+					oldestIP = ip
+				}
+			}
+
+			if oldestIP != "" {
+				delete(limiters, oldestIP)
+				s.logger.Warn("Rate limiter cache eviction (LRU)",
+					"evicted_ip", oldestIP,
+					"cache_size", len(limiters),
+					"max_entries", maxIPEntries,
+				)
+			}
+		}
+
+		// Store new limiter with current timestamp
+		limiters[clientIP] = &limiterEntry{
+			limiter:    limiter,
+			lastAccess: time.Now(),
+		}
+
+		return limiter
+	}
 
 	return gin.HandlerFunc(func(c *gin.Context) {
 		clientIP := c.ClientIP()
+		path := c.FullPath()
 
-		// Get or create limiter for this IP
-		limiter, exists := limiters[clientIP]
-		if !exists {
-			// Create new limiter: requests per duration with burst size
-			limiter = rate.NewLimiter(
-				rate.Limit(s.config.API.RateLimit.RequestsPer)/rate.Limit(s.config.API.RateLimit.Duration.Seconds()),
-				s.config.API.RateLimit.BurstSize,
-			)
-			limiters[clientIP] = limiter
+		var limiter *rate.Limiter
+		var retryAfter int
+
+		// SECURITY: Apply stricter rate limits for authentication endpoints
+		switch path {
+		case "/api/auth/login":
+			limiter = getLimiter(loginLimiters, clientIP,
+				s.config.API.RateLimit.LoginRequestsPer,
+				time.Minute,
+				1) // Burst of 1 for login
+			retryAfter = 60 // 1 minute
+
+		case "/api/auth/register":
+			limiter = getLimiter(registerLimiters, clientIP,
+				s.config.API.RateLimit.RegisterRequestsPer,
+				time.Minute,
+				1) // Burst of 1 for registration
+			retryAfter = 60 // 1 minute
+
+		case "/api/auth/reset-password", "/api/auth/forgot-password":
+			limiter = getLimiter(resetPasswordLimiters, clientIP,
+				s.config.API.RateLimit.ResetPasswordRequestsPer,
+				time.Minute,
+				1) // Burst of 1 for password reset
+			retryAfter = 60 // 1 minute
+
+		default:
+			// General rate limiting for all other endpoints
+			limiter = getLimiter(generalLimiters, clientIP,
+				s.config.API.RateLimit.RequestsPer,
+				s.config.API.RateLimit.Duration,
+				s.config.API.RateLimit.BurstSize)
+			retryAfter = int(s.config.API.RateLimit.Duration.Seconds())
 		}
 
 		// Check if request is allowed
 		if !limiter.Allow() {
+			s.logger.Warn("Rate limit exceeded",
+				"client_ip", clientIP,
+				"path", path,
+				"method", c.Request.Method,
+			)
+
 			c.JSON(http.StatusTooManyRequests, gin.H{
-				"error":   "rate_limit_exceeded",
-				"message": "Too many requests, please try again later",
-				"retry_after": int(s.config.API.RateLimit.Duration.Seconds()),
+				"error":       "rate_limit_exceeded",
+				"message":     "Too many requests, please try again later",
+				"retry_after": retryAfter,
 			})
 			c.Abort()
 			return

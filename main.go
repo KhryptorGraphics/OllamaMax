@@ -102,25 +102,29 @@ func main() {
 	logger.Info("Starting OllamaMax distributed inference platform")
 	
 	// Load configuration with validation
-	cfg := config.LoadConfig()
-	
+	cfg, err := config.LoadConfig("config.yaml")
+	if err != nil {
+		logger.Error("Failed to load configuration", "error", err)
+		os.Exit(1)
+	}
+
 	// Validate critical security configurations
 	if cfg.Auth.SecretKey == "" || cfg.Auth.SecretKey == "your-secret-key-change-this" {
 		logger.Error("Auth secret not properly configured - using default or empty secret")
 		os.Exit(1)
 	}
-	
+
 	if len(cfg.Auth.SecretKey) < 32 {
 		logger.Error("Auth secret too short for security", "length", len(cfg.Auth.SecretKey))
 		os.Exit(1)
 	}
-	
+
 	// Also validate JWT secret if available
 	if cfg.JWT.SecretKey == "" || cfg.JWT.SecretKey == "your-secret-key-change-this" {
 		logger.Error("JWT secret not properly configured - using default or empty secret")
 		os.Exit(1)
 	}
-	
+
 	if len(cfg.JWT.SecretKey) < 32 {
 		logger.Error("JWT secret too short for security", "length", len(cfg.JWT.SecretKey))
 		os.Exit(1)
@@ -193,8 +197,12 @@ func main() {
 	
 	// Initialize API server
 	logger.Info("Initializing API server...")
-	apiServer := server.NewServer(cfg, db, logger)
-	
+	apiServer, err := server.NewServer(cfg, db, logger)
+	if err != nil {
+		logger.Error("Failed to initialize API server", "error", err)
+		os.Exit(1)
+	}
+
 	logger.Info("API server initialized successfully")
 	
 	// Start health check routine

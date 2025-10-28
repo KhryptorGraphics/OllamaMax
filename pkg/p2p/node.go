@@ -94,13 +94,13 @@ func NewBasicNode(id, address string, config *NodeConfig) *BasicNode {
 
 	// Initialize metrics
 	connectedPeers := prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "p2p_connected_peers",
+		Name: "ollamamax_p2p_connected_peers",
 		Help: "Number of currently connected peers",
 	})
 
 	messagesSent := prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "p2p_messages_sent_total",
+			Name: "ollamamax_p2p_messages_sent_total",
 			Help: "Total number of messages sent by topic",
 		},
 		[]string{"topic"},
@@ -108,7 +108,7 @@ func NewBasicNode(id, address string, config *NodeConfig) *BasicNode {
 
 	messagesReceived := prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "p2p_messages_received_total",
+			Name: "ollamamax_p2p_messages_received_total",
 			Help: "Total number of messages received by topic",
 		},
 		[]string{"topic"},
@@ -116,7 +116,7 @@ func NewBasicNode(id, address string, config *NodeConfig) *BasicNode {
 
 	bytesSent := prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "p2p_bytes_sent_total",
+			Name: "ollamamax_p2p_bytes_sent_total",
 			Help: "Total number of bytes sent by topic",
 		},
 		[]string{"topic"},
@@ -124,7 +124,7 @@ func NewBasicNode(id, address string, config *NodeConfig) *BasicNode {
 
 	bytesReceived := prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "p2p_bytes_received_total",
+			Name: "ollamamax_p2p_bytes_received_total",
 			Help: "Total number of bytes received by topic",
 		},
 		[]string{"topic"},
@@ -139,13 +139,13 @@ func NewBasicNode(id, address string, config *NodeConfig) *BasicNode {
 	)
 
 	messageLatency := prometheus.NewHistogram(prometheus.HistogramOpts{
-		Name:    "p2p_message_latency_seconds",
+		Name:    "ollamamax_p2p_message_latency_seconds",
 		Help:    "Message processing latency in seconds",
 		Buckets: []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0},
 	})
 
 	connectionErrors := prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "p2p_connection_errors_total",
+		Name: "ollamamax_p2p_connection_errors_total",
 		Help: "Total number of connection errors",
 	})
 

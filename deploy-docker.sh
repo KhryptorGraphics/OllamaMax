@@ -186,8 +186,8 @@ case "$DEPLOYMENT_TYPE" in
         
         log_success "GPU deployment completed!"
         log_info "Services available at:"
-        log_info "  - Web Interface: http://localhost:13100"
-        log_info "  - API Server: http://localhost:13100/api"
+        log_info "  - Web Interface: http://localhost:13000"
+        log_info "  - API Server: http://localhost:13000/api"
         log_info "  - Ollama Primary (GPU): http://localhost:13000"
         log_info "  - Ollama Worker 2 (GPU): http://localhost:13001"
         log_info "  - Ollama Worker 3 (GPU): http://localhost:13002"
@@ -211,8 +211,8 @@ case "$DEPLOYMENT_TYPE" in
         
         log_success "CPU deployment completed!"
         log_info "Services available at:"
-        log_info "  - Web Interface: http://localhost:13100"
-        log_info "  - API Server: http://localhost:13100/api"
+        log_info "  - Web Interface: http://localhost:13000"
+        log_info "  - API Server: http://localhost:13000/api"
         log_info "  - Ollama Primary (CPU): http://localhost:13000"
         log_info "  - Ollama Worker 2 (CPU): http://localhost:13001"
         log_info "  - Ollama Worker 3 (CPU): http://localhost:13002"
@@ -236,8 +236,8 @@ case "$DEPLOYMENT_TYPE" in
         
         log_success "Development deployment completed!"
         log_info "Services available at:"
-        log_info "  - Web Interface: http://localhost:13100"
-        log_info "  - API Server: http://localhost:13100/api"
+        log_info "  - Web Interface: http://localhost:13000"
+        log_info "  - API Server: http://localhost:13000/api"
         log_info "  - MinIO Console: http://localhost:13191 (dev/dev_minio_pass)"
         log_warning "Note: Ollama workers should be started manually on ports 13000, 13001, 13002"
         ;;

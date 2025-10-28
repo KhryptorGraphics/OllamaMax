@@ -307,7 +307,7 @@ if [ $FAILED_TESTS -eq 0 ]; then
     echo ""
     echo "Next steps:"
     echo "  1. Start services: docker-compose up -d"
-    echo "  2. Check metrics: curl http://localhost:13100/metrics"
+    echo "  2. Check metrics: curl http://localhost:13000/metrics"
     echo "  3. Open Grafana: http://localhost:3001 (admin/admin_password)"
     echo "  4. View Prometheus: http://localhost:9090"
     exit 0

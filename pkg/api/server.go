@@ -60,7 +60,7 @@ func NewServer(cfg *config.Config, db *database.DatabaseManager, logger *slog.Lo
 	// Define Prometheus metrics
 	httpRequestsTotal := prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "http_requests_total",
+			Name: "ollamamax_api_http_requests_total",
 			Help: "Total number of HTTP requests",
 		},
 		[]string{"method", "endpoint", "status"},
@@ -68,7 +68,7 @@ func NewServer(cfg *config.Config, db *database.DatabaseManager, logger *slog.Lo
 
 	httpRequestDuration := prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
-			Name:    "http_request_duration_seconds",
+			Name:    "ollamamax_api_http_request_duration_seconds",
 			Help:    "HTTP request duration in seconds",
 			Buckets: prometheus.DefBuckets,
 		},
@@ -77,7 +77,7 @@ func NewServer(cfg *config.Config, db *database.DatabaseManager, logger *slog.Lo
 
 	httpRequestsInFlight := prometheus.NewGauge(
 		prometheus.GaugeOpts{
-			Name: "http_requests_in_flight",
+			Name: "ollamamax_api_http_requests_in_flight",
 			Help: "Number of HTTP requests currently being processed",
 		},
 	)
@@ -94,16 +94,11 @@ func NewServer(cfg *config.Config, db *database.DatabaseManager, logger *slog.Lo
 	}
 
 	// Register database metrics to the main registry
-	if err := db.RegisterTo(registry); err != nil {
-		logger.Warn("Failed to register database metrics", "error", err)
+	if db != nil {
+		if err := db.RegisterTo(registry); err != nil {
+			logger.Warn("Failed to register database metrics", "error", err)
+		}
 	}
-
-	// Note: When P2P node is available, register its metrics:
-	// if p2pNode != nil {
-	//     if err := p2pNode.RegisterTo(registry); err != nil {
-	//         logger.Warn("Failed to register P2P metrics", "error", err)
-	//     }
-	// }
 
 	// Note: When load balancer is available, create it with the shared registry:
 	// loadBalancer := distributed.NewRoundRobinBalancerWithRegistry(registry)
@@ -163,6 +158,19 @@ func NewServer(cfg *config.Config, db *database.DatabaseManager, logger *slog.Lo
 	}
 
 	return server, nil
+}
+
+// RegisterP2PMetrics registers P2P node metrics to the server's Prometheus registry
+// This should be called after server creation if a P2P node is available
+func (s *Server) RegisterP2PMetrics(p2pNode interface {
+	RegisterTo(prometheus.Registerer) error
+}) error {
+	if err := p2pNode.RegisterTo(s.registry); err != nil {
+		s.logger.Warn("Failed to register P2P metrics", "error", err)
+		return fmt.Errorf("failed to register P2P metrics: %w", err)
+	}
+	s.logger.Info("P2P metrics registered successfully")
+	return nil
 }
 
 // Start starts the API server

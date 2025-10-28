@@ -14,7 +14,7 @@ NC='\033[0m' # No Color
 
 # Configuration
 WEB_INTERFACE_URL="http://localhost:8080"
-API_SERVER_URL="http://localhost:13100"
+API_SERVER_URL="http://localhost:13000"
 WORKERS=("localhost:13000" "localhost:13001" "localhost:13002")
 
 echo -e "${BLUE}🚀 OllamaMax Comprehensive Testing Suite${NC}"
@@ -61,7 +61,7 @@ run_preflight_checks() {
         echo -e "\n${RED}❌ Critical services are not running. Please start the required services.${NC}"
         echo -e "${YELLOW}Required services:${NC}"
         echo -e "  - Web Interface: python3 -m http.server 8080 (in web-interface/)"
-        echo -e "  - API Server: node api-server/server.js (port 13100)"
+        echo -e "  - API Server: node api-server/server.js (port 13000)"
         exit 1
     fi
     

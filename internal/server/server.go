@@ -78,7 +78,7 @@ func NewServer(cfg *config.Config, db *database.DatabaseManager, logger *slog.Lo
 	// HTTP requests total counter
 	metrics.httpRequestsTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "http_requests_total",
+			Name: "ollamamax_api_http_requests_total",
 			Help: "Total number of HTTP requests",
 		},
 		[]string{"method", "path", "status"},
@@ -87,7 +87,7 @@ func NewServer(cfg *config.Config, db *database.DatabaseManager, logger *slog.Lo
 	// HTTP request duration histogram
 	metrics.httpRequestDuration = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
-			Name:    "http_request_duration_seconds",
+			Name:    "ollamamax_api_http_request_duration_seconds",
 			Help:    "HTTP request duration in seconds",
 			Buckets: prometheus.DefBuckets,
 		},
@@ -97,7 +97,7 @@ func NewServer(cfg *config.Config, db *database.DatabaseManager, logger *slog.Lo
 	// HTTP requests in flight gauge
 	metrics.httpRequestsInFlight = prometheus.NewGauge(
 		prometheus.GaugeOpts{
-			Name: "http_requests_in_flight",
+			Name: "ollamamax_api_http_requests_in_flight",
 			Help: "Current number of HTTP requests being processed",
 		},
 	)

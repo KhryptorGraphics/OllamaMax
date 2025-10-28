@@ -168,7 +168,7 @@ if ! check_service "http://localhost:8080" "Web Interface" 5; then
 fi
 
 # API Server
-if ! check_service "http://localhost:13100/health" "API Server" 5; then
+if ! check_service "http://localhost:13000/health" "API Server" 5; then
     ((failed_services++))
     echo -e "   ${YELLOW}Start with: node api-server/server.js${NC}"
 fi

@@ -7,6 +7,7 @@ const WebSocket = require('ws');
 const http = require('http');
 const express = require('express');
 const cors = require('cors');
+const swaggerUi = require('swagger-ui-express');
 const Redis = require('ioredis');
 // const { OpenRouterClient } = require('../pkg/openrouter/client.js'); // Temporarily disabled due to ES module issues
 const AuthSystem = require('./auth-system.js');
@@ -16,7 +17,7 @@ app.use(cors());
 app.use(express.json());
 
 // Configuration
-const PORT = process.env.PORT || 13100;
+const PORT = process.env.PORT || 13000;
 const REDIS_HOST = process.env.REDIS_HOST || 'localhost';
 const REDIS_PORT = process.env.REDIS_PORT || 6379;
 const REDIS_PASSWORD = process.env.REDIS_PASSWORD || 'ollama_redis_pass';
@@ -33,6 +34,86 @@ const redis = new Redis({
 
 // Initialize Authentication System
 const auth = new AuthSystem();
+
+// OpenAPI Specification
+const openapiSpec = {
+  openapi: "3.0.0",
+  info: {
+    title: "OllamaMax Distributed API",
+    version: "1.0.0",
+    description: "Enterprise-grade distributed AI inference platform with WebSocket support and load balancing"
+  },
+  servers: [
+    {
+      url: `http://localhost:${PORT}`,
+      description: "Local development server"
+    }
+  ],
+  paths: {
+    "/health": {
+      get: {
+        summary: "Health Check",
+        description: "Get system health status",
+        responses: {
+          "200": {
+            description: "System is healthy",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    status: { type: "string" },
+                    nodes: { type: "number" },
+                    totalNodes: { type: "number" },
+                    queueLength: { type: "number" },
+                    uptime: { type: "number" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/nodes": {
+      get: {
+        summary: "Get Nodes Status",
+        description: "Get status of all cluster nodes",
+        responses: {
+          "200": {
+            description: "List of nodes",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    nodes: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          id: { type: "string" },
+                          name: { type: "string" },
+                          status: { type: "string" },
+                          load: { type: "number" },
+                          memory: { type: "number" },
+                          requestsPerSecond: { type: "number" },
+                          queue: { type: "number" },
+                          lastCheck: { type: "number" }
+                        }
+                      }
+                    },
+                    queueLength: { type: "number" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+};
 
 // Node registry
 class NodeRegistry {
@@ -445,11 +526,53 @@ app.post('/api/auth/test-email', async (req, res) => {
 
 // =================== END AUTHENTICATION ROUTES ===================
 
-// Create WebSocket server
-const wss = new WebSocket.Server({ server });
+// =================== OPENAPI DOCUMENTATION ROUTES ===================
+
+// Serve OpenAPI specification
+app.get('/openapi.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(JSON.stringify(openapiSpec, null, 2));
+});
+
+// Serve Swagger UI documentation
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(openapiSpec, {
+  customCss: `
+    .swagger-ui .topbar { display: none }
+    .swagger-ui .info .title { color: #2563eb }
+  `,
+  customSiteTitle: "OllamaMax API Documentation",
+  swaggerOptions: {
+    persistAuthorization: true,
+    displayRequestDuration: true,
+    docExpansion: 'list',
+    filter: true,
+    showExtensions: true,
+    showCommonExtensions: true
+  }
+}));
+
+// =================== END OPENAPI DOCUMENTATION ROUTES ===================
+
+// Create WebSocket server with noServer option for path gating
+const wss = new WebSocket.Server({ noServer: true });
+
+// WebSocket upgrade handler with path gating (SECURITY: only allow /chat path)
+server.on('upgrade', (request, socket, head) => {
+    const { pathname } = new URL(request.url, `http://${request.headers.host}`);
+
+    // Only allow WebSocket connections on /chat path
+    if (pathname === '/chat') {
+        wss.handleUpgrade(request, socket, head, (ws) => {
+            wss.emit('connection', ws, request);
+        });
+    } else {
+        console.log(`WebSocket connection rejected: invalid path ${pathname}`);
+        socket.destroy();
+    }
+});
 
 // WebSocket connection handler
-wss.on('connection', (ws) => {
+wss.on('connection', (ws, request) => {
     console.log('New WebSocket client connected');
     
     // Send initial node status
