@@ -10,154 +10,77 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/crypto/bcrypt"
 )
 
-// Prometheus metrics for query-level instrumentation
-var (
-	dbQueryDuration = promauto.NewHistogramVec(
-		prometheus.HistogramOpts{
-			Name:    "db_query_duration_seconds",
-			Help:    "Database query duration in seconds",
-			Buckets: prometheus.ExponentialBuckets(0.001, 2, 10), // 1ms to ~1s
-		},
-		[]string{"operation", "table"},
-	)
-
-	dbQueriesTotal = promauto.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "db_queries_total",
-			Help: "Total number of database queries executed",
-		},
-		[]string{"operation", "table", "status"},
-	)
-
-	cacheHitsTotal = promauto.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "cache_hits_total",
-			Help: "Total number of cache hits",
-		},
-		[]string{"cache_type", "table"},
-	)
-
-	cacheMissesTotal = promauto.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "cache_misses_total",
-			Help: "Total number of cache misses",
-		},
-		[]string{"cache_type", "table"},
-	)
-
-	cacheOperationDuration = promauto.NewHistogramVec(
-		prometheus.HistogramOpts{
-			Name:    "cache_operation_duration_seconds",
-			Help:    "Cache operation duration in seconds",
-			Buckets: prometheus.ExponentialBuckets(0.0001, 2, 10), // 0.1ms to ~100ms
-		},
-		[]string{"operation", "cache_type", "table"},
-	)
-)
-
-// recordQueryMetrics wraps a query execution with metrics recording
-func recordQueryMetrics(operation, table string, queryFunc func() error) error {
-	start := time.Now()
-	err := queryFunc()
-	duration := time.Since(start).Seconds()
-
-	// Record duration histogram
-	dbQueryDuration.WithLabelValues(operation, table).Observe(duration)
-
-	// Record counter with status
-	status := "success"
-	if err != nil {
-		status = "error"
-	}
-	dbQueriesTotal.WithLabelValues(operation, table, status).Inc()
-
-	return err
-}
-
-// recordCacheOperation wraps a cache operation with metrics recording
-func recordCacheOperation(operation, cacheType, table string, cacheFunc func() error) error {
-	start := time.Now()
-	err := cacheFunc()
-	duration := time.Since(start).Seconds()
-
-	// Record duration histogram
-	cacheOperationDuration.WithLabelValues(operation, cacheType, table).Observe(duration)
-
-	return err
-}
-
-// recordCacheHit increments cache hit counter
-func recordCacheHit(cacheType, table string) {
-	cacheHitsTotal.WithLabelValues(cacheType, table).Inc()
-}
-
-// recordCacheMiss increments cache miss counter
-func recordCacheMiss(cacheType, table string) {
-	cacheMissesTotal.WithLabelValues(cacheType, table).Inc()
-}
+// All metrics are now managed through DatabaseManager instead of promauto
+// This ensures all metrics are exposed via the main /metrics endpoint
 
 // Repository interfaces for better testability and abstraction
 
 // ModelRepository handles model-related database operations
 type ModelRepository struct {
-	db     *sqlx.DB
-	redis  *redis.Client
-	logger *slog.Logger
+	db      *sqlx.DB
+	redis   *redis.Client
+	logger  *slog.Logger
+	manager *DatabaseManager
 }
 
 // NodeRepository handles node-related database operations
 type NodeRepository struct {
-	db     *sqlx.DB
-	redis  *redis.Client
-	logger *slog.Logger
+	db      *sqlx.DB
+	redis   *redis.Client
+	logger  *slog.Logger
+	manager *DatabaseManager
 }
 
 // UserRepository handles user-related database operations
 type UserRepository struct {
-	db     *sqlx.DB
-	redis  *redis.Client
-	logger *slog.Logger
+	db      *sqlx.DB
+	redis   *redis.Client
+	logger  *slog.Logger
+	manager *DatabaseManager
 }
 
 // SessionRepository handles session-related database operations
 type SessionRepository struct {
-	db     *sqlx.DB
-	redis  *redis.Client
-	logger *slog.Logger
+	db      *sqlx.DB
+	redis   *redis.Client
+	logger  *slog.Logger
+	manager *DatabaseManager
 }
 
 // InferenceRepository handles inference-related database operations
 type InferenceRepository struct {
-	db     *sqlx.DB
-	redis  *redis.Client
-	logger *slog.Logger
+	db      *sqlx.DB
+	redis   *redis.Client
+	logger  *slog.Logger
+	manager *DatabaseManager
 }
 
 // AuditRepository handles audit log operations
 type AuditRepository struct {
-	db     *sqlx.DB
-	logger *slog.Logger
+	db      *sqlx.DB
+	logger  *slog.Logger
+	manager *DatabaseManager
 }
 
 // ConfigRepository handles system configuration operations
 type ConfigRepository struct {
-	db     *sqlx.DB
-	redis  *redis.Client
-	logger *slog.Logger
+	db      *sqlx.DB
+	redis   *redis.Client
+	logger  *slog.Logger
+	manager *DatabaseManager
 }
 
 // NewModelRepository creates a new model repository
-func NewModelRepository(db *sqlx.DB, redis *redis.Client, logger *slog.Logger) *ModelRepository {
+func NewModelRepository(db *sqlx.DB, redis *redis.Client, logger *slog.Logger, manager *DatabaseManager) *ModelRepository {
 	return &ModelRepository{
-		db:     db,
-		redis:  redis,
-		logger: logger,
+		db:      db,
+		redis:   redis,
+		logger:  logger,
+		manager: manager,
 	}
 }
 
@@ -180,10 +103,11 @@ func (r *ModelRepository) Create(ctx context.Context, model *Model) error {
 		        :created_at, :updated_at)`
 
 	// Wrap query execution with metrics
-	err := recordQueryMetrics("create", "models", func() error {
-		_, err := r.db.NamedExecContext(ctx, query, model)
-		return err
-	})
+	start := time.Now()
+	_, err := r.db.NamedExecContext(ctx, query, model)
+	if r.manager != nil {
+		r.manager.RecordQuery("create", "models", time.Since(start))
+	}
 
 	if err != nil {
 		return fmt.Errorf("failed to create model: %w", err)
@@ -196,9 +120,11 @@ func (r *ModelRepository) Create(ctx context.Context, model *Model) error {
 		if err != nil {
 			r.logger.Warn("Failed to marshal model for cache", "error", err, "model_id", model.ID)
 		} else {
-			recordCacheOperation("set", "redis", "models", func() error {
-				return r.redis.Set(ctx, key, modelJSON, time.Hour).Err()
-			})
+			cacheStart := time.Now()
+			r.redis.Set(ctx, key, modelJSON, time.Hour)
+			if r.manager != nil {
+				r.manager.RecordCacheHit(time.Since(cacheStart))
+			}
 		}
 	}
 
@@ -209,34 +135,37 @@ func (r *ModelRepository) GetByID(ctx context.Context, id uuid.UUID) (*Model, er
 	// Try to get from cache first with metrics
 	if r.redis != nil {
 		key := fmt.Sprintf("model:%s", id.String())
-		var modelJSON []byte
-		var cacheErr error
-
-		recordCacheOperation("get", "redis", "models", func() error {
-			result := r.redis.Get(ctx, key)
-			modelJSON, cacheErr = result.Bytes()
-			return cacheErr
-		})
+		cacheStart := time.Now()
+		modelJSON, cacheErr := r.redis.Get(ctx, key).Bytes()
+		duration := time.Since(cacheStart)
 
 		if cacheErr == nil {
 			// Cache hit
-			recordCacheHit("redis", "models")
+			if r.manager != nil {
+				r.manager.RecordCacheHit(duration)
+				r.manager.RecordRedisCommand("get", duration)
+			}
 			var model Model
 			if err := json.Unmarshal(modelJSON, &model); err == nil {
 				return &model, nil
 			}
 		} else if cacheErr == redis.Nil {
 			// Cache miss
-			recordCacheMiss("redis", "models")
+			if r.manager != nil {
+				r.manager.RecordCacheMiss(duration)
+				r.manager.RecordRedisCommand("get", duration)
+			}
 		}
 	}
 
 	var model Model
 	query := `SELECT * FROM models WHERE id = $1`
 
-	err := recordQueryMetrics("get", "models", func() error {
-		return r.db.GetContext(ctx, &model, query, id)
-	})
+	start := time.Now()
+	err := r.db.GetContext(ctx, &model, query, id)
+	if r.manager != nil {
+		r.manager.RecordQuery("get", "models", time.Since(start))
+	}
 
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -250,9 +179,11 @@ func (r *ModelRepository) GetByID(ctx context.Context, id uuid.UUID) (*Model, er
 		key := fmt.Sprintf("model:%s", id.String())
 		modelJSON, err := json.Marshal(model)
 		if err == nil {
-			recordCacheOperation("set", "redis", "models", func() error {
-				return r.redis.Set(ctx, key, modelJSON, time.Hour).Err()
-			})
+			cacheStart := time.Now()
+			r.redis.Set(ctx, key, modelJSON, time.Hour)
+			if r.manager != nil {
+				r.manager.RecordRedisCommand("set", time.Since(cacheStart))
+			}
 		}
 	}
 
@@ -263,9 +194,11 @@ func (r *ModelRepository) GetByName(ctx context.Context, name string) (*Model, e
 	var model Model
 	query := `SELECT * FROM models WHERE name = $1 ORDER BY created_at DESC LIMIT 1`
 
-	err := recordQueryMetrics("get", "models", func() error {
-		return r.db.GetContext(ctx, &model, query, name)
-	})
+	start := time.Now()
+	err := r.db.GetContext(ctx, &model, query, name)
+	if r.manager != nil {
+		r.manager.RecordQuery("get", "models", time.Since(start))
+	}
 
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -314,11 +247,12 @@ func (r *ModelRepository) List(ctx context.Context, filters *ModelFilters) ([]*M
 	var models []*Model
 	var rows *sqlx.Rows
 
-	err := recordQueryMetrics("list", "models", func() error {
-		var err error
-		rows, err = r.db.NamedQueryContext(ctx, query, args)
-		return err
-	})
+	start := time.Now()
+	var err error
+	rows, err = r.db.NamedQueryContext(ctx, query, args)
+	if r.manager != nil {
+		r.manager.RecordQuery("list", "models", time.Since(start))
+	}
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to list models: %w", err)
@@ -349,12 +283,11 @@ func (r *ModelRepository) Update(ctx context.Context, model *Model) error {
 		    parameters = :parameters, status = :status, updated_at = :updated_at
 		WHERE id = :id`
 
-	var result sql.Result
-	err := recordQueryMetrics("update", "models", func() error {
-		var err error
-		result, err = r.db.NamedExecContext(ctx, query, model)
-		return err
-	})
+	start := time.Now()
+	result, err := r.db.NamedExecContext(ctx, query, model)
+	if r.manager != nil {
+		r.manager.RecordQuery("update", "models", time.Since(start))
+	}
 
 	if err != nil {
 		return fmt.Errorf("failed to update model: %w", err)
@@ -372,9 +305,11 @@ func (r *ModelRepository) Update(ctx context.Context, model *Model) error {
 	// Invalidate cache with metrics
 	if r.redis != nil {
 		key := fmt.Sprintf("model:%s", model.ID.String())
-		recordCacheOperation("delete", "redis", "models", func() error {
-			return r.redis.Del(ctx, key).Err()
-		})
+		cacheStart := time.Now()
+		r.redis.Del(ctx, key)
+		if r.manager != nil {
+			r.manager.RecordRedisCommand("del", time.Since(cacheStart))
+		}
 	}
 
 	return nil
@@ -383,12 +318,11 @@ func (r *ModelRepository) Update(ctx context.Context, model *Model) error {
 func (r *ModelRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	query := `DELETE FROM models WHERE id = $1`
 
-	var result sql.Result
-	err := recordQueryMetrics("delete", "models", func() error {
-		var err error
-		result, err = r.db.ExecContext(ctx, query, id)
-		return err
-	})
+	start := time.Now()
+	result, err := r.db.ExecContext(ctx, query, id)
+	if r.manager != nil {
+		r.manager.RecordQuery("delete", "models", time.Since(start))
+	}
 
 	if err != nil {
 		return fmt.Errorf("failed to delete model: %w", err)
@@ -406,9 +340,11 @@ func (r *ModelRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	// Invalidate cache with metrics
 	if r.redis != nil {
 		key := fmt.Sprintf("model:%s", id.String())
-		recordCacheOperation("delete", "redis", "models", func() error {
-			return r.redis.Del(ctx, key).Err()
-		})
+		cacheStart := time.Now()
+		r.redis.Del(ctx, key)
+		if r.manager != nil {
+			r.manager.RecordRedisCommand("del", time.Since(cacheStart))
+		}
 	}
 
 	return nil
@@ -418,9 +354,11 @@ func (r *ModelRepository) GetReplicas(ctx context.Context, modelID uuid.UUID) ([
 	var replicas []*ModelReplica
 	query := `SELECT * FROM model_replicas WHERE model_id = $1 AND status = 'active' ORDER BY created_at`
 
-	err := recordQueryMetrics("get", "model_replicas", func() error {
-		return r.db.SelectContext(ctx, &replicas, query, modelID)
-	})
+	start := time.Now()
+	err := r.db.SelectContext(ctx, &replicas, query, modelID)
+	if r.manager != nil {
+		r.manager.RecordQuery("get", "model_replicas", time.Since(start))
+	}
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to get model replicas: %w", err)
@@ -430,11 +368,12 @@ func (r *ModelRepository) GetReplicas(ctx context.Context, modelID uuid.UUID) ([
 }
 
 // NewUserRepository creates a new user repository
-func NewUserRepository(db *sqlx.DB, redis *redis.Client, logger *slog.Logger) *UserRepository {
+func NewUserRepository(db *sqlx.DB, redis *redis.Client, logger *slog.Logger, manager *DatabaseManager) *UserRepository {
 	return &UserRepository{
-		db:     db,
-		redis:  redis,
-		logger: logger,
+		db:      db,
+		redis:   redis,
+		logger:  logger,
+		manager: manager,
 	}
 }
 
@@ -461,10 +400,11 @@ func (r *UserRepository) Create(ctx context.Context, user *User, password string
 		VALUES (:id, :username, :email, :password_hash, :roles, :permissions, :active, :metadata,
 		        :failed_login_attempts, :created_at, :updated_at)`
 
-	err = recordQueryMetrics("create", "users", func() error {
-		_, err := r.db.NamedExecContext(ctx, query, user)
-		return err
-	})
+	start := time.Now()
+	_, err = r.db.NamedExecContext(ctx, query, user)
+	if r.manager != nil {
+		r.manager.RecordQuery("create", "users", time.Since(start))
+	}
 
 	if err != nil {
 		return fmt.Errorf("failed to create user: %w", err)
@@ -477,9 +417,11 @@ func (r *UserRepository) GetByID(ctx context.Context, id uuid.UUID) (*User, erro
 	var user User
 	query := `SELECT * FROM users WHERE id = $1`
 
-	err := recordQueryMetrics("get", "users", func() error {
-		return r.db.GetContext(ctx, &user, query, id)
-	})
+	start := time.Now()
+	err := r.db.GetContext(ctx, &user, query, id)
+	if r.manager != nil {
+		r.manager.RecordQuery("get", "users", time.Since(start))
+	}
 
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -495,9 +437,11 @@ func (r *UserRepository) GetByUsername(ctx context.Context, username string) (*U
 	var user User
 	query := `SELECT * FROM users WHERE username = $1`
 
-	err := recordQueryMetrics("get", "users", func() error {
-		return r.db.GetContext(ctx, &user, query, username)
-	})
+	start := time.Now()
+	err := r.db.GetContext(ctx, &user, query, username)
+	if r.manager != nil {
+		r.manager.RecordQuery("authenticate", "users", time.Since(start))
+	}
 
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -536,25 +480,27 @@ func (r *UserRepository) Authenticate(ctx context.Context, username, password st
 func (r *UserRepository) incrementFailedAttempts(ctx context.Context, userID uuid.UUID) {
 	query := `UPDATE users SET failed_login_attempts = failed_login_attempts + 1 WHERE id = $1`
 
-	recordQueryMetrics("update", "users", func() error {
-		_, err := r.db.ExecContext(ctx, query, userID)
-		if err != nil {
-			r.logger.Error("Failed to increment failed login attempts", "error", err, "user_id", userID)
-		}
-		return err
-	})
+	start := time.Now()
+	_, err := r.db.ExecContext(ctx, query, userID)
+	if r.manager != nil {
+		r.manager.RecordQuery("update", "users", time.Since(start))
+	}
+	if err != nil {
+		r.logger.Error("Failed to increment failed login attempts", "error", err, "user_id", userID)
+	}
 }
 
 func (r *UserRepository) resetFailedAttempts(ctx context.Context, userID uuid.UUID) {
 	query := `UPDATE users SET failed_login_attempts = 0 WHERE id = $1`
 
-	recordQueryMetrics("update", "users", func() error {
-		_, err := r.db.ExecContext(ctx, query, userID)
-		if err != nil {
-			r.logger.Error("Failed to reset failed login attempts", "error", err, "user_id", userID)
-		}
-		return err
-	})
+	start := time.Now()
+	_, err := r.db.ExecContext(ctx, query, userID)
+	if r.manager != nil {
+		r.manager.RecordQuery("update", "users", time.Since(start))
+	}
+	if err != nil {
+		r.logger.Error("Failed to reset failed login attempts", "error", err, "user_id", userID)
+	}
 }
 
 func (r *UserRepository) Update(ctx context.Context, user *User) error {
@@ -570,12 +516,11 @@ func (r *UserRepository) Update(ctx context.Context, user *User) error {
 		    active = :active, metadata = :metadata, updated_at = :updated_at
 		WHERE id = :id`
 
-	var result sql.Result
-	err := recordQueryMetrics("update", "users", func() error {
-		var err error
-		result, err = r.db.NamedExecContext(ctx, query, user)
-		return err
-	})
+	start := time.Now()
+	result, err := r.db.NamedExecContext(ctx, query, user)
+	if r.manager != nil {
+		r.manager.RecordQuery("update", "users", time.Since(start))
+	}
 
 	if err != nil {
 		return fmt.Errorf("failed to update user: %w", err)
@@ -594,32 +539,35 @@ func (r *UserRepository) Update(ctx context.Context, user *User) error {
 }
 
 // NewSessionRepository creates a new session repository
-func NewSessionRepository(db *sqlx.DB, redis *redis.Client, logger *slog.Logger) *SessionRepository {
+func NewSessionRepository(db *sqlx.DB, redis *redis.Client, logger *slog.Logger, manager *DatabaseManager) *SessionRepository {
 	return &SessionRepository{
-		db:     db,
-		redis:  redis,
-		logger: logger,
+		db:      db,
+		redis:   redis,
+		logger:  logger,
+		manager: manager,
 	}
 }
 
 // Session repository methods would go here...
 
 // NewInferenceRepository creates a new inference repository
-func NewInferenceRepository(db *sqlx.DB, redis *redis.Client, logger *slog.Logger) *InferenceRepository {
+func NewInferenceRepository(db *sqlx.DB, redis *redis.Client, logger *slog.Logger, manager *DatabaseManager) *InferenceRepository {
 	return &InferenceRepository{
-		db:     db,
-		redis:  redis,
-		logger: logger,
+		db:      db,
+		redis:   redis,
+		logger:  logger,
+		manager: manager,
 	}
 }
 
 // Inference repository methods would go here...
 
 // NewAuditRepository creates a new audit repository
-func NewAuditRepository(db *sqlx.DB, logger *slog.Logger) *AuditRepository {
+func NewAuditRepository(db *sqlx.DB, logger *slog.Logger, manager *DatabaseManager) *AuditRepository {
 	return &AuditRepository{
-		db:     db,
-		logger: logger,
+		db:      db,
+		logger:  logger,
+		manager: manager,
 	}
 }
 
@@ -634,10 +582,11 @@ func (r *AuditRepository) Create(ctx context.Context, entry *AuditLogEntry) erro
 		VALUES (:id, :table_name, :operation, :row_id, :old_values, :new_values,
 		        :user_id, :ip_address, :user_agent, :timestamp)`
 
-	err := recordQueryMetrics("create", "audit_log_entries", func() error {
-		_, err := r.db.NamedExecContext(ctx, query, entry)
-		return err
-	})
+	start := time.Now()
+	_, err := r.db.NamedExecContext(ctx, query, entry)
+	if r.manager != nil {
+		r.manager.RecordQuery("create", "audit_log_entries", time.Since(start))
+	}
 
 	if err != nil {
 		return fmt.Errorf("failed to create audit log entry: %w", err)
@@ -647,20 +596,22 @@ func (r *AuditRepository) Create(ctx context.Context, entry *AuditLogEntry) erro
 }
 
 // NewConfigRepository creates a new config repository
-func NewConfigRepository(db *sqlx.DB, redis *redis.Client, logger *slog.Logger) *ConfigRepository {
+func NewConfigRepository(db *sqlx.DB, redis *redis.Client, logger *slog.Logger, manager *DatabaseManager) *ConfigRepository {
 	return &ConfigRepository{
-		db:     db,
-		redis:  redis,
-		logger: logger,
+		db:      db,
+		redis:   redis,
+		logger:  logger,
+		manager: manager,
 	}
 }
 
 // NewNodeRepository creates a new node repository
-func NewNodeRepository(db *sqlx.DB, redis *redis.Client, logger *slog.Logger) *NodeRepository {
+func NewNodeRepository(db *sqlx.DB, redis *redis.Client, logger *slog.Logger, manager *DatabaseManager) *NodeRepository {
 	return &NodeRepository{
-		db:     db,
-		redis:  redis,
-		logger: logger,
+		db:      db,
+		redis:   redis,
+		logger:  logger,
+		manager: manager,
 	}
 }
 
@@ -699,11 +650,12 @@ func (r *NodeRepository) List(ctx context.Context, filters *NodeFilters) ([]*Nod
 	var nodes []*Node
 	var rows *sqlx.Rows
 
-	err := recordQueryMetrics("list", "nodes", func() error {
-		var err error
-		rows, err = r.db.NamedQueryContext(ctx, query, args)
-		return err
-	})
+	start := time.Now()
+	var err error
+	rows, err = r.db.NamedQueryContext(ctx, query, args)
+	if r.manager != nil {
+		r.manager.RecordQuery("list", "nodes", time.Since(start))
+	}
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to list nodes: %w", err)
@@ -725,9 +677,11 @@ func (r *NodeRepository) GetByID(ctx context.Context, id uuid.UUID) (*Node, erro
 	var node Node
 	query := `SELECT * FROM nodes WHERE id = $1`
 
-	err := recordQueryMetrics("get", "nodes", func() error {
-		return r.db.GetContext(ctx, &node, query, id)
-	})
+	start := time.Now()
+	err := r.db.GetContext(ctx, &node, query, id)
+	if r.manager != nil {
+		r.manager.RecordQuery("get", "nodes", time.Since(start))
+	}
 
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -748,10 +702,11 @@ func (r *NodeRepository) Create(ctx context.Context, node *Node) error {
 		INSERT INTO nodes (id, name, url, region, status, capabilities, metrics, metadata, created_at, updated_at)
 		VALUES (:id, :name, :url, :region, :status, :capabilities, :metrics, :metadata, :created_at, :updated_at)`
 
-	err := recordQueryMetrics("create", "nodes", func() error {
-		_, err := r.db.NamedExecContext(ctx, query, node)
-		return err
-	})
+	start := time.Now()
+	_, err := r.db.NamedExecContext(ctx, query, node)
+	if r.manager != nil {
+		r.manager.RecordQuery("create", "nodes", time.Since(start))
+	}
 
 	if err != nil {
 		return fmt.Errorf("failed to create node: %w", err)
@@ -769,12 +724,11 @@ func (r *NodeRepository) Update(ctx context.Context, node *Node) error {
 		    capabilities = :capabilities, metrics = :metrics, metadata = :metadata, updated_at = :updated_at
 		WHERE id = :id`
 
-	var result sql.Result
-	err := recordQueryMetrics("update", "nodes", func() error {
-		var err error
-		result, err = r.db.NamedExecContext(ctx, query, node)
-		return err
-	})
+	start := time.Now()
+	result, err := r.db.NamedExecContext(ctx, query, node)
+	if r.manager != nil {
+		r.manager.RecordQuery("update", "nodes", time.Since(start))
+	}
 
 	if err != nil {
 		return fmt.Errorf("failed to update node: %w", err)
@@ -795,12 +749,11 @@ func (r *NodeRepository) Update(ctx context.Context, node *Node) error {
 func (r *NodeRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	query := `DELETE FROM nodes WHERE id = $1`
 
-	var result sql.Result
-	err := recordQueryMetrics("delete", "nodes", func() error {
-		var err error
-		result, err = r.db.ExecContext(ctx, query, id)
-		return err
-	})
+	start := time.Now()
+	result, err := r.db.ExecContext(ctx, query, id)
+	if r.manager != nil {
+		r.manager.RecordQuery("delete", "nodes", time.Since(start))
+	}
 
 	if err != nil {
 		return fmt.Errorf("failed to delete node: %w", err)

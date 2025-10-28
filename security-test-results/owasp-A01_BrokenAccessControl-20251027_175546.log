@@ -1,0 +1,5 @@
+# github.com/khryptorgraphics/ollamamax/ollama-distributed/tests/security
+pkg/p2p/messaging/message_router.go:12:2: no required module provides package github.com/ollama-distributed/pkg/p2p/host; to add it:
+	go get github.com/ollama-distributed/pkg/p2p/host
+FAIL	github.com/khryptorgraphics/ollamamax/ollama-distributed/tests/security [setup failed]
+FAIL

@@ -77,8 +77,9 @@ services:
     image: redis:7-alpine
     container_name: ollamacron-redis
     restart: unless-stopped
-    ports:
-      - "6379:6379"
+    # SECURITY: Removed external port exposure - use Docker network only
+    expose:
+      - "6379"
     volumes:
       - redis-data:/data
     command: redis-server --appendonly yes

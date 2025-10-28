@@ -285,7 +285,9 @@ else
     "module_4_completion": "100%",
     "module_5_completion": "100%",
     "full_program_completion": "100%",
-    "certification_completion": "85%"
+    "certification_completion": "85%",
+    "estimated": true,
+    "note": "Completion rates are static placeholders. Set INCLUDE_PLACEHOLDER_COMPLETION=0 to exclude."
   },
   "performance_metrics": {
     "avg_module_execution_time": "5m",
@@ -302,7 +304,9 @@ else
     "content_quality": "4.7/5",
     "ease_of_use": "4.5/5",
     "practical_value": "4.8/5",
-    "nps_score": "55"
+    "nps_score": "55",
+    "estimated": true,
+    "note": "Satisfaction metrics are static placeholders. Set INCLUDE_PLACEHOLDER_SATISFACTION=0 to exclude."
   }
 }
 EOF

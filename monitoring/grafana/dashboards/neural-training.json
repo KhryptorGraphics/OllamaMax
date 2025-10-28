@@ -1,0 +1,120 @@
+{
+  "dashboard": {
+    "title": "Neural Training Pipeline",
+    "uid": "neural-training",
+    "tags": ["ml", "neural", "training"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Training Status Overview",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "sum(ml_training_active)",
+            "legendFormat": "Active Training Jobs"
+          }
+        ],
+        "gridPos": {"x": 0, "y": 0, "w": 6, "h": 4}
+      },
+      {
+        "id": 2,
+        "title": "Model Accuracy Over Time",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "ml_model_accuracy{model='lstm'}",
+            "legendFormat": "LSTM"
+          },
+          {
+            "expr": "ml_model_accuracy{model='random_forest'}",
+            "legendFormat": "Random Forest"
+          },
+          {
+            "expr": "ml_model_accuracy{model='predictive_scaling'}",
+            "legendFormat": "Predictive Scaling"
+          }
+        ],
+        "gridPos": {"x": 6, "y": 0, "w": 18, "h": 8}
+      },
+      {
+        "id": 3,
+        "title": "Prediction Performance",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(ml_predictions_total[5m])",
+            "legendFormat": "Predictions/sec"
+          },
+          {
+            "expr": "ml_prediction_confidence",
+            "legendFormat": "Confidence"
+          }
+        ],
+        "gridPos": {"x": 0, "y": 8, "w": 12, "h": 8}
+      },
+      {
+        "id": 4,
+        "title": "A/B Testing Results",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "ab_test_variant_performance",
+            "format": "table"
+          }
+        ],
+        "gridPos": {"x": 12, "y": 8, "w": 12, "h": 8}
+      },
+      {
+        "id": 5,
+        "title": "Agent Performance Metrics",
+        "type": "heatmap",
+        "targets": [
+          {
+            "expr": "ml_agent_performance_score",
+            "legendFormat": "{{agent_id}}"
+          }
+        ],
+        "gridPos": {"x": 0, "y": 16, "w": 12, "h": 8}
+      },
+      {
+        "id": 6,
+        "title": "Swarm Optimization Progress",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "swarm_efficiency_score",
+            "legendFormat": "Efficiency"
+          },
+          {
+            "expr": "ml_scaling_decisions_total",
+            "legendFormat": "ML Scaling Actions"
+          }
+        ],
+        "gridPos": {"x": 12, "y": 16, "w": 12, "h": 8}
+      },
+      {
+        "id": 7,
+        "title": "Neural Learning Metrics",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "neural_pattern_count",
+            "legendFormat": "Total Patterns"
+          },
+          {
+            "expr": "neural_learning_rate",
+            "legendFormat": "Learning Rate"
+          }
+        ],
+        "gridPos": {"x": 0, "y": 24, "w": 24, "h": 8}
+      }
+    ],
+    "refresh": "10s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "version": 1
+  }
+}

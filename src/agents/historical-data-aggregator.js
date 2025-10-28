@@ -55,25 +55,122 @@ class HistoricalDataAggregator {
   async collectRedisData(startTime, endTime) {
     const data = { agents: [], tasks: [], swarms: [], ml: [] };
 
-    for (const pattern of this.dataSources.redis) {
-      const keys = await this.redis.keys(pattern);
-      for (const key of keys.slice(0, 1000)) { // Limit to prevent overload
-        const type = key.split(':')[0];
-        const value = await this.redis.get(key);
+    // Safety cap on total processed records
+    const maxTotalRecords = parseInt(process.env.MAX_AGGREGATED_RECORDS) || 10000;
+    let totalProcessed = 0;
 
-        if (value) {
-          try {
-            const parsed = JSON.parse(value);
-            if (parsed.timestamp >= startTime && parsed.timestamp <= endTime) {
-              data[type === 'agent' ? 'agents' : type === 'task' ? 'tasks' : type === 'swarm' ? 'swarms' : 'ml'].push(parsed);
-            }
-          } catch (e) {
-            // Skip non-JSON values
-          }
+    for (const pattern of this.dataSources.redis) {
+      // Use SCAN instead of KEYS for non-blocking iteration
+      let cursor = '0';
+      let keys = [];
+
+      do {
+        const [newCursor, scannedKeys] = await this.redis.scan(
+          cursor,
+          'MATCH', pattern,
+          'COUNT', 500
+        );
+        cursor = newCursor;
+        keys.push(...scannedKeys);
+
+        // Safety check to avoid excessive memory
+        if (keys.length >= maxTotalRecords || totalProcessed >= maxTotalRecords) {
+          console.warn(`[Data Aggregator] Reached max records limit (${maxTotalRecords}), stopping scan`);
+          break;
         }
+      } while (cursor !== '0');
+
+      for (const key of keys) {
+        if (totalProcessed >= maxTotalRecords) break;
+        const type = key.split(':')[0];
+
+        // Detect key type and fetch accordingly
+        const keyType = await this.redis.type(key);
+        let value = null;
+
+        try {
+          switch (keyType) {
+            case 'string':
+              value = await this.redis.get(key);
+              if (value) {
+                const parsed = JSON.parse(value);
+                if (parsed.timestamp >= startTime && parsed.timestamp <= endTime) {
+                  data[type === 'agent' ? 'agents' : type === 'task' ? 'tasks' : type === 'swarm' ? 'swarms' : 'ml'].push({
+                    ...parsed,
+                    _key: key,
+                    _type: 'string'
+                  });
+                }
+              }
+              break;
+
+            case 'hash':
+              const hashData = await this.redis.hgetall(key);
+              if (hashData && Object.keys(hashData).length > 0) {
+                // Normalize hash to standard format
+                const normalized = {
+                  ...hashData,
+                  timestamp: parseInt(hashData.timestamp) || Date.now(),
+                  _key: key,
+                  _type: 'hash'
+                };
+                if (normalized.timestamp >= startTime && normalized.timestamp <= endTime) {
+                  data[type === 'agent' ? 'agents' : type === 'task' ? 'tasks' : type === 'swarm' ? 'swarms' : 'ml'].push(normalized);
+                }
+              }
+              break;
+
+            case 'list':
+              const listData = await this.redis.lrange(key, 0, 99); // Last 100 entries
+              for (const item of listData) {
+                try {
+                  const parsed = JSON.parse(item);
+                  if (parsed.timestamp >= startTime && parsed.timestamp <= endTime) {
+                    data[type === 'agent' ? 'agents' : type === 'task' ? 'tasks' : type === 'swarm' ? 'swarms' : 'ml'].push({
+                      ...parsed,
+                      _key: key,
+                      _type: 'list'
+                    });
+                  }
+                } catch (e) {
+                  // Skip invalid JSON
+                }
+              }
+              break;
+
+            case 'zset':
+              const zsetData = await this.redis.zrange(key, 0, 99, 'WITHSCORES');
+              for (let i = 0; i < zsetData.length; i += 2) {
+                try {
+                  const member = JSON.parse(zsetData[i]);
+                  const score = parseFloat(zsetData[i + 1]);
+                  if (score >= startTime && score <= endTime) {
+                    data[type === 'agent' ? 'agents' : type === 'task' ? 'tasks' : type === 'swarm' ? 'swarms' : 'ml'].push({
+                      ...member,
+                      timestamp: score,
+                      _key: key,
+                      _type: 'zset'
+                    });
+                  }
+                } catch (e) {
+                  // Skip invalid JSON
+                }
+              }
+              break;
+
+            default:
+              // Skip unsupported types (set, etc.)
+              break;
+          }
+        } catch (error) {
+          console.warn(`[Data Aggregator] Error processing key ${key}:`, error.message);
+        }
+
+        totalProcessed++;
       }
     }
 
+    console.log(`[Data Aggregator] Processed ${totalProcessed} total records`);
     return data;
   }
 
@@ -152,20 +249,68 @@ class HistoricalDataAggregator {
     return true;
   }
 
+  /**
+   * Map categorical fields to numeric encodings
+   */
+  encodeCategorical(value, fieldName) {
+    const encodings = {
+      complexity: { 'low': 0, 'medium': 1, 'high': 2 },
+      task_type: { 'general': 0, 'code': 1, 'research': 2, 'testing': 3, 'deployment': 4 },
+      specialization: { 'general': 0, 'coder': 1, 'researcher': 2, 'tester': 3, 'devops': 4 },
+      agent_type: { 'general-purpose': 0, 'coder': 1, 'researcher': 2, 'tester': 3 }
+    };
+
+    if (encodings[fieldName] && encodings[fieldName][value] !== undefined) {
+      return encodings[fieldName][value];
+    }
+
+    // For unknown categorical values, use one-hot encoding (simplified)
+    return typeof value === 'string' ? value.length % 10 : value;
+  }
+
+  /**
+   * Normalize numeric values to 0-1 range
+   */
+  normalize(value, field) {
+    const ranges = {
+      duration: [0, 10000],
+      load: [0, 10],
+      success_rate: [0, 1],
+      execution_time: [0, 10000],
+      cpu_usage: [0, 1],
+      memory_usage: [0, 1]
+    };
+
+    if (ranges[field]) {
+      const [min, max] = ranges[field];
+      return Math.max(0, Math.min(1, (value - min) / (max - min)));
+    }
+
+    return value;
+  }
+
   extractFeatures(dataPoint, modelType) {
     if (modelType === 'agent_selection') {
-      return [
-        dataPoint.metrics?.complexity || 0.5,
-        dataPoint.metrics?.agent_load || 0,
-        dataPoint.metrics?.success_rate || 0.5,
-        dataPoint.metrics?.avg_duration || 1000
-      ];
+      const metrics = dataPoint.metrics || {};
+
+      // Handle categorical fields with encoding
+      const complexity = this.encodeCategorical(metrics.complexity || 'medium', 'complexity') / 2;
+      const taskType = this.encodeCategorical(metrics.task_type || 'general', 'task_type') / 4;
+      const specialization = this.encodeCategorical(metrics.specialization || 'general', 'specialization') / 4;
+
+      // Normalize numeric fields
+      const agentLoad = this.normalize(metrics.agent_load || 0, 'load');
+      const successRate = this.normalize(metrics.success_rate || 0.5, 'success_rate');
+      const avgDuration = this.normalize(metrics.avg_duration || 1000, 'duration');
+
+      return [complexity, taskType, specialization, agentLoad, successRate, avgDuration];
     }
-    return [0, 0, 0, 0];
+    return [0, 0, 0, 0, 0, 0];
   }
 
   extractLabel(dataPoint, modelType) {
     if (modelType === 'agent_selection') {
+      // Binary label for success
       return dataPoint.metrics?.success ? 1 : 0;
     }
     return 0;

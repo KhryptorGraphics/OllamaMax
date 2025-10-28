@@ -252,10 +252,16 @@ done
 
 # Health check endpoints
 log_info "Testing health check endpoints..."
+
+# Detect actual mapped ports dynamically
+API_PORT=$(docker compose -f "${COMPOSE_FILE}" port ollamamax-api 13100 2>/dev/null | cut -d: -f2 || echo "13100")
+WEB_PORT=$(docker compose -f "${COMPOSE_FILE}" port ollamamax-web 8080 2>/dev/null | cut -d: -f2 || echo "8080")
+OLLAMA_PORT=$(docker compose -f "${COMPOSE_FILE}" port ollama-primary 11434 2>/dev/null | cut -d: -f2 || echo "11434")
+
 HEALTH_ENDPOINTS=(
-    "http://localhost:11434/api/tags"
-    "http://localhost:8080/health"
-    "http://localhost:3000/"
+    "http://localhost:${API_PORT}/health"
+    "http://localhost:${WEB_PORT}/"
+    "http://localhost:${OLLAMA_PORT}/api/tags"
 )
 
 HEALTHY_ENDPOINTS=0

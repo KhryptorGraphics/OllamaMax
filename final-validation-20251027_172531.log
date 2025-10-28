@@ -1,0 +1,20 @@
+[0;34m[INFO][0m ==================== OllamaMax Final Validation Orchestrator ====================
+[0;34m[INFO][0m Timestamp: 20251027_172531
+[0;34m[INFO][0m Log File: final-validation-20251027_172531.log
+[0;34m[INFO][0m Phases: all
+[0;34m[INFO][0m Skip: 
+[0;34m[INFO][0m Parallel Mode: false
+[0;34m[INFO][0m Dry Run: true
+[0;34m[INFO][0m =================================================================================
+[0;35m[PHASE][0m Pre-Validation Checks
+[0;34m[INFO][0m Checking required tools...
+[0;34m[INFO][0m Checking system resources...
+[0;34m[INFO][0m   CPU Cores: 96
+[0;34m[INFO][0m   Total Memory: 188GB
+[0;34m[INFO][0m   Available Memory: 94GB
+[0;34m[INFO][0m   Available Disk: 868GB
+[0;34m[INFO][0m Checking target system availability...
+[1;33m[WARNING][0m Target system not accessible at http://localhost:11434
+[1;33m[WARNING][0m Some tests may fail or be skipped
+[0;32m[SUCCESS][0m Pre-validation checks completed
+[0;34m[INFO][0m Dry run mode - showing what would be executed:

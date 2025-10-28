@@ -1,0 +1,235 @@
+version: '3.8'
+
+################################################################################
+# Chaos Engineering Test Cluster for OllamaMax
+#
+# Deploys a 5-node test cluster with network simulation capabilities
+# for comprehensive chaos engineering and fault injection testing
+################################################################################
+
+services:
+  # Test Node 1 (Leader-eligible)
+  chaos-node-1:
+    build:
+      context: ./ollama-distributed
+      dockerfile: Dockerfile
+    container_name: ollamamax-chaos-node-1
+    hostname: chaos-node-1
+    environment:
+      - NODE_ID=chaos-node-1
+      - CLUSTER_PEERS=chaos-node-2:11434,chaos-node-3:11434,chaos-node-4:11434,chaos-node-5:11434
+      - CONSENSUS_ALGORITHM=raft
+      - MIN_REPLICAS=3
+      - P2P_PORT=11434
+      - METRICS_PORT=9100
+      - ENABLE_CHAOS_TESTING=true
+    ports:
+      - "11434:11434"  # Primary node API
+      - "9100:9100"    # Metrics
+    networks:
+      chaos_network:
+        ipv4_address: 172.25.0.10
+    volumes:
+      - chaos_data_1:/data
+    cap_add:
+      - NET_ADMIN  # Required for network fault injection
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Test Node 2 (Leader-eligible)
+  chaos-node-2:
+    build:
+      context: ./ollama-distributed
+      dockerfile: Dockerfile
+    container_name: ollamamax-chaos-node-2
+    hostname: chaos-node-2
+    environment:
+      - NODE_ID=chaos-node-2
+      - CLUSTER_PEERS=chaos-node-1:11434,chaos-node-3:11434,chaos-node-4:11434,chaos-node-5:11434
+      - CONSENSUS_ALGORITHM=raft
+      - MIN_REPLICAS=3
+      - P2P_PORT=11434
+      - METRICS_PORT=9100
+      - ENABLE_CHAOS_TESTING=true
+    ports:
+      - "11435:11434"
+      - "9101:9100"
+    networks:
+      chaos_network:
+        ipv4_address: 172.25.0.11
+    volumes:
+      - chaos_data_2:/data
+    cap_add:
+      - NET_ADMIN
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Test Node 3 (Leader-eligible)
+  chaos-node-3:
+    build:
+      context: ./ollama-distributed
+      dockerfile: Dockerfile
+    container_name: ollamamax-chaos-node-3
+    hostname: chaos-node-3
+    environment:
+      - NODE_ID=chaos-node-3
+      - CLUSTER_PEERS=chaos-node-1:11434,chaos-node-2:11434,chaos-node-4:11434,chaos-node-5:11434
+      - CONSENSUS_ALGORITHM=raft
+      - MIN_REPLICAS=3
+      - P2P_PORT=11434
+      - METRICS_PORT=9100
+      - ENABLE_CHAOS_TESTING=true
+    ports:
+      - "11436:11434"
+      - "9102:9100"
+    networks:
+      chaos_network:
+        ipv4_address: 172.25.0.12
+    volumes:
+      - chaos_data_3:/data
+    cap_add:
+      - NET_ADMIN
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Test Node 4 (Follower)
+  chaos-node-4:
+    build:
+      context: ./ollama-distributed
+      dockerfile: Dockerfile
+    container_name: ollamamax-chaos-node-4
+    hostname: chaos-node-4
+    environment:
+      - NODE_ID=chaos-node-4
+      - CLUSTER_PEERS=chaos-node-1:11434,chaos-node-2:11434,chaos-node-3:11434,chaos-node-5:11434
+      - CONSENSUS_ALGORITHM=raft
+      - MIN_REPLICAS=3
+      - P2P_PORT=11434
+      - METRICS_PORT=9100
+      - ENABLE_CHAOS_TESTING=true
+    ports:
+      - "11437:11434"
+      - "9103:9100"
+    networks:
+      chaos_network:
+        ipv4_address: 172.25.0.13
+    volumes:
+      - chaos_data_4:/data
+    cap_add:
+      - NET_ADMIN
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Test Node 5 (Follower)
+  chaos-node-5:
+    build:
+      context: ./ollama-distributed
+      dockerfile: Dockerfile
+    container_name: ollamamax-chaos-node-5
+    hostname: chaos-node-5
+    environment:
+      - NODE_ID=chaos-node-5
+      - CLUSTER_PEERS=chaos-node-1:11434,chaos-node-2:11434,chaos-node-3:11434,chaos-node-4:11434
+      - CONSENSUS_ALGORITHM=raft
+      - MIN_REPLICAS=3
+      - P2P_PORT=11434
+      - METRICS_PORT=9100
+      - ENABLE_CHAOS_TESTING=true
+    ports:
+      - "11438:11434"
+      - "9104:9100"
+    networks:
+      chaos_network:
+        ipv4_address: 172.25.0.14
+    volumes:
+      - chaos_data_5:/data
+    cap_add:
+      - NET_ADMIN
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Toxiproxy for Network Fault Injection
+  toxiproxy:
+    image: ghcr.io/shopify/toxiproxy:2.5.0
+    container_name: ollamamax-toxiproxy
+    ports:
+      - "8474:8474"  # Toxiproxy API
+      - "21434:21434"  # Proxied node 1
+      - "21435:21435"  # Proxied node 2
+      - "21436:21436"  # Proxied node 3
+    networks:
+      - chaos_network
+    volumes:
+      - ./tests/chaos/toxiproxy-config.json:/config/toxiproxy.json:ro
+    command: -host=0.0.0.0 -config=/config/toxiproxy.json
+    restart: unless-stopped
+
+  # Prometheus for Monitoring During Chaos Tests
+  chaos-prometheus:
+    image: prom/prometheus:v2.45.0
+    container_name: ollamamax-chaos-prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - chaos_network
+    volumes:
+      - ./monitoring/prometheus-chaos.yml:/etc/prometheus/prometheus.yml:ro
+      - chaos_prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=24h'
+    restart: unless-stopped
+
+  # Grafana for Visualization
+  chaos-grafana:
+    image: grafana/grafana:10.0.3
+    container_name: ollamamax-chaos-grafana
+    ports:
+      - "3001:3000"
+    networks:
+      - chaos_network
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=chaos_test_password
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - chaos_grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    restart: unless-stopped
+
+networks:
+  chaos_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16
+
+volumes:
+  chaos_data_1:
+  chaos_data_2:
+  chaos_data_3:
+  chaos_data_4:
+  chaos_data_5:
+  chaos_prometheus_data:
+  chaos_grafana_data:

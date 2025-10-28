@@ -17,6 +17,8 @@ const ClaudeAgentIntegration = require('./claude-integration');
 const SPARCIntegration = require('./sparc-integration');
 const AgentPerformanceForecaster = require('../../src/agents/agent-performance-forecaster');
 const AgentLSTMPredictor = require('../../src/agents/agent-lstm-predictor');
+const PredictiveScalingSystem = require('../../src/ml/predictive-scaling');
+const Redis = require('ioredis');
 
 class EnhancedSmartAgentsSwarm {
   constructor(options = {}) {
@@ -35,6 +37,40 @@ class EnhancedSmartAgentsSwarm {
     this.agentSelector = new AgentSelector();
     this.claudeIntegration = new ClaudeAgentIntegration(this);
     this.sparcIntegration = new SPARCIntegration(this);
+    this.performanceForecaster = new AgentPerformanceForecaster();
+    this.lstmPredictor = new AgentLSTMPredictor();
+    this.predictiveScaling = new PredictiveScalingSystem();
+
+    // Redis for ML pub/sub integration
+    const redisNodes = process.env.REDIS_NODES
+      ? JSON.parse(process.env.REDIS_NODES)
+      : [
+          { host: 'redis-cluster-0.redis-cluster-service.ollamamax-redis', port: 6379 },
+          { host: 'redis-cluster-1.redis-cluster-service.ollamamax-redis', port: 6379 },
+          { host: 'redis-cluster-2.redis-cluster-service.ollamamax-redis', port: 6379 }
+        ];
+
+    this.redis = new Redis.Cluster(redisNodes, {
+      redisOptions: {
+        password: process.env.REDIS_PASSWORD || 'ollama_redis_pass',
+        connectTimeout: 10000
+      }
+    });
+
+    // Subscribe to predictive scaling commands
+    this.redis.subscribe('swarm:scaling_command', (err) => {
+      if (err) {
+        console.error('❌ Failed to subscribe to scaling commands:', err);
+      } else {
+        console.log('✅ Subscribed to swarm:scaling_command channel');
+      }
+    });
+
+    this.redis.on('message', (channel, message) => {
+      if (channel === 'swarm:scaling_command') {
+        this.handleScalingCommand(JSON.parse(message));
+      }
+    });
     
     // Performance metrics
     this.metrics = {
@@ -60,15 +96,17 @@ class EnhancedSmartAgentsSwarm {
 
   async initializeSwarm() {
     console.log('🚀 Initializing Enhanced Smart Agents Swarm...');
-    
+
     // Initialize all subsystems
     await this.neuralLearning.initializeLearningSystem();
+    await this.performanceForecaster.initialize();
     await this.setupMetricsCollection();
     await this.setupAutoScaling();
-    
+
     console.log(`✅ Enhanced swarm initialized with ${this.minAgents}-${this.maxAgents} agent capacity`);
     console.log(`🧠 Neural learning: ${this.neuralLearning.learningData.size} patterns loaded`);
     console.log(`🎯 Agent specializations: ${Object.keys(AgentSpecializations).length} types available`);
+    console.log(`📊 ML forecaster and LSTM predictor initialized`);
   }
 
   /**
@@ -200,10 +238,18 @@ class EnhancedSmartAgentsSwarm {
    */
   async spawnOptimalAgentTeam(taskAnalysis) {
     console.log(`🤖 Spawning optimal agent team for complexity ${(taskAnalysis.complexity * 100).toFixed(1)}%`);
-    
-    // Select optimal agent configuration
+
+    // Use ML forecaster to rank agents by predicted performance
+    const availableAgents = Array.from(this.activeAgents.keys());
+    const rankedAgents = await this.performanceForecaster.rankAgentsByPredictedPerformance(
+      { type: taskAnalysis.taskType, complexity: taskAnalysis.complexity },
+      availableAgents
+    );
+
+    // Select optimal agent configuration using both traditional and ML-based selection
     const selectedAgents = this.agentSelector.selectAgents(taskAnalysis, {
-      maxAgents: taskAnalysis.estimatedAgentCount
+      maxAgents: taskAnalysis.estimatedAgentCount,
+      mlRankings: rankedAgents
     });
 
     console.log(`🎯 Selected ${selectedAgents.length} specialized agents:`);
@@ -300,7 +346,7 @@ class EnhancedSmartAgentsSwarm {
 
   async evaluateAutoScaling() {
     const now = Date.now();
-    
+
     // Check cooldown period
     if (now - this.scalingConfig.lastScalingAction < this.scalingConfig.cooldownPeriod) {
       return;
@@ -311,19 +357,228 @@ class EnhancedSmartAgentsSwarm {
     const efficiency = this.calculateSwarmEfficiency();
     const neuralRecommendations = this.neuralLearning.getLearningRecommendations();
 
+    // Get LSTM load forecasts for scaling decisions
+    const loadForecasts = await this.getLSTMLoadForecasts();
+
+    // Get Random Forest agent selection predictions
+    const rfPredictions = await this.getRFPredictions();
+
+    // Get predictive scaling system recommendations
+    const predictiveScalingStatus = await this.predictiveScaling.getSystemStatus();
+    const mlPredictions = predictiveScalingStatus.recentPredictions?.[0] || null;
+
     // Neural learning insights for scaling
     const scalingInsights = this.analyzeScalingPatterns();
 
-    // Scale up conditions
-    if ((workloadRatio > 2 || efficiency < this.scalingConfig.scaleUpThreshold) && 
-        this.currentAgents < this.maxAgents) {
-      await this.intelligentScaleUp(scalingInsights);
+    // Combine all ML forecasts for enhanced decision making
+    const combinedForecast = this.combineMLForecasts({
+      lstm: loadForecasts,
+      randomForest: rfPredictions,
+      predictiveScaling: mlPredictions,
+      neuralLearning: neuralRecommendations
+    });
+
+    // Enhanced scaling logic with ML integration
+    const scalingDecision = this.makeMLEnhancedScalingDecision({
+      workloadRatio,
+      efficiency,
+      combinedForecast,
+      scalingInsights,
+      currentAgents: this.currentAgents
+    });
+
+    // Execute scaling based on ML-enhanced decision
+    if (scalingDecision.action === 'scale_up' && this.currentAgents < this.maxAgents) {
+      await this.intelligentScaleUp(scalingInsights, combinedForecast);
+    } else if (scalingDecision.action === 'scale_down' && this.currentAgents > this.minAgents) {
+      await this.intelligentScaleDown(scalingInsights, combinedForecast);
     }
-    // Scale down conditions
-    else if (workloadRatio < this.scalingConfig.scaleDownThreshold && 
-             efficiency > 0.8 && 
-             this.currentAgents > this.minAgents) {
-      await this.intelligentScaleDown(scalingInsights);
+
+    // Log ML-enhanced decision
+    if (scalingDecision.action !== 'none') {
+      console.log(`🤖 ML-enhanced scaling decision: ${scalingDecision.action}`);
+      console.log(`   📊 Combined forecast confidence: ${(scalingDecision.confidence * 100).toFixed(1)}%`);
+      console.log(`   🎯 Reason: ${scalingDecision.reason}`);
+    }
+  }
+
+  /**
+   * Combine ML forecasts from multiple models (LSTM, RF, Predictive Scaling)
+   */
+  combineMLForecasts(forecasts) {
+    const combined = {
+      predictedLoad: 0,
+      predictedAgents: 0,
+      predictedQueueLength: 0,
+      predictedResponseTime: 0,
+      confidence: 0,
+      models: []
+    };
+
+    let totalWeight = 0;
+
+    // LSTM predictions (short-term 5-15 min, weight 0.35)
+    if (forecasts.lstm && forecasts.lstm.length > 0) {
+      const lstm = forecasts.lstm[0];
+      combined.predictedLoad += lstm.load * 0.35;
+      combined.confidence += lstm.confidence * 0.35;
+      combined.models.push('LSTM');
+      totalWeight += 0.35;
+    }
+
+    // Random Forest predictions (medium-term 1-4 hours, weight 0.30)
+    if (forecasts.randomForest && forecasts.randomForest.successRate) {
+      combined.predictedLoad += forecasts.randomForest.successRate * 0.30;
+      combined.confidence += (forecasts.randomForest.confidence || 0.8) * 0.30;
+      combined.models.push('RandomForest');
+      totalWeight += 0.30;
+    }
+
+    // Predictive Scaling predictions (deep learning LSTM, weight 0.35)
+    if (forecasts.predictiveScaling && forecasts.predictiveScaling.prediction) {
+      const pred = forecasts.predictiveScaling.prediction;
+      combined.predictedAgents = pred.predicted_active_agents || 0;
+      combined.predictedQueueLength = pred.predicted_queue_length || 0;
+      combined.predictedResponseTime = pred.predicted_avg_response_time || 0;
+      combined.confidence += (pred.confidence || 0.7) * 0.35;
+      combined.models.push('PredictiveScaling');
+      totalWeight += 0.35;
+    }
+
+    // Normalize confidence if we have partial forecasts
+    if (totalWeight > 0 && totalWeight < 1) {
+      combined.confidence = combined.confidence / totalWeight;
+    }
+
+    return combined;
+  }
+
+  /**
+   * Make ML-enhanced scaling decision
+   */
+  makeMLEnhancedScalingDecision({ workloadRatio, efficiency, combinedForecast, scalingInsights, currentAgents }) {
+    const decision = {
+      action: 'none',
+      reason: 'Optimal capacity',
+      confidence: combinedForecast.confidence
+    };
+
+    // Use predicted agent count from ML models
+    const predictedOptimalAgents = combinedForecast.predictedAgents ||
+                                   Math.ceil(combinedForecast.predictedQueueLength * 0.5) ||
+                                   currentAgents;
+
+    // Scale up if ML predicts we need more agents
+    if (predictedOptimalAgents > currentAgents * 1.2 ||
+        combinedForecast.predictedQueueLength > 10 ||
+        combinedForecast.predictedResponseTime > 5000) {
+      decision.action = 'scale_up';
+      decision.reason = `ML forecast: need ${Math.round(predictedOptimalAgents)} agents (predicted queue: ${Math.round(combinedForecast.predictedQueueLength)}, response time: ${Math.round(combinedForecast.predictedResponseTime)}ms)`;
+    }
+    // Scale down if ML predicts we have too many agents
+    else if (predictedOptimalAgents < currentAgents * 0.7 &&
+             combinedForecast.predictedQueueLength < 3 &&
+             currentAgents > this.minAgents) {
+      decision.action = 'scale_down';
+      decision.reason = `ML forecast: optimal ${Math.round(predictedOptimalAgents)} agents (low predicted load)`;
+    }
+    // Traditional heuristics as fallback
+    else if (workloadRatio > 2 || efficiency < this.scalingConfig.scaleUpThreshold) {
+      decision.action = 'scale_up';
+      decision.reason = `Traditional heuristics: workload ratio ${workloadRatio.toFixed(2)}, efficiency ${(efficiency * 100).toFixed(1)}%`;
+      decision.confidence = 0.6; // Lower confidence for non-ML decisions
+    }
+    else if (workloadRatio < this.scalingConfig.scaleDownThreshold && efficiency > 0.8) {
+      decision.action = 'scale_down';
+      decision.reason = `Traditional heuristics: low workload ${workloadRatio.toFixed(2)}, high efficiency ${(efficiency * 100).toFixed(1)}%`;
+      decision.confidence = 0.6;
+    }
+
+    return decision;
+  }
+
+  /**
+   * Get Random Forest predictions from agent selection model
+   */
+  async getRFPredictions() {
+    try {
+      // Create a dummy task request for RF prediction
+      const taskRequest = {
+        type: 'general',
+        complexity: 'medium',
+        priority: 5
+      };
+
+      // Get available agent IDs
+      const availableAgents = Array.from(this.activeAgents.keys());
+
+      if (availableAgents.length === 0) {
+        return { successRate: 0.5, confidence: 0 };
+      }
+
+      // Get RF prediction for agent performance
+      const prediction = await this.performanceForecaster.predictAgentPerformance(
+        availableAgents[0],
+        taskRequest
+      );
+
+      return {
+        successRate: prediction.prediction.successRate,
+        confidence: prediction.confidence,
+        estimatedDuration: prediction.prediction.estimatedDuration
+      };
+    } catch (error) {
+      console.error('❌ RF prediction error:', error.message);
+      return { successRate: 0.5, confidence: 0 };
+    }
+  }
+
+  /**
+   * Handle scaling commands from predictive scaling system
+   */
+  async handleScalingCommand(command) {
+    try {
+      console.log(`📨 Received scaling command from ${command.source}: ${command.command} to ${command.targetAgentCount} agents`);
+
+      if (command.command === 'scale_up') {
+        const additionalAgents = Math.min(
+          command.targetAgentCount - this.currentAgents,
+          this.maxAgents - this.currentAgents
+        );
+
+        if (additionalAgents > 0) {
+          for (let i = 0; i < additionalAgents; i++) {
+            await this.spawnSpecializedAgent(
+              { specialization: 'general-purpose', priority: 6, role: 'ml-scaled' },
+              { task: command.reason, complexity: 0.5, priority: 5, taskType: 'ml-scaling' }
+            );
+          }
+          console.log(`✅ ML-driven scale up: Added ${additionalAgents} agents (${command.reason})`);
+        }
+      } else if (command.command === 'scale_down') {
+        const agentsToRemove = Math.min(
+          this.currentAgents - command.targetAgentCount,
+          this.currentAgents - this.minAgents
+        );
+
+        if (agentsToRemove > 0) {
+          const sortedAgents = Array.from(this.activeAgents.values())
+            .filter(agent => agent.status === 'idle' || agent.status === 'completed')
+            .sort((a, b) => this.calculateAgentEffectiveness(a) - this.calculateAgentEffectiveness(b))
+            .slice(0, agentsToRemove);
+
+          for (const agent of sortedAgents) {
+            this.activeAgents.delete(agent.id);
+            this.currentAgents--;
+          }
+          console.log(`✅ ML-driven scale down: Removed ${agentsToRemove} agents (${command.reason})`);
+        }
+      }
+
+      this.scalingConfig.lastScalingAction = Date.now();
+      this.metrics.adaptations++;
+    } catch (error) {
+      console.error('❌ Error handling scaling command:', error.message);
     }
   }
 
@@ -464,7 +719,35 @@ class EnhancedSmartAgentsSwarm {
 
     // Neural learning metrics
     const learningReport = this.neuralLearning.generateLearningReport();
-    
+
+    // Get ML metrics from forecaster
+    const mlMetrics = await this.getMLMetrics();
+
+    // Get predictive scaling status
+    const predictiveScalingStatus = await this.predictiveScaling.getSystemStatus();
+
+    // ML adoption and effectiveness metrics
+    const mlAdoptionMetrics = {
+      modelsActive: {
+        lstm: !!this.lstmPredictor,
+        randomForest: !!this.performanceForecaster,
+        predictiveScaling: predictiveScalingStatus.modelTrained,
+        neuralLearning: learningReport.summary.totalPatterns > 0
+      },
+      modelAccuracy: {
+        lstm: this.lstmPredictor.modelAccuracy || 0,
+        randomForest: this.performanceForecaster.modelAccuracy || 0,
+        predictiveScaling: predictiveScalingStatus.accuracy || 0
+      },
+      mlDrivenScalingActions: this.countMLDrivenActions(),
+      combinedForecastConfidence: this.getAverageForecastConfidence(),
+      predictionHorizon: {
+        lstm_short: '5-15 minutes',
+        randomForest_medium: '1-4 hours',
+        predictiveScaling_adaptive: 'adaptive horizon'
+      }
+    };
+
     // Enhanced swarm metrics
     this.metrics = {
       ...baseMetrics,
@@ -475,6 +758,8 @@ class EnhancedSmartAgentsSwarm {
         highConfidencePatterns: learningReport.summary.memoryUtilization.highConfidencePatterns,
         learningRate: learningReport.learningTrends.last24h?.learningRate || 0
       },
+      mlMetrics,
+      mlAdoption: mlAdoptionMetrics,
       specializationDistribution: this.getSpecializationDistribution(),
       performanceInsights: this.getPerformanceInsights()
     };
@@ -482,6 +767,28 @@ class EnhancedSmartAgentsSwarm {
     // Save enhanced metrics
     const metricsPath = path.join(__dirname, '../../metrics/enhanced-swarm-metrics.json');
     await fs.writeFile(metricsPath, JSON.stringify(this.metrics, null, 2));
+  }
+
+  /**
+   * Count ML-driven scaling actions
+   */
+  countMLDrivenActions() {
+    // Count actions triggered by predictive scaling system
+    return this.scalingHistory?.filter(action => action.source === 'predictive_scaling')?.length || 0;
+  }
+
+  /**
+   * Get average forecast confidence across all ML models
+   */
+  getAverageForecastConfidence() {
+    const confidences = [];
+
+    if (this.lstmPredictor.modelAccuracy) confidences.push(this.lstmPredictor.modelAccuracy);
+    if (this.performanceForecaster.modelAccuracy) confidences.push(this.performanceForecaster.modelAccuracy);
+
+    return confidences.length > 0
+      ? confidences.reduce((sum, c) => sum + c, 0) / confidences.length
+      : 0;
   }
 
   /**
@@ -811,6 +1118,49 @@ class EnhancedSmartAgentsSwarm {
     }
 
     return recommendations;
+  }
+
+  /**
+   * Get LSTM load forecasts for all active agents
+   */
+  async getLSTMLoadForecasts() {
+    const forecasts = [];
+
+    for (const agentId of this.activeAgents.keys()) {
+      try {
+        const forecast = await this.lstmPredictor.predictAgentLoad(agentId);
+        forecasts.push({ agentId, ...forecast });
+      } catch (error) {
+        console.error(`Error forecasting load for agent ${agentId}:`, error.message);
+      }
+    }
+
+    return forecasts;
+  }
+
+  /**
+   * Get ML metrics from forecaster
+   */
+  async getMLMetrics() {
+    try {
+      const predictions = [];
+
+      for (const [agentId, agentData] of this.activeAgents.entries()) {
+        if (agentData.status === 'active' || agentData.status === 'idle') {
+          const forecast = await this.performanceForecaster.getAgentLoadForecast(agentId, 'short');
+          predictions.push(forecast);
+        }
+      }
+
+      return {
+        totalPredictions: predictions.length,
+        avgConfidence: predictions.reduce((sum, p) => sum + p.confidence, 0) / Math.max(predictions.length, 1),
+        predictions: predictions.slice(0, 5) // Top 5 for metrics
+      };
+    } catch (error) {
+      console.error('Error collecting ML metrics:', error.message);
+      return { totalPredictions: 0, avgConfidence: 0, predictions: [] };
+    }
   }
 }
 

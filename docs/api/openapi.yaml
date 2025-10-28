@@ -1,0 +1,731 @@
+openapi: 3.0.3
+info:
+  title: OllamaMax Distributed AI Model Platform API
+  description: |
+    Enterprise-grade distributed AI model serving platform API.
+
+    ## Authentication
+    All endpoints require JWT authentication via Bearer token in the Authorization header.
+
+    ```
+    Authorization: Bearer <jwt-token>
+    ```
+
+    ## Base URL
+    - Development: `http://localhost:11434/api/v1`
+    - Production: `https://api.ollamamax.com/api/v1`
+
+    ## Security
+    - JWT Authentication: RSA-256 (RS256) signed tokens
+    - TLS 1.3 encryption required in production
+    - RBAC authorization (admin, operator, user roles)
+
+    ## Rate Limiting
+    - Authentication endpoints: 5 requests/minute
+    - General API: 100 requests/minute
+
+    For more information, see [comprehensive documentation](https://docs.ollamamax.com).
+  version: 1.0.0
+  contact:
+    email: admin@giggahost.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:11434/api/v1
+    description: Development server
+  - url: https://api.ollamamax.com/api/v1
+    description: Production server
+
+tags:
+  - name: Authentication
+    description: User authentication and token management
+  - name: Cluster Management
+    description: Cluster coordination and node management
+  - name: Node Management
+    description: Individual node operations
+  - name: Model Operations
+    description: AI model management and operations
+  - name: AI Inference
+    description: Text generation, chat, and embeddings
+  - name: Health & Monitoring
+    description: System health checks and metrics
+
+paths:
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: User login
+      description: Authenticate user and receive JWT access and refresh tokens
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: user@example.com
+                password:
+                  type: string
+                  format: password
+                  example: securePassword123
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPair'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: User registration
+      description: Register new user account
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+                - username
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: newuser@example.com
+                password:
+                  type: string
+                  format: password
+                  minLength: 8
+                  example: securePassword123
+                username:
+                  type: string
+                  minLength: 3
+                  maxLength: 50
+                  example: johndoe
+                full_name:
+                  type: string
+                  example: John Doe
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: User already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: Refresh access token
+      description: Generate new access token using refresh token
+      operationId: refreshToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refresh_token
+              properties:
+                refresh_token:
+                  type: string
+                  example: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPair'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /cluster/status:
+    get:
+      tags:
+        - Cluster Management
+      summary: Get cluster status
+      description: Retrieve current cluster health and status
+      operationId: getClusterStatus
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Cluster status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClusterStatus'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /cluster/leader:
+    get:
+      tags:
+        - Cluster Management
+      summary: Get cluster leader
+      description: Retrieve current Raft consensus leader node
+      operationId: getClusterLeader
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Leader information retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Node'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /nodes:
+    get:
+      tags:
+        - Node Management
+      summary: List cluster nodes
+      description: Retrieve list of all nodes in the cluster
+      operationId: listNodes
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [online, offline, all]
+            default: all
+          description: Filter nodes by status
+      responses:
+        '200':
+          description: Nodes retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  nodes:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Node'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /nodes/{id}:
+    get:
+      tags:
+        - Node Management
+      summary: Get node details
+      description: Retrieve details for a specific node
+      operationId: getNode
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Node ID
+      responses:
+        '200':
+          description: Node details retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Node'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /models:
+    get:
+      tags:
+        - Model Operations
+      summary: List available models
+      description: Retrieve list of all available AI models
+      operationId: listModels
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Models retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  models:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Model'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /models/{name}:
+    get:
+      tags:
+        - Model Operations
+      summary: Get model details
+      description: Retrieve details for a specific model
+      operationId: getModel
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: name
+          required: true
+          schema:
+            type: string
+          description: Model name
+          example: llama2:7b
+      responses:
+        '200':
+          description: Model details retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Model'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /models/{name}/download:
+    post:
+      tags:
+        - Model Operations
+      summary: Download model
+      description: Download model to cluster nodes
+      operationId: downloadModel
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: name
+          required: true
+          schema:
+            type: string
+          description: Model name
+          example: llama2:7b
+      responses:
+        '202':
+          description: Model download initiated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Model download initiated
+                  transfer_id:
+                    type: string
+                    format: uuid
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /generate:
+    post:
+      tags:
+        - AI Inference
+      summary: Text generation
+      description: Generate text completion
+      operationId: generate
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - model
+                - prompt
+              properties:
+                model:
+                  type: string
+                  example: llama2:7b
+                prompt:
+                  type: string
+                  example: "Once upon a time"
+                max_tokens:
+                  type: integer
+                  default: 100
+                  minimum: 1
+                  maximum: 4096
+                temperature:
+                  type: number
+                  format: float
+                  default: 0.7
+                  minimum: 0
+                  maximum: 2
+      responses:
+        '200':
+          description: Text generated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  generated_text:
+                    type: string
+                    example: "Once upon a time, in a faraway land..."
+                  tokens_used:
+                    type: integer
+                    example: 150
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /chat:
+    post:
+      tags:
+        - AI Inference
+      summary: Chat completion
+      description: Generate chat message response
+      operationId: chat
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - model
+                - messages
+              properties:
+                model:
+                  type: string
+                  example: llama2:7b
+                messages:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      role:
+                        type: string
+                        enum: [system, user, assistant]
+                      content:
+                        type: string
+                  example:
+                    - role: system
+                      content: "You are a helpful assistant."
+                    - role: user
+                      content: "Hello, how are you?"
+      responses:
+        '200':
+          description: Chat response generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: object
+                    properties:
+                      role:
+                        type: string
+                        example: assistant
+                      content:
+                        type: string
+                        example: "Hello! I'm doing well, thank you. How can I help you today?"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /health:
+    get:
+      tags:
+        - Health & Monitoring
+      summary: Health check
+      description: Check system health status
+      operationId: healthCheck
+      responses:
+        '200':
+          description: System healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: healthy
+                  timestamp:
+                    type: string
+                    format: date-time
+                  checks:
+                    type: object
+                    properties:
+                      database:
+                        type: string
+                        example: healthy
+                      redis:
+                        type: string
+                        example: healthy
+                      cluster:
+                        type: string
+                        example: healthy
+        '503':
+          description: System unhealthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: unhealthy
+                  errors:
+                    type: array
+                    items:
+                      type: string
+
+  /metrics:
+    get:
+      tags:
+        - Health & Monitoring
+      summary: Prometheus metrics
+      description: Retrieve Prometheus metrics
+      operationId: getMetrics
+      responses:
+        '200':
+          description: Metrics retrieved
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: |
+                  # HELP api_requests_total Total API requests
+                  # TYPE api_requests_total counter
+                  api_requests_total{method="GET",path="/api/v1/models",status="200"} 1234
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: RSA-256 (RS256) signed JWT token
+
+  schemas:
+    TokenPair:
+      type: object
+      properties:
+        access_token:
+          type: string
+          example: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...
+        refresh_token:
+          type: string
+          example: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...
+        expires_at:
+          type: string
+          format: date-time
+          example: "2025-10-28T12:00:00Z"
+        token_type:
+          type: string
+          example: Bearer
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 550e8400-e29b-41d4-a716-446655440000
+        username:
+          type: string
+          example: johndoe
+        email:
+          type: string
+          format: email
+          example: johndoe@example.com
+        full_name:
+          type: string
+          example: John Doe
+        role:
+          type: string
+          enum: [admin, operator, user]
+          example: user
+        created_at:
+          type: string
+          format: date-time
+
+    ClusterStatus:
+      type: object
+      properties:
+        healthy:
+          type: boolean
+          example: true
+        nodes_total:
+          type: integer
+          example: 5
+        nodes_online:
+          type: integer
+          example: 5
+        nodes_offline:
+          type: integer
+          example: 0
+        leader_id:
+          type: string
+          format: uuid
+        version:
+          type: string
+          example: "1.0.0"
+
+    Node:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 550e8400-e29b-41d4-a716-446655440000
+        address:
+          type: string
+          example: "192.168.1.10:8080"
+        status:
+          type: string
+          enum: [online, offline, draining]
+          example: online
+        role:
+          type: string
+          enum: [leader, follower, candidate]
+          example: follower
+        cpu_usage:
+          type: number
+          format: float
+          example: 45.2
+        memory_usage:
+          type: number
+          format: float
+          example: 60.5
+        models_loaded:
+          type: array
+          items:
+            type: string
+          example: ["llama2:7b", "codellama:7b"]
+
+    Model:
+      type: object
+      properties:
+        name:
+          type: string
+          example: llama2:7b
+        size:
+          type: integer
+          description: Model size in bytes
+          example: 3800000000
+        digest:
+          type: string
+          description: SHA-256 content hash
+          example: sha256:1234567890abcdef...
+        replicas:
+          type: integer
+          description: Number of cluster nodes with this model
+          example: 3
+        status:
+          type: string
+          enum: [available, downloading, error]
+          example: available
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          example: Invalid request parameters
+        code:
+          type: string
+          example: INVALID_PARAMETERS
+        details:
+          type: object
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Unauthorized:
+      description: Unauthorized - authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Authentication required"
+            code: "UNAUTHORIZED"
+
+    Forbidden:
+      description: Forbidden - insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Insufficient permissions"
+            code: "FORBIDDEN"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Resource not found"
+            code: "NOT_FOUND"
+
+    TooManyRequests:
+      description: Too many requests - rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Rate limit exceeded. Try again in 60 seconds."
+            code: "RATE_LIMIT_EXCEEDED"
+
+security:
+  - BearerAuth: []

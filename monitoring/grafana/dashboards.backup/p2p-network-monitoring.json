@@ -1,0 +1,205 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "OllamaMax - P2P Network & Model Distribution",
+    "tags": ["ollamamax", "p2p", "network", "models"],
+    "style": "dark",
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "P2P Network Topology",
+        "type": "nodeGraph",
+        "targets": [
+          {
+            "expr": "ollama_p2p_peer_connections",
+            "format": "table",
+            "instant": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "vis": false
+              }
+            }
+          }
+        },
+        "gridPos": {"h": 12, "w": 24, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "Model Replication Status",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "ollama_model_replication_status",
+            "format": "table",
+            "instant": true
+          }
+        ],
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "renameByName": {
+                "instance": "Source Node",
+                "model": "Model",
+                "target": "Target Node",
+                "status": "Replication Status"
+              }
+            }
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12}
+      },
+      {
+        "id": 3,
+        "title": "Model Distribution Heat Map",
+        "type": "heatmap",
+        "targets": [
+          {
+            "expr": "count by (model, instance) (ollama_model_loaded)"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12}
+      },
+      {
+        "id": 4,
+        "title": "P2P Message Rates",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(ollama_p2p_messages_sent_total[5m])",
+            "legendFormat": "Sent/sec - {{instance}} - {{msg_type}}"
+          },
+          {
+            "expr": "rate(ollama_p2p_messages_received_total[5m])",
+            "legendFormat": "Received/sec - {{instance}} - {{msg_type}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Messages/sec",
+            "min": 0
+          }
+        ],
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 20}
+      },
+      {
+        "id": 5,
+        "title": "Model Transfer Statistics",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(ollama_model_transfers_total[5m])",
+            "legendFormat": "Transfers/sec - {{source}} to {{target}}"
+          },
+          {
+            "expr": "ollama_model_transfer_bytes_total",
+            "legendFormat": "Transfer Size - {{model}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Rate/Bytes",
+            "min": 0
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 28}
+      },
+      {
+        "id": 6,
+        "title": "P2P Network Latency",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(ollama_p2p_message_latency_seconds_bucket[5m]))",
+            "legendFormat": "50th Percentile - {{instance}}"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(ollama_p2p_message_latency_seconds_bucket[5m]))",
+            "legendFormat": "95th Percentile - {{instance}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Latency (seconds)",
+            "min": 0
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 28}
+      },
+      {
+        "id": 7,
+        "title": "Model Synchronization Status",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "count(ollama_model_sync_pending)",
+            "legendFormat": "Pending Syncs"
+          },
+          {
+            "expr": "rate(ollama_model_sync_completed_total[5m]) * 60",
+            "legendFormat": "Syncs/min"
+          },
+          {
+            "expr": "rate(ollama_model_sync_failed_total[5m]) * 60",
+            "legendFormat": "Failed Syncs/min"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": 0},
+                {"color": "yellow", "value": 5},
+                {"color": "red", "value": 10}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 4, "w": 24, "x": 0, "y": 36}
+      },
+      {
+        "id": 8,
+        "title": "Distributed Hash Table Statistics",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "ollama_dht_entries_total",
+            "legendFormat": "DHT Entries - {{instance}}"
+          },
+          {
+            "expr": "rate(ollama_dht_lookups_total[5m])",
+            "legendFormat": "Lookups/sec - {{instance}}"
+          },
+          {
+            "expr": "ollama_dht_routing_table_size",
+            "legendFormat": "Routing Table Size - {{instance}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Count/Rate",
+            "min": 0
+          }
+        ],
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 40}
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "10s",
+    "schemaVersion": 27,
+    "version": 1
+  }
+}

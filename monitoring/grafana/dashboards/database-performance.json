@@ -148,7 +148,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "db_connections_open",
+          "expr": "ollamamax_database_db_connections_open",
           "legendFormat": "Open",
           "range": true,
           "refId": "A"
@@ -159,7 +159,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "db_connections_in_use",
+          "expr": "ollamamax_database_db_connections_active",
           "legendFormat": "In Use",
           "range": true,
           "refId": "B"
@@ -170,7 +170,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "db_connections_idle",
+          "expr": "ollamamax_database_db_connections_idle",
           "legendFormat": "Idle",
           "range": true,
           "refId": "C"
@@ -259,7 +259,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "rate(db_queries_total[5m])",
+          "expr": "rate(ollamamax_database_db_queries_total[5m])",
           "legendFormat": "{{operation}} {{table}}",
           "range": true,
           "refId": "A"
@@ -356,7 +356,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, rate(db_query_duration_seconds_bucket[5m]))",
+          "expr": "histogram_quantile(0.95, rate(ollamamax_database_db_query_duration_seconds_bucket[5m]))",
           "legendFormat": "P95 {{operation}} {{table}}",
           "range": true,
           "refId": "A"
@@ -425,7 +425,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "rate(cache_hits_total[5m]) / (rate(cache_hits_total[5m]) + rate(cache_misses_total[5m]))",
+          "expr": "rate(ollamamax_database_cache_hits_total[5m]) / (rate(ollamamax_database_cache_hits_total[5m]) + rate(ollamamax_database_cache_misses_total[5m]))",
           "legendFormat": "Cache Hit Rate",
           "range": true,
           "refId": "A"
@@ -489,7 +489,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum by (operation) (db_queries_total)",
+          "expr": "sum by (operation) (ollamamax_database_db_queries_total)",
           "format": "time_series",
           "instant": true,
           "legendFormat": "{{operation}}",
@@ -589,7 +589,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum by (table) (db_queries_total)",
+          "expr": "sum by (table) (ollamamax_database_db_queries_total)",
           "format": "table",
           "instant": true,
           "legendFormat": "__auto",

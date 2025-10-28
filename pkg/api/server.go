@@ -93,6 +93,23 @@ func NewServer(cfg *config.Config, db *database.DatabaseManager, logger *slog.Lo
 		return nil, fmt.Errorf("failed to register http_requests_in_flight: %w", err)
 	}
 
+	// Register database metrics to the main registry
+	if err := db.RegisterTo(registry); err != nil {
+		logger.Warn("Failed to register database metrics", "error", err)
+	}
+
+	// Note: When P2P node is available, register its metrics:
+	// if p2pNode != nil {
+	//     if err := p2pNode.RegisterTo(registry); err != nil {
+	//         logger.Warn("Failed to register P2P metrics", "error", err)
+	//     }
+	// }
+
+	// Note: When load balancer is available, create it with the shared registry:
+	// loadBalancer := distributed.NewRoundRobinBalancerWithRegistry(registry)
+	// or
+	// loadBalancer := distributed.NewSmartLoadBalancerWithRegistry(registry)
+
 	// Initialize OpenTelemetry/Jaeger tracing
 	jaegerEndpoint := os.Getenv("JAEGER_ENDPOINT")
 	if jaegerEndpoint == "" {
@@ -216,6 +233,10 @@ func (s *Server) setupRouter() *gin.Engine {
 	router.Use(s.corsMiddleware())
 	router.Use(s.securityMiddleware())
 
+	// PERFORMANCE: Compression middleware for bandwidth optimization
+	// TODO: Uncomment when github.com/gin-contrib/gzip is added to dependencies
+	// router.Use(gzip.Gzip(gzip.DefaultCompression))
+
 	// Rate limiting middleware
 	if s.config.API.RateLimit.Enabled {
 		router.Use(s.rateLimitMiddleware())
@@ -224,8 +245,11 @@ func (s *Server) setupRouter() *gin.Engine {
 	// Health check endpoint (no auth required)
 	router.GET("/health", s.healthHandler)
 
-	// Metrics endpoints
-	router.GET("/metrics", gin.WrapH(promhttp.HandlerFor(s.registry, promhttp.HandlerOpts{})))
+	// Metrics endpoints - all metrics are now in a single registry
+	router.GET("/metrics", gin.WrapH(promhttp.HandlerFor(
+		s.registry,
+		promhttp.HandlerOpts{},
+	)))
 	router.GET("/metrics.json", s.metricsJSONHandler)
 
 	// API routes

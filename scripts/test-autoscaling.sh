@@ -37,6 +37,9 @@ fi
 # Phase 1: Check HPA Configuration
 echo -e "\n${BLUE}=== Phase 1: Checking HPA Configuration ===${NC}"
 
+# Initialize HPA_COUNT to 0
+HPA_COUNT=0
+
 if kubectl get hpa -n "${NAMESPACE}" &> /dev/null; then
     HPAS=$(kubectl get hpa -n "${NAMESPACE}" --no-headers | awk '{print $1}')
     HPA_COUNT=$(echo "$HPAS" | wc -l)
@@ -170,6 +173,9 @@ fi
 
 # Generate Report
 EVENTS_JSON=$(IFS=,; for event in "${SCALING_EVENTS[@]}"; do echo "\"$event\""; done | paste -sd,)
+
+# Guard against uninitialized HPA_COUNT
+HPA_COUNT=${HPA_COUNT:-0}
 
 cat > "${REPORT_FILE}" <<EOF
 {

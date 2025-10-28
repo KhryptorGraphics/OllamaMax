@@ -495,7 +495,7 @@ test-api: setup-test-env ## Run API related tests
 test-training: setup-test-env ## Run all training tests
 	@echo "$(BLUE)Running all training tests...$(NC)"
 	@mkdir -p ../test-results/training
-	cd ../tests/training && go test -v -coverprofile=../../test-results/training/training-coverage.out ./...
+	cd ../tests/training && go test -v -coverprofile=../../test-results/training/training-coverage.out ./... 2>&1 | tee ../../test-results/training/go-test-output.log
 	SKIP_GO_TESTS=1 bash ../scripts/run-training-tests.sh
 
 test-training-modules: setup-test-env ## Run training module tests

@@ -57,7 +57,7 @@ data:
 apiVersion: v1
 kind: Service
 metadata:
-  name: redis-cluster-service
+  name: redis-cluster
   namespace: ollamamax-redis
   labels:
     app: redis-cluster
@@ -79,7 +79,7 @@ metadata:
   name: redis-cluster
   namespace: ollamamax-redis
 spec:
-  serviceName: redis-cluster-service
+  serviceName: redis-cluster
   replicas: 6
   selector:
     matchLabels:
@@ -174,7 +174,7 @@ spec:
           # Get all Redis pod IPs
           REDIS_NODES=""
           for i in $(seq 0 5); do
-            POD_IP=$(nslookup redis-cluster-${i}.redis-cluster-service.ollamamax-redis.svc.cluster.local | grep -E '^Address:' | tail -n1 | cut -d' ' -f2)
+            POD_IP=$(nslookup redis-cluster-${i}.redis-cluster.ollamamax-redis.svc.cluster.local | grep -E '^Address:' | tail -n1 | cut -d' ' -f2)
             if [ -n "$POD_IP" ]; then
               REDIS_NODES="$REDIS_NODES $POD_IP:6379"
             fi

@@ -1,18 +1,15 @@
 #!/bin/bash
-# Master Deployment Validation Orchestrator
-# References: scripts/run-training-tests.sh
+
+################################################################################
+# Pre-Deployment Validation Script for OllamaMax
 #
-# Usage: ./run-deployment-validation.sh [ENVIRONMENT] [DEPLOYMENT_TYPE] [OPTIONS]
-#   ENVIRONMENT: local (default), staging, production
-#   DEPLOYMENT_TYPE: docker, kubernetes, both (default)
-#   OPTIONS:
-#     --skip-phase PHASE_NAME  Skip specific phase (can be repeated)
-#
-# Example: ./run-deployment-validation.sh local both --skip-phase "Multi-Region Simulation" --skip-phase "Auto-Scaling Tests"
+# Validates network connectivity, dependencies, and configuration
+# before deploying OllamaMax to production environments
+################################################################################
 
 set -e
 
-# Colors
+# Color codes
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -20,244 +17,238 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 # Configuration
-ENVIRONMENT="${1:-local}"
-DEPLOYMENT_TYPE="${2:-both}"
-shift 2 2>/dev/null || shift $# 2>/dev/null  # Remove first two args if they exist
+POSTGRES_HOST="${POSTGRES_HOST:-localhost}"
+POSTGRES_PORT="${POSTGRES_PORT:-5432}"
+REDIS_HOST="${REDIS_HOST:-localhost}"
+REDIS_PORT="${REDIS_PORT:-6379}"
+P2P_PEERS="${P2P_PEERS:-}"
 
-# Parse skip-phase options
-declare -a SKIP_PHASES
-while [[ $# -gt 0 ]]; do
-    case $1 in
-        --skip-phase)
-            SKIP_PHASES+=("$2")
-            shift 2
-            ;;
-        *)
-            echo "Unknown option: $1"
-            shift
-            ;;
-    esac
-done
+# Logging functions
+log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
+log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
+log_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
+log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
-REPORT_DIR="deployment-results"
-TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-FINAL_REPORT="${REPORT_DIR}/deployment-validation-${TIMESTAMP}.md"
+FAILED_CHECKS=0
+PASSED_CHECKS=0
 
-mkdir -p "${REPORT_DIR}"
-
-echo -e "${BLUE}╔══════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║  Deployment Validation Orchestrator     ║${NC}"
-echo -e "${BLUE}╚══════════════════════════════════════════╝${NC}"
-echo ""
-echo "Environment: ${ENVIRONMENT}"
-echo "Deployment Type: ${DEPLOYMENT_TYPE}"
-echo "Timestamp: ${TIMESTAMP}"
-if [ ${#SKIP_PHASES[@]} -gt 0 ]; then
-    echo "Skipping phases: ${SKIP_PHASES[*]}"
-fi
-echo ""
-
-# Helper functions
-log_phase() {
-    echo ""
-    echo -e "${BLUE}═══════════════════════════════════════════${NC}"
-    echo -e "${BLUE}  $1${NC}"
-    echo -e "${BLUE}═══════════════════════════════════════════${NC}"
+pass() {
+    log_success "$1"
+    ((PASSED_CHECKS++))
 }
 
-log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
-log_success() { echo -e "${GREEN}[PASS]${NC} $1"; }
-log_warning() { echo -e "${YELLOW}[WARN]${NC} $1"; }
-log_error() { echo -e "${RED}[FAIL]${NC} $1"; }
+fail() {
+    log_error "$1"
+    ((FAILED_CHECKS++))
+}
 
-# Track results
-PHASES_PASSED=0
-PHASES_FAILED=0
-PHASES_SKIPPED=0
-PHASE_RESULTS=()
+warn() {
+    log_warning "$1"
+}
 
-execute_phase() {
-    local phase_name="$1"
-    local script_path="$2"
-    local required="$3"
+log_info "==================== Pre-Deployment Validation ===================="
+log_info "PostgreSQL: ${POSTGRES_HOST}:${POSTGRES_PORT}"
+log_info "Redis: ${REDIS_HOST}:${REDIS_PORT}"
+log_info "P2P Peers: ${P2P_PEERS:-none configured}"
+log_info "===================================================================="
 
-    # Check if phase should be skipped
-    for skip in "${SKIP_PHASES[@]}"; do
-        if [ "$skip" = "$phase_name" ]; then
-            log_warning "Skipping phase (user requested): ${phase_name}"
-            PHASES_SKIPPED=$((PHASES_SKIPPED + 1))
-            PHASE_RESULTS+=("⏭️  ${phase_name}: SKIPPED (user requested)")
-            return 0
+# Section 1: Network Connectivity Tests
+log_info ""
+log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+log_info "Section 1: Network Connectivity Tests"
+log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+# Test PostgreSQL connectivity
+log_info "Testing PostgreSQL connectivity (${POSTGRES_HOST}:${POSTGRES_PORT})..."
+if timeout 5 bash -c "cat < /dev/null > /dev/tcp/${POSTGRES_HOST}/${POSTGRES_PORT}" 2>/dev/null; then
+    pass "PostgreSQL port ${POSTGRES_PORT} is reachable"
+
+    # Try to connect with psql if available
+    if command -v psql &> /dev/null; then
+        if PGPASSWORD="${POSTGRES_PASSWORD}" psql -h "${POSTGRES_HOST}" -p "${POSTGRES_PORT}" -U "${POSTGRES_USER:-ollama}" -d "${POSTGRES_DB:-ollamamax}" -c "SELECT 1;" &>/dev/null; then
+            pass "PostgreSQL authentication successful"
+        else
+            fail "PostgreSQL authentication failed (check credentials)"
+        fi
+    else
+        warn "psql not installed - skipping authentication test"
+    fi
+else
+    fail "PostgreSQL port ${POSTGRES_PORT} is NOT reachable"
+    log_error "Deployment will fail without PostgreSQL connectivity"
+fi
+
+# Test Redis connectivity
+log_info "Testing Redis connectivity (${REDIS_HOST}:${REDIS_PORT})..."
+if timeout 5 bash -c "cat < /dev/null > /dev/tcp/${REDIS_HOST}/${REDIS_PORT}" 2>/dev/null; then
+    pass "Redis port ${REDIS_PORT} is reachable"
+
+    # Try to ping Redis if redis-cli available
+    if command -v redis-cli &> /dev/null; then
+        if redis-cli -h "${REDIS_HOST}" -p "${REDIS_PORT}" PING 2>/dev/null | grep -q "PONG"; then
+            pass "Redis PING successful"
+        else
+            warn "Redis PING failed (may require authentication)"
+        fi
+    else
+        warn "redis-cli not installed - skipping PING test"
+    fi
+else
+    fail "Redis port ${REDIS_PORT} is NOT reachable"
+    log_error "Deployment will fail without Redis connectivity"
+fi
+
+# Test P2P peer reachability
+if [ -n "${P2P_PEERS}" ]; then
+    log_info "Testing P2P peer connectivity..."
+
+    IFS=',' read -ra PEERS <<< "${P2P_PEERS}"
+    for peer in "${PEERS[@]}"; do
+        peer_host=$(echo "${peer}" | cut -d':' -f1)
+        peer_port=$(echo "${peer}" | cut -d':' -f2)
+
+        log_info "  Testing peer: ${peer_host}:${peer_port}..."
+        if timeout 5 bash -c "cat < /dev/null > /dev/tcp/${peer_host}/${peer_port}" 2>/dev/null; then
+            pass "  Peer ${peer_host}:${peer_port} is reachable"
+        else
+            fail "  Peer ${peer_host}:${peer_port} is NOT reachable"
         fi
     done
+else
+    warn "No P2P peers configured - skipping peer connectivity tests"
+fi
 
-    log_phase "Phase: ${phase_name}"
+# Section 2: DNS Resolution
+log_info ""
+log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+log_info "Section 2: DNS Resolution Tests"
+log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-    if [ ! -f "$script_path" ]; then
-        log_warning "Script not found: ${script_path}"
-        PHASES_SKIPPED=$((PHASES_SKIPPED + 1))
-        PHASE_RESULTS+=("❌ ${phase_name}: SKIPPED (script not found)")
-        return 1
-    fi
-
-    log_info "Executing: ${script_path}"
-
-    if bash "$script_path"; then
-        log_success "Phase completed: ${phase_name}"
-        PHASES_PASSED=$((PHASES_PASSED + 1))
-        PHASE_RESULTS+=("✅ ${phase_name}: PASSED")
-        return 0
+# Test PostgreSQL DNS
+if [ "${POSTGRES_HOST}" != "localhost" ] && [ "${POSTGRES_HOST}" != "127.0.0.1" ]; then
+    log_info "Testing DNS resolution for ${POSTGRES_HOST}..."
+    if nslookup "${POSTGRES_HOST}" &>/dev/null || host "${POSTGRES_HOST}" &>/dev/null; then
+        pass "DNS resolution successful for ${POSTGRES_HOST}"
     else
-        log_error "Phase failed: ${phase_name}"
-        PHASES_FAILED=$((PHASES_FAILED + 1))
-        PHASE_RESULTS+=("❌ ${phase_name}: FAILED")
-
-        if [ "$required" = "true" ]; then
-            log_error "Critical phase failed - stopping validation"
-            return 1
-        fi
-        return 0
+        fail "DNS resolution failed for ${POSTGRES_HOST}"
     fi
-}
-
-# Start validation
-START_TIME=$(date +%s)
-
-# Phase 1: Pre-deployment Checks
-execute_phase "Pre-deployment Checks" "scripts/validate-docker-deployment-precheck.sh" "false" || true
-
-# Phase 2: Docker Deployment Validation
-if [ "$DEPLOYMENT_TYPE" = "docker" ] || [ "$DEPLOYMENT_TYPE" = "both" ]; then
-    execute_phase "Docker Deployment" "scripts/validate-docker-deployment.sh" "false" || true
 fi
 
-# Phase 3: Kubernetes Deployment Validation
-if [ "$DEPLOYMENT_TYPE" = "kubernetes" ] || [ "$DEPLOYMENT_TYPE" = "both" ]; then
-    execute_phase "Kubernetes Deployment" "scripts/validate-k8s-deployment.sh" "false" || true
+# Test Redis DNS
+if [ "${REDIS_HOST}" != "localhost" ] && [ "${REDIS_HOST}" != "127.0.0.1" ]; then
+    log_info "Testing DNS resolution for ${REDIS_HOST}..."
+    if nslookup "${REDIS_HOST}" &>/dev/null || host "${REDIS_HOST}" &>/dev/null; then
+        pass "DNS resolution successful for ${REDIS_HOST}"
+    else
+        fail "DNS resolution failed for ${REDIS_HOST}"
+    fi
 fi
 
-# Phase 4: Multi-region Simulation
-execute_phase "Multi-Region Simulation" "scripts/simulate-multi-region.sh" "false" || true
+# Section 3: System Requirements
+log_info ""
+log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+log_info "Section 3: System Requirements"
+log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-# Phase 5: Auto-scaling Tests
-execute_phase "Auto-Scaling Tests" "scripts/test-autoscaling.sh" "false" || true
+# Check memory
+TOTAL_MEM=$(free -g | awk '/^Mem:/{print $2}')
+AVAILABLE_MEM=$(free -g | awk '/^Mem:/{print $7}')
 
-# Phase 6: Load Balancing Tests
-execute_phase "Load Balancing Tests" "scripts/test-load-balancing.sh" "false" || true
-
-# Phase 7: Security Validation
-execute_phase "Security Validation" "scripts/validate-security.sh" "false" || true
-
-# Phase 8: Health Checks
-if [ -f "ollama-distributed/scripts/health-check.sh" ]; then
-    execute_phase "Health Checks" "ollama-distributed/scripts/health-check.sh" "false" || true
-fi
-
-# Phase 9: Rollback Testing
-execute_phase "Rollback Testing" "scripts/test-rollback.sh" "false" || true
-
-# Calculate total time
-END_TIME=$(date +%s)
-TOTAL_TIME=$((END_TIME - START_TIME))
-
-# Calculate readiness score
-TOTAL_PHASES=$((PHASES_PASSED + PHASES_FAILED + PHASES_SKIPPED))
-if [ $TOTAL_PHASES -gt 0 ]; then
-    READINESS_SCORE=$((PHASES_PASSED * 100 / TOTAL_PHASES))
+log_info "Memory: ${AVAILABLE_MEM}GB available of ${TOTAL_MEM}GB total"
+if [ "${AVAILABLE_MEM}" -ge 8 ]; then
+    pass "Sufficient memory available (${AVAILABLE_MEM}GB >= 8GB)"
 else
-    READINESS_SCORE=0
+    fail "Insufficient memory (${AVAILABLE_MEM}GB < 8GB recommended)"
 fi
 
-# Generate Final Report
-cat > "${FINAL_REPORT}" <<EOF
-# Deployment Validation Report
-
-**Generated:** $(date)
-**Environment:** ${ENVIRONMENT}
-**Deployment Type:** ${DEPLOYMENT_TYPE}
-**Execution Time:** ${TOTAL_TIME}s
-
-## Executive Summary
-
-- **Readiness Score:** ${READINESS_SCORE}/100
-- **Phases Passed:** ${PHASES_PASSED}
-- **Phases Failed:** ${PHASES_FAILED}
-- **Phases Skipped:** ${PHASES_SKIPPED}
-
-## Phase Results
-
-$(for result in "${PHASE_RESULTS[@]}"; do
-    echo "- $result"
-done)
-
-## Recommendation
-
-$(if [ $READINESS_SCORE -ge 80 ]; then
-    echo "✅ **READY FOR DEPLOYMENT** - All critical validations passed"
-elif [ $READINESS_SCORE -ge 60 ]; then
-    echo "⚠️  **DEPLOY WITH CAUTION** - Some validations failed, review issues"
+# Check CPU cores
+CPU_CORES=$(nproc)
+log_info "CPU Cores: ${CPU_CORES}"
+if [ "${CPU_CORES}" -ge 4 ]; then
+    pass "Sufficient CPU cores (${CPU_CORES} >= 4)"
 else
-    echo "❌ **NOT READY FOR DEPLOYMENT** - Critical issues detected"
-fi)
+    warn "Low CPU cores (${CPU_CORES} < 4 recommended)"
+fi
 
-## Detailed Results
-
-Individual phase reports are available in the \`${REPORT_DIR}\` directory.
-
-## Next Steps
-
-$(if [ $PHASES_FAILED -gt 0 ]; then
-    echo "1. Review failed phase reports"
-    echo "2. Address critical issues"
-    echo "3. Re-run validation"
-    echo "4. Update deployment procedures"
+# Check disk space
+DISK_SPACE=$(df -BG . | awk 'NR==2 {print $4}' | tr -d 'G')
+log_info "Disk Space: ${DISK_SPACE}GB available"
+if [ "${DISK_SPACE}" -ge 20 ]; then
+    pass "Sufficient disk space (${DISK_SPACE}GB >= 20GB)"
 else
-    echo "1. Review individual phase reports"
-    echo "2. Document any warnings"
-    echo "3. Proceed with deployment"
-    echo "4. Monitor deployment metrics"
-fi)
+    fail "Insufficient disk space (${DISK_SPACE}GB < 20GB recommended)"
+fi
 
----
+# Section 4: Required Tools
+log_info ""
+log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+log_info "Section 4: Required Tools"
+log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-**Report Location:** ${FINAL_REPORT}
-**Artifacts Directory:** ${REPORT_DIR}
-EOF
+REQUIRED_TOOLS=("curl" "docker" "docker-compose")
+OPTIONAL_TOOLS=("jq" "psql" "redis-cli" "kubectl")
 
-# Display Summary
-echo ""
-log_phase "Validation Summary"
-echo ""
-echo "Total Phases: ${TOTAL_PHASES}"
-echo -e "Passed: ${GREEN}${PHASES_PASSED}${NC}"
-echo -e "Failed: ${RED}${PHASES_FAILED}${NC}"
-echo -e "Skipped: ${YELLOW}${PHASES_SKIPPED}${NC}"
-echo ""
-echo "Readiness Score: ${READINESS_SCORE}/100"
-echo "Total Execution Time: ${TOTAL_TIME}s"
-echo ""
-
-# Display results
-echo "Phase Results:"
-for result in "${PHASE_RESULTS[@]}"; do
-    echo "  $result"
+for tool in "${REQUIRED_TOOLS[@]}"; do
+    if command -v "${tool}" &>/dev/null; then
+        pass "Required tool '${tool}' is installed"
+    else
+        fail "Required tool '${tool}' is NOT installed"
+    fi
 done
 
-echo ""
-log_success "Final report generated: ${FINAL_REPORT}"
-echo ""
+for tool in "${OPTIONAL_TOOLS[@]}"; do
+    if command -v "${tool}" &>/dev/null; then
+        pass "Optional tool '${tool}' is installed"
+    else
+        warn "Optional tool '${tool}' is NOT installed (recommended but not required)"
+    fi
+done
 
-# Exit code based on readiness score
-if [ $READINESS_SCORE -ge 80 ]; then
-    echo -e "${GREEN}✅ DEPLOYMENT VALIDATION PASSED${NC}"
-    echo -e "${GREEN}   Ready for deployment${NC}"
+# Section 5: Configuration Validation
+log_info ""
+log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+log_info "Section 5: Configuration Validation"
+log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+# Check JWT_SECRET
+if [ -n "${JWT_SECRET}" ]; then
+    pass "JWT_SECRET is configured"
+else
+    fail "JWT_SECRET is NOT set (required for authentication)"
+fi
+
+# Check SMTP configuration (if email features enabled)
+if [ -n "${SMTP_HOST}" ]; then
+    pass "SMTP_HOST is configured"
+
+    if [ -n "${SMTP_PASSWORD}" ]; then
+        pass "SMTP_PASSWORD is configured"
+    else
+        warn "SMTP_PASSWORD is NOT set (may affect email features)"
+    fi
+else
+    warn "SMTP not configured (email features will be disabled)"
+fi
+
+# Final Summary
+log_info ""
+log_info "===================================================================="
+log_info "Validation Summary"
+log_info "===================================================================="
+log_info "Passed Checks: ${GREEN}${PASSED_CHECKS}${NC}"
+log_info "Failed Checks: ${RED}${FAILED_CHECKS}${NC}"
+log_info "===================================================================="
+
+if [ ${FAILED_CHECKS} -eq 0 ]; then
+    log_success "✅ All critical validation checks passed!"
+    log_success "System is ready for deployment"
     exit 0
-elif [ $READINESS_SCORE -ge 60 ]; then
-    echo -e "${YELLOW}⚠️  DEPLOYMENT VALIDATION PASSED WITH WARNINGS${NC}"
-    echo -e "${YELLOW}   Review warnings before deployment${NC}"
+elif [ ${FAILED_CHECKS} -le 2 ]; then
+    log_warning "⚠️  Some validation checks failed, but deployment may proceed"
+    log_warning "Review failed checks above and fix critical issues"
     exit 0
 else
-    echo -e "${RED}❌ DEPLOYMENT VALIDATION FAILED${NC}"
-    echo -e "${RED}   Address critical issues before deployment${NC}"
+    log_error "❌ Multiple critical validation checks failed!"
+    log_error "Deployment will likely fail - fix issues above before deploying"
     exit 1
 fi

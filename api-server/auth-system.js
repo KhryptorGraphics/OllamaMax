@@ -13,10 +13,16 @@ class AuthSystem {
     constructor() {
         this.dbPath = path.join(__dirname, 'users.db');
         this.db = new sqlite3.Database(this.dbPath);
-        this.jwtSecret = process.env.JWT_SECRET || 'ollamamax_secret_key_2024';
+
+        // SECURITY: JWT_SECRET must be provided via environment variable
+        this.jwtSecret = process.env.JWT_SECRET;
+        if (!this.jwtSecret) {
+            throw new Error('JWT_SECRET environment variable is required for security');
+        }
+
         this.emailConfig = null;
         this.transporter = null;
-        
+
         this.initializeDatabase();
         this.setupEmailTransporter();
     }
@@ -57,18 +63,26 @@ class AuthSystem {
     }
 
     async setupEmailTransporter() {
+        // SECURITY: SMTP credentials must be provided via environment variables
+        const smtpUser = process.env.SMTP_USER || 'noreply@giggatek.com';
+        const smtpPassword = process.env.SMTP_PASSWORD;
+
+        if (!smtpPassword) {
+            console.warn('⚠️  SMTP_PASSWORD not set. Email functionality will use mock transporter.');
+        }
+
         const emailConfigs = [
             // Configuration 1: Secured SMTP (TLS)
             {
                 name: 'Secured TLS',
                 config: {
-                    host: 'smtp.gmail.com',
-                    port: 587,
+                    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+                    port: parseInt(process.env.SMTP_PORT || '587'),
                     secure: false,
-                    auth: {
-                        user: 'noreply@giggatek.com',
-                        pass: 'teamrsi123teamrsi123'
-                    },
+                    auth: smtpPassword ? {
+                        user: smtpUser,
+                        pass: smtpPassword
+                    } : undefined,
                     tls: {
                         ciphers: 'SSLv3'
                     }
@@ -78,29 +92,29 @@ class AuthSystem {
             {
                 name: 'SSL/TLS 465',
                 config: {
-                    host: 'smtp.gmail.com',
+                    host: process.env.SMTP_HOST || 'smtp.gmail.com',
                     port: 465,
                     secure: true,
-                    auth: {
-                        user: 'noreply@giggatek.com',
-                        pass: 'teamrsi123teamrsi123'
-                    }
+                    auth: smtpPassword ? {
+                        user: smtpUser,
+                        pass: smtpPassword
+                    } : undefined
                 }
             },
             // Configuration 3: Generic SMTP
             {
                 name: 'Generic SMTP',
                 config: {
-                    host: 'mail.giggatek.com',
-                    port: 587,
+                    host: process.env.SMTP_HOST || 'mail.giggatek.com',
+                    port: parseInt(process.env.SMTP_PORT || '587'),
                     secure: false,
-                    auth: {
-                        user: 'noreply@giggatek.com',
-                        pass: 'teamrsi123teamrsi123'
-                    }
+                    auth: smtpPassword ? {
+                        user: smtpUser,
+                        pass: smtpPassword
+                    } : undefined
                 }
             },
-            // Configuration 4: Unsecured SMTP (fallback)
+            // Configuration 4: Unsecured SMTP (fallback - dev only)
             {
                 name: 'Unsecured SMTP',
                 config: {
@@ -108,10 +122,10 @@ class AuthSystem {
                     port: 25,
                     secure: false,
                     ignoreTLS: true,
-                    auth: {
-                        user: 'noreply@giggatek.com',
-                        pass: 'teamrsi123teamrsi123'
-                    }
+                    auth: smtpPassword ? {
+                        user: smtpUser,
+                        pass: smtpPassword
+                    } : undefined
                 }
             }
         ];

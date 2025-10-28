@@ -1,37 +1,52 @@
 apiVersion: 1
 
 datasources:
+  # Prometheus for metrics
   - name: Prometheus
     type: prometheus
     access: proxy
     url: http://prometheus:9090
+    uid: prometheus
     isDefault: true
-    editable: true
+    editable: false
+    jsonData:
+      timeInterval: "15s"
 
+  # Jaeger for distributed tracing
   - name: Jaeger
     type: jaeger
     access: proxy
     url: http://jaeger:16686
-    editable: true
+    uid: jaeger
+    editable: false
     jsonData:
+      # Enable trace to logs correlation
       tracesToLogs:
         datasourceUid: elasticsearch
-        tags:
-          - trace_id
-          - span_id
+        tags: ['trace_id']
+        mappedTags: [{ key: 'trace_id', value: 'traceID' }]
+        mapTagNamesEnabled: true
+        spanStartTimeShift: '-1h'
+        spanEndTimeShift: '1h'
+        filterByTraceID: true
+        filterBySpanID: false
 
+  # Elasticsearch for logs
   - name: Elasticsearch
     type: elasticsearch
     access: proxy
     url: http://elasticsearch:9200
-    database: ollamamax-logs-*
-    editable: true
+    database: "ollamamax-logs-*"
+    uid: elasticsearch
+    editable: false
     jsonData:
-      timeField: '@timestamp'
-      esVersion: '8.0.0'
-      logMessageField: message
-      logLevelField: level
-      logsToTraces:
-        datasourceUid: jaeger
-        tags:
-          - key: trace_id
+      timeField: "@timestamp"
+      logMessageField: "message"
+      logLevelField: "level"
+      esVersion: "8.11.0"
+      # Enable logs to traces correlation
+      derivedFields:
+        - datasourceUid: jaeger
+          matcherRegex: "trace_id=(\\w+)"
+          name: "TraceID"
+          url: "$${__value.raw}"

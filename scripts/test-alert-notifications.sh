@@ -1,347 +1,332 @@
 #!/bin/bash
+set -e
 
-# Test Alert Notifications Script
-# Tests all alert notification channels for OllamaMax monitoring stack
+# Load environment variables
+if [ -f .env ]; then
+    export $(cat .env | grep -v '^#' | xargs)
+fi
 
-set -euo pipefail
+echo "🔔 Testing Alert Notification Channels"
+echo "======================================"
 
 # Color codes for output
-GREEN='\033[0;32m'
 RED='\033[0;31m'
+GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Logging functions
-log_info() {
-    echo -e "${BLUE}[INFO]${NC} $1"
-}
+# Test Slack webhook
+test_slack() {
+    echo -e "\n${YELLOW}Testing Slack webhook...${NC}"
 
-log_success() {
-    echo -e "${GREEN}[✓]${NC} $1"
-}
-
-log_error() {
-    echo -e "${RED}[✗]${NC} $1"
-}
-
-log_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
-}
-
-# Test result tracking
-TESTS_PASSED=0
-TESTS_FAILED=0
-FAILED_TESTS=()
-
-# Function to test Slack webhook
-test_slack_webhook() {
-    log_info "Testing Slack webhook notification..."
-
-    if [ -z "${SLACK_WEBHOOK_URL:-}" ]; then
-        log_warning "SLACK_WEBHOOK_URL not set, skipping Slack test"
-        return 0
+    if [ -z "$SLACK_WEBHOOK_URL" ]; then
+        echo -e "${RED}❌ SLACK_WEBHOOK_URL not set${NC}"
+        return 1
     fi
 
-    local test_payload=$(cat <<EOF
-{
-    "text": "OllamaMax Monitoring Test Alert",
-    "blocks": [
-        {
-            "type": "section",
-            "text": {
-                "type": "mrkdwn",
-                "text": "*Test Alert from OllamaMax Monitoring Stack*\n\nThis is a test notification to verify Slack integration is working correctly."
-            }
-        },
-        {
-            "type": "context",
-            "elements": [
-                {
+    response=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$SLACK_WEBHOOK_URL" \
+        -H 'Content-Type: application/json' \
+        -d '{
+            "text": "✅ OllamaMax Alert Test",
+            "blocks": [{
+                "type": "section",
+                "text": {
                     "type": "mrkdwn",
-                    "text": "Timestamp: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+                    "text": "*Test Alert from OllamaMax*\nThis is a test notification to verify Slack integration."
                 }
-            ]
-        }
-    ]
-}
-EOF
-)
-
-    local response=$(curl -s -o /dev/null -w "%{http_code}" \
-        -X POST \
-        -H "Content-Type: application/json" \
-        -d "$test_payload" \
-        "$SLACK_WEBHOOK_URL" \
-        --max-time 10)
+            }]
+        }')
 
     if [ "$response" = "200" ]; then
-        log_success "Slack webhook test passed (HTTP $response)"
-        ((TESTS_PASSED++))
+        echo -e "${GREEN}✅ Slack webhook test successful${NC}"
         return 0
     else
-        log_error "Slack webhook test failed (HTTP $response)"
-        FAILED_TESTS+=("Slack webhook")
-        ((TESTS_FAILED++))
+        echo -e "${RED}❌ Slack webhook test failed (HTTP $response)${NC}"
         return 1
     fi
 }
 
-# Function to test SMTP email
-test_smtp_email() {
-    log_info "Testing SMTP email notification..."
+# Test SMTP email
+test_email() {
+    echo -e "\n${YELLOW}Testing SMTP email...${NC}"
 
-    if [ -z "${SMTP_HOST:-}" ] || [ -z "${SMTP_USER:-}" ] || [ -z "${SMTP_PASSWORD:-}" ]; then
-        log_warning "SMTP configuration not set (SMTP_HOST, SMTP_USER, SMTP_PASSWORD), skipping SMTP test"
-        return 0
+    if [ -z "$SMTP_HOST" ] || [ -z "$ALERT_EMAIL_CRITICAL" ]; then
+        echo -e "${RED}❌ SMTP variables not set${NC}"
+        return 1
     fi
 
-    local smtp_port="${SMTP_PORT:-587}"
-    local smtp_from="${SMTP_FROM:-monitoring@ollamamax.local}"
-    local smtp_to="${SMTP_TO:-admin@ollamamax.local}"
+    # Use Python to send test email
+    python3 << 'EOFPYTHON'
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import os
+import sys
+from datetime import datetime
 
-    # Create email content
-    local email_subject="OllamaMax Monitoring Test Alert"
-    local email_body=$(cat <<EOF
-Subject: ${email_subject}
-From: ${smtp_from}
-To: ${smtp_to}
-Content-Type: text/html; charset=UTF-8
+try:
+    msg = MIMEMultipart()
+    msg['From'] = os.getenv('SMTP_FROM', 'noreply@ollamamax.local')
+    msg['To'] = os.getenv('ALERT_EMAIL_CRITICAL')
+    msg['Subject'] = '[TEST] OllamaMax Alert Notification Test'
 
-<!DOCTYPE html>
-<html>
-<head>
-    <style>
-        body { font-family: Arial, sans-serif; }
-        .header { background-color: #4CAF50; color: white; padding: 10px; }
-        .content { padding: 20px; }
-        .footer { background-color: #f1f1f1; padding: 10px; font-size: 12px; }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h2>OllamaMax Monitoring Test Alert</h2>
-    </div>
-    <div class="content">
-        <p>This is a test notification to verify SMTP email integration is working correctly.</p>
-        <p><strong>Timestamp:</strong> $(date -u +"%Y-%m-%d %H:%M:%S UTC")</p>
-        <p><strong>Test Type:</strong> Alert Notification System Validation</p>
-    </div>
-    <div class="footer">
-        <p>Sent from OllamaMax Monitoring Stack</p>
-    </div>
-</body>
-</html>
-EOF
-)
+    body = f"""
+This is a test email from OllamaMax monitoring system.
 
-    # Test using curl with SMTP
-    local response=$(echo "$email_body" | curl -s -o /dev/null -w "%{http_code}" \
-        --url "smtp://${SMTP_HOST}:${smtp_port}" \
-        --ssl-reqd \
-        --mail-from "$smtp_from" \
-        --mail-rcpt "$smtp_to" \
-        --user "${SMTP_USER}:${SMTP_PASSWORD}" \
-        --upload-file - \
-        --max-time 30 2>&1)
+If you received this, email alerting is configured correctly.
+
+Test timestamp: {datetime.now().isoformat()}
+    """
+    msg.attach(MIMEText(body, 'plain'))
+
+    server = smtplib.SMTP(os.getenv('SMTP_HOST'), int(os.getenv('SMTP_PORT', 587)))
+    server.starttls()
+    server.login(os.getenv('SMTP_USER'), os.getenv('SMTP_PASSWORD'))
+    server.send_message(msg)
+    server.quit()
+
+    print("✅ Email sent successfully")
+    sys.exit(0)
+except Exception as e:
+    print(f"❌ Email test failed: {e}")
+    sys.exit(1)
+EOFPYTHON
 
     if [ $? -eq 0 ]; then
-        log_success "SMTP email test passed"
-        ((TESTS_PASSED++))
+        echo -e "${GREEN}✅ SMTP email test successful${NC}"
         return 0
     else
-        log_error "SMTP email test failed: $response"
-        FAILED_TESTS+=("SMTP email")
-        ((TESTS_FAILED++))
-
-        # Try alternative method using mail command if available
-        if command -v mail &> /dev/null; then
-            log_info "Attempting fallback with mail command..."
-            echo "Test alert from OllamaMax Monitoring" | mail -s "$email_subject" "$smtp_to" 2>&1
-            if [ $? -eq 0 ]; then
-                log_success "SMTP email test passed (using mail command)"
-                ((TESTS_PASSED++))
-                ((TESTS_FAILED--))
-                FAILED_TESTS=("${FAILED_TESTS[@]/SMTP email/}")
-                return 0
-            fi
-        fi
+        echo -e "${RED}❌ SMTP email test failed${NC}"
         return 1
     fi
 }
 
-# Function to test PagerDuty
+# Test PagerDuty
 test_pagerduty() {
-    log_info "Testing PagerDuty integration..."
+    echo -e "\n${YELLOW}Testing PagerDuty integration...${NC}"
 
-    if [ -z "${PAGERDUTY_SERVICE_KEY:-}" ]; then
-        log_warning "PAGERDUTY_SERVICE_KEY not set, skipping PagerDuty test"
-        return 0
+    if [ -z "$PAGERDUTY_SERVICE_KEY" ]; then
+        echo -e "${RED}❌ PAGERDUTY_SERVICE_KEY not set${NC}"
+        return 1
     fi
 
-    local test_payload=$(cat <<EOF
-{
-    "routing_key": "${PAGERDUTY_SERVICE_KEY}",
-    "event_action": "trigger",
-    "payload": {
-        "summary": "OllamaMax Monitoring Test Alert",
-        "source": "monitoring.ollamamax.local",
-        "severity": "info",
-        "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
-        "custom_details": {
-            "test_type": "Alert Notification System Validation",
-            "component": "Monitoring Stack",
-            "description": "This is a test event to verify PagerDuty integration is working correctly."
-        }
-    }
-}
-EOF
-)
-
-    local response=$(curl -s -o /tmp/pagerduty_response.json -w "%{http_code}" \
-        -X POST \
-        -H "Content-Type: application/json" \
-        -d "$test_payload" \
-        "https://events.pagerduty.com/v2/enqueue" \
-        --max-time 10)
+    response=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+        'https://events.pagerduty.com/v2/enqueue' \
+        -H 'Content-Type: application/json' \
+        -d "{
+            \"routing_key\": \"$PAGERDUTY_SERVICE_KEY\",
+            \"event_action\": \"trigger\",
+            \"payload\": {
+                \"summary\": \"OllamaMax Test Alert\",
+                \"severity\": \"info\",
+                \"source\": \"ollamamax-monitoring\",
+                \"custom_details\": {
+                    \"description\": \"This is a test alert to verify PagerDuty integration\"
+                }
+            }
+        }")
 
     if [ "$response" = "202" ]; then
-        local dedup_key=$(jq -r '.dedup_key // empty' /tmp/pagerduty_response.json 2>/dev/null)
-        log_success "PagerDuty test passed (HTTP $response, dedup_key: ${dedup_key:-N/A})"
-        ((TESTS_PASSED++))
-        rm -f /tmp/pagerduty_response.json
+        echo -e "${GREEN}✅ PagerDuty test successful${NC}"
         return 0
     else
-        log_error "PagerDuty test failed (HTTP $response)"
-        if [ -f /tmp/pagerduty_response.json ]; then
-            local error_msg=$(jq -r '.message // .errors // empty' /tmp/pagerduty_response.json 2>/dev/null)
-            [ -n "$error_msg" ] && log_error "Error details: $error_msg"
-            rm -f /tmp/pagerduty_response.json
-        fi
-        FAILED_TESTS+=("PagerDuty")
-        ((TESTS_FAILED++))
+        echo -e "${RED}❌ PagerDuty test failed (HTTP $response)${NC}"
         return 1
     fi
 }
 
-# Function to test webhook (generic)
-test_generic_webhook() {
-    log_info "Testing generic webhook notification..."
+# Test Alertmanager API
+test_alertmanager() {
+    echo -e "\n${YELLOW}Testing Alertmanager API...${NC}"
 
-    if [ -z "${WEBHOOK_URL:-}" ]; then
-        log_warning "WEBHOOK_URL not set, skipping generic webhook test"
-        return 0
+    # Check if Alertmanager is running
+    if ! curl -s "http://localhost:9093/-/healthy" > /dev/null 2>&1; then
+        echo -e "${RED}❌ Alertmanager is not running${NC}"
+        return 1
     fi
 
-    local test_payload=$(cat <<EOF
-{
-    "alert_name": "OllamaMax Monitoring Test",
-    "severity": "info",
-    "status": "firing",
-    "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
-    "description": "This is a test alert to verify webhook integration is working correctly.",
-    "labels": {
-        "alertname": "MonitoringTest",
-        "severity": "info",
-        "component": "monitoring-stack"
-    },
-    "annotations": {
-        "summary": "OllamaMax Monitoring Test Alert",
-        "description": "Test notification for webhook validation"
-    }
-}
-EOF
-)
+    # Create a test alert
+    response=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+        'http://localhost:9093/api/v1/alerts' \
+        -H 'Content-Type: application/json' \
+        -d '[{
+            "labels": {
+                "alertname": "TestAlert",
+                "severity": "warning",
+                "instance": "test"
+            },
+            "annotations": {
+                "summary": "Test alert from validation script",
+                "description": "This is a test alert to verify Alertmanager routing"
+            }
+        }]')
 
-    local response=$(curl -s -o /dev/null -w "%{http_code}" \
-        -X POST \
-        -H "Content-Type: application/json" \
-        -d "$test_payload" \
-        "$WEBHOOK_URL" \
-        --max-time 10)
-
-    if [ "$response" -ge 200 ] && [ "$response" -lt 300 ]; then
-        log_success "Generic webhook test passed (HTTP $response)"
-        ((TESTS_PASSED++))
+    if [ "$response" = "200" ]; then
+        echo -e "${GREEN}✅ Alertmanager API test successful${NC}"
         return 0
     else
-        log_error "Generic webhook test failed (HTTP $response)"
-        FAILED_TESTS+=("Generic webhook")
-        ((TESTS_FAILED++))
+        echo -e "${RED}❌ Alertmanager API test failed (HTTP $response)${NC}"
         return 1
     fi
 }
 
-# Function to print summary report
-print_summary() {
-    echo ""
-    echo "========================================"
-    echo "  Alert Notification Test Summary"
-    echo "========================================"
-    echo ""
-    echo -e "Total Tests Run:    $((TESTS_PASSED + TESTS_FAILED))"
-    echo -e "${GREEN}Tests Passed:       ${TESTS_PASSED}${NC}"
-    echo -e "${RED}Tests Failed:       ${TESTS_FAILED}${NC}"
-    echo ""
+# Test Webhook receiver
+test_webhook() {
+    echo -e "\n${YELLOW}Testing custom webhook...${NC}"
 
-    if [ ${#FAILED_TESTS[@]} -gt 0 ]; then
-        echo -e "${RED}Failed Tests:${NC}"
-        for test in "${FAILED_TESTS[@]}"; do
-            echo -e "  ${RED}✗${NC} $test"
-        done
-        echo ""
+    if [ -z "$WEBHOOK_URL" ]; then
+        echo -e "${YELLOW}⚠️  WEBHOOK_URL not set, skipping${NC}"
+        return 0
     fi
 
-    if [ $TESTS_FAILED -eq 0 ]; then
-        echo -e "${GREEN}✓ All alert notification tests passed!${NC}"
-        echo ""
+    response=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$WEBHOOK_URL" \
+        -H 'Content-Type: application/json' \
+        -d '{
+            "status": "firing",
+            "alerts": [{
+                "labels": {
+                    "alertname": "TestAlert",
+                    "severity": "info"
+                },
+                "annotations": {
+                    "summary": "OllamaMax webhook test"
+                }
+            }]
+        }')
+
+    if [ "$response" = "200" ] || [ "$response" = "202" ]; then
+        echo -e "${GREEN}✅ Webhook test successful${NC}"
         return 0
     else
-        echo -e "${RED}✗ Some alert notification tests failed!${NC}"
-        echo ""
+        echo -e "${RED}❌ Webhook test failed (HTTP $response)${NC}"
         return 1
     fi
 }
 
-# Main execution
+# Test notification silences
+test_silences() {
+    echo -e "\n${YELLOW}Testing Alertmanager silences...${NC}"
+
+    # Create a test silence
+    silence_id=$(curl -s -X POST 'http://localhost:9093/api/v1/silences' \
+        -H 'Content-Type: application/json' \
+        -d "{
+            \"matchers\": [{
+                \"name\": \"alertname\",
+                \"value\": \"TestAlert\",
+                \"isRegex\": false
+            }],
+            \"startsAt\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
+            \"endsAt\": \"$(date -u -d '+5 minutes' +%Y-%m-%dT%H:%M:%SZ)\",
+            \"createdBy\": \"test-script\",
+            \"comment\": \"Test silence from validation script\"
+        }" | grep -o '"silenceID":"[^"]*"' | cut -d'"' -f4)
+
+    if [ -n "$silence_id" ]; then
+        echo -e "${GREEN}✅ Silence created successfully (ID: $silence_id)${NC}"
+
+        # Clean up - delete the silence
+        curl -s -X DELETE "http://localhost:9093/api/v1/silence/$silence_id" > /dev/null
+        echo -e "${GREEN}✅ Silence deleted successfully${NC}"
+        return 0
+    else
+        echo -e "${RED}❌ Failed to create silence${NC}"
+        return 1
+    fi
+}
+
+# Generate test report
+generate_report() {
+    local slack_status=$1
+    local email_status=$2
+    local pagerduty_status=$3
+    local alertmanager_status=$4
+    local webhook_status=$5
+    local silences_status=$6
+
+    cat > docs/alert-notification-test-report.md << EOFREPORT
+# Alert Notification Test Report
+
+**Generated:** $(date)
+
+## Test Results Summary
+
+| Channel | Status | Details |
+|---------|--------|---------|
+| Slack | $([ $slack_status -eq 0 ] && echo "✅ PASSED" || echo "❌ FAILED") | Webhook notification test |
+| Email (SMTP) | $([ $email_status -eq 0 ] && echo "✅ PASSED" || echo "❌ FAILED") | Email delivery test |
+| PagerDuty | $([ $pagerduty_status -eq 0 ] && echo "✅ PASSED" || echo "❌ FAILED") | Incident creation test |
+| Alertmanager API | $([ $alertmanager_status -eq 0 ] && echo "✅ PASSED" || echo "❌ FAILED") | Alert posting test |
+| Custom Webhook | $([ $webhook_status -eq 0 ] && echo "✅ PASSED" || echo "⚠️  SKIPPED") | Webhook delivery test |
+| Silences | $([ $silences_status -eq 0 ] && echo "✅ PASSED" || echo "❌ FAILED") | Silence creation/deletion test |
+
+## Configuration Check
+
+### Environment Variables
+- SLACK_WEBHOOK_URL: $([ -n "$SLACK_WEBHOOK_URL" ] && echo "✓ Set" || echo "✗ Not set")
+- SMTP_HOST: $([ -n "$SMTP_HOST" ] && echo "✓ Set" || echo "✗ Not set")
+- ALERT_EMAIL_CRITICAL: $([ -n "$ALERT_EMAIL_CRITICAL" ] && echo "✓ Set" || echo "✗ Not set")
+- PAGERDUTY_SERVICE_KEY: $([ -n "$PAGERDUTY_SERVICE_KEY" ] && echo "✓ Set" || echo "✗ Not set")
+- WEBHOOK_URL: $([ -n "$WEBHOOK_URL" ] && echo "✓ Set" || echo "✗ Not set")
+
+## Next Steps
+
+$(if [ $slack_status -ne 0 ] || [ $email_status -ne 0 ] || [ $pagerduty_status -ne 0 ] || [ $alertmanager_status -ne 0 ]; then
+    echo "### Failed Tests"
+    [ $slack_status -ne 0 ] && echo "- Fix Slack webhook configuration"
+    [ $email_status -ne 0 ] && echo "- Verify SMTP credentials and settings"
+    [ $pagerduty_status -ne 0 ] && echo "- Check PagerDuty service key"
+    [ $alertmanager_status -ne 0 ] && echo "- Ensure Alertmanager is running and accessible"
+else
+    echo "All notification channels are working correctly! 🎉"
+fi)
+
+## Manual Verification
+
+After running this automated test:
+
+1. **Check Slack**: Verify test message appears in configured channel
+2. **Check Email**: Verify test email received at configured address
+3. **Check PagerDuty**: Verify test incident created in PagerDuty dashboard
+4. **Check Alertmanager**: Visit http://localhost:9093 to see test alerts
+
+---
+*Generated by test-alert-notifications.sh*
+EOFREPORT
+
+    echo -e "\n${GREEN}📄 Test report saved to docs/alert-notification-test-report.md${NC}"
+}
+
+# Run all tests
 main() {
-    echo "========================================"
-    echo "  OllamaMax Alert Notification Tests"
-    echo "========================================"
-    echo ""
-    echo "Testing alert notification channels..."
-    echo ""
+    local failed=0
+    local slack_result=0
+    local email_result=0
+    local pagerduty_result=0
+    local alertmanager_result=0
+    local webhook_result=0
+    local silences_result=0
 
-    # Check for required commands
-    if ! command -v curl &> /dev/null; then
-        log_error "curl is required but not installed"
-        exit 1
-    fi
+    test_slack || { slack_result=1; ((failed++)); }
+    test_email || { email_result=1; ((failed++)); }
+    test_pagerduty || { pagerduty_result=1; ((failed++)); }
+    test_alertmanager || { alertmanager_result=1; ((failed++)); }
+    test_webhook || { webhook_result=1; }  # Don't count as failure if skipped
+    test_silences || { silences_result=1; ((failed++)); }
 
-    if ! command -v jq &> /dev/null; then
-        log_warning "jq is not installed, JSON parsing may be limited"
-    fi
+    # Generate test report
+    mkdir -p docs
+    generate_report $slack_result $email_result $pagerduty_result $alertmanager_result $webhook_result $silences_result
 
-    # Run all tests
-    test_slack_webhook || true
-    echo ""
-
-    test_smtp_email || true
-    echo ""
-
-    test_pagerduty || true
-    echo ""
-
-    test_generic_webhook || true
-    echo ""
-
-    # Print summary and exit with appropriate code
-    if print_summary; then
+    echo -e "\n======================================"
+    if [ $failed -eq 0 ]; then
+        echo -e "${GREEN}✅ All notification tests passed!${NC}"
         exit 0
     else
+        echo -e "${RED}❌ $failed notification test(s) failed${NC}"
+        echo -e "${YELLOW}Check docs/alert-notification-test-report.md for details${NC}"
         exit 1
     fi
 }
 
-# Execute main function
-main "$@"
+main

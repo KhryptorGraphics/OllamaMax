@@ -6,12 +6,12 @@ apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: ollamamax-api-hpa
-  namespace: ollamamax
+  namespace: ollamamax-multiregion
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: ollamamax-api
+    name: ollamamax-api-multiregion
   minReplicas: 3
   maxReplicas: 10
   behavior:

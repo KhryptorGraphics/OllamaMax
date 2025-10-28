@@ -331,11 +331,9 @@ go test -v -timeout 30m ./...
 
 ### Documentation
 - [Training Implementation Summary](../../TRAINING_IMPLEMENTATION_SUMMARY.md)
-- [Training Quality Metrics](../../docs/TRAINING_QUALITY_METRICS.md)
-- [Training Completion Rates](../../docs/TRAINING_COMPLETION_RATES.md)
-- [Training Satisfaction Scores](../../docs/TRAINING_SATISFACTION_SCORES.md)
 - [Training Quality Dashboard](../../docs/TRAINING_QUALITY_DASHBOARD.md)
-- [Training Validation Report](../../docs/TRAINING_VALIDATION_REPORT.md)
+- Training quality metrics are generated dynamically in test-results/training/metrics.json
+- Historical validation reports are available in test-results/training/
 
 ### Related Files
 - [Makefile](../../ollama-distributed/Makefile) - Build and test targets

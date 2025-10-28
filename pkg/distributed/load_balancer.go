@@ -106,12 +106,16 @@ type LatencyBasedBalancer struct {
 }
 
 // NewRoundRobinBalancer creates a new round-robin balancer
+// Deprecated: Use NewRoundRobinBalancerWithRegistry to provide a shared registry
 func NewRoundRobinBalancer() *RoundRobinBalancer {
-	registry := prometheus.NewRegistry()
+	return NewRoundRobinBalancerWithRegistry(nil)
+}
 
+// NewRoundRobinBalancerWithRegistry creates a new round-robin balancer with a shared registry
+func NewRoundRobinBalancerWithRegistry(registerer prometheus.Registerer) *RoundRobinBalancer {
 	requestsTotal := prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "lb_requests_total",
+			Name: "ollamamax_loadbalancer_requests_total",
 			Help: "Total number of load balancer requests",
 		},
 		[]string{"strategy", "node_id"},
@@ -119,7 +123,7 @@ func NewRoundRobinBalancer() *RoundRobinBalancer {
 
 	selectionDuration := prometheus.NewHistogram(
 		prometheus.HistogramOpts{
-			Name:    "lb_node_selection_duration_seconds",
+			Name:    "ollamamax_loadbalancer_node_selection_duration_seconds",
 			Help:    "Time taken to select a node",
 			Buckets: prometheus.DefBuckets,
 		},
@@ -127,19 +131,20 @@ func NewRoundRobinBalancer() *RoundRobinBalancer {
 
 	nodeUtilization := prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name: "lb_node_utilization",
+			Name: "ollamamax_loadbalancer_node_utilization",
 			Help: "Current utilization of each node",
 		},
 		[]string{"node_id"},
 	)
 
-	registry.MustRegister(requestsTotal)
-	registry.MustRegister(selectionDuration)
-	registry.MustRegister(nodeUtilization)
+	// Register metrics if registerer provided
+	if registerer != nil {
+		registerer.MustRegister(requestsTotal, selectionDuration, nodeUtilization)
+	}
 
 	return &RoundRobinBalancer{
 		metrics:           make(map[string]*NodeMetrics),
-		promRegistry:      registry,
+		promRegistry:      nil, // No longer using private registry
 		requestsTotal:     requestsTotal,
 		selectionDuration: selectionDuration,
 		nodeUtilization:   nodeUtilization,
@@ -197,12 +202,16 @@ func (rb *RoundRobinBalancer) GetPrometheusRegistry() *prometheus.Registry {
 }
 
 // NewWeightedRoundRobinBalancer creates a weighted round-robin balancer
+// Deprecated: Use NewWeightedRoundRobinBalancerWithRegistry to provide a shared registry
 func NewWeightedRoundRobinBalancer(weights map[string]int) *WeightedRoundRobinBalancer {
-	registry := prometheus.NewRegistry()
+	return NewWeightedRoundRobinBalancerWithRegistry(weights, nil)
+}
 
+// NewWeightedRoundRobinBalancerWithRegistry creates a weighted round-robin balancer with a shared registry
+func NewWeightedRoundRobinBalancerWithRegistry(weights map[string]int, registerer prometheus.Registerer) *WeightedRoundRobinBalancer {
 	requestsTotal := prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "lb_requests_total",
+			Name: "ollamamax_loadbalancer_requests_total",
 			Help: "Total number of load balancer requests",
 		},
 		[]string{"strategy", "node_id"},
@@ -210,7 +219,7 @@ func NewWeightedRoundRobinBalancer(weights map[string]int) *WeightedRoundRobinBa
 
 	selectionDuration := prometheus.NewHistogram(
 		prometheus.HistogramOpts{
-			Name:    "lb_node_selection_duration_seconds",
+			Name:    "ollamamax_loadbalancer_node_selection_duration_seconds",
 			Help:    "Time taken to select a node",
 			Buckets: prometheus.DefBuckets,
 		},
@@ -218,21 +227,22 @@ func NewWeightedRoundRobinBalancer(weights map[string]int) *WeightedRoundRobinBa
 
 	nodeUtilization := prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name: "lb_node_utilization",
+			Name: "ollamamax_loadbalancer_node_utilization",
 			Help: "Current utilization of each node",
 		},
 		[]string{"node_id"},
 	)
 
-	registry.MustRegister(requestsTotal)
-	registry.MustRegister(selectionDuration)
-	registry.MustRegister(nodeUtilization)
+	// Register metrics if registerer provided
+	if registerer != nil {
+		registerer.MustRegister(requestsTotal, selectionDuration, nodeUtilization)
+	}
 
 	return &WeightedRoundRobinBalancer{
 		weights:           weights,
 		current:           make(map[string]int),
 		metrics:           make(map[string]*NodeMetrics),
-		promRegistry:      registry,
+		promRegistry:      nil, // No longer using private registry
 		requestsTotal:     requestsTotal,
 		selectionDuration: selectionDuration,
 		nodeUtilization:   nodeUtilization,
@@ -313,12 +323,16 @@ func (wrb *WeightedRoundRobinBalancer) GetPrometheusRegistry() *prometheus.Regis
 }
 
 // NewLeastConnectionsBalancer creates a least connections balancer
+// Deprecated: Use NewLeastConnectionsBalancerWithRegistry to provide a shared registry
 func NewLeastConnectionsBalancer() *LeastConnectionsBalancer {
-	registry := prometheus.NewRegistry()
+	return NewLeastConnectionsBalancerWithRegistry(nil)
+}
 
+// NewLeastConnectionsBalancerWithRegistry creates a least connections balancer with a shared registry
+func NewLeastConnectionsBalancerWithRegistry(registerer prometheus.Registerer) *LeastConnectionsBalancer {
 	requestsTotal := prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "lb_requests_total",
+			Name: "ollamamax_loadbalancer_requests_total",
 			Help: "Total number of load balancer requests",
 		},
 		[]string{"strategy", "node_id"},
@@ -326,7 +340,7 @@ func NewLeastConnectionsBalancer() *LeastConnectionsBalancer {
 
 	selectionDuration := prometheus.NewHistogram(
 		prometheus.HistogramOpts{
-			Name:    "lb_node_selection_duration_seconds",
+			Name:    "ollamamax_loadbalancer_node_selection_duration_seconds",
 			Help:    "Time taken to select a node",
 			Buckets: prometheus.DefBuckets,
 		},
@@ -334,20 +348,21 @@ func NewLeastConnectionsBalancer() *LeastConnectionsBalancer {
 
 	nodeUtilization := prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name: "lb_node_utilization",
+			Name: "ollamamax_loadbalancer_node_utilization",
 			Help: "Current utilization of each node",
 		},
 		[]string{"node_id"},
 	)
 
-	registry.MustRegister(requestsTotal)
-	registry.MustRegister(selectionDuration)
-	registry.MustRegister(nodeUtilization)
+	// Register metrics if registerer provided
+	if registerer != nil {
+		registerer.MustRegister(requestsTotal, selectionDuration, nodeUtilization)
+	}
 
 	return &LeastConnectionsBalancer{
 		connections:       make(map[string]int64),
 		metrics:           make(map[string]*NodeMetrics),
-		promRegistry:      registry,
+		promRegistry:      nil, // No longer using private registry
 		requestsTotal:     requestsTotal,
 		selectionDuration: selectionDuration,
 		nodeUtilization:   nodeUtilization,
@@ -422,12 +437,16 @@ func (lcb *LeastConnectionsBalancer) GetPrometheusRegistry() *prometheus.Registr
 }
 
 // NewLatencyBasedBalancer creates a latency-based balancer
+// Deprecated: Use NewLatencyBasedBalancerWithRegistry to provide a shared registry
 func NewLatencyBasedBalancer() *LatencyBasedBalancer {
-	registry := prometheus.NewRegistry()
+	return NewLatencyBasedBalancerWithRegistry(nil)
+}
 
+// NewLatencyBasedBalancerWithRegistry creates a latency-based balancer with a shared registry
+func NewLatencyBasedBalancerWithRegistry(registerer prometheus.Registerer) *LatencyBasedBalancer {
 	requestsTotal := prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "lb_requests_total",
+			Name: "ollamamax_loadbalancer_requests_total",
 			Help: "Total number of load balancer requests",
 		},
 		[]string{"strategy", "node_id"},
@@ -435,7 +454,7 @@ func NewLatencyBasedBalancer() *LatencyBasedBalancer {
 
 	selectionDuration := prometheus.NewHistogram(
 		prometheus.HistogramOpts{
-			Name:    "lb_node_selection_duration_seconds",
+			Name:    "ollamamax_loadbalancer_node_selection_duration_seconds",
 			Help:    "Time taken to select a node",
 			Buckets: prometheus.DefBuckets,
 		},
@@ -443,19 +462,20 @@ func NewLatencyBasedBalancer() *LatencyBasedBalancer {
 
 	nodeUtilization := prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name: "lb_node_utilization",
+			Name: "ollamamax_loadbalancer_node_utilization",
 			Help: "Current utilization of each node",
 		},
 		[]string{"node_id"},
 	)
 
-	registry.MustRegister(requestsTotal)
-	registry.MustRegister(selectionDuration)
-	registry.MustRegister(nodeUtilization)
+	// Register metrics if registerer provided
+	if registerer != nil {
+		registerer.MustRegister(requestsTotal, selectionDuration, nodeUtilization)
+	}
 
 	return &LatencyBasedBalancer{
 		metrics:           make(map[string]*NodeMetrics),
-		promRegistry:      registry,
+		promRegistry:      nil, // No longer using private registry
 		requestsTotal:     requestsTotal,
 		selectionDuration: selectionDuration,
 		nodeUtilization:   nodeUtilization,
@@ -575,12 +595,16 @@ func (dss *DefaultStrategySelector) SelectStrategy(ctx context.Context, request 
 }
 
 // NewSmartLoadBalancer creates a smart load balancer
+// Deprecated: Use NewSmartLoadBalancerWithRegistry to provide a shared registry
 func NewSmartLoadBalancer() *SmartLoadBalancer {
-	registry := prometheus.NewRegistry()
+	return NewSmartLoadBalancerWithRegistry(nil)
+}
 
+// NewSmartLoadBalancerWithRegistry creates a smart load balancer with a shared registry
+func NewSmartLoadBalancerWithRegistry(registerer prometheus.Registerer) *SmartLoadBalancer {
 	requestsTotal := prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "lb_requests_total",
+			Name: "ollamamax_loadbalancer_requests_total",
 			Help: "Total number of load balancer requests",
 		},
 		[]string{"strategy", "node_id"},
@@ -588,7 +612,7 @@ func NewSmartLoadBalancer() *SmartLoadBalancer {
 
 	selectionDuration := prometheus.NewHistogram(
 		prometheus.HistogramOpts{
-			Name:    "lb_node_selection_duration_seconds",
+			Name:    "ollamamax_loadbalancer_node_selection_duration_seconds",
 			Help:    "Time taken to select a node",
 			Buckets: prometheus.DefBuckets,
 		},
@@ -596,7 +620,7 @@ func NewSmartLoadBalancer() *SmartLoadBalancer {
 
 	nodeUtilization := prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name: "lb_node_utilization",
+			Name: "ollamamax_loadbalancer_node_utilization",
 			Help: "Current utilization of each node",
 		},
 		[]string{"node_id"},
@@ -604,27 +628,28 @@ func NewSmartLoadBalancer() *SmartLoadBalancer {
 
 	strategySwitches := prometheus.NewCounter(
 		prometheus.CounterOpts{
-			Name: "lb_strategy_switches_total",
+			Name: "ollamamax_loadbalancer_strategy_switches_total",
 			Help: "Total number of load balancer strategy switches",
 		},
 	)
 
-	registry.MustRegister(requestsTotal)
-	registry.MustRegister(selectionDuration)
-	registry.MustRegister(nodeUtilization)
-	registry.MustRegister(strategySwitches)
+	// Register metrics if registerer provided
+	if registerer != nil {
+		registerer.MustRegister(requestsTotal, selectionDuration, nodeUtilization, strategySwitches)
+	}
 
+	// Create sub-strategies with the same registerer (they won't re-register duplicate metrics)
 	strategies := make(map[string]LoadBalancer)
-	strategies["round-robin"] = NewRoundRobinBalancer()
-	strategies["least-connections"] = NewLeastConnectionsBalancer()
-	strategies["latency"] = NewLatencyBasedBalancer()
+	strategies["round-robin"] = NewRoundRobinBalancerWithRegistry(registerer)
+	strategies["least-connections"] = NewLeastConnectionsBalancerWithRegistry(registerer)
+	strategies["latency"] = NewLatencyBasedBalancerWithRegistry(registerer)
 
 	return &SmartLoadBalancer{
 		strategies:        strategies,
 		selector:          &DefaultStrategySelector{},
 		metrics:           make(map[string]*NodeMetrics),
 		currentStrategy:   "round-robin",
-		promRegistry:      registry,
+		promRegistry:      nil, // No longer using private registry
 		requestsTotal:     requestsTotal,
 		selectionDuration: selectionDuration,
 		nodeUtilization:   nodeUtilization,

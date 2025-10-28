@@ -183,14 +183,12 @@ func (s *Server) versionMiddleware() gin.HandlerFunc {
 }
 
 // compressionMiddleware handles response compression
+// NOTE: This is a placeholder. For production, use github.com/gin-contrib/gzip middleware
 func (s *Server) compressionMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Check if client accepts gzip
-		acceptEncoding := c.GetHeader("Accept-Encoding")
-		if strings.Contains(acceptEncoding, "gzip") {
-			c.Header("Content-Encoding", "gzip")
-			c.Header("Vary", "Accept-Encoding")
-		}
+		// TODO: Implement actual gzip compression using github.com/gin-contrib/gzip
+		// For now, this is a placeholder that doesn't compress
+		// PERFORMANCE: Add gzip middleware to save 70-85% bandwidth
 		c.Next()
 	}
 }

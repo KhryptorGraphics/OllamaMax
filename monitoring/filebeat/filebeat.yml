@@ -1,257 +1,64 @@
-########################## Filebeat Configuration ##########################
-
-# Filebeat inputs - collect logs from Docker containers
 filebeat.inputs:
-- type: container
-  enabled: true
-  paths:
-    - /var/lib/docker/containers/*/*.log
+  # Container logs
+  - type: container
+    paths:
+      - '/var/lib/docker/containers/*/*.log'
+    processors:
+      - add_docker_metadata:
+          host: "unix:///var/run/docker.sock"
+      - decode_json_fields:
+          fields: ["message"]
+          process_array: false
+          max_depth: 1
+          target: ""
+          overwrite_keys: true
+          add_error_key: true
 
-  # Parse JSON logs
-  json.keys_under_root: true
-  json.add_error_key: true
-  json.overwrite_keys: true
+  # System logs (optional)
+  - type: log
+    enabled: false
+    paths:
+      - /var/log/*.log
+      - /var/log/messages
+      - /var/log/syslog
 
-  # Multiline pattern for stack traces
-  multiline.pattern: '^\s+at\s'
-  multiline.negate: false
-  multiline.match: after
-
-  # Add container metadata
-  processors:
-    - add_docker_metadata:
-        host: "unix:///var/run/docker.sock"
-        labels.dedot: true
-        annotations.dedot: true
-
-    - decode_json_fields:
-        fields: ["message"]
-        target: ""
-        overwrite_keys: true
-        add_error_key: true
-
-    - drop_fields:
-        fields: ["agent.ephemeral_id", "agent.id", "ecs.version"]
-        ignore_missing: true
-
-# Kubernetes log collection (when deployed in K8s)
-- type: log
-  enabled: true
-  paths:
-    - /var/log/containers/ollamamax-*.log
-
-  json.keys_under_root: true
-  json.add_error_key: true
-
-  processors:
-    - add_kubernetes_metadata:
-        host: ${NODE_NAME}
-        matchers:
-          - logs_path:
-              logs_path: "/var/log/containers/"
-        default_indexers.enabled: true
-        default_matchers.enabled: true
-
-# Application-specific log files
-- type: log
-  enabled: true
-  paths:
-    - /var/log/ollamamax/app.log
-    - /var/log/ollamamax/error.log
-
-  fields:
-    log_type: application
-  fields_under_root: true
-
-  multiline.pattern: '^\d{4}-\d{2}-\d{2}'
-  multiline.negate: true
-  multiline.match: after
-
-# Access logs
-- type: log
-  enabled: true
-  paths:
-    - /var/log/nginx/access.log
-    - /var/log/ollamamax/access.log
-
-  fields:
-    log_type: access
-  fields_under_root: true
-
-# Error logs
-- type: log
-  enabled: true
-  paths:
-    - /var/log/nginx/error.log
-    - /var/log/ollamamax/error.log
-
-  fields:
-    log_type: error
-    severity: high
-  fields_under_root: true
-
-########################## Processors ##########################
-
-processors:
-  # Add cloud metadata
-  - add_cloud_metadata:
-      timeout: 3s
-
-  # Add host metadata
-  - add_host_metadata:
-      netinfo.enabled: true
-      cache.ttl: 5m
-      geo:
-        name: us-east-1
-        location: "40.7128, -74.0060"
-
-  # Add Kubernetes metadata
-  - add_kubernetes_metadata:
-      host: ${NODE_NAME}
-      matchers:
-        - logs_path:
-            logs_path: "/var/lib/docker/containers/"
-      labels.dedot: true
-      annotations.dedot: true
-
-  # Add process metadata
-  - add_process_metadata:
-      match_pids: ["process.pid"]
-      target: process
-
-  # Drop unwanted fields
-  - drop_fields:
-      fields: ["log.file.path"]
-      ignore_missing: true
-
-  # Rename fields for consistency
-  - rename:
-      fields:
-        - from: "container.name"
-          to: "service.name"
-      ignore_missing: true
-
-  # Add environment tag
-  - add_tags:
-      tags: ["${ENVIRONMENT:production}", "ollamamax"]
-      target: "tags"
-
-  # Detect and parse JSON in message field
-  - decode_json_fields:
-      fields: ["message"]
-      process_array: false
-      max_depth: 2
-      target: ""
-      overwrite_keys: true
-      add_error_key: true
-
-########################## Output Configuration ##########################
+# Kubernetes autodiscovery (if running in K8s)
+filebeat.autodiscover:
+  providers:
+    - type: kubernetes
+      node: ${NODE_NAME}
+      hints.enabled: true
+      hints.default_config:
+        type: container
+        paths:
+          - /var/log/containers/*${data.kubernetes.container.id}.log
 
 # Output to Logstash
 output.logstash:
-  hosts: ["logstash:5044"]
-  worker: 2
+  hosts: ["${LOGSTASH_HOST:logstash}:${LOGSTASH_PORT:5044}"]
   compression_level: 3
+  worker: 2
   loadbalance: true
 
-  # JSON codec for structured logs
-  codec.json:
-    pretty: false
-    escape_html: false
-
-  # TLS configuration (enable in production)
-  # ssl.enabled: true
-  # ssl.certificate_authorities: ["/etc/pki/root/ca.crt"]
-  # ssl.certificate: "/etc/pki/client/cert.crt"
-  # ssl.key: "/etc/pki/client/cert.key"
-
-  # Connection settings
-  timeout: 30
-  max_retries: 3
-  bulk_max_size: 2048
-
-# Alternative: Direct output to Elasticsearch (comment out logstash output if using this)
-# output.elasticsearch:
-#   hosts: ["elasticsearch:9200"]
-#   index: "ollamamax-logs-%{+yyyy.MM.dd}"
-#   username: "${ELASTICSEARCH_USERNAME}"
-#   password: "${ELASTICSEARCH_PASSWORD}"
-#   pipeline: "ollamamax-pipeline"
-
-########################## Logging Configuration ##########################
-
-# Filebeat internal logging
+# Logging configuration
 logging.level: info
 logging.to_files: true
 logging.files:
   path: /var/log/filebeat
   name: filebeat
   keepfiles: 7
-  rotateeverybytes: 10485760  # 10MB
   permissions: 0644
 
-logging.metrics.enabled: true
-logging.metrics.period: 30s
+# Monitoring (sends Filebeat metrics to Elasticsearch)
+monitoring.enabled: false
 
-########################## Monitoring Configuration ##########################
-
-# Enable monitoring for Filebeat itself
-monitoring.enabled: true
-monitoring.elasticsearch:
-  hosts: ["elasticsearch:9200"]
-  username: "${ELASTICSEARCH_USERNAME}"
-  password: "${ELASTICSEARCH_PASSWORD}"
-
-########################## HTTP Endpoint ##########################
-
-# HTTP endpoint for health checks and metrics
-http.enabled: true
-http.host: 0.0.0.0
-http.port: 5066
-
-########################## Performance Tuning ##########################
-
-# Queue settings
-queue.mem:
-  events: 4096
-  flush.min_events: 2048
-  flush.timeout: 1s
-
-# Registry file
-filebeat.registry.path: /var/lib/filebeat
-filebeat.registry.file_permissions: 0600
-filebeat.registry.flush: 5s
-
-# Harvester settings
-filebeat.config.inputs:
-  enabled: true
-  path: /etc/filebeat/inputs.d/*.yml
-  reload.enabled: true
-  reload.period: 10s
-
-# Ignore files older than 72h
-ignore_older: 72h
-close_inactive: 5m
-close_renamed: false
-close_removed: true
-clean_inactive: 72h
-clean_removed: true
-
-########################## Additional Settings ##########################
-
-# Maximum number of harvesters
-max_procs: 2
-
-# Name of the shipper
-name: filebeat-ollamamax
-
-# Tags for all events
-tags: ["ollamamax", "production"]
-
-# Custom fields
-fields:
-  environment: production
-  application: ollamamax
-  datacenter: us-east-1
-
-fields_under_root: true
+# Processors for enrichment
+processors:
+  - add_host_metadata:
+      when.not.contains.tags: forwarded
+  - add_cloud_metadata: ~
+  - add_fields:
+      target: ''
+      fields:
+        service: ollamamax
+        environment: ${ENVIRONMENT:production}

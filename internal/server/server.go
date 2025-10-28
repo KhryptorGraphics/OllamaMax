@@ -13,6 +13,7 @@ import (
 	"github.com/khryptorgraphics/ollamamax/pkg/database"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"golang.org/x/time/rate"
 )
 
 // ServerMetrics holds Prometheus metrics for the server
@@ -40,6 +41,17 @@ type Server struct {
 	shutdown chan struct{}
 	wg       sync.WaitGroup
 	metrics  *ServerMetrics
+
+	// SECURITY: Rate limiters for authentication endpoints
+	authRateLimiters map[string]*authRateLimiter
+	authRLMutex      sync.RWMutex
+}
+
+// authRateLimiter holds rate limiter per IP for authentication endpoints
+type authRateLimiter struct {
+	limiter   *rate.Limiter
+	lastSeen  time.Time
+	attempts  int
 }
 
 // NewServer creates a new simplified API server
@@ -96,14 +108,19 @@ func NewServer(cfg *config.Config, db *database.DatabaseManager, logger *slog.Lo
 	registry.MustRegister(metrics.httpRequestsInFlight)
 
 	s := &Server{
-		config:   cfg,
-		db:       db,
-		logger:   logger,
-		shutdown: make(chan struct{}),
-		metrics:  metrics,
+		config:           cfg,
+		db:               db,
+		logger:           logger,
+		shutdown:         make(chan struct{}),
+		metrics:          metrics,
+		authRateLimiters: make(map[string]*authRateLimiter),
 	}
 
 	s.setupRouter()
+
+	// Start cleanup goroutine for expired rate limiters
+	go s.cleanupExpiredRateLimiters()
+
 	return s, nil
 }
 
@@ -146,6 +163,17 @@ func (s *Server) setupRouter() {
 		api.GET("/version", s.versionHandler) // Canonical: /api/version
 		api.GET("/v1/version", s.versionHandler) // Legacy support
 		api.GET("/v1/status", s.statusHandler)
+	}
+
+	// SECURITY FIX (ISSUE-007): Add rate limiting to authentication endpoints
+	// These endpoints are common attack vectors
+	authGroup := s.router.Group("/api/v1/auth")
+	authGroup.Use(s.authRateLimitMiddleware())
+	{
+		// Placeholder endpoints - actual implementation would go here
+		// authGroup.POST("/login", s.loginHandler)
+		// authGroup.POST("/register", s.registerHandler)
+		// authGroup.POST("/reset-password", s.resetPasswordHandler)
 	}
 }
 
@@ -218,12 +246,38 @@ func (s *Server) normalizePath(path string) string {
 	return "/other"
 }
 
-// corsMiddleware provides CORS support
+// corsMiddleware provides CORS support with configurable allowed origins
 func (s *Server) corsMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", "*")
+		// SECURITY FIX (ISSUE-006): Use specific allowed origins instead of "*"
+		// Get allowed origins from config or use localhost defaults for development
+		allowedOrigins := s.config.API.Cors.AllowedOrigins
+		if len(allowedOrigins) == 0 {
+			// Default to localhost for development if not configured
+			allowedOrigins = []string{"http://localhost:3000", "http://localhost:8080"}
+		}
+
+		origin := c.GetHeader("Origin")
+		allowed := false
+
+		// Check if origin is in allowed list
+		for _, allowedOrigin := range allowedOrigins {
+			if allowedOrigin == origin || allowedOrigin == "*" {
+				allowed = true
+				c.Header("Access-Control-Allow-Origin", allowedOrigin)
+				break
+			}
+		}
+
+		// If origin not allowed, use first allowed origin (for OPTIONS preflight)
+		if !allowed && len(allowedOrigins) > 0 {
+			c.Header("Access-Control-Allow-Origin", allowedOrigins[0])
+		}
+
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Request-ID")
+		c.Header("Access-Control-Allow-Credentials", "true")
+		c.Header("Access-Control-Max-Age", "3600")
 
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(204)
@@ -360,4 +414,91 @@ func (s *Server) Stop() error {
 // GetRouter returns the Gin router for testing
 func (s *Server) GetRouter() *gin.Engine {
 	return s.router
+}
+
+// authRateLimitMiddleware implements strict rate limiting for authentication endpoints
+// SECURITY FIX (ISSUE-007): Protects against brute force attacks
+func (s *Server) authRateLimitMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		clientIP := c.ClientIP()
+		path := c.Request.URL.Path
+
+		// Get rate limit config from environment or use defaults
+		var requestsPerMinute rate.Limit
+		var burstSize int
+
+		switch {
+		case c.Request.URL.Path == "/api/v1/auth/login":
+			// Login: 5 attempts per minute
+			requestsPerMinute = rate.Limit(s.config.API.RateLimit.LoginRequestsPer) / 60.0
+			burstSize = 2
+		case c.Request.URL.Path == "/api/v1/auth/register":
+			// Register: 3 attempts per minute
+			requestsPerMinute = rate.Limit(s.config.API.RateLimit.RegisterRequestsPer) / 60.0
+			burstSize = 1
+		case c.Request.URL.Path == "/api/v1/auth/reset-password":
+			// Password reset: 3 attempts per minute
+			requestsPerMinute = rate.Limit(s.config.API.RateLimit.ResetPasswordRequestsPer) / 60.0
+			burstSize = 1
+		default:
+			// Other auth endpoints: 10 attempts per minute
+			requestsPerMinute = 10.0 / 60.0
+			burstSize = 3
+		}
+
+		s.authRLMutex.Lock()
+		limiter, exists := s.authRateLimiters[clientIP]
+		if !exists {
+			limiter = &authRateLimiter{
+				limiter:  rate.NewLimiter(requestsPerMinute, burstSize),
+				lastSeen: time.Now(),
+				attempts: 0,
+			}
+			s.authRateLimiters[clientIP] = limiter
+		}
+		limiter.lastSeen = time.Now()
+		limiter.attempts++
+		s.authRLMutex.Unlock()
+
+		if !limiter.limiter.Allow() {
+			s.logger.Warn("Auth rate limit exceeded",
+				"client_ip", clientIP,
+				"path", path,
+				"attempts", limiter.attempts,
+			)
+
+			c.JSON(http.StatusTooManyRequests, gin.H{
+				"error":       "rate_limit_exceeded",
+				"message":     "Too many authentication attempts. Please try again later.",
+				"retry_after": 60, // seconds
+			})
+			c.Abort()
+			return
+		}
+
+		c.Next()
+	}
+}
+
+// cleanupExpiredRateLimiters periodically removes expired rate limiters
+func (s *Server) cleanupExpiredRateLimiters() {
+	ticker := time.NewTicker(5 * time.Minute)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			s.authRLMutex.Lock()
+			now := time.Now()
+			for ip, limiter := range s.authRateLimiters {
+				// Remove limiters that haven't been used in 30 minutes
+				if now.Sub(limiter.lastSeen) > 30*time.Minute {
+					delete(s.authRateLimiters, ip)
+				}
+			}
+			s.authRLMutex.Unlock()
+		case <-s.shutdown:
+			return
+		}
+	}
 }

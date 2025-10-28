@@ -1,0 +1,313 @@
+name: Final Production Validation Pipeline
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment for validation'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production-validation
+      phases:
+        description: 'Phases to run (comma-separated or "all")'
+        required: false
+        default: 'all'
+        type: string
+
+  schedule:
+    # Run weekly validation on Sunday at 2 AM UTC
+    - cron: '0 2 * * 0'
+
+  push:
+    tags:
+      - 'v*'  # Run on version tags
+
+env:
+  TARGET_RPS: 100000
+  K6_INSTANCES: 10
+  CHAOS_DURATION: 2h
+  SECURITY_SCAN_LEVEL: comprehensive
+
+jobs:
+  final-validation:
+    name: Final Production Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 480  # 8 hours
+
+    environment:
+      name: ${{ github.event.inputs.environment || 'staging' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install k6 for load testing
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          sudo apt-get install -y jq bc curl postgresql-client redis-tools
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Deploy test infrastructure
+        run: |
+          docker-compose -f docker-compose.yml up -d
+
+          # Wait for services to be healthy
+          timeout 300 bash -c 'until curl -sf http://localhost:11434/health; do sleep 5; done'
+
+          echo "Test infrastructure deployed successfully"
+
+      - name: Verify infrastructure health
+        run: |
+          curl -f http://localhost:11434/health || exit 1
+          docker ps
+          echo "Infrastructure health verified"
+
+      - name: Execute Final Validation
+        id: validation
+        run: |
+          chmod +x scripts/run-final-validation.sh
+
+          PHASES="${{ github.event.inputs.phases || 'all' }}"
+
+          if [ "$PHASES" != "all" ]; then
+            ./scripts/run-final-validation.sh --phases "$PHASES"
+          else
+            ./scripts/run-final-validation.sh
+          fi
+        continue-on-error: true
+
+      - name: Collect validation results
+        if: always()
+        run: |
+          mkdir -p validation-artifacts
+
+          # Copy all test results
+          cp -r load-test-results validation-artifacts/ || true
+          cp -r e2e-test-results validation-artifacts/ || true
+          cp -r chaos-test-results validation-artifacts/ || true
+          cp -r security-test-results validation-artifacts/ || true
+          cp -r disaster-recovery-results validation-artifacts/ || true
+          cp -r final-validation-results validation-artifacts/ || true
+
+          # Copy logs
+          cp final-validation-*.log validation-artifacts/ || true
+
+          # Copy known issues
+          cp KNOWN_ISSUES.md validation-artifacts/ || true
+          cp docs/KNOWN_ISSUES.md validation-artifacts/ || true
+
+          echo "Validation results collected"
+
+      - name: Generate validation summary
+        if: always()
+        run: |
+          echo "## Validation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -f "final-validation-results/FINAL_PRODUCTION_READINESS_REPORT.md" ]; then
+            head -100 final-validation-results/FINAL_PRODUCTION_READINESS_REPORT.md >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Final validation report not generated" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload validation artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-results-${{ github.run_number }}
+          path: validation-artifacts/
+          retention-days: 90
+
+      - name: Upload final report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: final-production-readiness-report
+          path: |
+            final-validation-results/FINAL_PRODUCTION_READINESS_REPORT.md
+            final-validation-results/*.json
+            KNOWN_ISSUES.md
+          retention-days: 365
+
+      - name: Post results to Slack
+        if: always() && env.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          SCORE=$(jq -r '.overall_score' final-validation-results/final-production-readiness-report.json 2>/dev/null || echo "N/A")
+          RECOMMENDATION=$(jq -r '.recommendation' final-validation-results/final-production-readiness-report.json 2>/dev/null || echo "N/A")
+
+          if [ "$SCORE" -ge 90 ]; then
+            COLOR="good"
+            EMOJI=":white_check_mark:"
+          elif [ "$SCORE" -ge 80 ]; then
+            COLOR="warning"
+            EMOJI=":warning:"
+          else
+            COLOR="danger"
+            EMOJI=":x:"
+          fi
+
+          curl -X POST "$SLACK_WEBHOOK_URL" \
+            -H 'Content-Type: application/json' \
+            -d "{
+              \"attachments\": [{
+                \"color\": \"$COLOR\",
+                \"title\": \"$EMOJI Final Validation Results\",
+                \"text\": \"Score: $SCORE/100\\nRecommendation: $RECOMMENDATION\",
+                \"fields\": [
+                  {\"title\": \"Environment\", \"value\": \"${{ github.event.inputs.environment }}\", \"short\": true},
+                  {\"title\": \"Run\", \"value\": \"#${{ github.run_number }}\", \"short\": true}
+                ]
+              }]
+            }"
+
+      - name: Create GitHub issue for failures
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Final Validation Failed - Run #${context.runNumber}`,
+              body: `**Final validation pipeline failed**\n\n` +
+                    `- **Run:** [#${context.runNumber}](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})\n` +
+                    `- **Environment:** ${{ github.event.inputs.environment }}\n` +
+                    `- **Phases:** ${{ github.event.inputs.phases }}\n\n` +
+                    `Review the validation artifacts and logs for details.`,
+              labels: ['validation', 'critical']
+            });
+
+      - name: Cleanup infrastructure
+        if: always()
+        run: |
+          docker-compose down -v || true
+          docker system prune -af || true
+
+      - name: Set validation status
+        if: always()
+        run: |
+          if [ -f "final-validation-results/final-production-readiness-report.json" ]; then
+            SCORE=$(jq -r '.overall_score' final-validation-results/final-production-readiness-report.json)
+
+            if [ "$SCORE" -ge 80 ]; then
+              echo "validation_status=success" >> $GITHUB_OUTPUT
+              exit 0
+            else
+              echo "validation_status=failure" >> $GITHUB_OUTPUT
+              exit 1
+            fi
+          else
+            echo "validation_status=error" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+  publish-results:
+    name: Publish Validation Results
+    runs-on: ubuntu-latest
+    needs: final-validation
+    if: always()
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download validation artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: final-production-readiness-report
+          path: validation-results/
+
+      - name: Deploy to GitHub Pages
+        if: github.ref == 'refs/heads/main'
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./validation-results
+          destination_dir: validation-reports/${{ github.run_number }}
+
+      - name: Update validation badge
+        run: |
+          SCORE=$(jq -r '.overall_score' validation-results/final-production-readiness-report.json 2>/dev/null || echo 0)
+
+          if [ "$SCORE" -ge 90 ]; then
+            COLOR="brightgreen"
+          elif [ "$SCORE" -ge 80 ]; then
+            COLOR="yellow"
+          else
+            COLOR="red"
+          fi
+
+          echo "![Validation](https://img.shields.io/badge/validation-${SCORE}%25-${COLOR})" > validation-badge.md
+
+  conditional-deployment:
+    name: Conditional Production Deployment
+    runs-on: ubuntu-latest
+    needs: final-validation
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Download validation report
+        uses: actions/download-artifact@v4
+        with:
+          name: final-production-readiness-report
+
+      - name: Check validation score
+        id: check_score
+        run: |
+          SCORE=$(jq -r '.overall_score' final-production-readiness-report.json)
+          echo "score=$SCORE" >> $GITHUB_OUTPUT
+
+          if [ "$SCORE" -ge 90 ]; then
+            echo "approval_required=false" >> $GITHUB_OUTPUT
+          elif [ "$SCORE" -ge 80 ]; then
+            echo "approval_required=true" >> $GITHUB_OUTPUT
+          else
+            echo "approval_required=block" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Auto-approve deployment (score >= 90)
+        if: steps.check_score.outputs.approval_required == 'false'
+        run: |
+          echo "✅ Validation score ${{ steps.check_score.outputs.score }}/100"
+          echo "Automatically approved for production deployment"
+
+      - name: Require manual approval (score 80-89)
+        if: steps.check_score.outputs.approval_required == 'true'
+        run: |
+          echo "⚠️ Validation score ${{ steps.check_score.outputs.score }}/100"
+          echo "Manual approval required before production deployment"
+
+      - name: Block deployment (score < 80)
+        if: steps.check_score.outputs.approval_required == 'block'
+        run: |
+          echo "❌ Validation score ${{ steps.check_score.outputs.score }}/100"
+          echo "Production deployment blocked - validation score too low"
+          exit 1

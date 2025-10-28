@@ -11,8 +11,9 @@ services:
   postgres:
     image: postgres:15-alpine
     container_name: ollama-postgres-optimized
-    ports:
-      - "5432:5432"
+    # SECURITY: Removed external port exposure - use Docker network only
+    expose:
+      - "5432"
     environment:
       - POSTGRES_DB=ollamamax
       - POSTGRES_USER=ollama
@@ -44,8 +45,9 @@ services:
   redis:
     image: redis:7-alpine
     container_name: ollama-redis-optimized
-    ports:
-      - "6379:6379"
+    # SECURITY: Removed external port exposure - use Docker network only
+    expose:
+      - "6379"
     command: >
       redis-server
       --appendonly yes

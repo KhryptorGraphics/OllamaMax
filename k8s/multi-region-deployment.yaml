@@ -141,7 +141,6 @@ spec:
         - "--cluster-node-timeout 5000"
         - "--appendonly yes"
         - "--protected-mode no"
-        - "--replicaof redis-cluster-us-east-0.redis-cluster-us-east.ollamamax-multiregion.svc.cluster.local 6379"
         volumeMounts:
         - name: redis-data
           mountPath: /data
@@ -217,7 +216,6 @@ spec:
         - "--cluster-node-timeout 5000"
         - "--appendonly yes"
         - "--protected-mode no"
-        - "--replicaof redis-cluster-us-east-0.redis-cluster-us-east.ollamamax-multiregion.svc.cluster.local 6379"
         volumeMounts:
         - name: redis-data
           mountPath: /data
@@ -236,6 +234,51 @@ spec:
       resources:
         requests:
           storage: 10Gi
+
+---
+# Redis Cluster Initialization Job for Multi-Region Setup
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: redis-cluster-init-multiregion
+  namespace: ollamamax-multiregion
+spec:
+  template:
+    spec:
+      containers:
+      - name: redis-cluster-init
+        image: redis:7-alpine
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          echo "Waiting for Redis nodes to be ready..."
+          sleep 30
+
+          # Collect all Redis pod IPs from all regions
+          REDIS_NODES=""
+          for region in us-east us-west eu-west; do
+            for i in $(seq 0 2); do
+              POD_IP=$(nslookup redis-cluster-${region}-${i}.redis-cluster-${region}.ollamamax-multiregion.svc.cluster.local | grep -E '^Address:' | tail -n1 | cut -d' ' -f2)
+              if [ -n "$POD_IP" ]; then
+                REDIS_NODES="$REDIS_NODES $POD_IP:6379"
+              fi
+            done
+          done
+
+          echo "Redis nodes: $REDIS_NODES"
+
+          # Create cluster with 1 replica per master (3 masters, 6 replicas total)
+          echo "yes" | redis-cli --cluster create $REDIS_NODES --cluster-replicas 1
+
+          echo "Multi-region Redis cluster initialization completed successfully"
+
+          # Verify cluster status
+          sleep 10
+          redis-cli --cluster check $(echo $REDIS_NODES | awk '{print $1}')
+      restartPolicy: OnFailure
+  backoffLimit: 3
 
 ---
 # Headless Services for StatefulSets

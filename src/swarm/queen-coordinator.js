@@ -2,17 +2,24 @@
  * Queen-led Hierarchical Swarm Coordination System
  * Implements advanced swarm intelligence with Queen leader, specialized workers,
  * and intelligent delegation patterns inspired by natural swarm behavior
- * 
+ *
  * Hierarchy:
  * - Queen: Master coordinator with global optimization and strategic planning
  * - Lieutenants: Specialized middle management for different domains
  * - Workers: Execution agents with specific capabilities
  * - Scouts: Information gathering and environment monitoring agents
  * - Guards: System protection and quality assurance agents
+ *
+ * ML Integration:
+ * - AgentPerformanceForecaster for intelligence gathering
+ * - PredictiveScalingSystem for resource allocation
+ * - Performance prediction vs actual comparison
  */
 
 const EventEmitter = require('events');
 const Redis = require('ioredis');
+const AgentPerformanceForecaster = require('../agents/agent-performance-forecaster');
+const PredictiveScalingSystem = require('../ml/predictive-scaling');
 
 class QueenCoordinator extends EventEmitter {
   constructor(options = {}) {
@@ -114,6 +121,10 @@ class QueenCoordinator extends EventEmitter {
       consensusRequired: ['strategic_changes', 'resource_reallocation'],
       broadcastChannels: ['alerts', 'announcements', 'updates']
     };
+
+    // ML Forecaster Integration
+    this.mlForecaster = new AgentPerformanceForecaster();
+    this.predictiveScaling = new PredictiveScalingSystem();
 
     this.initializeQueen();
   }
@@ -244,29 +255,90 @@ class QueenCoordinator extends EventEmitter {
       tasks: {},
       environment: {},
       agents: {},
+      mlForecasts: {},
       timestamp: Date.now()
     };
-    
+
     try {
       // Gather performance metrics from all agents
       intelligence.performance = await this.gatherPerformanceIntelligence();
-      
+
       // Analyze resource utilization
       intelligence.resources = await this.gatherResourceIntelligence();
-      
+
       // Analyze task patterns and efficiency
       intelligence.tasks = await this.gatherTaskIntelligence();
-      
+
       // Environmental monitoring from scouts
       intelligence.environment = await this.gatherEnvironmentalIntelligence();
-      
+
       // Agent capabilities and specializations
       intelligence.agents = await this.gatherAgentIntelligence();
-      
+
+      // ML forecasts for predictive insights
+      intelligence.mlForecasts = await this.gatherMLForecasts();
+
       return intelligence;
     } catch (error) {
       console.error('Intelligence gathering failed:', error);
       return intelligence;
+    }
+  }
+
+  /**
+   * Gather ML forecasts for all agents
+   */
+  async gatherMLForecasts() {
+    const forecasts = {
+      agentPredictions: new Map(),
+      scalingRecommendations: null,
+      predictedLoad: 0,
+      confidence: 0
+    };
+
+    try {
+      // Get all agent IDs
+      const allAgents = await this.getAllAgents();
+      const agentIds = Array.from(allAgents.keys());
+
+      // Get forecasts for each agent
+      for (const agentId of agentIds.slice(0, 10)) { // Limit to 10 agents for performance
+        const taskRequest = { type: 'general', complexity: 'medium', priority: 5 };
+        const prediction = await this.mlForecaster.predictAgentPerformance(agentId, taskRequest);
+
+        if (prediction) {
+          forecasts.agentPredictions.set(agentId, {
+            successRate: prediction.prediction.successRate,
+            estimatedDuration: prediction.prediction.estimatedDuration,
+            confidence: prediction.confidence
+          });
+        }
+      }
+
+      // Get predictive scaling recommendations
+      const scalingStatus = await this.predictiveScaling.getSystemStatus();
+      if (scalingStatus.recentPredictions && scalingStatus.recentPredictions.length > 0) {
+        const latest = scalingStatus.recentPredictions[0];
+        forecasts.scalingRecommendations = {
+          predictedAgents: latest.prediction?.predicted_active_agents || 0,
+          predictedQueueLength: latest.prediction?.predicted_queue_length || 0,
+          confidence: latest.prediction?.confidence || 0
+        };
+        forecasts.predictedLoad = latest.prediction?.predicted_queue_length || 0;
+      }
+
+      // Calculate average confidence
+      const confidences = Array.from(forecasts.agentPredictions.values()).map(p => p.confidence);
+      forecasts.confidence = confidences.length > 0
+        ? confidences.reduce((sum, c) => sum + c, 0) / confidences.length
+        : 0;
+
+      console.log(`🔮 ML Forecasts gathered: ${forecasts.agentPredictions.size} agent predictions, confidence: ${(forecasts.confidence * 100).toFixed(1)}%`);
+
+      return forecasts;
+    } catch (error) {
+      console.error('❌ ML forecast gathering failed:', error.message);
+      return forecasts;
     }
   }
 
@@ -547,17 +619,23 @@ class QueenCoordinator extends EventEmitter {
       performance: { trend: 'stable', bottlenecks: [], opportunities: [] },
       resources: { efficiency: 0, utilization: 'balanced', constraints: [] },
       structure: { balance: 'adequate', gaps: [], recommendations: [] },
-      strategic: { alignment: 0, adaptability: 0, resilience: 0 }
+      strategic: { alignment: 0, adaptability: 0, resilience: 0 },
+      mlInsights: { predictedVsActual: {}, recommendations: [] }
     };
-    
+
     try {
       // Overall performance analysis
       const performanceScore = intelligence.performance.overall.successRate * 0.4 +
                               (1 - intelligence.performance.overall.averageExecutionTime / 10000) * 0.3 +
                               Math.min(1, intelligence.performance.overall.throughput / 100) * 0.3;
-      
+
       analysis.overall.score = performanceScore;
       analysis.overall.grade = this.calculatePerformanceGrade(performanceScore);
+
+      // Compare ML predictions with actual performance
+      if (intelligence.mlForecasts && intelligence.mlForecasts.agentPredictions.size > 0) {
+        analysis.mlInsights = await this.compareMLPredictionsWithActuals(intelligence);
+      }
       
       // Identify performance issues
       if (intelligence.performance.overall.successRate < 0.8) {
@@ -781,9 +859,95 @@ class QueenCoordinator extends EventEmitter {
     }
   }
 
+  /**
+   * Compare ML predictions with actual performance
+   */
+  async compareMLPredictionsWithActuals(intelligence) {
+    const comparison = {
+      predictedVsActual: {},
+      predictionAccuracy: 0,
+      recommendations: []
+    };
+
+    try {
+      const predictions = intelligence.mlForecasts.agentPredictions;
+      const actualPerformance = intelligence.performance.byRole;
+
+      // Calculate prediction accuracy
+      let accuracySum = 0;
+      let comparisonCount = 0;
+
+      for (const [agentId, prediction] of predictions) {
+        const agent = await this.getAgentById(agentId);
+        if (agent && agent.performance) {
+          const actual = agent.performance.successRate || 0.5;
+          const predicted = prediction.successRate;
+          const accuracy = 1 - Math.abs(actual - predicted);
+
+          comparison.predictedVsActual[agentId] = {
+            predicted: predicted,
+            actual: actual,
+            accuracy: accuracy,
+            deviation: actual - predicted
+          };
+
+          accuracySum += accuracy;
+          comparisonCount++;
+        }
+      }
+
+      comparison.predictionAccuracy = comparisonCount > 0 ? accuracySum / comparisonCount : 0;
+
+      // Generate ML-based recommendations
+      if (comparison.predictionAccuracy > 0.8) {
+        comparison.recommendations.push({
+          type: 'high_ml_confidence',
+          description: 'ML predictions are highly accurate, use for proactive scaling',
+          priority: 'medium'
+        });
+      }
+
+      // Compare predicted vs actual load
+      if (intelligence.mlForecasts.scalingRecommendations) {
+        const predictedLoad = intelligence.mlForecasts.predictedLoad;
+        const actualLoad = intelligence.tasks.complexity?.average || 0;
+        const loadDeviation = Math.abs(predictedLoad - actualLoad);
+
+        if (loadDeviation > 5) {
+          comparison.recommendations.push({
+            type: 'load_prediction_deviation',
+            description: `ML predicted load ${predictedLoad} differs from actual ${actualLoad}`,
+            priority: 'low'
+          });
+        }
+      }
+
+      console.log(`📊 ML Prediction Accuracy: ${(comparison.predictionAccuracy * 100).toFixed(1)}%`);
+
+      return comparison;
+    } catch (error) {
+      console.error('❌ ML comparison failed:', error.message);
+      return comparison;
+    }
+  }
+
   async generateStrategicActions(analysis) {
     const actions = [];
-    
+
+    // ML-driven actions based on forecasts
+    if (analysis.mlInsights && analysis.mlInsights.recommendations.length > 0) {
+      for (const rec of analysis.mlInsights.recommendations) {
+        actions.push({
+          type: rec.type,
+          description: rec.description,
+          priority: rec.priority,
+          estimatedImpact: 0.1,
+          resourceCost: 'low',
+          source: 'ml_forecaster'
+        });
+      }
+    }
+
     // Performance improvement actions
     if (analysis.performance.bottlenecks.includes('quality_issues')) {
       actions.push({
@@ -1083,13 +1247,28 @@ class QueenCoordinator extends EventEmitter {
     if (!this.agentRoles[role]) {
       throw new Error(`Invalid role: ${role}`);
     }
-    
+
     const roleConfig = this.agentRoles[role];
     const currentCount = this.getRoleCount(role);
-    
+
     if (currentCount >= roleConfig.maxCount) {
       console.warn(`Maximum ${role} count reached: ${roleConfig.maxCount}`);
       return null;
+    }
+
+    // Use ML forecaster to predict agent effectiveness
+    const taskRequest = { type: specialization || 'general', complexity: 'medium', priority: 5 };
+    let mlPrediction = null;
+
+    try {
+      const agentId = `${role}_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+      mlPrediction = await this.mlForecaster.predictAgentPerformance(agentId, taskRequest);
+
+      if (mlPrediction && mlPrediction.prediction.successRate < 0.5) {
+        console.warn(`⚠️ ML forecaster predicts low success rate (${(mlPrediction.prediction.successRate * 100).toFixed(1)}%) for new ${role} agent`);
+      }
+    } catch (error) {
+      console.error('❌ ML prediction for recruitment failed:', error.message);
     }
     
     const agentId = `${role}_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
@@ -1312,34 +1491,59 @@ class QueenCoordinator extends EventEmitter {
 
   async handlePerformanceIssue(agent, issueType) {
     console.log(`Performance issue detected for ${agent.id}: ${issueType}`);
-    
+
     const remediation = {
       agent: agent.id,
       issue: issueType,
       timestamp: Date.now(),
-      actions: []
+      actions: [],
+      mlRecommendation: null
     };
-    
+
+    // Get ML forecaster recommendation for remediation
+    try {
+      const taskRequest = { type: agent.specialization || 'general', complexity: 'low', priority: 5 };
+      const mlPrediction = await this.mlForecaster.predictAgentPerformance(agent.id, taskRequest);
+
+      if (mlPrediction) {
+        remediation.mlRecommendation = {
+          predictedSuccessRate: mlPrediction.prediction.successRate,
+          confidence: mlPrediction.confidence,
+          suggestion: mlPrediction.prediction.successRate > 0.6
+            ? 'reduce_task_complexity'
+            : 'comprehensive_retraining'
+        };
+
+        console.log(`🤖 ML Recommendation: ${remediation.mlRecommendation.suggestion} (confidence: ${(mlPrediction.confidence * 100).toFixed(1)}%)`);
+      }
+    } catch (error) {
+      console.error('❌ ML remediation recommendation failed:', error.message);
+    }
+
     switch (issueType) {
       case 'low_success_rate':
-        // Provide additional training or reassign to simpler tasks
-        remediation.actions.push('skill_improvement_training');
-        remediation.actions.push('task_complexity_reduction');
+        // Use ML recommendation if available
+        if (remediation.mlRecommendation?.suggestion === 'reduce_task_complexity') {
+          remediation.actions.push('task_complexity_reduction');
+        } else {
+          remediation.actions.push('skill_improvement_training');
+          remediation.actions.push('task_complexity_reduction');
+        }
         break;
-        
+
       case 'slow_execution':
         // Check for resource constraints or inefficient processes
         remediation.actions.push('resource_optimization');
         remediation.actions.push('process_improvement');
         break;
     }
-    
+
     // Execute remediation actions
     for (const action of remediation.actions) {
       await this.executeRemediationAction(agent, action);
     }
-    
-    // Store remediation record
+
+    // Store remediation record with ML insights
     await this.redis.setex(`remediation:${agent.id}:${Date.now()}`, 3600 * 24, JSON.stringify(remediation));
   }
 

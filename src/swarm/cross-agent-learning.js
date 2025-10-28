@@ -2,18 +2,21 @@
  * Cross-Agent Learning System for Advanced Swarm Intelligence
  * Implements distributed learning, knowledge sharing, skill transfer,
  * collective memory, and adaptive expertise development across agents
- * 
+ *
  * Learning Mechanisms:
  * - Distributed Reinforcement Learning with shared experience replay
  * - Knowledge Graph construction and reasoning
- * - Skill Transfer Learning between specialized agents  
+ * - Skill Transfer Learning between specialized agents
  * - Collective Memory with semantic indexing
  * - Meta-Learning for rapid adaptation
  * - Peer-to-Peer Teaching and mentoring
+ * - ML Forecaster Integration for predictive Q-value initialization
  */
 
 const EventEmitter = require('events');
 const Redis = require('ioredis');
+const AgentPerformanceForecaster = require('../agents/agent-performance-forecaster');
+const NeuralPatternTrainer = require('../agents/neural-pattern-trainer');
 
 class CrossAgentLearningSystem extends EventEmitter {
   constructor(options = {}) {
@@ -104,6 +107,10 @@ class CrossAgentLearningSystem extends EventEmitter {
       graduationCriteria: new Map()   // When to complete learning
     };
 
+    // ML Forecaster Integration
+    this.mlForecaster = new AgentPerformanceForecaster();
+    this.neuralPatternTrainer = new NeuralPatternTrainer();
+
     this.initializeLearningSystem();
   }
 
@@ -111,7 +118,10 @@ class CrossAgentLearningSystem extends EventEmitter {
     try {
       // Load persistent learning data
       await this.loadLearningHistory();
-      
+
+      // Initialize ML forecaster for predictive learning
+      await this.mlForecaster.initialize();
+
       // Initialize learning components
       await this.initializeDistributedRL();
       await this.initializeKnowledgeGraph();
@@ -119,15 +129,17 @@ class CrossAgentLearningSystem extends EventEmitter {
       await this.initializeCollectiveMemory();
       await this.initializeMetaLearning();
       await this.initializePeerTeaching();
-      
+
       // Start learning processes
       this.startLearningCycles();
-      
+
       console.log('Cross-agent learning system initialized successfully');
+      console.log('✅ ML forecaster integrated for predictive Q-value initialization');
       this.emit('learning_initialized', {
-        components: ['distributedRL', 'knowledgeGraph', 'skillTransfer', 'collectiveMemory', 'metaLearning', 'peerTeaching'],
+        components: ['distributedRL', 'knowledgeGraph', 'skillTransfer', 'collectiveMemory', 'metaLearning', 'peerTeaching', 'mlForecaster'],
         maxAgents: this.config.maxAgents,
-        learningRate: this.config.learningRate
+        learningRate: this.config.learningRate,
+        mlIntegration: true
       });
     } catch (error) {
       console.error('Failed to initialize learning system:', error);
@@ -198,31 +210,182 @@ class CrossAgentLearningSystem extends EventEmitter {
   }
 
   async initializeAgentInSystems(agentId, profile) {
-    // Initialize in distributed RL
+    // Get ML-based performance predictions for Q-value initialization
+    const mlPrediction = await this.getMLBasedQValueInitialization(agentId, profile);
+
+    // Initialize in distributed RL with ML-seeded Q-values
     this.distributedRL.agentModels.set(agentId, {
-      qTable: new Map(),
+      qTable: mlPrediction.initialQTable,
       policy: new Map(),
       experience: [],
       lastState: null,
       lastAction: null,
-      cumulativeReward: 0
+      cumulativeReward: 0,
+      mlSeeded: true,
+      initialPrediction: mlPrediction
     });
-    
-    // Add to skill transfer system
-    this.skillTransfer.expertiseMap.set(agentId, new Map());
-    
+
+    // Add to skill transfer system with ML-predicted expertise
+    this.skillTransfer.expertiseMap.set(agentId, mlPrediction.predictedExpertise);
+
     // Initialize memory contributions
     this.collectiveMemory.workingMemory.set(agentId, {
       currentContext: {},
       activeGoals: [],
       recentExperiences: []
     });
-    
+
     // Set up teaching relationships if applicable
     if (profile.capabilities.includes('teaching') || profile.type === 'mentor') {
       this.skillTransfer.mentorAgents.add(agentId);
     } else {
       this.skillTransfer.learnerAgents.add(agentId);
+    }
+
+    console.log(`🤖 Agent ${agentId} initialized with ML-seeded Q-values (confidence: ${(mlPrediction.confidence * 100).toFixed(1)}%)`);
+  }
+
+  /**
+   * Get ML-based Q-value initialization using forecaster predictions
+   */
+  async getMLBasedQValueInitialization(agentId, profile) {
+    try {
+      const initialQTable = new Map();
+      const predictedExpertise = new Map();
+
+      // Get predictions for common task types
+      const taskTypes = ['general', 'code', 'research', 'testing', 'deployment'];
+      let totalConfidence = 0;
+      let predictionCount = 0;
+
+      for (const taskType of taskTypes) {
+        const taskRequest = {
+          type: taskType,
+          complexity: 'medium',
+          priority: 5
+        };
+
+        // Get ML forecast for this agent and task type
+        const forecast = await this.mlForecaster.predictAgentPerformance(agentId, taskRequest);
+
+        if (forecast && forecast.prediction) {
+          // Initialize Q-values based on predicted success rate
+          // Q(state, action) = predicted_success_rate * reward_scale
+          const baseQValue = forecast.prediction.successRate * 10; // Scale to 0-10 range
+
+          // Seed Q-table for this task type
+          for (const action of this.distributedRL.actionSpace) {
+            const stateActionKey = `${taskType}:${action}`;
+            // Adjust Q-value based on action relevance
+            const actionFactor = this.getActionRelevanceFactor(action, taskType);
+            initialQTable.set(stateActionKey, baseQValue * actionFactor);
+          }
+
+          // Set predicted expertise level
+          predictedExpertise.set(taskType, {
+            skillLevel: forecast.prediction.successRate,
+            confidence: forecast.confidence,
+            estimatedDuration: forecast.prediction.estimatedDuration
+          });
+
+          totalConfidence += forecast.confidence;
+          predictionCount++;
+        }
+      }
+
+      // Get neural pattern-based insights
+      const patternInsights = await this.getNeuralPatternInsights(agentId, profile);
+
+      return {
+        initialQTable,
+        predictedExpertise,
+        confidence: predictionCount > 0 ? totalConfidence / predictionCount : 0.5,
+        patternInsights,
+        source: 'ml_forecaster'
+      };
+    } catch (error) {
+      console.error(`❌ ML Q-value initialization failed for ${agentId}:`, error.message);
+      // Return default initialization
+      return {
+        initialQTable: new Map(),
+        predictedExpertise: new Map(),
+        confidence: 0,
+        source: 'default'
+      };
+    }
+  }
+
+  /**
+   * Get action relevance factor for Q-value adjustment
+   */
+  getActionRelevanceFactor(action, taskType) {
+    const relevanceMatrix = {
+      'code': {
+        'execute_task': 1.2,
+        'optimize_performance': 1.1,
+        'innovate': 1.0,
+        'collaborate': 0.9,
+        'teach_skill': 0.8
+      },
+      'research': {
+        'explore_environment': 1.2,
+        'share_information': 1.1,
+        'learn_from_peer': 1.0,
+        'consolidate_knowledge': 1.0,
+        'collaborate': 0.9
+      },
+      'testing': {
+        'execute_task': 1.2,
+        'optimize_performance': 1.1,
+        'consolidate_knowledge': 1.0,
+        'collaborate': 0.9
+      },
+      'general': {
+        'execute_task': 1.0,
+        'collaborate': 1.0,
+        'share_information': 0.9,
+        'learn_from_peer': 0.9
+      }
+    };
+
+    return relevanceMatrix[taskType]?.[action] || 0.8;
+  }
+
+  /**
+   * Get neural pattern-based insights for learning rate scaling
+   */
+  async getNeuralPatternInsights(agentId, profile) {
+    try {
+      // Get similar agent patterns from neural trainer
+      const patterns = await this.neuralPatternTrainer.getAgentPatterns(agentId, 'general');
+
+      if (patterns && patterns.length > 0) {
+        // Calculate adaptive learning rate based on patterns
+        const successRate = patterns.filter(p => p.success).length / patterns.length;
+        const adaptiveLearningRate = this.config.learningRate * (1 + successRate * 0.5);
+
+        return {
+          patternCount: patterns.length,
+          historicalSuccessRate: successRate,
+          adaptiveLearningRate,
+          recommendation: successRate > 0.7 ? 'exploit' : 'explore'
+        };
+      }
+
+      return {
+        patternCount: 0,
+        historicalSuccessRate: 0.5,
+        adaptiveLearningRate: this.config.learningRate,
+        recommendation: 'explore'
+      };
+    } catch (error) {
+      console.error('❌ Neural pattern insights error:', error.message);
+      return {
+        patternCount: 0,
+        historicalSuccessRate: 0.5,
+        adaptiveLearningRate: this.config.learningRate,
+        recommendation: 'explore'
+      };
     }
   }
 

@@ -4,8 +4,9 @@ services:
   postgres:
     image: postgres:15-alpine
     container_name: ollamamax-postgres
-    ports:
-      - "15432:5432"
+    # SECURITY: Removed external port exposure - use Docker network only
+    expose:
+      - "5432"
     environment:
       POSTGRES_DB: ollamamax
       POSTGRES_USER: ollama_user

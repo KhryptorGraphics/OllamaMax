@@ -69,10 +69,12 @@ services:
     restart: unless-stopped
 
   # Redis Cache - Development
+  # NOTE: In development, Redis port is exposed for debugging tools
+  # In production, this should use 'expose' instead of 'ports'
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"  # Bind to localhost only for security
     command: redis-server --appendonly yes --requirepass dev_redis_password
     volumes:
       - redis_data:/data

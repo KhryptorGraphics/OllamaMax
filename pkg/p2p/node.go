@@ -76,6 +76,9 @@ type BasicNode struct {
 	connectedPeers       prometheus.Gauge
 	messagesSent         *prometheus.CounterVec
 	messagesReceived     *prometheus.CounterVec
+	bytesSent            *prometheus.CounterVec
+	bytesReceived        *prometheus.CounterVec
+	bandwidthBytes       *prometheus.CounterVec
 	messageLatency       prometheus.Histogram
 	connectionErrors     prometheus.Counter
 }
@@ -111,6 +114,30 @@ func NewBasicNode(id, address string, config *NodeConfig) *BasicNode {
 		[]string{"topic"},
 	)
 
+	bytesSent := prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "p2p_bytes_sent_total",
+			Help: "Total number of bytes sent by topic",
+		},
+		[]string{"topic"},
+	)
+
+	bytesReceived := prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "p2p_bytes_received_total",
+			Help: "Total number of bytes received by topic",
+		},
+		[]string{"topic"},
+	)
+
+	bandwidthBytes := prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "ollamamax_p2p_bandwidth_bytes_total",
+			Help: "Total bytes sent/received over P2P network",
+		},
+		[]string{"direction"},
+	)
+
 	messageLatency := prometheus.NewHistogram(prometheus.HistogramOpts{
 		Name:    "p2p_message_latency_seconds",
 		Help:    "Message processing latency in seconds",
@@ -126,6 +153,9 @@ func NewBasicNode(id, address string, config *NodeConfig) *BasicNode {
 	registry.MustRegister(connectedPeers)
 	registry.MustRegister(messagesSent)
 	registry.MustRegister(messagesReceived)
+	registry.MustRegister(bytesSent)
+	registry.MustRegister(bytesReceived)
+	registry.MustRegister(bandwidthBytes)
 	registry.MustRegister(messageLatency)
 	registry.MustRegister(connectionErrors)
 
@@ -147,6 +177,9 @@ func NewBasicNode(id, address string, config *NodeConfig) *BasicNode {
 		connectedPeers:   connectedPeers,
 		messagesSent:     messagesSent,
 		messagesReceived: messagesReceived,
+		bytesSent:        bytesSent,
+		bytesReceived:    bytesReceived,
+		bandwidthBytes:   bandwidthBytes,
 		messageLatency:   messageLatency,
 		connectionErrors: connectionErrors,
 	}
@@ -236,6 +269,12 @@ func (n *BasicNode) Broadcast(ctx context.Context, topic string, data []byte) er
 	// Increment messages sent counter with topic label
 	n.messagesSent.WithLabelValues(topic).Inc()
 
+	// Track bytes sent
+	n.bytesSent.WithLabelValues(topic).Add(float64(len(data)))
+
+	// Track bandwidth sent
+	n.bandwidthBytes.WithLabelValues("sent").Add(float64(len(data)))
+
 	return nil
 }
 
@@ -248,6 +287,12 @@ func (n *BasicNode) Subscribe(ctx context.Context, topic string, handler Message
 
 		// Increment messages received counter with topic label
 		n.messagesReceived.WithLabelValues(topic).Inc()
+
+		// Track bytes received
+		n.bytesReceived.WithLabelValues(topic).Add(float64(len(data)))
+
+		// Track bandwidth received
+		n.bandwidthBytes.WithLabelValues("received").Add(float64(len(data)))
 
 		// Call the original handler
 		err := handler(ctx, from, data)
@@ -279,6 +324,33 @@ func (n *BasicNode) GetStatus() NodeStatus {
 }
 
 // GetPrometheusRegistry implements the Node interface
+// Deprecated: Use RegisterTo to register metrics on the main app registry instead
 func (n *BasicNode) GetPrometheusRegistry() *prometheus.Registry {
 	return n.registry
+}
+
+// RegisterTo registers all P2P metrics to the provided Prometheus registerer
+// This ensures metrics are exposed at the main /metrics endpoint
+func (n *BasicNode) RegisterTo(registerer prometheus.Registerer) error {
+	collectors := []prometheus.Collector{
+		n.connectedPeers,
+		n.messagesSent,
+		n.messagesReceived,
+		n.bytesSent,
+		n.bytesReceived,
+		n.bandwidthBytes,
+		n.messageLatency,
+		n.connectionErrors,
+	}
+
+	for _, collector := range collectors {
+		if err := registerer.Register(collector); err != nil {
+			// Check if already registered (not an error in our case)
+			if _, ok := err.(prometheus.AlreadyRegisteredError); !ok {
+				return fmt.Errorf("failed to register P2P metrics: %w", err)
+			}
+		}
+	}
+
+	return nil
 }

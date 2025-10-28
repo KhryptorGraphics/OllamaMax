@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -53,6 +54,12 @@ type RateLimitConfig struct {
 	RequestsPer int           `json:"requests_per"`
 	Duration    time.Duration `json:"duration"`
 	BurstSize   int           `json:"burst_size"`
+
+	// SECURITY FIX (ISSUE-007): Authentication endpoint rate limits
+	LoginRequestsPer         int `json:"login_requests_per"`          // Login attempts per minute
+	RegisterRequestsPer      int `json:"register_requests_per"`       // Register attempts per minute
+	ResetPasswordRequestsPer int `json:"reset_password_requests_per"` // Password reset attempts per minute
+
 	// Legacy fields for backward compatibility
 	RPS       int      `json:"rps"`
 	Burst     int      `json:"burst"`
@@ -79,9 +86,23 @@ type P2PConfig struct {
 
 // DefaultConfig returns a default configuration
 func DefaultConfig() *Config {
+	// SECURITY: JWT secrets must be provided via environment variables
+	jwtSecret := os.Getenv("JWT_SECRET_KEY")
+	if jwtSecret == "" {
+		jwtSecret = os.Getenv("JWT_SECRET") // Fallback to JWT_SECRET
+	}
+	if jwtSecret == "" {
+		panic("JWT_SECRET_KEY or JWT_SECRET environment variable is required for security")
+	}
+
+	authSecret := os.Getenv("AUTH_SECRET_KEY")
+	if authSecret == "" {
+		authSecret = jwtSecret // Use JWT secret as fallback
+	}
+
 	return &Config{
 		JWT: JWTConfig{
-			SecretKey:   getEnvOrDefault("JWT_SECRET_KEY", "your-secret-key-change-this"),
+			SecretKey:   jwtSecret,
 			ExpiryTime:  24 * time.Hour,
 			RefreshTime: 7 * 24 * time.Hour,
 			Issuer:      "ollamamax",
@@ -91,7 +112,7 @@ func DefaultConfig() *Config {
 			Enabled:     getEnvBoolOrDefault("AUTH_ENABLED", true),
 			Method:      getEnvOrDefault("AUTH_METHOD", "jwt"),
 			TokenExpiry: 24 * time.Hour,
-			SecretKey:   getEnvOrDefault("AUTH_SECRET_KEY", "your-secret-key-change-this"),
+			SecretKey:   authSecret,
 			RefreshTime: 7 * 24 * time.Hour,
 		},
 		API: APIConfig{
@@ -107,13 +128,21 @@ func DefaultConfig() *Config {
 				RequestsPer: getEnvIntOrDefault("RATE_LIMIT_REQUESTS", 100),
 				Duration:    time.Minute,
 				BurstSize:   getEnvIntOrDefault("RATE_LIMIT_BURST", 10),
+
+				// SECURITY: Auth endpoint rate limits - strict defaults to prevent brute force
+				LoginRequestsPer:         getEnvIntOrDefault("RATE_LIMIT_LOGIN_REQUESTS", 5),          // 5 per minute
+				RegisterRequestsPer:      getEnvIntOrDefault("RATE_LIMIT_REGISTER_REQUESTS", 3),       // 3 per minute
+				ResetPasswordRequestsPer: getEnvIntOrDefault("RATE_LIMIT_RESET_PASSWORD_REQUESTS", 3), // 3 per minute
 			},
 			Cors: CorsConfig{
-				Enabled:          getEnvBoolOrDefault("CORS_ENABLED", true),
-				AllowedOrigins:   []string{"*"},
+				Enabled: getEnvBoolOrDefault("CORS_ENABLED", true),
+				// SECURITY: Restrict CORS origins - must be configured via environment
+				// Default to localhost for development only
+				AllowedOrigins:   getEnvListOrDefault("CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:8080"),
 				AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-				AllowedHeaders:   []string{"*"},
-				AllowCredentials: false,
+				AllowedHeaders:   []string{"Content-Type", "Authorization", "X-Request-ID"},
+				AllowCredentials: true, // Enable credentials for secure cookie-based auth
+				MaxAge:           3600,
 			},
 		},
 		P2P: P2PConfig{
@@ -131,6 +160,25 @@ func getEnvOrDefault(key, defaultValue string) string {
 		return value
 	}
 	return defaultValue
+}
+
+// getEnvListOrDefault gets comma-separated environment variable as a list
+func getEnvListOrDefault(key, defaultValue string) []string {
+	value := getEnvOrDefault(key, defaultValue)
+	if value == "" {
+		return []string{}
+	}
+
+	// Split by comma and trim whitespace
+	parts := strings.Split(value, ",")
+	result := make([]string, 0, len(parts))
+	for _, part := range parts {
+		trimmed := strings.TrimSpace(part)
+		if trimmed != "" {
+			result = append(result, trimmed)
+		}
+	}
+	return result
 }
 
 func getEnvIntOrDefault(key string, defaultValue int) int {

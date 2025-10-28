@@ -168,19 +168,42 @@ class AgentPerformanceForecaster {
         await this.initialize();
       }
 
-      // Get agent features
-      const features = await this.agentSelectionModel.featureStore.getFeatures();
+      // Get available agents list (for model's selectBestAgent method)
+      const availableAgents = [agentId];
 
-      // Find agent-specific features
-      const agentFeatures = features.find(f => f.agent_id === agentId) || {};
+      // Use the actual Random Forest model prediction
+      const modelPrediction = await this.agentSelectionModel.selectBestAgent(taskRequest, availableAgents);
 
-      // Predict success probability
-      const successRate = agentFeatures.agent_success_rate || 0.5;
+      if (modelPrediction && modelPrediction.agentId === agentId) {
+        // Use model confidence as RF success rate
+        const successRate = modelPrediction.confidence || 0.5;
 
-      // Estimate duration based on historical average
-      const avgDuration = agentFeatures.agent_avg_execution_time || 1000;
+        // Get agent stats for duration estimate
+        const agentStats = await this.agentSelectionModel.getAgentStats(agentId);
+        const baseDuration = agentStats.avgExecutionTime || 1000;
 
-      // Adjust for complexity
+        // Adjust duration by task complexity
+        const complexityFactors = {
+          'low': 0.7,
+          'medium': 1.0,
+          'high': 1.5
+        };
+        const complexityFactor = complexityFactors[taskRequest.complexity] || 1.0;
+        const estimatedDuration = Math.round(baseDuration * complexityFactor);
+
+        return {
+          successRate,
+          estimatedDuration,
+          confidence: modelPrediction.confidence || 0.8,
+          horizon: 'medium-term' // 1-4 hours
+        };
+      }
+
+      // Fallback to agent stats-based estimation
+      const agentStats = await this.agentSelectionModel.getAgentStats(agentId);
+      const successRate = agentStats.successRate || 0.5;
+      const avgDuration = agentStats.avgExecutionTime || 1000;
+
       const complexityFactor = {
         'low': 0.7,
         'medium': 1.0,
@@ -190,8 +213,8 @@ class AgentPerformanceForecaster {
       return {
         successRate,
         estimatedDuration: Math.round(avgDuration * complexityFactor),
-        confidence: 0.8,
-        horizon: 'medium-term' // 1-4 hours
+        confidence: 0.6, // Lower confidence for fallback
+        horizon: 'medium-term'
       };
     } catch (error) {
       console.error('[Agent Forecaster] Random Forest prediction error:', error);

@@ -4,7 +4,7 @@ groups:
 
   # API Performance Alerts
   - alert: APIHighLatency
-    expr: http_request_duration_seconds{quantile="0.95"} > 1.0
+    expr: histogram_quantile(0.95, rate(ollamamax_api_http_request_duration_seconds_bucket[5m])) > 1.0
     for: 5m
     labels:
       severity: warning
@@ -13,20 +13,20 @@ groups:
       description: "95th percentile API latency is {{ $value }}s (threshold: 1.0s)"
 
   - alert: APIHighErrorRate
-    expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.05
+    expr: (rate(ollamamax_api_http_requests_total{status=~"5.."}[5m]) / rate(ollamamax_api_http_requests_total[5m])) > 0.05
     for: 5m
     labels:
       severity: critical
     annotations:
       summary: "API error rate is high"
-      description: "API 5xx error rate is {{ $value }} (threshold: 0.05)"
+      description: "API 5xx error rate is {{ $value | humanizePercentage }} (threshold: 5%)"
 
 - name: ollamamax-database
   rules:
 
   # Database Performance Alerts
   - alert: DatabasePoolExhausted
-    expr: db_connections_in_use / db_connections_open > 0.9
+    expr: ollamamax_database_db_connections_active / ollamamax_database_db_connections_max > 0.9
     for: 2m
     labels:
       severity: critical
@@ -35,7 +35,7 @@ groups:
       description: "{{ $value | humanizePercentage }} of database connections in use (threshold: 90%)"
 
   - alert: DatabaseCacheHitRateLow
-    expr: rate(cache_hits_total[5m]) / (rate(cache_hits_total[5m]) + rate(cache_misses_total[5m])) < 0.7
+    expr: rate(ollamamax_database_cache_hits_total[5m]) / (rate(ollamamax_database_cache_hits_total[5m]) + rate(ollamamax_database_cache_misses_total[5m])) < 0.7
     for: 10m
     labels:
       severity: warning
@@ -44,20 +44,20 @@ groups:
       description: "Cache hit rate is {{ $value | humanizePercentage }} (threshold: 70%)"
 
   - alert: PostgresConnectionsHigh
-    expr: postgres_connections_active / postgres_connections_max > 0.8
-    for: 1m
+    expr: ollamamax_database_db_connections_active / ollamamax_database_db_connections_max > 0.8
+    for: 5m
     labels:
       severity: warning
     annotations:
-      summary: "High PostgreSQL connection usage"
-      description: "{{ $value | humanizePercentage }} of max connections in use (threshold: 80%)"
+      summary: "Postgres connections approaching limit"
+      description: "{{ $value | humanizePercentage }} of Postgres connections in use (threshold: 80%)"
 
 - name: ollamamax-p2p
   rules:
 
   # P2P Network Alerts
   - alert: P2PPeerCountLow
-    expr: p2p_connected_peers < 3
+    expr: ollamamax_p2p_connected_peers < 3
     for: 5m
     labels:
       severity: warning
@@ -66,7 +66,7 @@ groups:
       description: "Only {{ $value }} peers connected (threshold: 3)"
 
   - alert: P2PHighLatency
-    expr: p2p_message_latency_seconds{quantile="0.95"} > 0.5
+    expr: histogram_quantile(0.95, rate(ollamamax_p2p_message_latency_seconds_bucket[5m])) > 0.5
     for: 5m
     labels:
       severity: warning
@@ -79,22 +79,13 @@ groups:
 
   # Load Balancer Alerts
   - alert: LoadBalancerImbalance
-    expr: stddev(lb_node_utilization) > 0.3
+    expr: stddev(ollamamax_loadbalancer_node_utilization) > 0.3
     for: 10m
     labels:
       severity: warning
     annotations:
       summary: "Load balancer has uneven distribution"
       description: "Load standard deviation is {{ $value }} (threshold: 0.3)"
-
-  - alert: LoadBalancerUnhealthyUpstreams
-    expr: nginx_upstream_servers{state!="up"} > 0
-    for: 30s
-    labels:
-      severity: critical
-    annotations:
-      summary: "Load balancer has unhealthy upstreams"
-      description: "{{ $value }} upstream servers are unhealthy"
 
 - name: ollamamax-system
   rules:

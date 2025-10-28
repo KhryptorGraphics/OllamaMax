@@ -10,12 +10,24 @@ const Redis = require('ioredis');
 
 class UnifiedNeuralOrchestrator {
   constructor() {
-    this.redis = new Redis.Cluster([
-      { host: 'localhost', port: 7000 },
-      { host: 'localhost', port: 7001 },
-      { host: 'localhost', port: 7002 }
-    ], {
-      redisOptions: { password: process.env.REDIS_PASSWORD, connectTimeout: 10000 }
+    // Read Redis cluster nodes from environment or use defaults
+    const redisNodes = process.env.REDIS_NODES
+      ? JSON.parse(process.env.REDIS_NODES)
+      : [
+          { host: 'redis-cluster-0.redis-cluster-service.ollamamax-redis', port: 6379 },
+          { host: 'redis-cluster-1.redis-cluster-service.ollamamax-redis', port: 6379 },
+          { host: 'redis-cluster-2.redis-cluster-service.ollamamax-redis', port: 6379 }
+        ];
+
+    this.redis = new Redis.Cluster(redisNodes, {
+      redisOptions: {
+        password: process.env.REDIS_PASSWORD || 'ollama_redis_pass',
+        connectTimeout: 10000,
+        readyCheck: (callback) => callback()
+      },
+      enableOfflineQueue: false,
+      retryDelayOnFailover: 100,
+      maxRetriesPerRequest: 3
     });
 
     this.components = {
@@ -35,6 +47,15 @@ class UnifiedNeuralOrchestrator {
 
   async orchestrateFullTraining() {
     console.log('[Neural Orchestrator] Starting full training pipeline...');
+
+    // Verify Redis connectivity
+    try {
+      await this.redis.ping();
+      console.log('✅ Neural Orchestrator connected to Redis cluster');
+    } catch (error) {
+      console.error('❌ Redis connection failed:', error.message);
+      throw error;
+    }
 
     const startTime = Date.now();
 

@@ -696,6 +696,350 @@ spec:
     app: predictive-scaling-engine
 
 ---
+# Agent LSTM Predictor Deployment (Neural Training Port 8087)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent-lstm-predictor
+  namespace: ollamamax-ml
+  labels:
+    app: agent-lstm-predictor
+    component: ml-pipeline
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: agent-lstm-predictor
+  template:
+    metadata:
+      labels:
+        app: agent-lstm-predictor
+        component: ml-pipeline
+    spec:
+      containers:
+      - name: agent-lstm-predictor
+        image: node:18-alpine
+        ports:
+        - containerPort: 8087
+        env:
+        - name: REDIS_NODES
+          value: '[{"host":"redis-cluster-0.redis-cluster-service.ollamamax-redis","port":6379},{"host":"redis-cluster-1.redis-cluster-service.ollamamax-redis","port":6379},{"host":"redis-cluster-2.redis-cluster-service.ollamamax-redis","port":6379}]'
+        - name: REDIS_PASSWORD
+          value: "ollama_redis_pass"
+        - name: SEQUENCE_LENGTH
+          value: "60"
+        - name: PREDICTION_HORIZON
+          value: "15"
+        command: ["/bin/sh"]
+        args:
+        - -c
+        - |
+          cd /app
+          npm install ioredis @tensorflow/tfjs-node express cors
+          node src/agents/agent-lstm-predictor.js
+        volumeMounts:
+        - name: app-code
+          mountPath: /app
+        resources:
+          requests:
+            memory: "1.5Gi"
+            cpu: "750m"
+          limits:
+            memory: "3Gi"
+            cpu: "1.5"
+        livenessProbe:
+          exec:
+            command: ["node", "-e", "process.exit(0)"]
+          initialDelaySeconds: 90
+          periodSeconds: 45
+        readinessProbe:
+          exec:
+            command: ["node", "-e", "process.exit(0)"]
+          initialDelaySeconds: 45
+          periodSeconds: 20
+      volumes:
+      - name: app-code
+        configMap:
+          name: ml-pipeline-code
+
+---
+# Neural Pattern Trainer Deployment (Neural Training Port 8088)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: neural-pattern-trainer
+  namespace: ollamamax-ml
+  labels:
+    app: neural-pattern-trainer
+    component: ml-pipeline
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: neural-pattern-trainer
+  template:
+    metadata:
+      labels:
+        app: neural-pattern-trainer
+        component: ml-pipeline
+    spec:
+      containers:
+      - name: neural-pattern-trainer
+        image: node:18-alpine
+        ports:
+        - containerPort: 8088
+        env:
+        - name: REDIS_NODES
+          value: '[{"host":"redis-cluster-0.redis-cluster-service.ollamamax-redis","port":6379},{"host":"redis-cluster-1.redis-cluster-service.ollamamax-redis","port":6379},{"host":"redis-cluster-2.redis-cluster-service.ollamamax-redis","port":6379}]'
+        - name: REDIS_PASSWORD
+          value: "ollama_redis_pass"
+        - name: MIN_PATTERNS
+          value: "100"
+        - name: CONFIDENCE_THRESHOLD
+          value: "0.7"
+        command: ["/bin/sh"]
+        args:
+        - -c
+        - |
+          cd /app
+          npm install ioredis @tensorflow/tfjs-node express cors
+          node src/agents/neural-pattern-trainer.js
+        volumeMounts:
+        - name: app-code
+          mountPath: /app
+        resources:
+          requests:
+            memory: "1.5Gi"
+            cpu: "750m"
+          limits:
+            memory: "3Gi"
+            cpu: "1.5"
+        livenessProbe:
+          exec:
+            command: ["node", "-e", "process.exit(0)"]
+          initialDelaySeconds: 90
+          periodSeconds: 45
+        readinessProbe:
+          exec:
+            command: ["node", "-e", "process.exit(0)"]
+          initialDelaySeconds: 45
+          periodSeconds: 20
+      volumes:
+      - name: app-code
+        configMap:
+          name: ml-pipeline-code
+
+---
+# Historical Data Aggregator Deployment (Neural Training Port 8089)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: historical-data-aggregator
+  namespace: ollamamax-ml
+  labels:
+    app: historical-data-aggregator
+    component: ml-pipeline
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: historical-data-aggregator
+  template:
+    metadata:
+      labels:
+        app: historical-data-aggregator
+        component: ml-pipeline
+    spec:
+      containers:
+      - name: historical-data-aggregator
+        image: node:18-alpine
+        ports:
+        - containerPort: 8089
+        env:
+        - name: REDIS_NODES
+          value: '[{"host":"redis-cluster-0.redis-cluster-service.ollamamax-redis","port":6379},{"host":"redis-cluster-1.redis-cluster-service.ollamamax-redis","port":6379},{"host":"redis-cluster-2.redis-cluster-service.ollamamax-redis","port":6379}]'
+        - name: REDIS_PASSWORD
+          value: "ollama_redis_pass"
+        - name: MAX_AGGREGATED_RECORDS
+          value: "10000"
+        command: ["/bin/sh"]
+        args:
+        - -c
+        - |
+          cd /app
+          npm install ioredis express cors
+          node src/agents/historical-data-aggregator.js
+        volumeMounts:
+        - name: app-code
+          mountPath: /app
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1"
+        livenessProbe:
+          exec:
+            command: ["node", "-e", "process.exit(0)"]
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          exec:
+            command: ["node", "-e", "process.exit(0)"]
+          initialDelaySeconds: 30
+          periodSeconds: 15
+      volumes:
+      - name: app-code
+        configMap:
+          name: ml-pipeline-code
+
+---
+# Unified Neural Orchestrator Deployment (Neural Training Port 8090)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: unified-neural-orchestrator
+  namespace: ollamamax-ml
+  labels:
+    app: unified-neural-orchestrator
+    component: ml-pipeline
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: unified-neural-orchestrator
+  template:
+    metadata:
+      labels:
+        app: unified-neural-orchestrator
+        component: ml-pipeline
+    spec:
+      containers:
+      - name: unified-neural-orchestrator
+        image: node:18-alpine
+        ports:
+        - containerPort: 8090
+        env:
+        - name: REDIS_NODES
+          value: '[{"host":"redis-cluster-0.redis-cluster-service.ollamamax-redis","port":6379},{"host":"redis-cluster-1.redis-cluster-service.ollamamax-redis","port":6379},{"host":"redis-cluster-2.redis-cluster-service.ollamamax-redis","port":6379}]'
+        - name: REDIS_PASSWORD
+          value: "ollama_redis_pass"
+        - name: ORCHESTRATOR_PORT
+          value: "8090"
+        command: ["/bin/sh"]
+        args:
+        - -c
+        - |
+          cd /app
+          npm install ioredis @tensorflow/tfjs-node ml-random-forest express cors
+          node src/agents/unified-neural-orchestrator.js
+        volumeMounts:
+        - name: app-code
+          mountPath: /app
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1"
+          limits:
+            memory: "4Gi"
+            cpu: "2"
+        livenessProbe:
+          exec:
+            command: ["node", "-e", "process.exit(0)"]
+          initialDelaySeconds: 120
+          periodSeconds: 60
+        readinessProbe:
+          exec:
+            command: ["node", "-e", "process.exit(0)"]
+          initialDelaySeconds: 60
+          periodSeconds: 30
+      volumes:
+      - name: app-code
+        configMap:
+          name: ml-pipeline-code
+
+---
+# Agent LSTM Predictor Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: agent-lstm-predictor-service
+  namespace: ollamamax-ml
+  labels:
+    app: agent-lstm-predictor
+    component: ml-pipeline
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8087
+    targetPort: 8087
+    protocol: TCP
+    name: http
+  selector:
+    app: agent-lstm-predictor
+
+---
+# Neural Pattern Trainer Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: neural-pattern-trainer-service
+  namespace: ollamamax-ml
+  labels:
+    app: neural-pattern-trainer
+    component: ml-pipeline
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8088
+    targetPort: 8088
+    protocol: TCP
+    name: http
+  selector:
+    app: neural-pattern-trainer
+
+---
+# Historical Data Aggregator Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: historical-data-aggregator-service
+  namespace: ollamamax-ml
+  labels:
+    app: historical-data-aggregator
+    component: ml-pipeline
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8089
+    targetPort: 8089
+    protocol: TCP
+    name: http
+  selector:
+    app: historical-data-aggregator
+
+---
+# Unified Neural Orchestrator Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: unified-neural-orchestrator-service
+  namespace: ollamamax-ml
+  labels:
+    app: unified-neural-orchestrator
+    component: ml-pipeline
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8090
+    targetPort: 8090
+    protocol: TCP
+    name: http
+  selector:
+    app: unified-neural-orchestrator
+
+---
 # ServiceMonitor for Prometheus scraping
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
@@ -748,6 +1092,14 @@ spec:
       port: 8085
     - protocol: TCP
       port: 8086
+    - protocol: TCP
+      port: 8087
+    - protocol: TCP
+      port: 8088
+    - protocol: TCP
+      port: 8089
+    - protocol: TCP
+      port: 8090
   - from:
     - namespaceSelector:
         matchLabels:

@@ -267,6 +267,48 @@ else
     add_result "OWASP ZAP Scan" "warning" "Docker not available"
 fi
 
+# Phase 10: WAF Detection and Status
+echo -e "\n${BLUE}=== Phase 10: WAF Integration Status ===${NC}"
+
+log_info "Checking WAF (ModSecurity) integration..."
+
+# Check if ModSecurity module is loaded
+if docker compose exec -T nginx nginx -V 2>&1 | grep -q "modsecurity"; then
+    log_success "ModSecurity module detected"
+    add_result "WAF Module" "pass" "ModSecurity installed"
+
+    # Test WAF with injection payload
+    log_info "Testing WAF protection..."
+
+    # SQL Injection test (should be blocked with 403)
+    SQL_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost/api/users?id=1' OR '1'='1" 2>/dev/null || echo "000")
+    if [ "$SQL_RESPONSE" = "403" ]; then
+        log_success "WAF blocked SQL injection attempt (403)"
+        add_result "WAF SQL Protection" "pass" "Injection blocked"
+    else
+        log_warning "WAF did not block SQL injection (got ${SQL_RESPONSE})"
+        add_result "WAF SQL Protection" "warning" "Injection not blocked"
+    fi
+
+    # XSS test (should be blocked with 403)
+    XSS_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost/api/search?q=<script>alert('xss')</script>" 2>/dev/null || echo "000")
+    if [ "$XSS_RESPONSE" = "403" ]; then
+        log_success "WAF blocked XSS attempt (403)"
+        add_result "WAF XSS Protection" "pass" "XSS blocked"
+    else
+        log_warning "WAF did not block XSS (got ${XSS_RESPONSE})"
+        add_result "WAF XSS Protection" "warning" "XSS not blocked"
+    fi
+
+else
+    log_error "ModSecurity module not found - WAF not implemented"
+    log_info "WAF integration requires custom Nginx build with ModSecurity"
+    log_info "See docs/WAF_INTEGRATION_GUIDE.md for implementation steps"
+    add_result "WAF Module" "fail" "ModSecurity not installed - see WAF_INTEGRATION_GUIDE.md"
+    add_result "WAF SQL Protection" "warning" "WAF not available"
+    add_result "WAF XSS Protection" "warning" "WAF not available"
+fi
+
 # Generate Report
 VALIDATION_SCORE=$((PASSED_CHECKS * 100 / TOTAL_CHECKS))
 

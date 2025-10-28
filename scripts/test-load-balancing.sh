@@ -29,7 +29,7 @@ REPORT_DIR="deployment-results"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 REPORT_FILE="${REPORT_DIR}/loadbalancing-${TIMESTAMP}.json"
 LB_URL="${1:-http://localhost}"
-LB_PATH="${2:-/api/health}"  # Proxied endpoint that includes X-Served-By header
+LB_PATH="${2:-/}"  # Default to root path (proxied to web_backend)
 NUM_REQUESTS=1000
 
 mkdir -p "${REPORT_DIR}"
@@ -110,6 +110,15 @@ for BACKEND in "${!BACKEND_HITS[@]}"; do
     PERCENTAGE=$((HITS * 100 / NUM_REQUESTS))
     log_info "  ${BACKEND}: ${HITS} requests (${PERCENTAGE}%)"
 done
+
+# Guard against divide by zero
+if [ ${#BACKEND_HITS[@]} -eq 0 ]; then
+    log_error "No backend hits recorded - check that LB_PATH is a proxied endpoint with X-Served-By header"
+    log_error "Proxied endpoints: /api/*, /ollama/*, / (root)"
+    log_error "Non-proxied endpoints (do NOT use): /health, /nginx-health"
+    add_result "Load Distribution" "fail" "No backend hits recorded"
+    exit 1
+fi
 
 # Check if distribution is balanced (within 20% variance)
 EXPECTED_PER_BACKEND=$((NUM_REQUESTS / ${#BACKEND_HITS[@]}))

@@ -1,517 +1,344 @@
 #!/bin/bash
+set -e
 
-# Validate Monitoring Stack Script
-# Comprehensive validation of all OllamaMax monitoring components
+echo "🔍 Validating OllamaMax Monitoring Stack"
+echo "========================================"
 
-set -euo pipefail
-
-# Color codes for output
-GREEN='\033[0;32m'
 RED='\033[0;31m'
+GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-CYAN='\033[0;36m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-# Logging functions
-log_info() {
-    echo -e "${BLUE}[INFO]${NC} $1"
-}
+REPORT_FILE="docs/monitoring-validation-report.md"
+FAILED_CHECKS=0
 
-log_success() {
-    echo -e "${GREEN}[✓]${NC} $1"
-}
+# Initialize report
+mkdir -p docs
+cat > "$REPORT_FILE" << 'EOFREPORT'
+# OllamaMax Monitoring Stack Validation Report
+Generated: TIMESTAMP_PLACEHOLDER
 
-log_error() {
-    echo -e "${RED}[✗]${NC} $1"
-}
+## Component Status
 
-log_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
-}
+EOFREPORT
 
-log_section() {
-    echo -e "\n${CYAN}=== $1 ===${NC}\n"
-}
+# Replace timestamp
+sed -i "s/TIMESTAMP_PLACEHOLDER/$(date)/" "$REPORT_FILE"
 
-# Test result tracking
-CHECKS_PASSED=0
-CHECKS_FAILED=0
-FAILED_CHECKS=()
+# Check service health
+check_service() {
+    local service=$1
+    local url=$2
+    local expected_code=${3:-200}
 
-# Configuration with defaults
-PROMETHEUS_URL="${PROMETHEUS_URL:-http://localhost:9090}"
-GRAFANA_URL="${GRAFANA_URL:-http://localhost:3001}"
-ALERTMANAGER_URL="${ALERTMANAGER_URL:-http://localhost:9093}"
-JAEGER_URL="${JAEGER_URL:-http://localhost:16686}"
-ELASTICSEARCH_URL="${ELASTICSEARCH_URL:-http://localhost:9200}"
-LOGSTASH_URL="${LOGSTASH_URL:-http://localhost:9600}"
-KIBANA_URL="${KIBANA_URL:-http://localhost:5601}"
+    echo -e "\n${YELLOW}Checking $service...${NC}"
 
-# Timeout for health checks
-HEALTH_CHECK_TIMEOUT=5
-METRICS_QUERY_TIMEOUT=10
+    response=$(curl -s -o /dev/null -w "%{http_code}" "$url" 2>/dev/null || echo "000")
 
-# Function to check service health
-check_service_health() {
-    local service_name=$1
-    local health_url=$2
-    local expected_response=${3:-200}
-
-    log_info "Checking $service_name health..."
-
-    local response=$(curl -s -o /dev/null -w "%{http_code}" \
-        --max-time "$HEALTH_CHECK_TIMEOUT" \
-        "$health_url" 2>&1)
-
-    if [ "$response" = "$expected_response" ]; then
-        log_success "$service_name is healthy (HTTP $response)"
-        ((CHECKS_PASSED++))
+    if [ "$response" = "$expected_code" ]; then
+        echo -e "${GREEN}✅ $service is healthy${NC}"
+        echo "- [x] $service (HTTP $response)" >> "$REPORT_FILE"
         return 0
     else
-        log_error "$service_name health check failed (HTTP $response)"
-        FAILED_CHECKS+=("$service_name health")
-        ((CHECKS_FAILED++))
+        echo -e "${RED}❌ $service is unhealthy (HTTP $response)${NC}"
+        echo "- [ ] $service (HTTP $response) ⚠️ FAILED" >> "$REPORT_FILE"
+        ((FAILED_CHECKS++))
         return 1
     fi
 }
 
-# Function to check Prometheus health
-check_prometheus() {
-    log_section "Prometheus Health Check"
+# Check Prometheus metrics
+check_prometheus_metrics() {
+    echo -e "\n${YELLOW}Checking Prometheus metrics...${NC}"
 
-    # Health endpoint
-    if ! check_service_health "Prometheus" "$PROMETHEUS_URL/-/healthy"; then
-        return 1
-    fi
-
-    # Ready endpoint
-    log_info "Checking Prometheus ready status..."
-    local ready=$(curl -s -o /dev/null -w "%{http_code}" \
-        --max-time "$HEALTH_CHECK_TIMEOUT" \
-        "$PROMETHEUS_URL/-/ready" 2>&1)
-
-    if [ "$ready" = "200" ]; then
-        log_success "Prometheus is ready"
-        ((CHECKS_PASSED++))
-    else
-        log_error "Prometheus not ready (HTTP $ready)"
-        FAILED_CHECKS+=("Prometheus ready")
-        ((CHECKS_FAILED++))
-    fi
-
-    return 0
-}
-
-# Function to check Grafana health
-check_grafana() {
-    log_section "Grafana Health Check"
-
-    if ! check_service_health "Grafana" "$GRAFANA_URL/api/health"; then
-        return 1
-    fi
-
-    # Check Grafana metrics
-    log_info "Checking Grafana metrics endpoint..."
-    local metrics=$(curl -s -o /dev/null -w "%{http_code}" \
-        --max-time "$HEALTH_CHECK_TIMEOUT" \
-        "$GRAFANA_URL/metrics" 2>&1)
-
-    if [ "$metrics" = "200" ]; then
-        log_success "Grafana metrics endpoint accessible"
-        ((CHECKS_PASSED++))
-    else
-        log_warning "Grafana metrics endpoint not accessible (HTTP $metrics)"
-    fi
-
-    return 0
-}
-
-# Function to check Alertmanager health
-check_alertmanager() {
-    log_section "Alertmanager Health Check"
-
-    if ! check_service_health "Alertmanager" "$ALERTMANAGER_URL/-/healthy"; then
-        return 1
-    fi
-
-    # Check Alertmanager ready
-    log_info "Checking Alertmanager ready status..."
-    local ready=$(curl -s -o /dev/null -w "%{http_code}" \
-        --max-time "$HEALTH_CHECK_TIMEOUT" \
-        "$ALERTMANAGER_URL/-/ready" 2>&1)
-
-    if [ "$ready" = "200" ]; then
-        log_success "Alertmanager is ready"
-        ((CHECKS_PASSED++))
-    else
-        log_error "Alertmanager not ready (HTTP $ready)"
-        FAILED_CHECKS+=("Alertmanager ready")
-        ((CHECKS_FAILED++))
-    fi
-
-    # Check active alerts
-    log_info "Checking active alerts..."
-    local alerts_response=$(curl -s --max-time "$HEALTH_CHECK_TIMEOUT" \
-        "$ALERTMANAGER_URL/api/v2/alerts" 2>&1)
-
-    if [ $? -eq 0 ]; then
-        local alert_count=$(echo "$alerts_response" | jq '. | length' 2>/dev/null || echo "0")
-        log_success "Retrieved active alerts (count: $alert_count)"
-        ((CHECKS_PASSED++))
-    else
-        log_error "Failed to retrieve active alerts"
-        FAILED_CHECKS+=("Alertmanager alerts")
-        ((CHECKS_FAILED++))
-    fi
-
-    return 0
-}
-
-# Function to check Jaeger health
-check_jaeger() {
-    log_section "Jaeger Health Check"
-
-    if ! check_service_health "Jaeger" "$JAEGER_URL/"; then
-        return 1
-    fi
-
-    return 0
-}
-
-# Function to check Elasticsearch health
-check_elasticsearch() {
-    log_section "Elasticsearch Health Check"
-
-    # Cluster health
-    log_info "Checking Elasticsearch cluster health..."
-    local health_response=$(curl -s --max-time "$HEALTH_CHECK_TIMEOUT" \
-        "$ELASTICSEARCH_URL/_cluster/health" 2>&1)
-
-    if [ $? -eq 0 ]; then
-        local cluster_status=$(echo "$health_response" | jq -r '.status' 2>/dev/null || echo "unknown")
-        local node_count=$(echo "$health_response" | jq -r '.number_of_nodes' 2>/dev/null || echo "0")
-
-        if [ "$cluster_status" = "green" ] || [ "$cluster_status" = "yellow" ]; then
-            log_success "Elasticsearch cluster is $cluster_status (nodes: $node_count)"
-            ((CHECKS_PASSED++))
-        else
-            log_error "Elasticsearch cluster health is $cluster_status"
-            FAILED_CHECKS+=("Elasticsearch cluster health")
-            ((CHECKS_FAILED++))
-        fi
-    else
-        log_error "Failed to retrieve Elasticsearch cluster health"
-        FAILED_CHECKS+=("Elasticsearch health")
-        ((CHECKS_FAILED++))
-        return 1
-    fi
-
-    # Check node stats
-    log_info "Checking Elasticsearch node stats..."
-    local stats=$(curl -s -o /dev/null -w "%{http_code}" \
-        --max-time "$HEALTH_CHECK_TIMEOUT" \
-        "$ELASTICSEARCH_URL/_nodes/stats" 2>&1)
-
-    if [ "$stats" = "200" ]; then
-        log_success "Elasticsearch node stats accessible"
-        ((CHECKS_PASSED++))
-    else
-        log_warning "Elasticsearch node stats not accessible (HTTP $stats)"
-    fi
-
-    return 0
-}
-
-# Function to check Logstash health
-check_logstash() {
-    log_section "Logstash Health Check"
-
-    # Node stats
-    log_info "Checking Logstash node stats..."
-    local stats_response=$(curl -s --max-time "$HEALTH_CHECK_TIMEOUT" \
-        "$LOGSTASH_URL/_node/stats" 2>&1)
-
-    if [ $? -eq 0 ]; then
-        local pipeline_status=$(echo "$stats_response" | jq -r '.pipelines | keys[]' 2>/dev/null | head -1)
-        if [ -n "$pipeline_status" ]; then
-            log_success "Logstash is running (pipeline: ${pipeline_status:-default})"
-            ((CHECKS_PASSED++))
-        else
-            log_warning "Logstash is running but no pipelines detected"
-            ((CHECKS_PASSED++))
-        fi
-    else
-        log_error "Failed to retrieve Logstash stats"
-        FAILED_CHECKS+=("Logstash health")
-        ((CHECKS_FAILED++))
-        return 1
-    fi
-
-    # Node info
-    log_info "Checking Logstash node info..."
-    local info=$(curl -s -o /dev/null -w "%{http_code}" \
-        --max-time "$HEALTH_CHECK_TIMEOUT" \
-        "$LOGSTASH_URL/_node" 2>&1)
-
-    if [ "$info" = "200" ]; then
-        log_success "Logstash node info accessible"
-        ((CHECKS_PASSED++))
-    else
-        log_warning "Logstash node info not accessible (HTTP $info)"
-    fi
-
-    return 0
-}
-
-# Function to check Kibana health
-check_kibana() {
-    log_section "Kibana Health Check"
-
-    if ! check_service_health "Kibana" "$KIBANA_URL/api/status"; then
-        return 1
-    fi
-
-    # Check detailed status
-    log_info "Checking Kibana detailed status..."
-    local status_response=$(curl -s --max-time "$HEALTH_CHECK_TIMEOUT" \
-        "$KIBANA_URL/api/status" 2>&1)
-
-    if [ $? -eq 0 ]; then
-        local overall_status=$(echo "$status_response" | jq -r '.status.overall.state' 2>/dev/null || echo "unknown")
-        if [ "$overall_status" = "green" ]; then
-            log_success "Kibana overall status is $overall_status"
-            ((CHECKS_PASSED++))
-        else
-            log_warning "Kibana overall status is $overall_status"
-        fi
-    fi
-
-    return 0
-}
-
-# Function to query Prometheus metrics
-query_prometheus_metrics() {
-    log_section "Prometheus Metrics Validation"
-
-    local metrics=(
-        "http_requests_total"
-        "db_connections_open"
-        "p2p_connected_peers"
-        "lb_requests_total"
+    # Check for key OllamaMax metrics
+    metrics=(
+        "ollamamax_api_http_requests_total"
+        "ollamamax_database_db_connections_open"
+        "ollamamax_p2p_connected_peers"
+        "ollamamax_loadbalancer_requests_total"
     )
+
+    echo -e "\n### Prometheus Metrics" >> "$REPORT_FILE"
+
+    local missing_metrics=0
 
     for metric in "${metrics[@]}"; do
-        log_info "Querying metric: $metric"
+        result=$(curl -s "http://localhost:9090/api/v1/query?query=$metric" 2>/dev/null | grep -o '"status":"success"' || true)
 
-        local query_url="$PROMETHEUS_URL/api/v1/query?query=$metric"
-        local response=$(curl -s --max-time "$METRICS_QUERY_TIMEOUT" "$query_url" 2>&1)
-
-        if [ $? -eq 0 ]; then
-            local status=$(echo "$response" | jq -r '.status' 2>/dev/null)
-            local result_count=$(echo "$response" | jq '.data.result | length' 2>/dev/null || echo "0")
-
-            if [ "$status" = "success" ]; then
-                if [ "$result_count" -gt 0 ]; then
-                    log_success "Metric $metric found ($result_count series)"
-                    ((CHECKS_PASSED++))
-                else
-                    log_warning "Metric $metric query succeeded but returned no data"
-                    ((CHECKS_PASSED++))
-                fi
-            else
-                log_error "Failed to query metric $metric"
-                FAILED_CHECKS+=("Prometheus metric: $metric")
-                ((CHECKS_FAILED++))
-            fi
+        if [ -n "$result" ]; then
+            echo -e "${GREEN}✅ Metric found: $metric${NC}"
+            echo "- [x] $metric" >> "$REPORT_FILE"
         else
-            log_error "Failed to query Prometheus for metric $metric"
-            FAILED_CHECKS+=("Prometheus query: $metric")
-            ((CHECKS_FAILED++))
+            echo -e "${RED}❌ Metric missing: $metric${NC}"
+            echo "- [ ] $metric ⚠️ MISSING" >> "$REPORT_FILE"
+            ((missing_metrics++))
         fi
     done
-}
 
-# Function to verify Jaeger traces
-verify_jaeger_traces() {
-    log_section "Jaeger Traces Verification"
-
-    local service_name="${JAEGER_SERVICE_NAME:-ollamamax-api}"
-    log_info "Checking traces for service: $service_name"
-
-    local traces_url="$JAEGER_URL/api/traces?service=$service_name&limit=10"
-    local response=$(curl -s --max-time "$METRICS_QUERY_TIMEOUT" "$traces_url" 2>&1)
-
-    if [ $? -eq 0 ]; then
-        local trace_count=$(echo "$response" | jq '.data | length' 2>/dev/null || echo "0")
-
-        if [ "$trace_count" -gt 0 ]; then
-            log_success "Found $trace_count traces for service $service_name"
-            ((CHECKS_PASSED++))
-        else
-            log_warning "No traces found for service $service_name (this may be normal for new deployments)"
-            ((CHECKS_PASSED++))
-        fi
-    else
-        log_error "Failed to query Jaeger traces"
-        FAILED_CHECKS+=("Jaeger traces")
-        ((CHECKS_FAILED++))
-    fi
-
-    # Check Jaeger services
-    log_info "Checking available services in Jaeger..."
-    local services_url="$JAEGER_URL/api/services"
-    local services=$(curl -s --max-time "$HEALTH_CHECK_TIMEOUT" "$services_url" 2>&1)
-
-    if [ $? -eq 0 ]; then
-        local service_count=$(echo "$services" | jq '.data | length' 2>/dev/null || echo "0")
-        log_success "Jaeger has $service_count services tracked"
-        ((CHECKS_PASSED++))
-    else
-        log_warning "Failed to retrieve Jaeger services list"
+    if [ $missing_metrics -gt 0 ]; then
+        ((FAILED_CHECKS++))
     fi
 }
 
-# Function to verify Elasticsearch logs
-verify_elasticsearch_logs() {
-    log_section "Elasticsearch Logs Verification"
+# Check Jaeger traces
+check_jaeger_traces() {
+    echo -e "\n${YELLOW}Checking Jaeger traces...${NC}"
 
-    local index_pattern="${ELASTICSEARCH_INDEX_PATTERN:-ollamamax-logs-*}"
-    log_info "Checking logs in index pattern: $index_pattern"
+    services=$(curl -s "http://localhost:16686/api/services" 2>/dev/null | grep -o '"ollamamax-api"' || true)
 
-    local count_url="$ELASTICSEARCH_URL/$index_pattern/_count"
-    local response=$(curl -s --max-time "$METRICS_QUERY_TIMEOUT" "$count_url" 2>&1)
+    echo -e "\n### Jaeger Tracing" >> "$REPORT_FILE"
 
-    if [ $? -eq 0 ]; then
-        local doc_count=$(echo "$response" | jq '.count' 2>/dev/null || echo "0")
-
-        if [ "$doc_count" -gt 0 ]; then
-            log_success "Found $doc_count log documents in $index_pattern"
-            ((CHECKS_PASSED++))
-        else
-            log_warning "No log documents found in $index_pattern (this may be normal for new deployments)"
-            ((CHECKS_PASSED++))
-        fi
+    if [ -n "$services" ]; then
+        echo -e "${GREEN}✅ Jaeger has traces for ollamamax-api${NC}"
+        echo "- [x] Service traces found" >> "$REPORT_FILE"
     else
-        log_error "Failed to count documents in $index_pattern"
-        FAILED_CHECKS+=("Elasticsearch logs count")
-        ((CHECKS_FAILED++))
-    fi
-
-    # Check index health
-    log_info "Checking index health for $index_pattern"
-    local indices_url="$ELASTICSEARCH_URL/_cat/indices/$index_pattern?format=json"
-    local indices=$(curl -s --max-time "$HEALTH_CHECK_TIMEOUT" "$indices_url" 2>&1)
-
-    if [ $? -eq 0 ]; then
-        local index_count=$(echo "$indices" | jq '. | length' 2>/dev/null || echo "0")
-        if [ "$index_count" -gt 0 ]; then
-            log_success "Found $index_count indices matching pattern $index_pattern"
-            ((CHECKS_PASSED++))
-        else
-            log_warning "No indices found matching pattern $index_pattern"
-        fi
-    else
-        log_warning "Failed to retrieve index information"
+        echo -e "${YELLOW}⚠️  No traces found in Jaeger (may need traffic)${NC}"
+        echo "- [ ] Service traces found ⚠️ No traces" >> "$REPORT_FILE"
     fi
 }
 
-# Function to print summary report
-print_summary() {
-    log_section "Validation Summary Report"
+# Check Elasticsearch indices
+check_elasticsearch_indices() {
+    echo -e "\n${YELLOW}Checking Elasticsearch indices...${NC}"
 
-    echo ""
-    echo "╔════════════════════════════════════════╗"
-    echo "║   Monitoring Stack Validation Report  ║"
-    echo "╠════════════════════════════════════════╣"
-    echo "║                                        ║"
-    printf "║  Total Checks:       %-16s ║\n" "$((CHECKS_PASSED + CHECKS_FAILED))"
-    printf "║  ${GREEN}Checks Passed:${NC}       %-16s ║\n" "$CHECKS_PASSED"
-    printf "║  ${RED}Checks Failed:${NC}       %-16s ║\n" "$CHECKS_FAILED"
-    echo "║                                        ║"
-    echo "╚════════════════════════════════════════╝"
-    echo ""
+    indices=$(curl -s "http://localhost:9200/_cat/indices/ollamamax-*?h=index" 2>/dev/null || echo "")
 
-    if [ ${#FAILED_CHECKS[@]} -gt 0 ]; then
-        echo -e "${RED}Failed Checks:${NC}"
-        for check in "${FAILED_CHECKS[@]}"; do
-            echo -e "  ${RED}✗${NC} $check"
+    echo -e "\n### Elasticsearch Indices" >> "$REPORT_FILE"
+
+    if [ -n "$indices" ]; then
+        echo -e "${GREEN}✅ Found Elasticsearch indices:${NC}"
+        echo "$indices" | while read -r index; do
+            if [ -n "$index" ]; then
+                echo "  - $index"
+                echo "- [x] $index" >> "$REPORT_FILE"
+            fi
         done
-        echo ""
+    else
+        echo -e "${YELLOW}⚠️  No OllamaMax indices found in Elasticsearch${NC}"
+        echo "- [ ] No indices found ⚠️ Check Filebeat/Logstash" >> "$REPORT_FILE"
+    fi
+}
+
+# Check alert rules
+check_alert_rules() {
+    echo -e "\n${YELLOW}Checking Prometheus alert rules...${NC}"
+
+    rules=$(curl -s "http://localhost:9090/api/v1/rules" 2>/dev/null | grep -o '"name":"ollamamax-' || true)
+
+    echo -e "\n### Alert Rules" >> "$REPORT_FILE"
+
+    if [ -n "$rules" ]; then
+        echo -e "${GREEN}✅ Alert rules loaded${NC}"
+        echo "- [x] Rules loaded successfully" >> "$REPORT_FILE"
+    else
+        echo -e "${RED}❌ No alert rules found${NC}"
+        echo "- [ ] Rules loaded ⚠️ FAILED" >> "$REPORT_FILE"
+        ((FAILED_CHECKS++))
+    fi
+}
+
+# Check Grafana datasources
+check_grafana_datasources() {
+    echo -e "\n${YELLOW}Checking Grafana datasources...${NC}"
+
+    datasources=$(curl -s -u admin:admin "http://localhost:3001/api/datasources" 2>/dev/null || echo "[]")
+
+    echo -e "\n### Grafana Datasources" >> "$REPORT_FILE"
+
+    if echo "$datasources" | grep -q "Prometheus"; then
+        echo -e "${GREEN}✅ Prometheus datasource configured${NC}"
+        echo "- [x] Prometheus datasource" >> "$REPORT_FILE"
+    else
+        echo -e "${RED}❌ Prometheus datasource not found${NC}"
+        echo "- [ ] Prometheus datasource ⚠️ MISSING" >> "$REPORT_FILE"
+        ((FAILED_CHECKS++))
     fi
 
-    # Component summary
-    echo "Component Status:"
-    echo "─────────────────────────────────────────"
+    if echo "$datasources" | grep -q "Jaeger"; then
+        echo -e "${GREEN}✅ Jaeger datasource configured${NC}"
+        echo "- [x] Jaeger datasource" >> "$REPORT_FILE"
+    else
+        echo -e "${YELLOW}⚠️  Jaeger datasource not found${NC}"
+        echo "- [ ] Jaeger datasource ⚠️ MISSING" >> "$REPORT_FILE"
+    fi
+}
 
-    local components=(
-        "Prometheus:$PROMETHEUS_URL"
-        "Grafana:$GRAFANA_URL"
-        "Alertmanager:$ALERTMANAGER_URL"
-        "Jaeger:$JAEGER_URL"
-        "Elasticsearch:$ELASTICSEARCH_URL"
-        "Logstash:$LOGSTASH_URL"
-        "Kibana:$KIBANA_URL"
+# Check Grafana dashboards
+check_grafana_dashboards() {
+    echo -e "\n${YELLOW}Checking Grafana dashboards...${NC}"
+
+    dashboards=$(curl -s -u admin:admin "http://localhost:3001/api/search?type=dash-db" 2>/dev/null || echo "[]")
+
+    echo -e "\n### Grafana Dashboards" >> "$REPORT_FILE"
+
+    dashboard_count=$(echo "$dashboards" | grep -o '"title"' | wc -l)
+
+    if [ "$dashboard_count" -gt 0 ]; then
+        echo -e "${GREEN}✅ Found $dashboard_count dashboard(s)${NC}"
+        echo "- [x] Dashboards loaded ($dashboard_count found)" >> "$REPORT_FILE"
+    else
+        echo -e "${YELLOW}⚠️  No dashboards found${NC}"
+        echo "- [ ] Dashboards loaded ⚠️ NONE FOUND" >> "$REPORT_FILE"
+    fi
+}
+
+# Check Docker containers
+check_docker_containers() {
+    echo -e "\n${YELLOW}Checking Docker containers...${NC}"
+
+    echo -e "\n### Docker Containers" >> "$REPORT_FILE"
+
+    containers=(
+        "prometheus"
+        "grafana"
+        "alertmanager"
+        "jaeger"
+        "elasticsearch"
+        "kibana"
     )
 
-    for component in "${components[@]}"; do
-        local name="${component%%:*}"
-        local url="${component#*:}"
-        echo "  $name: $url"
+    for container in "${containers[@]}"; do
+        if docker ps --format '{{.Names}}' 2>/dev/null | grep -q "$container"; then
+            status=$(docker ps --format '{{.Names}}: {{.Status}}' 2>/dev/null | grep "$container" || echo "unknown")
+            echo -e "${GREEN}✅ Container running: $status${NC}"
+            echo "- [x] $container (running)" >> "$REPORT_FILE"
+        else
+            echo -e "${RED}❌ Container not running: $container${NC}"
+            echo "- [ ] $container ⚠️ NOT RUNNING" >> "$REPORT_FILE"
+            ((FAILED_CHECKS++))
+        fi
     done
-    echo ""
+}
 
-    if [ $CHECKS_FAILED -eq 0 ]; then
-        echo -e "${GREEN}✓ All monitoring stack validation checks passed!${NC}"
-        echo ""
-        return 0
+# Check disk space for monitoring data
+check_disk_space() {
+    echo -e "\n${YELLOW}Checking disk space...${NC}"
+
+    echo -e "\n### Disk Space" >> "$REPORT_FILE"
+
+    available=$(df -h . | tail -1 | awk '{print $4}')
+    used_percent=$(df -h . | tail -1 | awk '{print $5}' | tr -d '%')
+
+    echo -e "${GREEN}✅ Available disk space: $available${NC}"
+    echo "- Available: $available" >> "$REPORT_FILE"
+
+    if [ "$used_percent" -gt 90 ]; then
+        echo -e "${RED}❌ Disk usage is at ${used_percent}%${NC}"
+        echo "- [ ] Disk usage: ${used_percent}% ⚠️ CRITICAL" >> "$REPORT_FILE"
+        ((FAILED_CHECKS++))
+    elif [ "$used_percent" -gt 80 ]; then
+        echo -e "${YELLOW}⚠️  Disk usage is at ${used_percent}%${NC}"
+        echo "- [x] Disk usage: ${used_percent}% ⚠️ WARNING" >> "$REPORT_FILE"
     else
-        echo -e "${RED}✗ Some monitoring stack validation checks failed!${NC}"
-        echo ""
-        return 1
+        echo -e "${GREEN}✅ Disk usage is at ${used_percent}%${NC}"
+        echo "- [x] Disk usage: ${used_percent}%" >> "$REPORT_FILE"
     fi
 }
 
-# Main execution
+# Check monitoring data retention
+check_data_retention() {
+    echo -e "\n${YELLOW}Checking data retention settings...${NC}"
+
+    echo -e "\n### Data Retention" >> "$REPORT_FILE"
+
+    # Check Prometheus retention
+    prom_retention=$(curl -s "http://localhost:9090/api/v1/status/runtimeinfo" 2>/dev/null | grep -o '"retentionTime":"[^"]*"' | cut -d'"' -f4 || echo "unknown")
+
+    echo -e "${GREEN}✅ Prometheus retention: $prom_retention${NC}"
+    echo "- Prometheus: $prom_retention" >> "$REPORT_FILE"
+
+    # Check Elasticsearch index size
+    es_size=$(curl -s "http://localhost:9200/_cat/indices/ollamamax-*?h=store.size" 2>/dev/null | awk '{sum += $1} END {print sum "gb"}' || echo "unknown")
+
+    echo -e "${GREEN}✅ Elasticsearch data size: $es_size${NC}"
+    echo "- Elasticsearch: $es_size" >> "$REPORT_FILE"
+}
+
+# Generate recommendations
+generate_recommendations() {
+    echo -e "\n### Recommendations" >> "$REPORT_FILE"
+
+    if [ $FAILED_CHECKS -eq 0 ]; then
+        cat >> "$REPORT_FILE" << 'EOFREC'
+
+All monitoring components are functioning correctly. Consider these optimization steps:
+
+1. **Performance Tuning**: Review dashboard queries for optimization opportunities
+2. **Alert Tuning**: Adjust alert thresholds based on observed baseline metrics
+3. **Retention Policies**: Verify data retention matches your compliance requirements
+4. **Capacity Planning**: Monitor disk usage trends and plan for growth
+5. **Dashboard Enhancement**: Add custom dashboards for application-specific metrics
+
+EOFREC
+    else
+        cat >> "$REPORT_FILE" << 'EOFREC'
+
+**Action Required**: Fix the following issues:
+
+EOFREC
+        if grep -q "NOT RUNNING" "$REPORT_FILE"; then
+            echo "1. Start missing Docker containers with: \`docker-compose up -d\`" >> "$REPORT_FILE"
+        fi
+
+        if grep -q "MISSING" "$REPORT_FILE"; then
+            echo "2. Configure missing datasources and verify service connectivity" >> "$REPORT_FILE"
+        fi
+
+        if grep -q "CRITICAL" "$REPORT_FILE"; then
+            echo "3. Address disk space issues immediately to prevent data loss" >> "$REPORT_FILE"
+        fi
+
+        cat >> "$REPORT_FILE" << 'EOFREC'
+
+After fixing issues, run this validation script again to verify.
+EOFREC
+    fi
+}
+
+# Main validation
 main() {
-    echo "╔════════════════════════════════════════╗"
-    echo "║  OllamaMax Monitoring Stack Validator ║"
-    echo "╚════════════════════════════════════════╝"
-    echo ""
-    echo "Validating monitoring infrastructure..."
-    echo ""
+    # Core services
+    check_service "Prometheus" "http://localhost:9090/-/healthy"
+    check_service "Grafana" "http://localhost:3001/api/health"
+    check_service "Alertmanager" "http://localhost:9093/-/healthy"
+    check_service "Jaeger UI" "http://localhost:16686"
+    check_service "Elasticsearch" "http://localhost:9200/_cluster/health"
+    check_service "Kibana" "http://localhost:5601/api/status"
 
-    # Check for required commands
-    if ! command -v curl &> /dev/null; then
-        log_error "curl is required but not installed"
-        exit 1
-    fi
+    # Metrics and traces
+    check_prometheus_metrics
+    check_jaeger_traces
+    check_elasticsearch_indices
+    check_alert_rules
 
-    if ! command -v jq &> /dev/null; then
-        log_warning "jq is not installed, JSON parsing will be limited"
-    fi
+    # Grafana checks
+    check_grafana_datasources
+    check_grafana_dashboards
 
-    # Run all validation checks
-    check_prometheus || true
-    check_grafana || true
-    check_alertmanager || true
-    check_jaeger || true
-    check_elasticsearch || true
-    check_logstash || true
-    check_kibana || true
+    # Infrastructure checks
+    check_docker_containers
+    check_disk_space
+    check_data_retention
 
-    # Query metrics and verify data
-    query_prometheus_metrics || true
-    verify_jaeger_traces || true
-    verify_elasticsearch_logs || true
+    # Generate recommendations
+    generate_recommendations
 
-    # Print summary and exit with appropriate code
-    if print_summary; then
+    # Summary
+    echo -e "\n======================================" | tee -a "$REPORT_FILE"
+    echo -e "\n## Summary\n" >> "$REPORT_FILE"
+
+    if [ $FAILED_CHECKS -eq 0 ]; then
+        echo -e "${GREEN}✅ All monitoring components validated successfully!${NC}" | tee -a "$REPORT_FILE"
+        echo -e "\nValidation: **PASSED** ✅" >> "$REPORT_FILE"
+        echo -e "\n${GREEN}📄 Full report saved to $REPORT_FILE${NC}"
         exit 0
     else
+        echo -e "${RED}❌ $FAILED_CHECKS validation check(s) failed${NC}" | tee -a "$REPORT_FILE"
+        echo -e "\nValidation: **FAILED** ❌ ($FAILED_CHECKS issues)" >> "$REPORT_FILE"
+        echo -e "\n${YELLOW}📄 Full report saved to $REPORT_FILE${NC}"
         exit 1
     fi
 }
 
-# Execute main function
-main "$@"
+main

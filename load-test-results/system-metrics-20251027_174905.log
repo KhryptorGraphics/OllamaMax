@@ -1,0 +1,6900 @@
+Timestamp: 2025-10-27T17:49:11-05:00
+CPU Usage:
+%Cpu(s): 13.9 us,  5.6 sy,  0.0 ni, 80.2 id,  0.1 wa,  0.0 hi,  0.3 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        97Gi        45Gi       4.0Gi        51Gi        90Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 7051
+TCP:   1202 (estab 254, closed 916, orphaned 0, timewait 876)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  286       272       14       
+INET	  297       280       17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T17:49:45-05:00
+CPU Usage:
+%Cpu(s): 10.9 us,  4.9 sy,  0.0 ni, 78.8 id,  5.0 wa,  0.0 hi,  0.4 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        98Gi        44Gi       4.0Gi        51Gi        90Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 7083
+TCP:   1450 (estab 239, closed 1172, orphaned 6, timewait 770)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  278       263       15       
+INET	  289       271       18       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T17:50:18-05:00
+CPU Usage:
+%Cpu(s):  6.9 us,  2.8 sy,  0.0 ni, 84.3 id,  5.9 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        97Gi        45Gi       4.0Gi        51Gi        90Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 7000
+TCP:   924 (estab 208, closed 683, orphaned 1, timewait 643)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  241       227       14       
+INET	  252       235       17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T17:50:51-05:00
+CPU Usage:
+%Cpu(s): 17.3 us,  4.3 sy,  0.0 ni, 78.3 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        98Gi        45Gi       4.0Gi        51Gi        90Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 7022
+TCP:   911 (estab 219, closed 660, orphaned 0, timewait 620)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  251       237       14       
+INET	  262       245       17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T17:51:25-05:00
+CPU Usage:
+%Cpu(s): 18.9 us,  5.5 sy,  0.0 ni, 75.3 id,  0.1 wa,  0.0 hi,  0.2 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        98Gi        43Gi       4.0Gi        51Gi        89Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 7089
+TCP:   842 (estab 244, closed 565, orphaned 0, timewait 517)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  277       259       18       
+INET	  288       267       21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T17:51:58-05:00
+CPU Usage:
+%Cpu(s):  9.8 us,  1.5 sy,  0.0 ni, 88.7 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        97Gi        45Gi       4.0Gi        51Gi        90Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 7033
+TCP:   1022 (estab 232, closed 758, orphaned 0, timewait 718)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  264       250       14       
+INET	  275       258       17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T17:52:31-05:00
+CPU Usage:
+%Cpu(s): 18.6 us,  4.3 sy,  0.0 ni, 76.8 id,  0.0 wa,  0.0 hi,  0.3 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        98Gi        44Gi       4.0Gi        51Gi        90Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 7023
+TCP:   1075 (estab 230, closed 812, orphaned 0, timewait 766)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  263       247       16       
+INET	  274       255       19       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T17:53:03-05:00
+CPU Usage:
+%Cpu(s): 14.1 us,  4.0 sy,  0.0 ni, 81.7 id,  0.0 wa,  0.0 hi,  0.2 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        98Gi        44Gi       4.0Gi        51Gi        90Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 6980
+TCP:   900 (estab 206, closed 662, orphaned 0, timewait 516)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  238       224       14       
+INET	  249       232       17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T17:53:35-05:00
+CPU Usage:
+%Cpu(s): 26.5 us, 12.6 sy,  0.0 ni, 60.1 id,  0.2 wa,  0.0 hi,  0.7 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        92Gi        50Gi       4.0Gi        51Gi        96Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 6476
+TCP:   992 (estab 136, closed 830, orphaned 0, timewait 434)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  162       150       12       
+INET	  173       158       15       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T17:54:08-05:00
+CPU Usage:
+%Cpu(s): 23.7 us,  5.1 sy,  0.0 ni, 70.9 id,  0.1 wa,  0.0 hi,  0.3 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        92Gi        49Gi       4.0Gi        51Gi        96Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 5261
+TCP:   880 (estab 176, closed 675, orphaned 0, timewait 421)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  205       193       12       
+INET	  216       201       15       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T17:54:40-05:00
+CPU Usage:
+%Cpu(s): 24.1 us,  5.8 sy, 33.7 ni, 33.6 id,  2.3 wa,  0.0 hi,  0.5 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        94Gi        48Gi       4.1Gi        51Gi        94Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 5307
+TCP:   949 (estab 216, closed 702, orphaned 0, timewait 418)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  247       222       25       
+INET	  258       230       28       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T17:55:13-05:00
+CPU Usage:
+%Cpu(s): 18.7 us,  6.0 sy,  0.0 ni, 74.0 id,  1.2 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        94Gi        48Gi       3.9Gi        51Gi        94Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 5291
+TCP:   887 (estab 160, closed 696, orphaned 0, timewait 434)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  191       178       13       
+INET	  202       186       16       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T17:55:46-05:00
+CPU Usage:
+%Cpu(s): 20.5 us,  6.0 sy,  0.0 ni, 73.1 id,  0.1 wa,  0.0 hi,  0.3 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        96Gi        46Gi       3.9Gi        51Gi        92Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 5329
+TCP:   847 (estab 171, closed 645, orphaned 0, timewait 374)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  202       187       15       
+INET	  213       195       18       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T17:56:18-05:00
+CPU Usage:
+%Cpu(s): 23.5 us,  5.9 sy,  0.0 ni, 70.3 id,  0.1 wa,  0.0 hi,  0.2 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        97Gi        45Gi       3.9Gi        51Gi        91Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 5359
+TCP:   787 (estab 165, closed 591, orphaned 0, timewait 322)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  196       182       14       
+INET	  207       190       17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T17:56:49-05:00
+CPU Usage:
+%Cpu(s): 20.3 us,  7.0 sy,  0.0 ni, 71.9 id,  0.1 wa,  0.0 hi,  0.7 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        97Gi        44Gi       4.0Gi        51Gi        90Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 5374
+TCP:   631 (estab 172, closed 425, orphaned 3, timewait 360)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  206       191       15       
+INET	  217       199       18       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T17:57:21-05:00
+CPU Usage:
+%Cpu(s): 16.9 us,  7.1 sy,  0.0 ni, 75.5 id,  0.1 wa,  0.0 hi,  0.4 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        98Gi        43Gi       3.9Gi        51Gi        90Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 5450
+TCP:   811 (estab 167, closed 612, orphaned 0, timewait 305)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  199       181       18       
+INET	  210       189       21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T17:57:54-05:00
+CPU Usage:
+%Cpu(s): 14.5 us,  4.7 sy,  0.0 ni, 80.6 id,  0.0 wa,  0.0 hi,  0.2 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        98Gi        44Gi       4.0Gi        51Gi        90Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 5458
+TCP:   531 (estab 171, closed 328, orphaned 0, timewait 276)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  203       183       20       
+INET	  214       191       23       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T17:58:28-05:00
+CPU Usage:
+%Cpu(s): 12.6 us,  3.8 sy,  0.0 ni, 83.5 id,  0.1 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        94Gi        47Gi       4.0Gi        51Gi        93Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 5454
+TCP:   545 (estab 160, closed 353, orphaned 0, timewait 305)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  192       174       18       
+INET	  203       182       21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T17:59:01-05:00
+CPU Usage:
+%Cpu(s): 18.6 us,  5.3 sy,  0.0 ni, 76.0 id,  0.0 wa,  0.0 hi,  0.2 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        95Gi        47Gi       4.0Gi        51Gi        93Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 5490
+TCP:   539 (estab 186, closed 320, orphaned 1, timewait 267)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  219       199       20       
+INET	  230       207       23       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T17:59:33-05:00
+CPU Usage:
+%Cpu(s): 19.0 us,  6.4 sy,  0.0 ni, 74.1 id,  0.1 wa,  0.0 hi,  0.4 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        96Gi        46Gi       4.0Gi        51Gi        92Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 5511
+TCP:   659 (estab 197, closed 427, orphaned 3, timewait 363)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  232       206       26       
+INET	  243       214       29       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:00:04-05:00
+CPU Usage:
+%Cpu(s): 18.3 us,  3.9 sy,  0.0 ni, 77.7 id,  0.1 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        95Gi        46Gi       4.0Gi        51Gi        93Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 5462
+TCP:   680 (estab 169, closed 479, orphaned 0, timewait 431)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  201       183       18       
+INET	  212       191       21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:00:35-05:00
+CPU Usage:
+%Cpu(s):  7.5 us,  2.6 sy,  0.0 ni, 89.6 id,  0.1 wa,  0.0 hi,  0.2 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        95Gi        47Gi       4.0Gi        51Gi        93Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 5476
+TCP:   709 (estab 200, closed 477, orphaned 0, timewait 429)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  232       214       18       
+INET	  243       222       21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:01:09-05:00
+CPU Usage:
+%Cpu(s): 11.1 us,  5.4 sy,  0.0 ni, 83.2 id,  0.0 wa,  0.0 hi,  0.3 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        94Gi        47Gi       4.0Gi        51Gi        93Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 5470
+TCP:   995 (estab 189, closed 774, orphaned 0, timewait 471)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  12        9         3        
+TCP	  221       205       16       
+INET	  234       215       19       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:01:42-05:00
+CPU Usage:
+%Cpu(s): 44.0 us,  9.3 sy,  0.0 ni, 41.5 id,  4.6 wa,  0.0 hi,  0.5 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        94Gi        47Gi       4.0Gi        51Gi        94Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 5540
+TCP:   766 (estab 188, closed 546, orphaned 0, timewait 487)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  220       197       23       
+INET	  231       205       26       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:02:16-05:00
+CPU Usage:
+%Cpu(s): 14.5 us,  4.1 sy,  3.9 ni, 76.9 id,  0.5 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        95Gi        46Gi       4.0Gi        51Gi        92Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 5582
+TCP:   927 (estab 246, closed 648, orphaned 0, timewait 596)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  279       259       20       
+INET	  290       267       23       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:02:49-05:00
+CPU Usage:
+%Cpu(s): 14.7 us,  4.1 sy,  0.0 ni, 80.9 id,  0.0 wa,  0.0 hi,  0.3 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        96Gi        45Gi       4.0Gi        52Gi        92Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 5550
+TCP:   1103 (estab 198, closed 872, orphaned 0, timewait 824)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  231       213       18       
+INET	  242       221       21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:03:20-05:00
+CPU Usage:
+%Cpu(s): 14.9 us,  4.4 sy,  0.0 ni, 80.3 id,  0.1 wa,  0.0 hi,  0.3 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        96Gi        45Gi       4.0Gi        52Gi        92Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 5548
+TCP:   1115 (estab 200, closed 883, orphaned 0, timewait 819)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  232       206       26       
+INET	  243       214       29       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:03:52-05:00
+CPU Usage:
+%Cpu(s): 14.3 us,  4.5 sy,  0.0 ni, 81.0 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        96Gi        44Gi       4.0Gi        52Gi        91Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 5512
+TCP:   858 (estab 161, closed 663, orphaned 1, timewait 623)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  195       181       14       
+INET	  206       189       17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:04:23-05:00
+CPU Usage:
+%Cpu(s): 15.0 us,  3.6 sy,  0.0 ni, 80.7 id,  0.7 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        96Gi        45Gi       4.0Gi        52Gi        92Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 5529
+TCP:   746 (estab 180, closed 533, orphaned 1, timewait 493)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  213       199       14       
+INET	  224       207       17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:04:56-05:00
+CPU Usage:
+%Cpu(s): 27.3 us,  7.1 sy,  0.0 ni, 65.3 id,  0.1 wa,  0.0 hi,  0.2 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        96Gi        45Gi       4.0Gi        52Gi        92Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 5540
+TCP:   800 (estab 186, closed 582, orphaned 0, timewait 453)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  218       203       15       
+INET	  229       211       18       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:05:30-05:00
+CPU Usage:
+%Cpu(s): 15.4 us,  5.5 sy,  0.0 ni, 78.7 id,  0.0 wa,  0.0 hi,  0.3 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        96Gi        45Gi       4.0Gi        52Gi        92Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 5545
+TCP:   776 (estab 185, closed 559, orphaned 0, timewait 505)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  217       196       21       
+INET	  228       204       24       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:06:03-05:00
+CPU Usage:
+%Cpu(s): 13.0 us,  3.6 sy,  0.0 ni, 83.1 id,  0.0 wa,  0.0 hi,  0.3 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        96Gi        46Gi       4.0Gi        52Gi        92Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 5532
+TCP:   770 (estab 190, closed 548, orphaned 0, timewait 502)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  222       205       17       
+INET	  233       213       20       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:06:36-05:00
+CPU Usage:
+%Cpu(s): 12.2 us,  3.0 sy,  0.0 ni, 84.8 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        96Gi        45Gi       4.0Gi        52Gi        91Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 5501
+TCP:   815 (estab 171, closed 612, orphaned 0, timewait 572)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  203       189       14       
+INET	  214       197       17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:07:10-05:00
+CPU Usage:
+%Cpu(s): 13.6 us,  2.6 sy,  0.0 ni, 83.8 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        96Gi        45Gi       4.0Gi        52Gi        92Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 5501
+TCP:   832 (estab 165, closed 635, orphaned 0, timewait 595)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  197       183       14       
+INET	  208       191       17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:07:41-05:00
+CPU Usage:
+%Cpu(s): 13.8 us,  2.8 sy,  0.0 ni, 83.4 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        96Gi        45Gi       4.0Gi        52Gi        92Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 5529
+TCP:   682 (estab 187, closed 463, orphaned 0, timewait 411)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  219       199       20       
+INET	  230       207       23       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:08:12-05:00
+CPU Usage:
+%Cpu(s): 13.5 us,  3.9 sy,  0.0 ni, 82.3 id,  0.2 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        95Gi        46Gi       4.0Gi        52Gi        92Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 5623
+TCP:   675 (estab 227, closed 414, orphaned 0, timewait 366)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  261       243       18       
+INET	  272       251       21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:08:44-05:00
+CPU Usage:
+%Cpu(s): 17.3 us,  5.3 sy,  0.0 ni, 77.3 id,  0.1 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        96Gi        45Gi       4.0Gi        52Gi        92Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 5577
+TCP:   882 (estab 205, closed 645, orphaned 0, timewait 589)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  237       215       22       
+INET	  248       223       25       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:09:15-05:00
+CPU Usage:
+%Cpu(s): 11.5 us,  2.7 sy,  0.0 ni, 85.5 id,  0.0 wa,  0.0 hi,  0.3 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        96Gi        46Gi       4.0Gi        52Gi        92Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 5514
+TCP:   1193 (estab 188, closed 972, orphaned 1, timewait 665)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  221       203       18       
+INET	  232       211       21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:09:48-05:00
+CPU Usage:
+%Cpu(s): 19.1 us,  5.4 sy,  0.0 ni, 75.4 id,  0.1 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        96Gi        45Gi       4.0Gi        52Gi        91Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 5569
+TCP:   817 (estab 208, closed 577, orphaned 0, timewait 521)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  240       218       22       
+INET	  251       226       25       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:10:22-05:00
+CPU Usage:
+%Cpu(s): 18.2 us,  6.5 sy,  0.0 ni, 75.1 id,  0.1 wa,  0.0 hi,  0.2 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        97Gi        44Gi       4.0Gi        52Gi        91Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 5576
+TCP:   812 (estab 216, closed 564, orphaned 0, timewait 508)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  248       226       22       
+INET	  259       234       25       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:10:53-05:00
+CPU Usage:
+%Cpu(s): 15.1 us,  3.5 sy,  0.0 ni, 81.3 id,  0.1 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        97Gi        44Gi       4.0Gi        52Gi        91Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 5542
+TCP:   825 (estab 206, closed 587, orphaned 0, timewait 539)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  238       220       18       
+INET	  249       228       21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:11:24-05:00
+CPU Usage:
+%Cpu(s): 11.5 us,  3.8 sy,  0.0 ni, 84.6 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        97Gi        43Gi       4.0Gi        53Gi        91Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 5497
+TCP:   813 (estab 194, closed 587, orphaned 0, timewait 546)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  12        9         3        
+TCP	  226       212       14       
+INET	  239       222       17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:11:56-05:00
+CPU Usage:
+%Cpu(s): 20.0 us,  4.8 sy,  0.0 ni, 74.8 id,  0.2 wa,  0.0 hi,  0.2 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        97Gi        42Gi       4.0Gi        53Gi        90Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 5550
+TCP:   767 (estab 211, closed 523, orphaned 0, timewait 482)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  244       230       14       
+INET	  255       238       17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:12:29-05:00
+CPU Usage:
+%Cpu(s):  9.6 us,  2.8 sy,  0.0 ni, 76.3 id, 11.2 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        97Gi        42Gi       4.0Gi        53Gi        91Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 5522
+TCP:   593 (estab 186, closed 375, orphaned 0, timewait 331)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  218       204       14       
+INET	  229       212       17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:13:02-05:00
+CPU Usage:
+%Cpu(s): 13.3 us,  4.7 sy,  0.0 ni, 72.3 id,  9.5 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        97Gi        42Gi       4.0Gi        53Gi        91Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 5523
+TCP:   493 (estab 197, closed 264, orphaned 0, timewait 206)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  229       210       19       
+INET	  240       218       22       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:13:35-05:00
+CPU Usage:
+%Cpu(s): 23.4 us,  5.2 sy,  0.0 ni, 69.2 id,  2.0 wa,  0.0 hi,  0.3 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        96Gi        44Gi       4.0Gi        52Gi        91Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 5596
+TCP:   685 (estab 252, closed 400, orphaned 0, timewait 346)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  285       265       20       
+INET	  296       273       23       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:14:07-05:00
+CPU Usage:
+%Cpu(s): 15.5 us,  4.6 sy, 16.6 ni, 63.1 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        96Gi        44Gi       4.0Gi        53Gi        92Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 5489
+TCP:   1015 (estab 164, closed 818, orphaned 1, timewait 519)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  197       183       14       
+INET	  208       191       17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:14:38-05:00
+CPU Usage:
+%Cpu(s): 12.0 us,  4.2 sy,  0.0 ni, 83.6 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        96Gi        45Gi       4.0Gi        52Gi        92Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 5473
+TCP:   953 (estab 164, closed 757, orphaned 0, timewait 459)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  196       182       14       
+INET	  207       190       17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:15:10-05:00
+CPU Usage:
+%Cpu(s):  6.4 us,  2.1 sy,  0.0 ni, 91.5 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        95Gi        45Gi       4.0Gi        52Gi        93Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 5417
+TCP:   761 (estab 137, closed 592, orphaned 1, timewait 298)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  169       155       14       
+INET	  180       163       17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:15:41-05:00
+CPU Usage:
+%Cpu(s):  4.2 us,  1.1 sy,  0.0 ni, 94.7 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        95Gi        45Gi       4.0Gi        52Gi        92Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 5431
+TCP:   398 (estab 150, closed 216, orphaned 0, timewait 176)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  11        8         3        
+TCP	  182       168       14       
+INET	  194       177       17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:16:14-05:00
+CPU Usage:
+%Cpu(s):  2.6 us,  0.6 sy,  0.0 ni, 96.9 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        95Gi        46Gi       4.0Gi        52Gi        93Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 5397
+TCP:   325 (estab 135, closed 158, orphaned 0, timewait 118)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  167       153       14       
+INET	  178       161       17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:16:48-05:00
+CPU Usage:
+%Cpu(s): 10.1 us,  5.0 sy,  0.0 ni, 84.5 id,  0.2 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        72Gi        69Gi       3.9Gi        52Gi       116Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4347
+TCP:   495 (estab 18, closed 462, orphaned 0, timewait 200)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  33        25        8        
+INET	  44        33        11       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:17:19-05:00
+CPU Usage:
+%Cpu(s): 20.3 us,  8.6 sy,  0.0 ni, 69.8 id,  0.8 wa,  0.0 hi,  0.6 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        72Gi        69Gi       3.9Gi        52Gi       116Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 1981
+TCP:   861 (estab 88, closed 749, orphaned 0, timewait 251)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  112       84        28       
+INET	  123       92        31       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:17:52-05:00
+CPU Usage:
+%Cpu(s): 17.4 us,  3.0 sy,  0.0 ni, 78.4 id,  1.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        75Gi        66Gi       3.9Gi        52Gi       113Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 1829
+TCP:   1074 (estab 172, closed 875, orphaned 0, timewait 359)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  199       180       19       
+INET	  210       188       22       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:18:25-05:00
+CPU Usage:
+%Cpu(s): 19.5 us,  4.2 sy,  0.0 ni, 76.2 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        76Gi        65Gi       4.2Gi        52Gi       112Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 1898
+TCP:   1150 (estab 175, closed 948, orphaned 0, timewait 419)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  11        8         3        
+TCP	  202       180       22       
+INET	  214       189       25       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:18:59-05:00
+CPU Usage:
+%Cpu(s): 18.5 us,  4.0 sy,  0.0 ni, 77.2 id,  0.3 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        77Gi        63Gi       4.6Gi        53Gi       111Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 1894
+TCP:   1069 (estab 155, closed 887, orphaned 0, timewait 364)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  182       167       15       
+INET	  193       175       18       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:19:32-05:00
+CPU Usage:
+%Cpu(s): 12.5 us,  5.0 sy, 28.8 ni, 53.4 id,  0.2 wa,  0.0 hi,  0.2 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        78Gi        63Gi       4.2Gi        53Gi       110Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 1955
+TCP:   1080 (estab 142, closed 911, orphaned 0, timewait 389)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  169       156       13       
+INET	  180       164       16       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:20:04-05:00
+CPU Usage:
+%Cpu(s): 12.2 us,  5.0 sy,  0.0 ni, 81.7 id,  0.9 wa,  0.0 hi,  0.2 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        79Gi        61Gi       4.0Gi        53Gi       109Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2019
+TCP:   960 (estab 156, closed 777, orphaned 0, timewait 320)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  183       163       20       
+INET	  194       171       23       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:20:35-05:00
+CPU Usage:
+%Cpu(s): 17.0 us,  4.6 sy,  4.1 ni, 74.2 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        80Gi        60Gi       4.4Gi        53Gi       108Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2101
+TCP:   767 (estab 152, closed 588, orphaned 0, timewait 269)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  179       168       11       
+INET	  190       176       14       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:21:07-05:00
+CPU Usage:
+%Cpu(s): 10.4 us,  3.6 sy,  0.0 ni, 83.3 id,  2.7 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        80Gi        61Gi       4.4Gi        53Gi       108Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2142
+TCP:   542 (estab 145, closed 370, orphaned 3, timewait 283)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  172       157       15       
+INET	  183       165       18       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:21:40-05:00
+CPU Usage:
+%Cpu(s): 14.2 us,  4.4 sy, 33.0 ni, 48.1 id,  0.1 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        80Gi        60Gi       4.4Gi        53Gi       107Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2314
+TCP:   575 (estab 137, closed 409, orphaned 0, timewait 308)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  166       153       13       
+INET	  177       161       16       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:22:13-05:00
+CPU Usage:
+%Cpu(s):  7.6 us,  3.1 sy, 16.7 ni, 70.8 id,  1.6 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        80Gi        60Gi       4.4Gi        53Gi       107Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2333
+TCP:   538 (estab 162, closed 346, orphaned 0, timewait 288)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  192       171       21       
+INET	  203       179       24       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:22:46-05:00
+CPU Usage:
+%Cpu(s): 11.3 us,  4.9 sy, 45.7 ni, 37.8 id,  0.0 wa,  0.0 hi,  0.3 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        80Gi        59Gi       4.4Gi        53Gi       107Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2248
+TCP:   518 (estab 66, closed 422, orphaned 0, timewait 318)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  96        81        15       
+INET	  107       89        18       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:23:18-05:00
+CPU Usage:
+%Cpu(s): 11.0 us,  4.6 sy,  0.0 ni, 84.1 id,  0.0 wa,  0.0 hi,  0.4 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        77Gi        63Gi       4.4Gi        53Gi       110Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2361
+TCP:   481 (estab 71, closed 380, orphaned 0, timewait 328)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  101       83        18       
+INET	  112       91        21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:23:49-05:00
+CPU Usage:
+%Cpu(s): 20.7 us,  5.7 sy,  3.6 ni, 70.0 id,  0.1 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        78Gi        63Gi       4.4Gi        53Gi       110Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2542
+TCP:   368 (estab 55, closed 283, orphaned 0, timewait 219)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  85        70        15       
+INET	  96        78        18       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:24:23-05:00
+CPU Usage:
+%Cpu(s): 11.6 us,  4.3 sy,  0.0 ni, 83.1 id,  0.7 wa,  0.0 hi,  0.3 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        78Gi        62Gi       4.5Gi        53Gi       109Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2715
+TCP:   342 (estab 79, closed 233, orphaned 0, timewait 169)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  109       88        21       
+INET	  120       96        24       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:24:56-05:00
+CPU Usage:
+%Cpu(s): 10.9 us,  3.1 sy,  0.0 ni, 84.4 id,  1.3 wa,  0.0 hi,  0.4 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        78Gi        63Gi       4.1Gi        52Gi       110Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2682
+TCP:   330 (estab 44, closed 256, orphaned 0, timewait 210)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  74        60        14       
+INET	  85        68        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:25:29-05:00
+CPU Usage:
+%Cpu(s):  1.2 us,  1.4 sy,  0.0 ni, 97.3 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        79Gi        62Gi       4.1Gi        53Gi       109Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2912
+TCP:   291 (estab 46, closed 215, orphaned 0, timewait 171)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  76        62        14       
+INET	  87        70        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:26:02-05:00
+CPU Usage:
+%Cpu(s):  1.9 us,  0.5 sy,  0.0 ni, 97.6 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        78Gi        62Gi       4.1Gi        52Gi       110Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2860
+TCP:   212 (estab 56, closed 126, orphaned 0, timewait 74)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  86        68        18       
+INET	  97        76        21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:26:35-05:00
+CPU Usage:
+%Cpu(s):  9.8 us,  2.9 sy,  0.0 ni, 87.3 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        78Gi        63Gi       4.5Gi        53Gi       110Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2861
+TCP:   419 (estab 51, closed 338, orphaned 0, timewait 193)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  81        67        14       
+INET	  92        75        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:27:07-05:00
+CPU Usage:
+%Cpu(s):  1.2 us,  0.8 sy,  0.0 ni, 98.0 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        77Gi        63Gi       4.1Gi        52Gi       110Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2849
+TCP:   411 (estab 44, closed 336, orphaned 0, timewait 193)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  75        61        14       
+INET	  86        69        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:27:38-05:00
+CPU Usage:
+%Cpu(s):  1.0 us,  2.3 sy,  0.0 ni, 96.7 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        77Gi        64Gi       4.1Gi        52Gi       111Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2849
+TCP:   193 (estab 45, closed 118, orphaned 0, timewait 74)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  75        61        14       
+INET	  86        69        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:28:11-05:00
+CPU Usage:
+%Cpu(s):  3.3 us,  1.4 sy,  3.9 ni, 91.3 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        77Gi        63Gi       4.5Gi        53Gi       111Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2881
+TCP:   268 (estab 77, closed 161, orphaned 0, timewait 101)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  107       85        22       
+INET	  118       93        25       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:28:44-05:00
+CPU Usage:
+%Cpu(s):  4.4 us,  2.2 sy,  5.7 ni, 87.5 id,  0.0 wa,  0.0 hi,  0.3 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        77Gi        63Gi       4.5Gi        53Gi       111Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2850
+TCP:   412 (estab 46, closed 336, orphaned 0, timewait 191)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  76        62        14       
+INET	  87        70        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:29:18-05:00
+CPU Usage:
+%Cpu(s):  0.8 us,  0.4 sy,  0.0 ni, 98.9 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        77Gi        64Gi       4.2Gi        53Gi       111Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2857
+TCP:   286 (estab 53, closed 203, orphaned 0, timewait 155)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  83        67        16       
+INET	  94        75        19       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:29:51-05:00
+CPU Usage:
+%Cpu(s):  1.6 us,  0.7 sy,  0.0 ni, 97.7 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        77Gi        64Gi       4.2Gi        53Gi       111Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2851
+TCP:   183 (estab 41, closed 112, orphaned 0, timewait 72)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  71        59        12       
+INET	  82        67        15       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:30:24-05:00
+CPU Usage:
+%Cpu(s):  4.9 us,  1.2 sy,  0.0 ni, 93.9 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        77Gi        63Gi       4.6Gi        53Gi       110Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2894
+TCP:   312 (estab 81, closed 198, orphaned 2, timewait 140)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  114       93        21       
+INET	  125       101       24       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:30:55-05:00
+CPU Usage:
+%Cpu(s):  3.5 us,  1.7 sy,  0.0 ni, 94.4 id,  0.0 wa,  0.0 hi,  0.3 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        77Gi        64Gi       4.2Gi        53Gi       111Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2848
+TCP:   435 (estab 44, closed 361, orphaned 0, timewait 208)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  74        56        18       
+INET	  85        64        21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:31:27-05:00
+CPU Usage:
+%Cpu(s):  1.4 us,  0.7 sy,  0.0 ni, 97.8 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        77Gi        64Gi       4.2Gi        53Gi       111Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2834
+TCP:   346 (estab 30, closed 286, orphaned 0, timewait 146)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  60        48        12       
+INET	  71        56        15       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:31:58-05:00
+CPU Usage:
+%Cpu(s):  1.8 us,  2.1 sy,  0.0 ni, 96.1 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        77Gi        64Gi       4.2Gi        53Gi       111Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2834
+TCP:   158 (estab 30, closed 98, orphaned 0, timewait 57)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  60        48        12       
+INET	  71        56        15       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:32:29-05:00
+CPU Usage:
+%Cpu(s):  0.7 us,  0.4 sy,  0.0 ni, 98.8 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        77Gi        64Gi       4.2Gi        53Gi       111Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2833
+TCP:   147 (estab 29, closed 88, orphaned 0, timewait 48)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  59        47        12       
+INET	  70        55        15       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:33:02-05:00
+CPU Usage:
+%Cpu(s):  1.0 us,  0.4 sy,  0.0 ni, 98.6 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        77Gi        64Gi       4.2Gi        53Gi       111Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2840
+TCP:   164 (estab 36, closed 98, orphaned 0, timewait 58)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  66        54        12       
+INET	  77        62        15       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:33:35-05:00
+CPU Usage:
+%Cpu(s):  3.1 us,  3.3 sy,  0.0 ni, 93.6 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        78Gi        62Gi       4.5Gi        54Gi       110Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2904
+TCP:   353 (estab 86, closed 237, orphaned 0, timewait 69)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  116       90        26       
+INET	  127       98        29       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:34:09-05:00
+CPU Usage:
+%Cpu(s): 12.6 us,  4.8 sy,  0.0 ni, 82.0 id,  0.5 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        77Gi        62Gi       4.2Gi        54Gi       111Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2996
+TCP:   261 (estab 34, closed 197, orphaned 1, timewait 147)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  64        52        12       
+INET	  75        60        15       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:34:42-05:00
+CPU Usage:
+%Cpu(s):  3.6 us,  1.4 sy,  0.0 ni, 89.8 id,  5.1 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        78Gi        62Gi       4.2Gi        54Gi       110Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2949
+TCP:   298 (estab 46, closed 222, orphaned 0, timewait 154)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  13        10        3        
+TCP	  76        64        12       
+INET	  90        75        15       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:35:15-05:00
+CPU Usage:
+%Cpu(s):  3.7 us,  2.0 sy,  0.0 ni, 91.1 id,  3.2 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        75Gi        64Gi       4.2Gi        54Gi       112Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2824
+TCP:   199 (estab 37, closed 138, orphaned 0, timewait 94)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  61        50        11       
+INET	  72        58        14       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:35:46-05:00
+CPU Usage:
+%Cpu(s):  2.2 us,  1.5 sy,  0.0 ni, 91.6 id,  4.7 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        76Gi        64Gi       4.2Gi        54Gi       112Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2701
+TCP:   293 (estab 55, closed 211, orphaned 0, timewait 118)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  82        66        16       
+INET	  93        74        19       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:36:17-05:00
+CPU Usage:
+%Cpu(s):  9.4 us,  3.8 sy,  0.0 ni, 83.8 id,  2.9 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        76Gi        63Gi       4.2Gi        54Gi       111Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2604
+TCP:   236 (estab 38, closed 170, orphaned 0, timewait 128)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  66        56        10       
+INET	  77        64        13       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:36:48-05:00
+CPU Usage:
+%Cpu(s):  4.5 us,  1.4 sy,  0.0 ni, 93.6 id,  0.5 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        77Gi        62Gi       4.2Gi        54Gi       110Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2787
+TCP:   276 (estab 39, closed 209, orphaned 0, timewait 107)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  67        57        10       
+INET	  78        65        13       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:37:22-05:00
+CPU Usage:
+%Cpu(s):  0.8 us,  0.5 sy,  0.0 ni, 98.8 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        78Gi        61Gi       4.2Gi        54Gi       110Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2865
+TCP:   200 (estab 38, closed 133, orphaned 0, timewait 93)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  67        56        11       
+INET	  78        64        14       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:37:53-05:00
+CPU Usage:
+%Cpu(s):  0.8 us,  0.3 sy,  0.0 ni, 98.9 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        77Gi        62Gi       4.2Gi        54Gi       110Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2855
+TCP:   194 (estab 38, closed 127, orphaned 0, timewait 87)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  67        56        11       
+INET	  78        64        14       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:38:26-05:00
+CPU Usage:
+%Cpu(s):  1.5 us,  1.1 sy,  0.0 ni, 97.3 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        77Gi        62Gi       4.2Gi        54Gi       111Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2873
+TCP:   295 (estab 55, closed 211, orphaned 0, timewait 69)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  84        73        11       
+INET	  95        81        14       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:38:59-05:00
+CPU Usage:
+%Cpu(s):  0.8 us,  1.1 sy,  0.0 ni, 98.0 id,  0.1 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        77Gi        63Gi       4.2Gi        54Gi       111Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2864
+TCP:   193 (estab 47, closed 117, orphaned 0, timewait 66)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  76        61        15       
+INET	  87        69        18       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:39:33-05:00
+CPU Usage:
+%Cpu(s):  2.8 us,  2.4 sy,  0.0 ni, 94.7 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        77Gi        63Gi       4.2Gi        54Gi       111Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2871
+TCP:   196 (estab 48, closed 119, orphaned 0, timewait 68)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  77        62        15       
+INET	  88        70        18       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:40:04-05:00
+CPU Usage:
+%Cpu(s):  4.0 us,  0.7 sy,  0.0 ni, 95.2 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        77Gi        62Gi       4.2Gi        54Gi       111Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2876
+TCP:   243 (estab 59, closed 155, orphaned 0, timewait 115)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  88        77        11       
+INET	  99        85        14       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:40:35-05:00
+CPU Usage:
+%Cpu(s):  1.5 us,  0.6 sy,  0.0 ni, 97.9 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        77Gi        62Gi       4.2Gi        54Gi       110Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2869
+TCP:   362 (estab 52, closed 281, orphaned 0, timewait 233)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  81        66        15       
+INET	  92        74        18       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:41:06-05:00
+CPU Usage:
+%Cpu(s):  0.9 us,  0.7 sy,  0.0 ni, 98.4 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        77Gi        62Gi       4.2Gi        54Gi       111Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2860
+TCP:   426 (estab 43, closed 354, orphaned 0, timewait 205)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  72        57        15       
+INET	  83        65        18       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:41:39-05:00
+CPU Usage:
+%Cpu(s):  2.7 us,  0.5 sy,  0.0 ni, 96.9 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        77Gi        62Gi       4.2Gi        54Gi       110Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2877
+TCP:   287 (estab 48, closed 210, orphaned 0, timewait 162)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  77        62        15       
+INET	  88        70        18       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:42:12-05:00
+CPU Usage:
+%Cpu(s):  4.7 us,  1.3 sy,  0.0 ni, 94.0 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        78Gi        62Gi       4.2Gi        54Gi       110Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2882
+TCP:   340 (estab 59, closed 252, orphaned 0, timewait 204)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  88        73        15       
+INET	  99        81        18       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:42:45-05:00
+CPU Usage:
+%Cpu(s):  3.3 us,  2.0 sy,  0.0 ni, 92.4 id,  2.3 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        78Gi        62Gi       4.2Gi        54Gi       110Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2880
+TCP:   397 (estab 50, closed 318, orphaned 0, timewait 211)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  79        64        15       
+INET	  90        72        18       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:43:19-05:00
+CPU Usage:
+%Cpu(s):  1.0 us,  0.6 sy,  0.0 ni, 97.7 id,  0.7 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        78Gi        62Gi       4.2Gi        54Gi       110Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2855
+TCP:   314 (estab 38, closed 247, orphaned 0, timewait 198)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  67        52        15       
+INET	  78        60        18       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:43:52-05:00
+CPU Usage:
+%Cpu(s):  1.8 us,  1.9 sy,  0.0 ni, 96.3 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        77Gi        62Gi       4.2Gi        54Gi       110Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2877
+TCP:   326 (estab 42, closed 255, orphaned 0, timewait 207)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  71        56        15       
+INET	  82        64        18       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:44:25-05:00
+CPU Usage:
+%Cpu(s):  1.9 us,  0.8 sy,  0.0 ni, 97.3 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        77Gi        62Gi       4.2Gi        54Gi       110Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2863
+TCP:   275 (estab 30, closed 216, orphaned 0, timewait 176)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  59        48        11       
+INET	  70        56        14       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:44:56-05:00
+CPU Usage:
+%Cpu(s):  1.7 us,  0.7 sy,  0.0 ni, 97.7 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        77Gi        62Gi       4.2Gi        54Gi       111Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2863
+TCP:   188 (estab 32, closed 127, orphaned 0, timewait 87)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  61        50        11       
+INET	  72        58        14       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:45:27-05:00
+CPU Usage:
+%Cpu(s):  6.0 us,  2.5 sy,  0.0 ni, 91.5 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        77Gi        62Gi       4.2Gi        54Gi       110Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2859
+TCP:   203 (estab 28, closed 146, orphaned 0, timewait 104)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  57        46        11       
+INET	  68        54        14       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:45:58-05:00
+CPU Usage:
+%Cpu(s):  2.1 us,  1.1 sy,  0.0 ni, 96.8 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        77Gi        62Gi       4.2Gi        54Gi       110Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2882
+TCP:   243 (estab 45, closed 169, orphaned 0, timewait 126)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  74        62        12       
+INET	  85        70        15       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:46:32-05:00
+CPU Usage:
+%Cpu(s):  1.9 us,  0.6 sy,  0.0 ni, 97.5 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        77Gi        62Gi       4.2Gi        54Gi       110Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2887
+TCP:   307 (estab 56, closed 222, orphaned 0, timewait 178)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  85        72        13       
+INET	  96        80        16       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:47:05-05:00
+CPU Usage:
+%Cpu(s):  6.0 us,  2.0 sy,  0.0 ni, 91.9 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        77Gi        62Gi       4.2Gi        54Gi       110Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2866
+TCP:   323 (estab 35, closed 259, orphaned 0, timewait 209)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  64        49        15       
+INET	  75        57        18       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:47:38-05:00
+CPU Usage:
+%Cpu(s):  1.4 us,  1.6 sy,  0.0 ni, 96.7 id,  0.0 wa,  0.0 hi,  0.2 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        77Gi        62Gi       4.2Gi        54Gi       110Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2866
+TCP:   309 (estab 37, closed 243, orphaned 0, timewait 193)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  66        51        15       
+INET	  77        59        18       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:48:11-05:00
+CPU Usage:
+%Cpu(s):  2.0 us,  0.6 sy,  0.0 ni, 97.4 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        77Gi        62Gi       4.2Gi        54Gi       110Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2870
+TCP:   241 (estab 38, closed 172, orphaned 0, timewait 124)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  69        54        15       
+INET	  80        62        18       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:48:44-05:00
+CPU Usage:
+%Cpu(s):  1.1 us,  1.3 sy,  0.0 ni, 97.6 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        78Gi        62Gi       4.2Gi        54Gi       110Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2879
+TCP:   248 (estab 38, closed 181, orphaned 0, timewait 133)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  67        52        15       
+INET	  78        60        18       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:49:15-05:00
+CPU Usage:
+%Cpu(s):  2.0 us,  0.6 sy,  0.0 ni, 97.4 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        77Gi        62Gi       4.2Gi        54Gi       110Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2864
+TCP:   230 (estab 35, closed 166, orphaned 0, timewait 118)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  64        49        15       
+INET	  75        57        18       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:49:47-05:00
+CPU Usage:
+%Cpu(s):  4.6 us,  2.6 sy,  0.0 ni, 92.4 id,  0.0 wa,  0.0 hi,  0.4 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        77Gi        62Gi       4.2Gi        54Gi       110Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2865
+TCP:   303 (estab 35, closed 239, orphaned 0, timewait 89)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  11        8         3        
+TCP	  64        49        15       
+INET	  76        58        18       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:50:19-05:00
+CPU Usage:
+%Cpu(s):  2.4 us,  1.7 sy,  0.0 ni, 95.8 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        77Gi        62Gi       4.2Gi        54Gi       110Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2857
+TCP:   278 (estab 28, closed 221, orphaned 0, timewait 80)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  57        46        11       
+INET	  68        54        14       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:50:52-05:00
+CPU Usage:
+%Cpu(s):  1.8 us,  1.6 sy,  0.0 ni, 96.6 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        77Gi        62Gi       4.2Gi        54Gi       110Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2858
+TCP:   178 (estab 29, closed 120, orphaned 0, timewait 80)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  58        47        11       
+INET	  69        55        14       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:51:26-05:00
+CPU Usage:
+%Cpu(s):  1.5 us,  1.0 sy,  0.0 ni, 97.4 id,  0.2 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        77Gi        62Gi       4.2Gi        54Gi       110Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2856
+TCP:   171 (estab 27, closed 115, orphaned 0, timewait 75)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  56        45        11       
+INET	  67        53        14       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:51:59-05:00
+CPU Usage:
+%Cpu(s):  0.7 us,  0.6 sy,  0.0 ni, 98.7 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        77Gi        62Gi       4.2Gi        54Gi       110Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2856
+TCP:   273 (estab 27, closed 217, orphaned 0, timewait 75)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  56        45        11       
+INET	  67        53        14       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:52:30-05:00
+CPU Usage:
+%Cpu(s):  1.1 us,  1.4 sy,  0.0 ni, 97.5 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        77Gi        62Gi       4.2Gi        54Gi       110Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2856
+TCP:   272 (estab 27, closed 216, orphaned 0, timewait 76)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  56        45        11       
+INET	  67        53        14       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:53:01-05:00
+CPU Usage:
+%Cpu(s):  0.8 us,  0.3 sy,  0.0 ni, 98.9 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        77Gi        62Gi       4.2Gi        54Gi       110Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2857
+TCP:   168 (estab 28, closed 111, orphaned 0, timewait 71)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  57        46        11       
+INET	  68        54        14       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:53:33-05:00
+CPU Usage:
+%Cpu(s):  9.0 us,  3.7 sy,  0.0 ni, 87.2 id,  0.0 wa,  0.0 hi,  0.2 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        79Gi        60Gi       4.2Gi        54Gi       108Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3113
+TCP:   182 (estab 38, closed 115, orphaned 0, timewait 73)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  67        56        11       
+INET	  78        64        14       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:54:04-05:00
+CPU Usage:
+%Cpu(s): 12.2 us,  6.3 sy,  0.0 ni, 76.9 id,  4.5 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        77Gi        62Gi       4.2Gi        54Gi       111Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2747
+TCP:   196 (estab 33, closed 139, orphaned 0, timewait 71)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  57        47        10       
+INET	  68        55        13       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:54:36-05:00
+CPU Usage:
+%Cpu(s): 16.1 us,  3.7 sy,  0.0 ni, 79.7 id,  0.4 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        78Gi        61Gi       4.2Gi        54Gi       110Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2684
+TCP:   248 (estab 63, closed 157, orphaned 0, timewait 111)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  91        79        12       
+INET	  102       87        15       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:55:09-05:00
+CPU Usage:
+%Cpu(s):  9.7 us,  3.7 sy,  0.0 ni, 86.5 id,  0.1 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        81Gi        58Gi       4.2Gi        54Gi       107Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 2979
+TCP:   278 (estab 45, closed 203, orphaned 0, timewait 161)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  75        63        12       
+INET	  86        71        15       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:55:42-05:00
+CPU Usage:
+%Cpu(s):  1.0 us,  0.4 sy,  0.0 ni, 98.7 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        82Gi        58Gi       4.2Gi        54Gi       106Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3228
+TCP:   237 (estab 46, closed 159, orphaned 0, timewait 117)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  78        64        14       
+INET	  89        72        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:56:14-05:00
+CPU Usage:
+%Cpu(s):  0.7 us,  0.6 sy,  0.0 ni, 98.7 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        81Gi        58Gi       4.2Gi        54Gi       107Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3202
+TCP:   197 (estab 49, closed 116, orphaned 0, timewait 76)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  81        67        14       
+INET	  92        75        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:56:47-05:00
+CPU Usage:
+%Cpu(s):  1.6 us,  0.6 sy,  0.0 ni, 97.8 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        80Gi        59Gi       4.2Gi        54Gi       107Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3200
+TCP:   206 (estab 47, closed 127, orphaned 0, timewait 87)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  79        65        14       
+INET	  90        73        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:57:18-05:00
+CPU Usage:
+%Cpu(s):  2.0 us,  0.8 sy,  0.0 ni, 96.9 id,  0.1 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        79Gi        60Gi       4.2Gi        54Gi       108Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3205
+TCP:   204 (estab 46, closed 126, orphaned 0, timewait 86)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  78        64        14       
+INET	  89        72        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:57:50-05:00
+CPU Usage:
+%Cpu(s):  4.1 us,  2.4 sy,  0.0 ni, 93.3 id,  0.0 wa,  0.0 hi,  0.2 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        79Gi        60Gi       4.2Gi        54Gi       108Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3198
+TCP:   308 (estab 45, closed 231, orphaned 0, timewait 82)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  77        63        14       
+INET	  88        71        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:58:21-05:00
+CPU Usage:
+%Cpu(s):  1.6 us,  0.7 sy,  0.0 ni, 97.7 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        79Gi        60Gi       4.2Gi        54Gi       108Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3195
+TCP:   300 (estab 42, closed 226, orphaned 0, timewait 78)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  74        60        14       
+INET	  85        68        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:58:54-05:00
+CPU Usage:
+%Cpu(s):  1.2 us,  0.5 sy,  0.0 ni, 98.3 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        79Gi        60Gi       4.2Gi        54Gi       108Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3196
+TCP:   184 (estab 43, closed 109, orphaned 0, timewait 69)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  75        61        14       
+INET	  86        69        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T18:59:27-05:00
+CPU Usage:
+%Cpu(s):  0.8 us,  0.5 sy,  0.0 ni, 98.7 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        79Gi        60Gi       4.2Gi        54Gi       108Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3195
+TCP:   179 (estab 42, closed 105, orphaned 0, timewait 65)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  74        60        14       
+INET	  85        68        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:00:01-05:00
+CPU Usage:
+%Cpu(s):  1.4 us,  0.3 sy,  0.0 ni, 98.2 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        79Gi        60Gi       4.2Gi        54Gi       108Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3202
+TCP:   301 (estab 49, closed 220, orphaned 0, timewait 64)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  81        63        18       
+INET	  92        71        21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:00:34-05:00
+CPU Usage:
+%Cpu(s): 11.4 us,  1.7 sy,  0.0 ni, 86.9 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        79Gi        60Gi       4.2Gi        54Gi       109Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3204
+TCP:   184 (estab 43, closed 109, orphaned 0, timewait 61)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  75        57        18       
+INET	  86        65        21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:01:07-05:00
+CPU Usage:
+%Cpu(s):  1.3 us,  0.4 sy,  0.0 ni, 98.3 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        79Gi        60Gi       4.2Gi        54Gi       109Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3196
+TCP:   185 (estab 43, closed 110, orphaned 0, timewait 62)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  75        57        18       
+INET	  86        65        21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:01:40-05:00
+CPU Usage:
+%Cpu(s):  1.9 us,  1.7 sy,  0.0 ni, 96.3 id,  0.1 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        79Gi        60Gi       4.2Gi        54Gi       109Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3199
+TCP:   295 (estab 40, closed 223, orphaned 0, timewait 66)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  72        54        18       
+INET	  83        62        21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:02:12-05:00
+CPU Usage:
+%Cpu(s):  2.0 us,  1.1 sy,  0.0 ni, 96.8 id,  0.1 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        79Gi        60Gi       4.2Gi        54Gi       109Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3193
+TCP:   276 (estab 34, closed 210, orphaned 0, timewait 72)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  66        48        18       
+INET	  77        56        21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:02:43-05:00
+CPU Usage:
+%Cpu(s):  0.8 us,  0.7 sy,  0.0 ni, 98.5 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        79Gi        60Gi       4.2Gi        54Gi       109Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3188
+TCP:   194 (estab 35, closed 127, orphaned 0, timewait 79)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  67        49        18       
+INET	  78        57        21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:03:14-05:00
+CPU Usage:
+%Cpu(s):  0.9 us,  0.4 sy,  0.0 ni, 98.7 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        79Gi        60Gi       4.2Gi        54Gi       109Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3187
+TCP:   191 (estab 34, closed 125, orphaned 0, timewait 77)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  66        48        18       
+INET	  77        56        21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:03:46-05:00
+CPU Usage:
+%Cpu(s):  0.7 us,  1.2 sy,  0.0 ni, 98.0 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        79Gi        60Gi       4.2Gi        54Gi       109Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3193
+TCP:   178 (estab 34, closed 112, orphaned 0, timewait 64)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  66        48        18       
+INET	  77        56        21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:04:19-05:00
+CPU Usage:
+%Cpu(s):  4.7 us,  2.5 sy,  0.0 ni, 92.3 id,  0.0 wa,  0.0 hi,  0.4 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        79Gi        60Gi       4.2Gi        54Gi       109Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3183
+TCP:   275 (estab 30, closed 213, orphaned 0, timewait 64)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  62        48        14       
+INET	  73        56        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:04:52-05:00
+CPU Usage:
+%Cpu(s):  2.1 us,  1.3 sy,  0.0 ni, 96.6 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        79Gi        60Gi       4.2Gi        54Gi       109Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3185
+TCP:   172 (estab 32, closed 108, orphaned 0, timewait 68)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  64        50        14       
+INET	  75        58        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:05:25-05:00
+CPU Usage:
+%Cpu(s):  2.5 us,  0.8 sy,  0.0 ni, 96.7 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        79Gi        60Gi       4.2Gi        54Gi       108Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3187
+TCP:   174 (estab 28, closed 114, orphaned 0, timewait 74)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  60        46        14       
+INET	  71        54        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:05:58-05:00
+CPU Usage:
+%Cpu(s):  1.6 us,  1.2 sy,  0.0 ni, 97.2 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        79Gi        60Gi       4.2Gi        54Gi       109Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3182
+TCP:   174 (estab 29, closed 113, orphaned 0, timewait 73)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  61        47        14       
+INET	  72        55        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:06:30-05:00
+CPU Usage:
+%Cpu(s):  4.3 us,  2.9 sy,  0.0 ni, 92.6 id,  0.0 wa,  0.0 hi,  0.2 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        79Gi        60Gi       4.2Gi        54Gi       109Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3191
+TCP:   295 (estab 32, closed 231, orphaned 0, timewait 82)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  64        50        14       
+INET	  75        58        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:07:01-05:00
+CPU Usage:
+%Cpu(s):  2.8 us,  1.3 sy,  0.0 ni, 95.8 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        80Gi        59Gi       4.2Gi        54Gi       108Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3208
+TCP:   312 (estab 31, closed 249, orphaned 0, timewait 101)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  63        49        14       
+INET	  74        57        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:07:32-05:00
+CPU Usage:
+%Cpu(s):  1.8 us,  0.6 sy,  0.0 ni, 97.6 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        80Gi        59Gi       4.2Gi        54Gi       108Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3210
+TCP:   231 (estab 39, closed 160, orphaned 0, timewait 111)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  71        53        18       
+INET	  82        61        21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:08:03-05:00
+CPU Usage:
+%Cpu(s):  6.5 us,  3.2 sy,  0.0 ni, 90.0 id,  0.0 wa,  0.0 hi,  0.3 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        81Gi        59Gi       4.2Gi        54Gi       107Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3212
+TCP:   326 (estab 29, closed 265, orphaned 0, timewait 116)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  61        47        14       
+INET	  72        55        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:08:37-05:00
+CPU Usage:
+%Cpu(s):  2.0 us,  0.9 sy,  0.0 ni, 97.1 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        80Gi        59Gi       4.2Gi        54Gi       108Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3216
+TCP:   206 (estab 31, closed 143, orphaned 0, timewait 103)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  63        49        14       
+INET	  74        57        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:09:10-05:00
+CPU Usage:
+%Cpu(s):  1.9 us,  1.2 sy,  0.0 ni, 93.9 id,  2.9 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        80Gi        59Gi       4.2Gi        54Gi       108Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3204
+TCP:   334 (estab 31, closed 271, orphaned 0, timewait 124)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  63        49        14       
+INET	  74        57        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:09:44-05:00
+CPU Usage:
+%Cpu(s):  1.8 us,  1.0 sy,  0.0 ni, 88.8 id,  8.3 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        80Gi        59Gi       4.2Gi        54Gi       108Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3214
+TCP:   278 (estab 41, closed 205, orphaned 0, timewait 113)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  73        55        18       
+INET	  84        63        21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:10:17-05:00
+CPU Usage:
+%Cpu(s):  2.3 us,  0.5 sy,  0.0 ni, 97.1 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        81Gi        59Gi       4.2Gi        54Gi       107Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3218
+TCP:   210 (estab 36, closed 142, orphaned 0, timewait 94)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  12        9         3        
+TCP	  68        50        18       
+INET	  81        60        21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:10:48-05:00
+CPU Usage:
+%Cpu(s):  2.9 us,  0.9 sy,  0.0 ni, 96.1 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        81Gi        59Gi       4.2Gi        54Gi       107Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3224
+TCP:   326 (estab 39, closed 255, orphaned 0, timewait 98)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  71        53        18       
+INET	  82        61        21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:11:20-05:00
+CPU Usage:
+%Cpu(s):  0.8 us,  0.6 sy,  0.0 ni, 98.5 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        80Gi        59Gi       4.2Gi        54Gi       108Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3219
+TCP:   300 (estab 40, closed 228, orphaned 0, timewait 72)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  72        54        18       
+INET	  83        62        21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:11:51-05:00
+CPU Usage:
+%Cpu(s):  1.7 us,  2.1 sy,  0.0 ni, 96.1 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        80Gi        59Gi       4.2Gi        54Gi       108Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3224
+TCP:   192 (estab 39, closed 121, orphaned 0, timewait 72)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  71        53        18       
+INET	  82        61        21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:12:22-05:00
+CPU Usage:
+%Cpu(s):  0.9 us,  0.4 sy,  0.0 ni, 98.6 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        80Gi        59Gi       4.2Gi        54Gi       108Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3223
+TCP:   186 (estab 38, closed 116, orphaned 0, timewait 68)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  70        52        18       
+INET	  81        60        21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:12:55-05:00
+CPU Usage:
+%Cpu(s):  1.5 us,  0.9 sy,  0.0 ni, 97.6 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        80Gi        59Gi       4.2Gi        54Gi       107Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3234
+TCP:   210 (estab 48, closed 130, orphaned 0, timewait 73)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  80        58        22       
+INET	  91        66        25       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:13:28-05:00
+CPU Usage:
+%Cpu(s):  2.0 us,  1.4 sy,  0.0 ni, 96.6 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        80Gi        59Gi       4.2Gi        54Gi       108Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3237
+TCP:   315 (estab 45, closed 238, orphaned 0, timewait 73)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  77        55        22       
+INET	  88        63        25       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:14:01-05:00
+CPU Usage:
+%Cpu(s):  0.8 us,  0.5 sy,  0.0 ni, 98.8 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        80Gi        59Gi       4.2Gi        54Gi       108Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3233
+TCP:   207 (estab 46, closed 129, orphaned 0, timewait 71)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  78        56        22       
+INET	  89        64        25       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:14:34-05:00
+CPU Usage:
+%Cpu(s):  1.0 us,  0.4 sy,  0.0 ni, 98.6 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        80Gi        59Gi       4.2Gi        54Gi       108Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3239
+TCP:   214 (estab 46, closed 136, orphaned 0, timewait 78)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  78        56        22       
+INET	  89        64        25       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:15:06-05:00
+CPU Usage:
+%Cpu(s):  1.4 us,  0.7 sy,  0.0 ni, 97.9 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        80Gi        59Gi       4.2Gi        54Gi       108Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3231
+TCP:   209 (estab 44, closed 133, orphaned 0, timewait 75)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  76        54        22       
+INET	  87        62        25       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:15:37-05:00
+CPU Usage:
+%Cpu(s):  8.3 us,  3.9 sy,  0.0 ni, 87.8 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        80Gi        59Gi       4.2Gi        54Gi       108Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3231
+TCP:   196 (estab 38, closed 126, orphaned 0, timewait 74)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  70        52        18       
+INET	  81        60        21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:16:08-05:00
+CPU Usage:
+%Cpu(s):  0.7 us,  0.5 sy,  0.0 ni, 98.8 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        80Gi        59Gi       4.2Gi        54Gi       108Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3223
+TCP:   311 (estab 36, closed 243, orphaned 0, timewait 84)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  68        50        18       
+INET	  79        58        21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:16:39-05:00
+CPU Usage:
+%Cpu(s):  1.1 us,  0.5 sy,  0.0 ni, 98.4 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        80Gi        59Gi       4.2Gi        54Gi       108Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3223
+TCP:   307 (estab 36, closed 239, orphaned 0, timewait 82)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  68        50        18       
+INET	  79        58        21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:17:11-05:00
+CPU Usage:
+%Cpu(s):  1.7 us,  1.4 sy,  0.0 ni, 96.8 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        80Gi        59Gi       4.2Gi        54Gi       108Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3224
+TCP:   187 (estab 37, closed 118, orphaned 0, timewait 68)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  69        51        18       
+INET	  80        59        21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:17:44-05:00
+CPU Usage:
+%Cpu(s):  1.5 us,  1.9 sy,  0.0 ni, 95.9 id,  0.6 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        80Gi        59Gi       4.2Gi        54Gi       108Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3217
+TCP:   173 (estab 30, closed 111, orphaned 0, timewait 69)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  62        48        14       
+INET	  73        56        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:18:17-05:00
+CPU Usage:
+%Cpu(s):  2.0 us,  1.3 sy,  0.0 ni, 96.5 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        80Gi        59Gi       4.2Gi        54Gi       108Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3219
+TCP:   296 (estab 32, closed 232, orphaned 0, timewait 82)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  64        50        14       
+INET	  75        58        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:18:50-05:00
+CPU Usage:
+%Cpu(s):  1.5 us,  0.8 sy,  0.0 ni, 97.6 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        80Gi        59Gi       4.2Gi        54Gi       108Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3218
+TCP:   192 (estab 31, closed 129, orphaned 0, timewait 87)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  63        49        14       
+INET	  74        57        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:19:23-05:00
+CPU Usage:
+%Cpu(s):  1.0 us,  1.4 sy,  0.0 ni, 97.7 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        80Gi        59Gi       4.2Gi        54Gi       107Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3222
+TCP:   181 (estab 29, closed 120, orphaned 0, timewait 78)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  61        47        14       
+INET	  72        55        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:19:55-05:00
+CPU Usage:
+%Cpu(s):  0.7 us,  0.6 sy,  0.0 ni, 98.7 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        80Gi        59Gi       4.2Gi        54Gi       107Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3221
+TCP:   173 (estab 34, closed 107, orphaned 0, timewait 65)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  66        52        14       
+INET	  77        60        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:20:26-05:00
+CPU Usage:
+%Cpu(s):  1.4 us,  0.8 sy,  0.0 ni, 97.8 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        80Gi        59Gi       4.2Gi        54Gi       107Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3240
+TCP:   204 (estab 57, closed 115, orphaned 0, timewait 57)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  89        67        22       
+INET	  100       75        25       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:20:57-05:00
+CPU Usage:
+%Cpu(s):  5.0 us,  1.5 sy,  0.0 ni, 93.5 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        80Gi        59Gi       4.2Gi        54Gi       107Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3213
+TCP:   199 (estab 36, closed 131, orphaned 0, timewait 87)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  68        54        14       
+INET	  79        62        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:21:28-05:00
+CPU Usage:
+%Cpu(s):  2.8 us,  2.7 sy,  0.0 ni, 94.2 id,  0.0 wa,  0.0 hi,  0.2 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        80Gi        59Gi       4.2Gi        54Gi       107Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3212
+TCP:   197 (estab 35, closed 130, orphaned 0, timewait 87)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  67        53        14       
+INET	  78        61        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:22:02-05:00
+CPU Usage:
+%Cpu(s):  1.0 us,  0.4 sy,  0.0 ni, 98.6 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        80Gi        59Gi       4.2Gi        54Gi       107Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3212
+TCP:   178 (estab 35, closed 111, orphaned 0, timewait 69)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  67        53        14       
+INET	  78        61        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:22:35-05:00
+CPU Usage:
+%Cpu(s): 14.3 us,  4.7 sy,  0.0 ni, 81.0 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        81Gi        58Gi       4.2Gi        54Gi       107Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3344
+TCP:   201 (estab 39, closed 130, orphaned 0, timewait 75)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  71        57        14       
+INET	  82        65        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:23:08-05:00
+CPU Usage:
+%Cpu(s): 15.2 us,  5.5 sy,  0.0 ni, 79.1 id,  0.1 wa,  0.0 hi,  0.2 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        82Gi        57Gi       4.2Gi        54Gi       106Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3369
+TCP:   315 (estab 46, closed 237, orphaned 0, timewait 77)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  78        64        14       
+INET	  89        72        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:23:41-05:00
+CPU Usage:
+%Cpu(s):  9.4 us,  2.2 sy,  0.0 ni, 88.4 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        83Gi        56Gi       4.2Gi        54Gi       105Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3603
+TCP:   217 (estab 49, closed 136, orphaned 0, timewait 93)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  11        8         3        
+TCP	  81        67        14       
+INET	  93        76        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:24:13-05:00
+CPU Usage:
+%Cpu(s):  5.4 us,  1.9 sy,  0.0 ni, 92.4 id,  0.0 wa,  0.0 hi,  0.2 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        83Gi        56Gi       4.2Gi        54Gi       105Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3556
+TCP:   212 (estab 49, closed 131, orphaned 0, timewait 87)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  81        67        14       
+INET	  92        75        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:24:45-05:00
+CPU Usage:
+%Cpu(s):  1.0 us,  0.7 sy,  0.0 ni, 98.3 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        82Gi        57Gi       4.2Gi        54Gi       106Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3555
+TCP:   315 (estab 48, closed 235, orphaned 0, timewait 63)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  80        66        14       
+INET	  91        74        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:25:16-05:00
+CPU Usage:
+%Cpu(s):  1.9 us,  0.9 sy,  0.0 ni, 97.2 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        82Gi        57Gi       4.2Gi        54Gi       106Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3563
+TCP:   287 (estab 50, closed 205, orphaned 0, timewait 70)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  82        68        14       
+INET	  93        76        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:25:48-05:00
+CPU Usage:
+%Cpu(s):  0.7 us,  0.5 sy,  0.0 ni, 98.8 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        82Gi        58Gi       4.2Gi        54Gi       106Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3558
+TCP:   195 (estab 51, closed 112, orphaned 0, timewait 69)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  83        69        14       
+INET	  94        77        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:26:21-05:00
+CPU Usage:
+%Cpu(s):  6.2 us,  2.4 sy,  0.0 ni, 91.4 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        82Gi        58Gi       4.2Gi        54Gi       106Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3560
+TCP:   334 (estab 53, closed 249, orphaned 0, timewait 77)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  85        71        14       
+INET	  96        79        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:26:54-05:00
+CPU Usage:
+%Cpu(s):  2.0 us,  0.7 sy,  0.0 ni, 97.2 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        82Gi        58Gi       4.2Gi        54Gi       106Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3564
+TCP:   218 (estab 51, closed 135, orphaned 0, timewait 93)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  83        69        14       
+INET	  94        77        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:27:27-05:00
+CPU Usage:
+%Cpu(s):  1.9 us,  0.9 sy,  0.0 ni, 97.3 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        81Gi        58Gi       4.2Gi        54Gi       106Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3559
+TCP:   249 (estab 52, closed 165, orphaned 0, timewait 123)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  84        70        14       
+INET	  95        78        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:27:58-05:00
+CPU Usage:
+%Cpu(s): 11.7 us,  5.1 sy,  0.0 ni, 83.1 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        82Gi        57Gi       4.2Gi        54Gi       106Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3629
+TCP:   249 (estab 55, closed 162, orphaned 0, timewait 118)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  11        8         3        
+TCP	  87        73        14       
+INET	  99        82        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:28:30-05:00
+CPU Usage:
+%Cpu(s):  4.1 us,  2.6 sy,  0.0 ni, 87.7 id,  5.7 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        83Gi        56Gi       4.2Gi        54Gi       105Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3775
+TCP:   255 (estab 50, closed 173, orphaned 0, timewait 88)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  82        68        14       
+INET	  93        76        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:29:01-05:00
+CPU Usage:
+%Cpu(s):  3.8 us,  2.5 sy,  0.0 ni, 90.5 id,  3.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        83Gi        56Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3802
+TCP:   234 (estab 53, closed 149, orphaned 0, timewait 103)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  85        71        14       
+INET	  96        79        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:29:33-05:00
+CPU Usage:
+%Cpu(s):  1.1 us,  1.2 sy,  0.0 ni, 89.6 id,  8.1 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        83Gi        56Gi       4.2Gi        54Gi       105Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3805
+TCP:   234 (estab 58, closed 144, orphaned 0, timewait 97)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  90        76        14       
+INET	  101       84        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:30:06-05:00
+CPU Usage:
+%Cpu(s):  3.4 us,  2.3 sy,  0.0 ni, 86.9 id,  7.4 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        83Gi        56Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3823
+TCP:   213 (estab 52, closed 129, orphaned 0, timewait 82)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  84        70        14       
+INET	  95        78        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:30:39-05:00
+CPU Usage:
+%Cpu(s):  1.6 us,  0.9 sy,  0.0 ni, 89.3 id,  8.2 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        83Gi        56Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 3858
+TCP:   209 (estab 51, closed 126, orphaned 0, timewait 79)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  83        69        14       
+INET	  94        77        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:31:12-05:00
+CPU Usage:
+%Cpu(s): 12.5 us,  4.9 sy,  0.0 ni, 82.3 id,  0.2 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4090
+TCP:   210 (estab 49, closed 129, orphaned 0, timewait 64)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  81        67        14       
+INET	  92        75        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:31:46-05:00
+CPU Usage:
+%Cpu(s):  1.4 us,  1.2 sy,  0.0 ni, 97.3 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        85Gi        54Gi       4.2Gi        54Gi       103Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4235
+TCP:   364 (estab 54, closed 278, orphaned 0, timewait 65)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  86        72        14       
+INET	  97        80        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:32:17-05:00
+CPU Usage:
+%Cpu(s):  0.9 us,  0.5 sy,  0.0 ni, 98.6 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       103Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4201
+TCP:   194 (estab 52, closed 110, orphaned 0, timewait 68)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  84        70        14       
+INET	  95        78        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:32:48-05:00
+CPU Usage:
+%Cpu(s):  0.8 us,  0.4 sy,  0.0 ni, 98.8 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       103Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4202
+TCP:   191 (estab 53, closed 106, orphaned 0, timewait 64)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  85        71        14       
+INET	  96        79        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:33:19-05:00
+CPU Usage:
+%Cpu(s):  3.4 us,  1.9 sy,  0.0 ni, 94.6 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4201
+TCP:   197 (estab 52, closed 113, orphaned 0, timewait 70)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  84        70        14       
+INET	  95        78        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:33:53-05:00
+CPU Usage:
+%Cpu(s):  1.4 us,  0.9 sy,  0.0 ni, 97.5 id,  0.2 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        83Gi        56Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4215
+TCP:   217 (estab 59, closed 125, orphaned 1, timewait 75)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  92        74        18       
+INET	  103       82        21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:34:26-05:00
+CPU Usage:
+%Cpu(s):  2.2 us,  2.3 sy,  0.0 ni, 95.4 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        83Gi        56Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4210
+TCP:   394 (estab 60, closed 301, orphaned 1, timewait 79)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  93        75        18       
+INET	  104       83        21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:34:57-05:00
+CPU Usage:
+%Cpu(s):  0.7 us,  0.5 sy,  0.0 ni, 98.8 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        83Gi        56Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4208
+TCP:   221 (estab 59, closed 130, orphaned 0, timewait 80)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  91        73        18       
+INET	  102       81        21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:35:30-05:00
+CPU Usage:
+%Cpu(s):  0.7 us,  0.5 sy,  0.0 ni, 98.9 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        83Gi        56Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4205
+TCP:   206 (estab 56, closed 118, orphaned 0, timewait 68)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  88        70        18       
+INET	  99        78        21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:36:03-05:00
+CPU Usage:
+%Cpu(s):  0.8 us,  0.5 sy,  0.0 ni, 98.6 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        83Gi        56Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4205
+TCP:   372 (estab 56, closed 284, orphaned 0, timewait 63)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  88        70        18       
+INET	  99        78        21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:36:35-05:00
+CPU Usage:
+%Cpu(s):  1.3 us,  1.0 sy,  0.0 ni, 97.8 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        83Gi        56Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4198
+TCP:   194 (estab 49, closed 113, orphaned 0, timewait 63)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  81        63        18       
+INET	  92        71        21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:37:06-05:00
+CPU Usage:
+%Cpu(s):  4.4 us,  2.2 sy,  0.0 ni, 93.3 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        83Gi        56Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4195
+TCP:   198 (estab 46, closed 120, orphaned 0, timewait 68)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  78        60        18       
+INET	  89        68        21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:37:37-05:00
+CPU Usage:
+%Cpu(s):  1.4 us,  1.0 sy,  0.0 ni, 97.6 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        83Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4195
+TCP:   373 (estab 46, closed 295, orphaned 0, timewait 73)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  78        60        18       
+INET	  89        68        21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:38:09-05:00
+CPU Usage:
+%Cpu(s):  1.7 us,  1.9 sy,  0.0 ni, 96.3 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        83Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4199
+TCP:   197 (estab 38, closed 127, orphaned 0, timewait 85)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  70        56        14       
+INET	  81        64        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:38:42-05:00
+CPU Usage:
+%Cpu(s):  1.1 us,  0.9 sy,  0.0 ni, 98.0 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4184
+TCP:   196 (estab 35, closed 129, orphaned 0, timewait 87)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  67        53        14       
+INET	  78        61        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:39:15-05:00
+CPU Usage:
+%Cpu(s):  2.1 us,  0.5 sy,  0.0 ni, 97.4 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4187
+TCP:   209 (estab 38, closed 139, orphaned 0, timewait 97)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  70        56        14       
+INET	  81        64        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:39:48-05:00
+CPU Usage:
+%Cpu(s):  1.0 us,  1.4 sy,  0.0 ni, 97.6 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        83Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4194
+TCP:   205 (estab 39, closed 134, orphaned 0, timewait 92)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  71        57        14       
+INET	  82        65        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:40:21-05:00
+CPU Usage:
+%Cpu(s):  5.3 us,  2.8 sy,  0.0 ni, 91.9 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4187
+TCP:   192 (estab 38, closed 122, orphaned 0, timewait 78)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  70        56        14       
+INET	  81        64        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:40:54-05:00
+CPU Usage:
+%Cpu(s):  0.7 us,  0.6 sy,  0.0 ni, 98.7 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4187
+TCP:   203 (estab 38, closed 133, orphaned 0, timewait 91)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  70        56        14       
+INET	  81        64        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:41:26-05:00
+CPU Usage:
+%Cpu(s):  0.9 us,  0.6 sy,  0.0 ni, 98.5 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4188
+TCP:   196 (estab 39, closed 125, orphaned 0, timewait 83)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  71        57        14       
+INET	  82        65        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:41:57-05:00
+CPU Usage:
+%Cpu(s):  1.5 us,  1.8 sy,  0.0 ni, 96.8 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4194
+TCP:   175 (estab 37, closed 106, orphaned 0, timewait 63)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  69        55        14       
+INET	  80        63        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:42:28-05:00
+CPU Usage:
+%Cpu(s):  0.9 us,  0.5 sy,  0.0 ni, 98.6 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4191
+TCP:   182 (estab 40, closed 110, orphaned 0, timewait 65)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  72        58        14       
+INET	  83        66        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:43:02-05:00
+CPU Usage:
+%Cpu(s):  1.8 us,  1.1 sy,  0.0 ni, 97.0 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4194
+TCP:   177 (estab 37, closed 108, orphaned 0, timewait 63)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  69        55        14       
+INET	  80        63        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:43:35-05:00
+CPU Usage:
+%Cpu(s):  1.8 us,  1.4 sy,  0.0 ni, 96.8 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4190
+TCP:   350 (estab 39, closed 279, orphaned 0, timewait 66)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  71        57        14       
+INET	  82        65        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:44:08-05:00
+CPU Usage:
+%Cpu(s):  0.6 us,  0.4 sy,  0.0 ni, 99.0 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4189
+TCP:   182 (estab 38, closed 112, orphaned 0, timewait 70)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  70        56        14       
+INET	  81        64        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:44:39-05:00
+CPU Usage:
+%Cpu(s):  0.9 us,  0.6 sy,  0.0 ni, 98.6 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4187
+TCP:   362 (estab 36, closed 294, orphaned 0, timewait 80)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  68        54        14       
+INET	  79        62        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:45:13-05:00
+CPU Usage:
+%Cpu(s):  0.7 us,  0.5 sy,  0.0 ni, 98.7 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4187
+TCP:   186 (estab 36, closed 118, orphaned 0, timewait 76)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  68        54        14       
+INET	  79        62        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:45:44-05:00
+CPU Usage:
+%Cpu(s):  1.6 us,  1.1 sy,  0.0 ni, 97.3 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4187
+TCP:   181 (estab 36, closed 113, orphaned 0, timewait 71)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  68        54        14       
+INET	  79        62        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:46:15-05:00
+CPU Usage:
+%Cpu(s):  0.9 us,  0.5 sy,  0.0 ni, 98.6 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4195
+TCP:   193 (estab 41, closed 119, orphaned 0, timewait 75)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  74        58        16       
+INET	  85        66        19       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:46:46-05:00
+CPU Usage:
+%Cpu(s):  1.5 us,  0.9 sy,  0.0 ni, 97.6 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4197
+TCP:   196 (estab 46, closed 118, orphaned 0, timewait 68)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  78        60        18       
+INET	  89        68        21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:47:20-05:00
+CPU Usage:
+%Cpu(s):  6.7 us,  2.2 sy,  0.0 ni, 91.1 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4203
+TCP:   213 (estab 52, closed 129, orphaned 0, timewait 69)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  84        62        22       
+INET	  95        70        25       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:47:53-05:00
+CPU Usage:
+%Cpu(s):  0.7 us,  0.4 sy,  0.0 ni, 98.9 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4207
+TCP:   395 (estab 52, closed 311, orphaned 0, timewait 82)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  84        62        22       
+INET	  95        70        25       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:48:26-05:00
+CPU Usage:
+%Cpu(s):  0.8 us,  1.3 sy,  0.0 ni, 95.9 id,  2.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4204
+TCP:   220 (estab 53, closed 135, orphaned 0, timewait 77)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  85        63        22       
+INET	  96        71        25       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:48:59-05:00
+CPU Usage:
+%Cpu(s):  1.4 us,  0.8 sy,  0.0 ni, 87.9 id,  9.8 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4196
+TCP:   199 (estab 45, closed 122, orphaned 0, timewait 70)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  77        59        18       
+INET	  88        67        21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:49:32-05:00
+CPU Usage:
+%Cpu(s):  2.2 us,  0.6 sy,  0.0 ni, 97.1 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4222
+TCP:   390 (estab 59, closed 299, orphaned 0, timewait 69)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  91        69        22       
+INET	  102       77        25       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:50:05-05:00
+CPU Usage:
+%Cpu(s):  1.0 us,  1.2 sy,  0.0 ni, 97.7 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4210
+TCP:   393 (estab 53, closed 308, orphaned 0, timewait 80)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  85        63        22       
+INET	  96        71        25       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:50:37-05:00
+CPU Usage:
+%Cpu(s):  2.6 us,  2.2 sy,  0.0 ni, 95.1 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4206
+TCP:   305 (estab 54, closed 218, orphaned 0, timewait 87)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  87        65        22       
+INET	  98        73        25       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:51:08-05:00
+CPU Usage:
+%Cpu(s):  1.4 us,  1.0 sy,  0.0 ni, 97.6 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4204
+TCP:   216 (estab 53, closed 131, orphaned 0, timewait 73)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  85        63        22       
+INET	  96        71        25       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:51:40-05:00
+CPU Usage:
+%Cpu(s):  1.7 us,  0.6 sy,  0.0 ni, 97.7 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4197
+TCP:   197 (estab 46, closed 119, orphaned 0, timewait 68)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  78        60        18       
+INET	  89        68        21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:52:13-05:00
+CPU Usage:
+%Cpu(s):  2.0 us,  0.6 sy,  0.0 ni, 97.4 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4201
+TCP:   184 (estab 38, closed 114, orphaned 0, timewait 72)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  70        56        14       
+INET	  81        64        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:52:46-05:00
+CPU Usage:
+%Cpu(s):  2.4 us,  2.0 sy,  0.0 ni, 95.5 id,  0.1 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4202
+TCP:   203 (estab 39, closed 132, orphaned 0, timewait 90)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  71        57        14       
+INET	  82        65        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:53:19-05:00
+CPU Usage:
+%Cpu(s):  4.8 us,  1.9 sy,  0.0 ni, 93.2 id,  0.0 wa,  0.0 hi,  0.2 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4187
+TCP:   369 (estab 38, closed 299, orphaned 0, timewait 85)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  70        56        14       
+INET	  81        64        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:53:52-05:00
+CPU Usage:
+%Cpu(s):  1.4 us,  1.0 sy,  0.0 ni, 97.5 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4189
+TCP:   182 (estab 40, closed 110, orphaned 0, timewait 68)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  72        58        14       
+INET	  83        66        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:54:26-05:00
+CPU Usage:
+%Cpu(s):  2.1 us,  0.8 sy,  0.0 ni, 97.0 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4193
+TCP:   350 (estab 38, closed 280, orphaned 0, timewait 66)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  70        56        14       
+INET	  81        64        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:54:59-05:00
+CPU Usage:
+%Cpu(s):  0.8 us,  0.5 sy,  0.0 ni, 98.7 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4189
+TCP:   178 (estab 40, closed 106, orphaned 0, timewait 64)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  72        58        14       
+INET	  83        66        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:55:30-05:00
+CPU Usage:
+%Cpu(s):  2.6 us,  2.3 sy,  0.0 ni, 94.9 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4188
+TCP:   189 (estab 39, closed 118, orphaned 0, timewait 68)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  71        57        14       
+INET	  82        65        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:56:01-05:00
+CPU Usage:
+%Cpu(s):  1.2 us,  0.8 sy,  0.0 ni, 98.0 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4189
+TCP:   183 (estab 40, closed 111, orphaned 0, timewait 69)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  72        58        14       
+INET	  83        66        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:56:32-05:00
+CPU Usage:
+%Cpu(s):  1.0 us,  0.5 sy,  0.0 ni, 98.4 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4187
+TCP:   340 (estab 38, closed 270, orphaned 0, timewait 56)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  70        56        14       
+INET	  81        64        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:57:04-05:00
+CPU Usage:
+%Cpu(s):  0.8 us,  0.6 sy,  0.0 ni, 98.6 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4188
+TCP:   170 (estab 39, closed 99, orphaned 0, timewait 57)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  71        57        14       
+INET	  82        65        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:57:37-05:00
+CPU Usage:
+%Cpu(s):  1.3 us,  1.1 sy,  0.0 ni, 97.6 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4186
+TCP:   347 (estab 37, closed 278, orphaned 0, timewait 65)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  69        55        14       
+INET	  80        63        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:58:10-05:00
+CPU Usage:
+%Cpu(s):  6.1 us,  2.7 sy,  0.0 ni, 91.2 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4211
+TCP:   195 (estab 43, closed 120, orphaned 0, timewait 76)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  11        8         3        
+TCP	  75        61        14       
+INET	  87        70        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:58:46-05:00
+CPU Usage:
+%Cpu(s):  1.1 us,  0.7 sy,  0.0 ni, 98.2 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4187
+TCP:   373 (estab 38, closed 303, orphaned 0, timewait 90)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  70        56        14       
+INET	  81        64        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:59:17-05:00
+CPU Usage:
+%Cpu(s):  3.7 us,  3.2 sy,  0.0 ni, 93.0 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4210
+TCP:   211 (estab 49, closed 130, orphaned 0, timewait 87)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  81        67        14       
+INET	  92        75        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T19:59:48-05:00
+CPU Usage:
+%Cpu(s):  4.6 us,  2.0 sy,  0.0 ni, 93.4 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4209
+TCP:   236 (estab 42, closed 162, orphaned 0, timewait 120)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  74        60        14       
+INET	  85        68        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T20:00:20-05:00
+CPU Usage:
+%Cpu(s):  1.4 us,  2.0 sy,  0.0 ni, 96.7 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4189
+TCP:   434 (estab 40, closed 362, orphaned 0, timewait 148)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  72        58        14       
+INET	  83        66        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T20:00:51-05:00
+CPU Usage:
+%Cpu(s):  3.7 us,  1.6 sy,  0.0 ni, 94.7 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       104Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4199
+TCP:   389 (estab 38, closed 319, orphaned 0, timewait 106)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  70        56        14       
+INET	  81        64        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T20:01:25-05:00
+CPU Usage:
+%Cpu(s):  0.8 us,  0.9 sy,  0.0 ni, 98.3 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       103Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4195
+TCP:   230 (estab 40, closed 158, orphaned 0, timewait 116)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  72        58        14       
+INET	  83        66        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T20:01:58-05:00
+CPU Usage:
+%Cpu(s):  2.4 us,  0.5 sy,  0.0 ni, 97.1 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       103Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4211
+TCP:   290 (estab 50, closed 208, orphaned 0, timewait 158)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  82        64        18       
+INET	  93        72        21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T20:02:31-05:00
+CPU Usage:
+%Cpu(s):  3.2 us,  2.2 sy,  0.0 ni, 94.6 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       103Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4188
+TCP:   248 (estab 39, closed 177, orphaned 0, timewait 135)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  71        57        14       
+INET	  82        65        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T20:03:04-05:00
+CPU Usage:
+%Cpu(s):  0.9 us,  0.4 sy,  0.0 ni, 98.7 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       103Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4200
+TCP:   224 (estab 51, closed 141, orphaned 0, timewait 91)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  83        65        18       
+INET	  94        73        21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T20:03:37-05:00
+CPU Usage:
+%Cpu(s):  9.1 us,  2.9 sy,  0.0 ni, 87.6 id,  0.1 wa,  0.0 hi,  0.3 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       103Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4210
+TCP:   419 (estab 52, closed 334, orphaned 0, timewait 112)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  11        8         3        
+TCP	  85        67        18       
+INET	  97        76        21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T20:04:09-05:00
+CPU Usage:
+%Cpu(s):  1.1 us,  0.5 sy,  0.0 ni, 98.3 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        54Gi       4.2Gi        54Gi       103Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4189
+TCP:   244 (estab 40, closed 172, orphaned 0, timewait 130)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  72        58        14       
+INET	  83        66        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T20:04:40-05:00
+CPU Usage:
+%Cpu(s):  3.4 us,  0.6 sy,  0.0 ni, 95.9 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        55Gi       4.2Gi        54Gi       103Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4216
+TCP:   372 (estab 67, closed 273, orphaned 0, timewait 231)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  99        85        14       
+INET	  110       93        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T20:05:12-05:00
+CPU Usage:
+%Cpu(s):  2.7 us,  1.9 sy,  0.0 ni, 95.3 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        54Gi       4.2Gi        54Gi       103Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4254
+TCP:   442 (estab 87, closed 323, orphaned 0, timewait 281)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  119       105       14       
+INET	  130       113       17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T20:05:45-05:00
+CPU Usage:
+%Cpu(s):  7.5 us,  2.1 sy,  0.0 ni, 90.3 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        85Gi        54Gi       4.2Gi        54Gi       102Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4273
+TCP:   425 (estab 70, closed 323, orphaned 0, timewait 281)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  102       88        14       
+INET	  113       96        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T20:06:18-05:00
+CPU Usage:
+%Cpu(s):  7.1 us,  2.4 sy,  0.0 ni, 90.5 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        54Gi       4.2Gi        54Gi       103Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4221
+TCP:   494 (estab 52, closed 410, orphaned 0, timewait 366)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  11        8         3        
+TCP	  84        70        14       
+INET	  96        79        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T20:06:51-05:00
+CPU Usage:
+%Cpu(s):  5.8 us,  1.5 sy,  0.0 ni, 92.6 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        85Gi        54Gi       4.2Gi        54Gi       103Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4236
+TCP:   638 (estab 63, closed 543, orphaned 0, timewait 326)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  95        79        16       
+INET	  106       87        19       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T20:07:25-05:00
+CPU Usage:
+%Cpu(s):  4.3 us,  1.2 sy,  0.0 ni, 94.4 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        85Gi        54Gi       4.2Gi        54Gi       103Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4227
+TCP:   403 (estab 60, closed 311, orphaned 0, timewait 269)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  92        78        14       
+INET	  103       86        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T20:07:58-05:00
+CPU Usage:
+%Cpu(s):  5.6 us,  1.2 sy,  0.0 ni, 93.3 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        85Gi        54Gi       4.2Gi        54Gi       103Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4221
+TCP:   356 (estab 52, closed 270, orphaned 0, timewait 226)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  86        70        16       
+INET	  97        78        19       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T20:08:29-05:00
+CPU Usage:
+%Cpu(s): 10.9 us,  3.2 sy,  0.0 ni, 85.9 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        86Gi        53Gi       4.2Gi        54Gi       102Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4264
+TCP:   409 (estab 73, closed 304, orphaned 0, timewait 246)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  105       83        22       
+INET	  116       91        25       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T20:09:01-05:00
+CPU Usage:
+%Cpu(s):  7.2 us,  1.4 sy,  0.0 ni, 91.5 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        85Gi        53Gi       4.2Gi        54Gi       102Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4254
+TCP:   513 (estab 81, closed 400, orphaned 0, timewait 350)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  113       95        18       
+INET	  124       103       21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T20:09:32-05:00
+CPU Usage:
+%Cpu(s):  4.1 us,  2.0 sy,  0.0 ni, 93.6 id,  0.0 wa,  0.0 hi,  0.2 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        85Gi        54Gi       4.2Gi        54Gi       103Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4244
+TCP:   492 (estab 83, closed 377, orphaned 0, timewait 327)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  115       97        18       
+INET	  126       105       21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T20:10:03-05:00
+CPU Usage:
+%Cpu(s):  5.7 us,  1.0 sy,  0.0 ni, 93.3 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        85Gi        54Gi       4.6Gi        54Gi       102Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4242
+TCP:   421 (estab 69, closed 320, orphaned 0, timewait 266)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  101       81        20       
+INET	  112       89        23       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T20:10:37-05:00
+CPU Usage:
+%Cpu(s):  9.6 us,  3.9 sy,  0.0 ni, 86.2 id,  0.3 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        85Gi        54Gi       4.2Gi        54Gi       103Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4239
+TCP:   442 (estab 53, closed 356, orphaned 1, timewait 304)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  86        68        18       
+INET	  97        76        21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T20:11:10-05:00
+CPU Usage:
+%Cpu(s):  7.0 us,  3.3 sy,  0.0 ni, 89.5 id,  0.1 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        85Gi        54Gi       4.2Gi        54Gi       103Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4244
+TCP:   665 (estab 61, closed 572, orphaned 0, timewait 351)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  93        75        18       
+INET	  104       83        21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T20:11:43-05:00
+CPU Usage:
+%Cpu(s):  3.9 us,  1.8 sy,  0.0 ni, 94.0 id,  0.1 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        84Gi        54Gi       4.2Gi        54Gi       103Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4230
+TCP:   410 (estab 67, closed 310, orphaned 0, timewait 260)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  100       82        18       
+INET	  111       90        21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T20:12:16-05:00
+CPU Usage:
+%Cpu(s):  3.6 us,  2.4 sy,  0.0 ni, 93.3 id,  0.7 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        85Gi        54Gi       4.2Gi        54Gi       103Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4215
+TCP:   346 (estab 53, closed 260, orphaned 1, timewait 218)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  86        72        14       
+INET	  97        80        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T20:12:47-05:00
+CPU Usage:
+%Cpu(s):  3.2 us,  0.9 sy,  0.0 ni, 86.2 id,  9.8 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        85Gi        54Gi       4.2Gi        54Gi       103Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4207
+TCP:   384 (estab 46, closed 306, orphaned 0, timewait 262)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  78        63        15       
+INET	  89        71        18       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T20:13:19-05:00
+CPU Usage:
+%Cpu(s):  8.2 us,  3.2 sy,  0.0 ni, 88.6 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        85Gi        54Gi       4.2Gi        54Gi       103Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4253
+TCP:   418 (estab 60, closed 326, orphaned 0, timewait 284)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  11        8         3        
+TCP	  92        78        14       
+INET	  104       87        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T20:13:51-05:00
+CPU Usage:
+%Cpu(s):  3.3 us,  1.2 sy,  0.0 ni, 95.4 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        85Gi        54Gi       4.2Gi        54Gi       103Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4229
+TCP:   480 (estab 62, closed 386, orphaned 0, timewait 344)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  94        80        14       
+INET	  105       88        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T20:14:24-05:00
+CPU Usage:
+%Cpu(s): 10.2 us,  4.2 sy,  0.0 ni, 85.5 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        85Gi        54Gi       4.2Gi        54Gi       103Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4248
+TCP:   485 (estab 81, closed 372, orphaned 0, timewait 328)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  113       99        14       
+INET	  124       107       17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T20:14:57-05:00
+CPU Usage:
+%Cpu(s):  4.8 us,  0.7 sy,  0.0 ni, 94.5 id,  0.0 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        85Gi        54Gi       4.2Gi        54Gi       103Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4226
+TCP:   656 (estab 67, closed 556, orphaned 0, timewait 335)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  11        8         3        
+TCP	  100       82        18       
+INET	  112       91        21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T20:15:30-05:00
+CPU Usage:
+%Cpu(s):  4.7 us,  1.5 sy,  0.0 ni, 93.8 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        86Gi        53Gi       4.2Gi        54Gi       102Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4267
+TCP:   516 (estab 92, closed 392, orphaned 0, timewait 350)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  124       110       14       
+INET	  135       118       17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T20:16:04-05:00
+CPU Usage:
+%Cpu(s):  8.9 us,  2.6 sy,  0.0 ni, 88.5 id,  0.1 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        86Gi        53Gi       4.2Gi        54Gi       102Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4296
+TCP:   607 (estab 88, closed 486, orphaned 0, timewait 440)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  121       105       16       
+INET	  132       113       19       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T20:16:37-05:00
+CPU Usage:
+%Cpu(s):  9.4 us,  3.3 sy,  0.0 ni, 86.9 id,  0.0 wa,  0.0 hi,  0.3 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        86Gi        53Gi       4.2Gi        54Gi       101Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4275
+TCP:   703 (estab 80, closed 591, orphaned 0, timewait 541)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  112       94        18       
+INET	  123       102       21       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T20:17:08-05:00
+CPU Usage:
+%Cpu(s):  6.7 us,  1.9 sy,  0.0 ni, 91.4 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        86Gi        52Gi       4.2Gi        54Gi       101Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4262
+TCP:   628 (estab 58, closed 538, orphaned 0, timewait 496)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  90        76        14       
+INET	  101       84        17       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+
+Timestamp: 2025-10-27T20:17:40-05:00
+CPU Usage:
+%Cpu(s): 10.0 us,  5.6 sy,  0.0 ni, 82.8 id,  1.5 wa,  0.0 hi,  0.1 si,  0.0 st 
+
+Memory Usage:
+               total        used        free      shared  buff/cache   available
+Mem:           188Gi        86Gi        53Gi       4.2Gi        54Gi       102Gi
+Swap:           18Gi          0B        18Gi
+
+Network Stats:
+Total: 4288
+TCP:   638 (estab 87, closed 519, orphaned 0, timewait 473)
+
+Transport Total     IP        IPv6
+RAW	  1         1         0        
+UDP	  10        7         3        
+TCP	  119       103       16       
+INET	  130       111       19       
+FRAG	  0         0         0        
+
+
+Disk I/O:
+iostat not available
+---
+

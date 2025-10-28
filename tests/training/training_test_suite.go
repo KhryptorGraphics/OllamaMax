@@ -68,16 +68,8 @@ func getProjectRoot() string {
 		return currentDir
 	}
 
-	// Last resort: use home directory path
-	if home := os.Getenv("HOME"); home != "" {
-		possiblePath := filepath.Join(home, "OllamaMax")
-		if _, err := os.Stat(possiblePath); err == nil {
-			return possiblePath
-		}
-	}
-
-	// Final fallback
-	return "/home/kp/OllamaMax"
+	// If all else fails, provide guidance via error
+	panic("OLLAMA_PROJECT_ROOT environment variable not set and could not locate project root via go.mod. Please set OLLAMA_PROJECT_ROOT to the project directory.")
 }
 
 // NewTrainingTestSuite creates a new training test suite

@@ -35,7 +35,11 @@ if docker compose version &> /dev/null; then
     log_info "Testing Docker deployment rollback..."
 
     # Record current state
-    CURRENT_IMAGES=$(docker compose images --format json 2>/dev/null | jq -r '.[].Repository + ":" + .[].Tag' || echo "")
+    CURRENT_IMAGES=$(docker compose images --format json 2>/dev/null | jq -r '.[] | .Repository + ":" + .Tag' 2>/dev/null || echo "")
+    if [ -z "$CURRENT_IMAGES" ]; then
+        log_info "Could not parse images with jq (may not be supported on this version)"
+        CURRENT_IMAGES=$(docker compose images 2>/dev/null | tail -n +2 | awk '{print $2":"$3}' || echo "unavailable")
+    fi
     log_info "Current images: ${CURRENT_IMAGES}"
 
     # Simulate rollback
