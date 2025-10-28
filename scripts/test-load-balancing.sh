@@ -79,8 +79,38 @@ else
     log_warning "nginx-production.conf not found"
 fi
 
-# Phase 2: Test Load Distribution
-echo -e "\n${BLUE}=== Phase 2: Testing Load Distribution ===${NC}"
+# Phase 2: Validate Path is Proxied
+echo -e "\n${BLUE}=== Phase 2: Validating Proxied Path ===${NC}"
+
+log_info "Performing probe request to validate X-Served-By header..."
+
+# Probe request to validate the path is proxied
+PROBE_RESPONSE=$(curl -s -D - "${LB_URL}${LB_PATH}" 2>/dev/null)
+PROBE_HEADERS=$(echo "$PROBE_RESPONSE" | head -20)
+
+if ! echo "$PROBE_RESPONSE" | grep -qi "X-Served-By"; then
+    log_error "Path '${LB_PATH}' does not return 'X-Served-By' header"
+    log_error "This path is not proxied by Nginx or lacks the required header configuration"
+    log_info ""
+    log_info "Proxied paths (include X-Served-By header):"
+    log_info "  - / (proxied to web_backend)"
+    log_info "  - /api/* (proxied to api_backend)"
+    log_info "  - /ollama/* (proxied to ollama_backend)"
+    log_info ""
+    log_info "Non-proxied paths (do NOT include X-Served-By):"
+    log_info "  - /health (self-served by Nginx)"
+    log_info "  - /nginx-health (self-served by Nginx on port 8081)"
+    log_info ""
+    log_info "Top response headers from probe:"
+    echo "$PROBE_HEADERS" | grep -E "^[A-Za-z-]+:" | head -3
+    exit 1
+fi
+
+PROBE_BACKEND=$(echo "$PROBE_RESPONSE" | grep -i "X-Served-By" | awk '{print $2}' | tr -d '\r')
+log_success "Path is proxied - X-Served-By: ${PROBE_BACKEND}"
+
+# Phase 3: Test Load Distribution
+echo -e "\n${BLUE}=== Phase 3: Testing Load Distribution ===${NC}"
 
 log_info "Sending ${NUM_REQUESTS} requests..."
 
@@ -111,12 +141,14 @@ for BACKEND in "${!BACKEND_HITS[@]}"; do
     log_info "  ${BACKEND}: ${HITS} requests (${PERCENTAGE}%)"
 done
 
-# Guard against divide by zero
+# Guard against divide by zero (should not happen after probe, but defense in depth)
 if [ ${#BACKEND_HITS[@]} -eq 0 ]; then
-    log_error "No backend hits recorded - check that LB_PATH is a proxied endpoint with X-Served-By header"
-    log_error "Proxied endpoints: /api/*, /ollama/*, / (root)"
-    log_error "Non-proxied endpoints (do NOT use): /health, /nginx-health"
-    add_result "Load Distribution" "fail" "No backend hits recorded"
+    log_error "No backends observed during load test"
+    log_error "Header 'X-Served-By' not found in responses"
+    log_error "Ensure the path is proxied and Nginx configuration is correct"
+    log_error ""
+    log_error "Expected configuration in nginx/nginx-production.conf:"
+    log_error "  add_header X-Served-By \$upstream_addr always;"
     exit 1
 fi
 
@@ -138,8 +170,8 @@ else
     log_warning "Load distribution has high variance"
 fi
 
-# Phase 3: Test Health Checks
-echo -e "\n${BLUE}=== Phase 3: Testing Health Checks ===${NC}"
+# Phase 4: Test Health Checks
+echo -e "\n${BLUE}=== Phase 4: Testing Health Checks ===${NC}"
 
 if docker compose ps nginx &> /dev/null; then
     log_info "Testing nginx health check endpoint (non-proxied)..."
@@ -158,8 +190,8 @@ if docker compose ps nginx &> /dev/null; then
     fi
 fi
 
-# Phase 4: Test Failover
-echo -e "\n${BLUE}=== Phase 4: Testing Failover ===${NC}"
+# Phase 5: Test Failover
+echo -e "\n${BLUE}=== Phase 5: Testing Failover ===${NC}"
 
 if docker compose ps &> /dev/null; then
     log_info "Simulating backend failure..."
@@ -186,8 +218,8 @@ if docker compose ps &> /dev/null; then
     fi
 fi
 
-# Phase 5: Test Connection Pooling
-echo -e "\n${BLUE}=== Phase 5: Testing Connection Pooling ===${NC}"
+# Phase 6: Test Connection Pooling
+echo -e "\n${BLUE}=== Phase 6: Testing Connection Pooling ===${NC}"
 
 log_info "Testing persistent connections..."
 
@@ -208,8 +240,8 @@ else
     log_warning "High average request time - check connection pooling"
 fi
 
-# Phase 6: Test Concurrent Connections
-echo -e "\n${BLUE}=== Phase 6: Testing Concurrent Connections ===${NC}"
+# Phase 7: Test Concurrent Connections
+echo -e "\n${BLUE}=== Phase 7: Testing Concurrent Connections ===${NC}"
 
 log_info "Testing with 100 concurrent connections..."
 

@@ -1,0 +1,17 @@
+{
+  "timestamp": "2025-10-27T21:12:46-05:00",
+  "target_rps": 100000,
+  "instances": 3,
+  "failed_instances": 0,
+  "metrics": {
+    "total_requests": 600000,
+    "total_failed_requests": 60,
+    "average_rps": 60000,
+    "average_duration_ms": 220.00,
+    "p95_duration_ms": 440.00,
+    "p99_duration_ms": 860.00,
+    "error_rate": 0.0100,
+    "peak_rps": 60000
+  },
+  "instances_results": []
+}

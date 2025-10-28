@@ -508,16 +508,16 @@ k6 run load-test.js
 ```bash
 # Run load balancing tests
 # Syntax: bash scripts/test-load-balancing.sh <LB_URL> <LB_PATH>
-# Default: http://localhost /api/health
+# Default: http://localhost / (root path is proxied to web_backend)
 
-# Test with default proxied endpoint (/api/health)
+# Test with default proxied endpoint (root path /)
 bash scripts/test-load-balancing.sh http://localhost
 
-# Test with custom proxied endpoint
-bash scripts/test-load-balancing.sh http://localhost /ollama/api/tags
+# Test with API endpoint (proxied to api_backend)
+bash scripts/test-load-balancing.sh http://localhost /api/health
 
-# Test with root path (proxied to web_backend)
-bash scripts/test-load-balancing.sh http://localhost /
+# Test with Ollama endpoint (proxied to ollama_backend)
+bash scripts/test-load-balancing.sh http://localhost /ollama/api/tags
 
 # Expected results:
 # - Backend distribution within 20% variance
@@ -527,10 +527,28 @@ bash scripts/test-load-balancing.sh http://localhost /
 ```
 
 **Important Notes:**
-- The test script uses proxied endpoints that include the `X-Served-By` header set by Nginx
-- The self-served `/health` and `/nginx-health` endpoints are non-proxied and do NOT include `X-Served-By`
-- For accurate backend distribution analysis, always use proxied paths like `/api/health`, `/ollama/api/tags`, or `/`
+- The test script **validates the path is proxied** before running the load test
+- If the path does not return the `X-Served-By` header, the script exits with a clear error message
+- The script performs a probe request first to check header availability and displays top response headers
+- Proxied endpoints that include the `X-Served-By` header:
+  - `/` (proxied to web_backend)
+  - `/api/*` (proxied to api_backend)
+  - `/ollama/*` (proxied to ollama_backend)
+- Non-proxied endpoints (do NOT use for distribution testing):
+  - `/health` (self-served by Nginx)
+  - `/nginx-health` (self-served by Nginx on port 8081)
+- For accurate backend distribution analysis, always use proxied paths
 - The script automatically trims CRLF from headers to ensure accurate key matching
+
+**CI/CD Integration:**
+```bash
+# In CI pipelines, explicitly pass a proxied path to ensure test reliability
+bash scripts/test-load-balancing.sh "${LB_URL}" "/api/health"
+
+# Or use environment variable
+export LB_PATH="/api/health"
+bash scripts/test-load-balancing.sh "${LB_URL}"
+```
 
 ### Security Validation
 

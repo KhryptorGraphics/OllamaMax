@@ -11,6 +11,9 @@ metadata:
 
 ---
 # Regional Redis Cluster with Cross-Region Replication
+# Configuration: Redis Cluster mode spanning all regions with automatic sharding
+# Topology: 3 regions × 3 nodes = 9 nodes total (3 masters + 6 replicas)
+# Important: This uses Redis Cluster protocol, NOT replicaof
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:

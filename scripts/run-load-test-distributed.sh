@@ -19,7 +19,16 @@ NC='\033[0m' # No Color
 # Configuration
 TARGET_RPS="${TARGET_RPS:-100000}"
 BASE_URL="${BASE_URL:-http://localhost:11434}"
-INSTANCES="${K6_INSTANCES:-10}"  # Number of k6 instances (10K RPS per instance)
+PER_INSTANCE_RPS="${PER_INSTANCE_RPS:-10000}"  # Default RPS capacity per instance
+
+# Auto-size instances if not set
+if [ -z "${K6_INSTANCES}" ]; then
+    INSTANCES=$(( (TARGET_RPS + PER_INSTANCE_RPS - 1) / PER_INSTANCE_RPS ))
+    log_info "Auto-sizing instances: ${INSTANCES} (based on ${TARGET_RPS} RPS / ${PER_INSTANCE_RPS} per instance)"
+else
+    INSTANCES="${K6_INSTANCES}"
+fi
+
 EXECUTION_MODE="${EXECUTION_MODE:-local}"  # local or k8s
 RESULTS_DIR="load-test-results"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
@@ -104,12 +113,27 @@ run_k6_instance() {
 
     log_info "Starting k6 instance ${instance_id}/${INSTANCES} (Target: ${rps_per_instance} RPS)..."
 
+    # Build k6 command with optional outputs
+    local k6_outputs="--out json=${RESULTS_DIR}/metrics-instance-${instance_id}-${TIMESTAMP}.json"
+
+    # Add InfluxDB output if configured
+    if [ -n "${INFLUXDB_URL}" ]; then
+        k6_outputs="${k6_outputs} --out influxdb=${INFLUXDB_URL}"
+        log_info "  InfluxDB output enabled: ${INFLUXDB_URL}"
+    fi
+
+    # Add Prometheus remote write output if configured
+    if [ -n "${K6_PROM_REMOTE_URL}" ]; then
+        k6_outputs="${k6_outputs} --out experimental-prometheus-rw=${K6_PROM_REMOTE_URL}"
+        log_info "  Prometheus remote write enabled: ${K6_PROM_REMOTE_URL}"
+    fi
+
     K6_INSTANCE_ID="${instance_id}" \
     K6_TOTAL_INSTANCES="${INSTANCES}" \
     TARGET_RPS="${TARGET_RPS}" \
     BASE_URL="${BASE_URL}" \
     k6 run \
-        --out json="${RESULTS_DIR}/metrics-instance-${instance_id}-${TIMESTAMP}.json" \
+        ${k6_outputs} \
         load-test-distributed.js \
         > "${RESULTS_DIR}/output-instance-${instance_id}-${TIMESTAMP}.log" 2>&1 &
 
@@ -261,7 +285,8 @@ for i in $(seq 1 ${INSTANCES}); do
         # Extract key metrics using jq (if available) or grep/awk fallback
         if command -v jq &> /dev/null; then
             requests=$(jq -r '.metrics.http_reqs.values.count // 0' "${summary_file}")
-            failed=$(jq -r '.metrics.http_req_failed.values.passes // 0' "${summary_file}")
+            # CORRECTED: Parse from .fails instead of .passes
+            failed=$(jq -r '.metrics.http_req_failed.values.fails // 0' "${summary_file}")
             rps=$(jq -r '.metrics.http_reqs.values.rate // 0' "${summary_file}")
             avg_duration=$(jq -r '.metrics.http_req_duration.values.avg // 0' "${summary_file}")
             p95=$(jq -r '.metrics.http_req_duration.values["p(95)"] // 0' "${summary_file}")
@@ -274,21 +299,21 @@ for i in $(seq 1 ${INSTANCES}); do
             P95_VALUES+=("${p95}")
             P99_VALUES+=("${p99}")
 
-            log_info "Instance ${i}: ${requests} requests, ${rps} RPS, P95: ${p95}ms, P99: ${p99}ms"
+            log_info "Instance ${i}: ${requests} requests, ${failed} failed, ${rps} RPS, P95: ${p95}ms, P99: ${p99}ms"
         else
             # Fallback: Use grep/awk for basic metric extraction
             log_warning "jq not available, using grep/awk fallback (install jq for better parsing: sudo apt-get install jq)"
 
-            # Extract using grep and awk as fallback
+            # Extract using grep and awk as fallback - CORRECTED to parse fails
             requests=$(grep -oP '"http_reqs".*?"count":\s*\K[0-9]+' "${summary_file}" 2>/dev/null | head -1 || echo "0")
-            failed=$(grep -oP '"http_req_failed".*?"passes":\s*\K[0-9]+' "${summary_file}" 2>/dev/null | head -1 || echo "0")
+            failed=$(grep -oP '"http_req_failed".*?"fails":\s*\K[0-9]+' "${summary_file}" 2>/dev/null | head -1 || echo "0")
             rps=$(grep -oP '"http_reqs".*?"rate":\s*\K[0-9.]+' "${summary_file}" 2>/dev/null | head -1 || echo "0")
 
             TOTAL_REQUESTS=$((TOTAL_REQUESTS + requests))
             TOTAL_FAILED=$((TOTAL_FAILED + failed))
             TOTAL_RPS=$(echo "${TOTAL_RPS} + ${rps}" | bc 2>/dev/null || echo "${TOTAL_RPS}")
 
-            log_info "Instance ${i}: ${requests} requests (basic metrics, jq recommended for full details)"
+            log_info "Instance ${i}: ${requests} requests, ${failed} failed (basic metrics, jq recommended for full details)"
         fi
     else
         log_warning "Summary file not found for instance ${i}: ${summary_file}"
@@ -298,7 +323,13 @@ done
 # Calculate aggregate statistics
 if [ ${INSTANCES} -gt 0 ]; then
     AVG_DURATION=$(echo "scale=2; ${DURATIONS_SUM} / ${INSTANCES}" | bc)
-    ERROR_RATE=$(echo "scale=4; ${TOTAL_FAILED} / ${TOTAL_REQUESTS} * 100" | bc)
+
+    # Avoid division by zero
+    if [ "${TOTAL_REQUESTS}" -gt 0 ]; then
+        ERROR_RATE=$(echo "scale=4; ${TOTAL_FAILED} / ${TOTAL_REQUESTS} * 100" | bc)
+    else
+        ERROR_RATE=0
+    fi
 
     # Calculate P95 and P99 across all instances (simple average for now)
     P95_SUM=0
@@ -314,6 +345,35 @@ if [ ${INSTANCES} -gt 0 ]; then
 
     AVG_P95=$(echo "scale=2; ${P95_SUM} / ${INSTANCES}" | bc)
     AVG_P99=$(echo "scale=2; ${P99_SUM} / ${INSTANCES}" | bc)
+
+    # CRITICAL FIX: Update the aggregate JSON file with computed metrics
+    log_info "Updating aggregate JSON with computed metrics..."
+
+    if command -v jq &> /dev/null; then
+        # Use jq to update the JSON file atomically
+        TEMP_JSON=$(mktemp)
+        jq --arg total_req "${TOTAL_REQUESTS}" \
+           --arg total_failed "${TOTAL_FAILED}" \
+           --arg avg_rps "${TOTAL_RPS}" \
+           --arg avg_duration "${AVG_DURATION}" \
+           --arg p95 "${AVG_P95}" \
+           --arg p99 "${AVG_P99}" \
+           --arg error_rate "${ERROR_RATE}" \
+           '.metrics.total_requests = ($total_req | tonumber) |
+            .metrics.total_failed_requests = ($total_failed | tonumber) |
+            .metrics.average_rps = ($avg_rps | tonumber) |
+            .metrics.average_duration_ms = ($avg_duration | tonumber) |
+            .metrics.p95_duration_ms = ($p95 | tonumber) |
+            .metrics.p99_duration_ms = ($p99 | tonumber) |
+            .metrics.error_rate = ($error_rate | tonumber) |
+            .metrics.peak_rps = ($avg_rps | tonumber)' \
+           "${AGGREGATE_FILE}" > "${TEMP_JSON}"
+
+        mv "${TEMP_JSON}" "${AGGREGATE_FILE}"
+        log_success "Aggregate JSON updated with metrics"
+    else
+        log_warning "jq not available - aggregate JSON metrics not populated (install jq: sudo apt-get install jq)"
+    fi
 fi
 
 # Generate aggregate report

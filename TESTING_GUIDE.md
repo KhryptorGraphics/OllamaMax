@@ -58,7 +58,7 @@ Coverage validation occurs:
 
 **Required Software:**
 
-- **Go**: Version `1.21` (specified in `.github/workflows/ci-cd-pipeline.yml:77` and `go.mod:3`)
+- **Go**: Version `1.23` (specified in `.github/workflows/ci-cd-pipeline.yml:78` and `go.mod:3`)
 - **Node.js**: Version `18` or `20` (CI uses `18`, production pipeline uses `20`)
 - **npm**: For JavaScript dependency management
 - **PostgreSQL**: Version `15` (for database tests)
@@ -67,7 +67,7 @@ Coverage validation occurs:
 **Verify Installations:**
 
 ```bash
-go version        # Should show go1.21 or higher
+go version        # Should show go1.23 or higher
 node --version    # Should show v18.x or v20.x
 npm --version     # Should show 9.x or higher
 psql --version    # Should show 15.x
@@ -535,7 +535,7 @@ go tool cover -func=test-artifacts/coverage/go-merged-coverage.out | grep -v "10
 **Key Jobs:**
 
 1. **Test Job** (`.github/workflows/ci-cd-pipeline.yml:38-164`):
-   - Go version: `1.21`
+   - Go version: `1.23`
    - Node version: `18`
    - Services: PostgreSQL (port 15432), Redis (port 16379)
    - Steps:

@@ -300,60 +300,118 @@ logging:
 
 ## 📊 API Reference
 
-### Core Endpoints
+### 📚 API Documentation
 
-#### Cluster Management
+**Authoritative API Surface**: Node.js API Gateway (port 13000)
+
+OllamaMax provides comprehensive OpenAPI 3.0 documentation for all public endpoints:
+
+#### Interactive Documentation
+- **Swagger UI**: [http://localhost:13000/docs](http://localhost:13000/docs)
+  - Interactive API explorer with request/response examples
+  - Test endpoints directly from your browser
+  - Real-time validation and error handling
+
+#### Machine-Readable Specifications
+- **OpenAPI JSON**: [http://localhost:13000/openapi.json](http://localhost:13000/openapi.json)
+  - Dynamic spec generated from running server
+  - Always reflects current API implementation
+  - Use for API client code generation
+
+- **OpenAPI YAML**: [`docs/api/openapi.yaml`](docs/api/openapi.yaml)
+  - Human-readable static specification
+  - Version-controlled and git-tracked
+  - Synchronized with JSON spec via `npm run openapi:sync`
+
+### Core Endpoint Categories
+
+#### Health & Monitoring
+```http
+GET    /health                    # Detailed system health
+GET    /health/live               # Kubernetes liveness probe
+GET    /health/ready              # Kubernetes readiness probe
+GET    /metrics                   # Prometheus metrics
+```
+
+#### Authentication
+```http
+POST   /auth/login                # User authentication (JWT tokens)
+POST   /auth/register             # New user registration
+POST   /auth/refresh              # Refresh access token
+```
+
+#### AI Inference (OpenAI Compatible)
+```http
+GET    /v1/models                 # List available models
+POST   /v1/completions            # Text completion
+POST   /v1/chat/completions       # Chat completion
+POST   /v1/embeddings             # Generate embeddings
+```
+
+#### Cluster Management (Go Backend)
 ```http
 GET    /api/v1/cluster/status     # Cluster health and status
 GET    /api/v1/cluster/leader     # Current cluster leader
 POST   /api/v1/cluster/join       # Join existing cluster
 POST   /api/v1/cluster/leave      # Leave cluster gracefully
-```
-
-#### Node Management  
-```http
 GET    /api/v1/nodes              # List all cluster nodes
 GET    /api/v1/nodes/{id}         # Get specific node details
-POST   /api/v1/nodes/{id}/drain   # Drain node for maintenance
-POST   /api/v1/nodes/{id}/undrain # Return node to service
-```
-
-#### Model Operations
-```http
-GET    /api/v1/models             # List available models
-GET    /api/v1/models/{name}      # Get model details
-POST   /api/v1/models/{name}/download  # Download model to cluster
-DELETE /api/v1/models/{name}      # Remove model from cluster
-```
-
-#### AI Inference
-```http
-POST   /api/v1/generate           # Text generation
-POST   /api/v1/chat               # Chat completion
-POST   /api/v1/embeddings         # Text embeddings
-```
-
-#### Monitoring & Health
-```http
-GET    /api/v1/health             # System health check
-GET    /api/v1/metrics            # Prometheus metrics
-GET    /api/v1/transfers          # Model transfer status
-GET    /api/v1/ws                 # WebSocket endpoint
 ```
 
 ### Authentication
 
-All API endpoints require JWT authentication:
+All protected endpoints require authentication via **JWT Bearer tokens** or **API keys**:
+
+#### Obtain JWT Token
+```bash
+# Login and receive access token (1-hour expiry) and refresh token (7-day expiry)
+curl -X POST http://localhost:13000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com","password":"secure_password"}'
+
+# Response:
+# {
+#   "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+#   "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+#   "user": { "id": "user_123", "email": "user@example.com", "role": "user" }
+# }
+```
+
+#### Use Token in Requests
+```bash
+# Bearer token authentication
+curl -H "Authorization: Bearer <access_token>" \
+  http://localhost:13000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model":"llama-3.2-3b","messages":[{"role":"user","content":"Hello"}]}'
+
+# Or use API key authentication
+curl -H "x-api-key: <your_api_key>" \
+  http://localhost:13000/v1/models
+```
+
+### API Contract Testing
+
+OllamaMax implements comprehensive contract testing to ensure API stability:
+
+- **OpenAPI Validation**: All specs validated in CI/CD pipeline
+- **Schema Enforcement**: Request/response validation against OpenAPI schemas
+- **Backward Compatibility**: Semantic versioning for breaking changes
+- **Contract Tests**: Automated tests verify API contracts (see [Integration Analysis](docs/INTEGRATION_DATA_FLOW_ANALYSIS.md))
+
+### Sync OpenAPI Specifications
+
+Keep JSON and YAML specs in sync after making API changes:
 
 ```bash
-# Obtain JWT token
-curl -X POST http://localhost:11434/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"secret"}'
+# Start the API server
+npm start
 
-# Use token in requests
-curl -H "Authorization: Bearer <jwt-token>" \
-  http://localhost:11434/api/v1/cluster/status
+# In another terminal, sync specifications
+npm run openapi:sync
+
+# Validate specifications
+npm run openapi:validate
 ```
 
 ## 🚢 Production Deployment

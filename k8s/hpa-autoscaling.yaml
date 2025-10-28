@@ -1,12 +1,14 @@
 ---
 # Horizontal Pod Autoscaler Configurations for OllamaMax
-# References: k8s/ml-pipeline.yaml, production-performance.yaml
+# References: k8s/ml-pipeline.yaml, production-performance.yaml, multi-region-deployment.yaml
 
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: ollamamax-api-hpa
   namespace: ollamamax-multiregion
+  annotations:
+    description: "HPA for multi-region API deployment (ollamamax-api-multiregion)"
 spec:
   scaleTargetRef:
     apiVersion: apps/v1

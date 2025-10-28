@@ -34,13 +34,18 @@ echo -e "\n${BLUE}=== Phase 1: Docker Rollback Testing ===${NC}"
 if docker compose version &> /dev/null; then
     log_info "Testing Docker deployment rollback..."
 
-    # Record current state
-    CURRENT_IMAGES=$(docker compose images --format json 2>/dev/null | jq -r '.[] | .Repository + ":" + .Tag' 2>/dev/null || echo "")
-    if [ -z "$CURRENT_IMAGES" ]; then
-        log_info "Could not parse images with jq (may not be supported on this version)"
-        CURRENT_IMAGES=$(docker compose images 2>/dev/null | tail -n +2 | awk '{print $2":"$3}' || echo "unavailable")
+    # Record current state - handle unsupported --format json gracefully
+    CURRENT_IMAGES=""
+    if docker compose images --format json >/dev/null 2>&1; then
+        CURRENT_IMAGES=$(docker compose images --format json 2>/dev/null | jq -r '.[] | (.Repository + ":" + .Tag)' 2>/dev/null || echo "")
     fi
-    log_info "Current images: ${CURRENT_IMAGES}"
+
+    if [ -z "$CURRENT_IMAGES" ]; then
+        log_warning "docker compose images --format json not supported; skipping image list"
+        CURRENT_IMAGES="unavailable"
+    else
+        log_info "Current images: ${CURRENT_IMAGES}"
+    fi
 
     # Simulate rollback
     if [ -f "ollama-distributed/scripts/rollback.sh" ]; then

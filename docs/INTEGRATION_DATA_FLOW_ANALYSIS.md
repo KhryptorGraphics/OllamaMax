@@ -698,23 +698,51 @@ export async function sessionEnd({ sessionId, summary, metrics }) {
 
 ### 4.1 Current State
 
-**Go API Endpoints** (40+ endpoints):
-- ✅ Documented in code comments
-- ❌ No OpenAPI/Swagger specification generated
-- ⚠️ No automated contract testing
+**✅ IMPLEMENTED: Node.js API Gateway (Authoritative Spec)**
 
-**Node.js API Endpoints**:
-- ✅ WebSocket messages documented
-- ❌ No formal schema validation
+**Node.js API Endpoints** (Port 13000):
+- ✅ **Comprehensive OpenAPI 3.0.3 specification**
+  - **Location (JSON)**: `http://localhost:13000/openapi.json` (dynamic)
+  - **Location (YAML)**: `docs/api/openapi.yaml` (version-controlled)
+  - **Swagger UI**: `http://localhost:13000/docs` (interactive documentation)
+- ✅ **All public endpoints documented** (15+ endpoints):
+  - Health & Monitoring: `/health`, `/health/live`, `/health/ready`, `/metrics`
+  - Authentication: `/auth/login`, `/auth/register`
+  - Models: `/v1/models`
+  - Inference: `/v1/completions`, `/v1/chat/completions`, `/v1/embeddings`
+  - Documentation: `/docs`, `/openapi.json`
+- ✅ **Security schemes defined**:
+  - JWT Bearer authentication (`bearerAuth`)
+  - API Key authentication (`apiKeyAuth`)
+- ✅ **Complete request/response schemas** with validation rules
+- ✅ **Sync mechanism**: `npm run openapi:sync` keeps JSON and YAML in sync
+- ⚠️ **Automated contract testing**: Recommended (see Section 4.2)
+
+**Go API Endpoints** (Port 11434):
+- ✅ Documented in code comments (40+ endpoints)
+- ⚠️ **Recommendation**: Implement `swag` for Go API or document Node gateway as proxy
 - ⚠️ No automated contract testing
 
 **Shared Data Models**:
 - User, Model, Node, Session, InferenceRequest
-- ❌ No cross-language type validation (Go ↔ Node.js)
+- ✅ OpenAPI schemas define Node.js API contracts
+- ⚠️ **Recommendation**: Add cross-language type validation (Go ↔ Node.js)
 
 ### 4.2 Recommendations
 
-**1. Generate OpenAPI/Swagger Specifications**:
+**✅ COMPLETED: OpenAPI/Swagger Specifications for Node.js Gateway**
+
+The Node.js API gateway now serves as the **authoritative API surface** with comprehensive OpenAPI 3.0.3 documentation:
+
+- **Live Spec (JSON)**: `http://localhost:13000/openapi.json`
+- **Static Spec (YAML)**: `docs/api/openapi.yaml`
+- **Interactive Docs**: `http://localhost:13000/docs` (Swagger UI)
+- **Sync Command**: `npm run openapi:sync`
+- **Validation**: `npm run openapi:validate`
+
+**1. Optional: Generate OpenAPI/Swagger for Go API**
+
+If Go API should be independently documented (not necessary if Node gateway proxies all requests):
 
 **Go (using swag)**:
 ```go
@@ -738,9 +766,27 @@ func (s *Server) login(c *gin.Context) { ... }
 **Generate spec**: `swag init`
 **Output**: `docs/swagger.json`, `docs/swagger.yaml`
 
-**2. Implement Contract Testing**:
+**2. Implement Contract Testing** (Recommended):
 
-**Pact** (consumer-driven contracts):
+**A. OpenAPI Validator** (Schema-based testing):
+```javascript
+// tests/contract/openapi-validator.test.js
+const { OpenAPIValidator } = require('express-openapi-validator');
+const spec = require('../../docs/api/openapi.json');
+
+describe('OpenAPI Contract Tests', () => {
+    it('validates all responses against OpenAPI schema', async () => {
+        const validator = new OpenAPIValidator({ apiSpec: spec });
+
+        // Test actual API responses match schemas
+        const response = await fetch('http://localhost:13000/v1/models');
+        const valid = validator.validate(response, spec.paths['/v1/models'].get);
+        expect(valid).toBe(true);
+    });
+});
+```
+
+**B. Pact** (Consumer-driven contracts):
 ```javascript
 // Consumer test (Frontend)
 const { pact } = require('@pact-foundation/pact');
@@ -752,7 +798,7 @@ describe('User Login', () => {
             uponReceiving: 'a login request',
             withRequest: {
                 method: 'POST',
-                path: '/api/v1/auth/login',
+                path: '/auth/login',
                 body: { email: 'user@example.com', password: 'password' },
             },
             willRespondWith: {
@@ -766,11 +812,21 @@ describe('User Login', () => {
     });
 });
 
-// Provider test (Go API)
+// Provider test (Node.js API)
 // Verify API meets contract defined by consumer
 ```
 
-**3. Add API Versioning Strategy**:
+**C. CI/CD Integration** (✅ Implemented):
+```yaml
+# .github/workflows/ci-cd-pipeline.yml
+- name: Validate OpenAPI specification
+  run: npm run openapi:validate
+
+- name: Run contract tests
+  run: npm run test:contract
+```
+
+**3. API Versioning Strategy** (✅ Implemented):
 
 **URL-Based Versioning** (recommended):
 - Current: `/api/v1/*`

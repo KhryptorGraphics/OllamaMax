@@ -24,7 +24,8 @@ test.describe('Security Testing', () => {
   test('security headers validation', async ({ request }) => {
     const response = await request.get('/');
     const headers = response.headers();
-    
+    const backendEnabled = process.env.BACKEND_UP === '1';
+
     // Check for important security headers
     const securityHeaders = {
       'x-content-type-options': 'nosniff',
@@ -34,30 +35,47 @@ test.describe('Security Testing', () => {
       'content-security-policy': null,
       'referrer-policy': null
     };
-    
+
     const findings = [];
-    
+    const criticalMissing = [];
+
     for (const [headerName, expectedValues] of Object.entries(securityHeaders)) {
       const headerValue = headers[headerName];
-      
+
       if (!headerValue) {
         findings.push(`Missing security header: ${headerName}`);
+        // Track critical security headers when backend is running
+        if (backendEnabled && ['x-content-type-options', 'x-frame-options'].includes(headerName)) {
+          criticalMissing.push(headerName);
+        }
       } else if (Array.isArray(expectedValues)) {
         if (!expectedValues.some(expected => headerValue.includes(expected))) {
           findings.push(`${headerName}: ${headerValue} (expected one of: ${expectedValues.join(', ')})`);
+          if (backendEnabled && headerName === 'x-frame-options') {
+            criticalMissing.push(headerName);
+          }
         }
       } else if (expectedValues && !headerValue.includes(expectedValues)) {
         findings.push(`${headerName}: ${headerValue} (expected: ${expectedValues})`);
+        if (backendEnabled && headerName === 'x-content-type-options') {
+          criticalMissing.push(headerName);
+        }
       }
     }
-    
+
     if (findings.length > 0) {
       console.warn('Security header findings:', findings);
     } else {
       console.log('✅ All critical security headers present');
     }
-    
-    // Don't fail test for missing headers in development
+
+    // When BACKEND_UP=1, require critical security headers
+    if (backendEnabled && criticalMissing.length > 0) {
+      console.error(`❌ Critical security headers missing with BACKEND_UP=1: ${criticalMissing.join(', ')}`);
+      expect(criticalMissing.length).toBe(0);
+    }
+
+    // Don't fail test for missing headers in development (BACKEND_UP=0)
     expect(response.ok()).toBeTruthy();
   });
 

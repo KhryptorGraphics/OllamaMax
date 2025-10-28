@@ -501,16 +501,50 @@ app.get('/docs', (req, res) => {
 // OpenAPI specification
 app.get('/openapi.json', (req, res) => {
   const spec = {
-    openapi: '3.0.0',
+    openapi: '3.0.3',
     info: {
       title: 'Ollamamax API',
       version: '1.0.0',
-      description: 'Distributed LLM Inference API with OpenAI compatibility'
+      description: `Enterprise-Grade Distributed AI Model Platform
+
+## Overview
+Ollamamax provides a distributed LLM inference API with full OpenAI compatibility, advanced authentication, rate limiting, and comprehensive monitoring.
+
+## Key Features
+- **OpenAI Compatible**: Full compatibility with OpenAI API clients
+- **Distributed Architecture**: Horizontal scaling across multiple nodes
+- **Enterprise Security**: JWT authentication, API keys, rate limiting
+- **Real-time Monitoring**: Health checks, metrics, and observability
+- **High Availability**: Built-in fault tolerance and load balancing
+
+## Authentication
+All protected endpoints require either:
+- Bearer token (JWT) in Authorization header
+- API key in x-api-key header
+
+Generate API keys through the /auth/register endpoint.`,
+      contact: {
+        name: 'Ollamamax Support',
+        email: 'admin@giggahost.com',
+        url: 'https://giggahost.com'
+      },
+      license: {
+        name: 'MIT',
+        url: 'https://opensource.org/licenses/MIT'
+      }
     },
     servers: [
       {
         url: `http://localhost:${PORT}`,
         description: 'Development server'
+      },
+      {
+        url: 'http://localhost:11434',
+        description: 'Go API Backend (distributed inference)'
+      },
+      {
+        url: 'https://api.ollamamax.com',
+        description: 'Production server'
       }
     ],
     components: {
@@ -518,12 +552,68 @@ app.get('/openapi.json', (req, res) => {
         bearerAuth: {
           type: 'http',
           scheme: 'bearer',
-          bearerFormat: 'JWT'
+          bearerFormat: 'JWT',
+          description: 'JWT bearer token obtained from /auth/login endpoint. Include as: Authorization: Bearer <token>'
         },
         apiKeyAuth: {
           type: 'apiKey',
           in: 'header',
-          name: 'x-api-key'
+          name: 'x-api-key',
+          description: 'API key obtained from /auth/register endpoint. Include as: x-api-key: <key>'
+        }
+      },
+      schemas: {
+        Error: {
+          type: 'object',
+          properties: {
+            error: {
+              type: 'object',
+              properties: {
+                message: { type: 'string', description: 'Error description' },
+                type: { type: 'string', description: 'Error type' },
+                param: { type: 'string', nullable: true, description: 'Parameter that caused error' },
+                code: { type: 'string', nullable: true, description: 'Error code' }
+              }
+            }
+          }
+        },
+        Model: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', description: 'Model identifier' },
+            object: { type: 'string', enum: ['model'], description: 'Object type' },
+            created: { type: 'integer', description: 'Unix timestamp of model creation' },
+            owned_by: { type: 'string', description: 'Owner organization' },
+            permission: { type: 'array', items: { type: 'object' } },
+            root: { type: 'string', description: 'Root model name' },
+            parent: { type: 'string', nullable: true, description: 'Parent model' }
+          }
+        },
+        HealthResponse: {
+          type: 'object',
+          properties: {
+            status: { type: 'string', enum: ['healthy', 'degraded', 'unhealthy'] },
+            uptime: {
+              type: 'object',
+              properties: {
+                seconds: { type: 'number' },
+                human: { type: 'string' }
+              }
+            },
+            memory: {
+              type: 'object',
+              properties: {
+                rss: { type: 'string' },
+                heapUsed: { type: 'string' },
+                heapTotal: { type: 'string' },
+                external: { type: 'string' }
+              }
+            },
+            timestamp: { type: 'string', format: 'date-time' },
+            node_version: { type: 'string' },
+            platform: { type: 'string' },
+            arch: { type: 'string' }
+          }
         }
       }
     },
@@ -531,25 +621,253 @@ app.get('/openapi.json', (req, res) => {
       { bearerAuth: [] },
       { apiKeyAuth: [] }
     ],
+    tags: [
+      { name: 'Health & Monitoring', description: 'System health checks and monitoring endpoints' },
+      { name: 'Authentication', description: 'User authentication and authorization' },
+      { name: 'Models', description: 'AI model management and discovery' },
+      { name: 'Inference', description: 'AI model inference endpoints (OpenAI compatible)' },
+      { name: 'Documentation', description: 'API documentation and specifications' }
+    ],
     paths: {
-      '/v1/models': {
+      '/': {
         get: {
-          summary: 'List available models',
+          summary: 'API Information',
+          description: 'Returns API metadata, version, and available endpoints',
+          operationId: 'getApiInfo',
+          tags: ['Documentation'],
+          security: [],
           responses: {
             '200': {
-              description: 'Success',
+              description: 'API information',
               content: {
                 'application/json': {
-                  example: {
-                    object: 'list',
-                    data: [
-                      {
-                        id: 'llama-3.2-3b',
-                        object: 'model',
-                        created: 1699564800,
-                        owned_by: 'ollamamax'
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      name: { type: 'string' },
+                      version: { type: 'string' },
+                      status: { type: 'string' },
+                      timestamp: { type: 'string', format: 'date-time' },
+                      endpoints: { type: 'object' },
+                      features: { type: 'object' }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      '/health': {
+        get: {
+          summary: 'Health Check',
+          description: 'Returns detailed system health information including uptime, memory usage, and system information',
+          operationId: 'getHealth',
+          tags: ['Health & Monitoring'],
+          security: [],
+          responses: {
+            '200': {
+              description: 'System health status',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/HealthResponse' }
+                }
+              }
+            }
+          }
+        }
+      },
+      '/health/live': {
+        get: {
+          summary: 'Liveness Probe',
+          description: 'Kubernetes liveness probe - indicates if the application is running',
+          operationId: 'getLiveness',
+          tags: ['Health & Monitoring'],
+          security: [],
+          responses: {
+            '200': {
+              description: 'Application is alive',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      status: { type: 'string', enum: ['alive'] }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      '/health/ready': {
+        get: {
+          summary: 'Readiness Probe',
+          description: 'Kubernetes readiness probe - indicates if the application is ready to accept traffic',
+          operationId: 'getReadiness',
+          tags: ['Health & Monitoring'],
+          security: [],
+          responses: {
+            '200': {
+              description: 'Application is ready',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      status: { type: 'string', enum: ['ready'] },
+                      database: { type: 'string' },
+                      checks: { type: 'object' }
+                    }
+                  }
+                }
+              }
+            },
+            '503': {
+              description: 'Application not ready',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      status: { type: 'string', enum: ['not ready'] },
+                      error: { type: 'string' },
+                      checks: { type: 'object' }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      '/metrics': {
+        get: {
+          summary: 'Prometheus Metrics',
+          description: 'Returns metrics in Prometheus exposition format',
+          operationId: 'getMetrics',
+          tags: ['Health & Monitoring'],
+          security: [],
+          responses: {
+            '200': {
+              description: 'Prometheus metrics',
+              content: {
+                'text/plain': {
+                  schema: { type: 'string' }
+                }
+              }
+            }
+          }
+        }
+      },
+      '/auth/login': {
+        post: {
+          summary: 'User Login',
+          description: 'Authenticate user and receive JWT tokens',
+          operationId: 'login',
+          tags: ['Authentication'],
+          security: [],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['email', 'password'],
+                  properties: {
+                    email: { type: 'string', format: 'email' },
+                    password: { type: 'string', format: 'password', minLength: 8 }
+                  }
+                }
+              }
+            }
+          },
+          responses: {
+            '200': {
+              description: 'Login successful',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      accessToken: { type: 'string', description: 'JWT access token (1 hour expiry)' },
+                      refreshToken: { type: 'string', description: 'JWT refresh token (7 days expiry)' },
+                      user: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'string' },
+                          email: { type: 'string' },
+                          role: { type: 'string' }
+                        }
                       }
-                    ]
+                    }
+                  }
+                }
+              }
+            },
+            '401': {
+              description: 'Invalid credentials',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/Error' }
+                }
+              }
+            }
+          }
+        }
+      },
+      '/auth/register': {
+        post: {
+          summary: 'User Registration',
+          description: 'Register a new user account',
+          operationId: 'register',
+          tags: ['Authentication'],
+          security: [],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['email', 'password'],
+                  properties: {
+                    email: { type: 'string', format: 'email' },
+                    password: { type: 'string', format: 'password', minLength: 8 },
+                    name: { type: 'string' }
+                  }
+                }
+              }
+            }
+          },
+          responses: {
+            '201': { description: 'User created successfully' },
+            '400': { description: 'Invalid input', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+            '409': { description: 'User already exists', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } }
+          }
+        }
+      },
+      '/v1/models': {
+        get: {
+          summary: 'List Available Models',
+          description: 'Returns all models available for inference (OpenAI compatible endpoint)',
+          operationId: 'listModels',
+          tags: ['Models'],
+          security: [],
+          responses: {
+            '200': {
+              description: 'List of models',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      object: { type: 'string', enum: ['list'] },
+                      data: {
+                        type: 'array',
+                        items: { $ref: '#/components/schemas/Model' }
+                      }
+                    }
                   }
                 }
               }
@@ -559,7 +877,11 @@ app.get('/openapi.json', (req, res) => {
       },
       '/v1/completions': {
         post: {
-          summary: 'Create text completion',
+          summary: 'Create Text Completion',
+          description: 'Generate text completion using specified model (OpenAI compatible endpoint)',
+          operationId: 'createCompletion',
+          tags: ['Inference'],
+          security: [{ bearerAuth: [] }, { apiKeyAuth: [] }],
           requestBody: {
             required: true,
             content: {
@@ -568,26 +890,70 @@ app.get('/openapi.json', (req, res) => {
                   type: 'object',
                   required: ['prompt'],
                   properties: {
-                    model: { type: 'string', default: 'llama-3.2-3b' },
-                    prompt: { type: 'string' },
-                    max_tokens: { type: 'integer', default: 100 },
-                    temperature: { type: 'number', default: 0.7 },
-                    stream: { type: 'boolean', default: false }
+                    model: { type: 'string', default: 'llama-3.2-3b', description: 'Model to use for completion' },
+                    prompt: { type: 'string', description: 'Text prompt for completion' },
+                    max_tokens: { type: 'integer', default: 100, minimum: 1, maximum: 4096, description: 'Maximum tokens to generate' },
+                    temperature: { type: 'number', default: 0.7, minimum: 0, maximum: 2, description: 'Sampling temperature' },
+                    top_p: { type: 'number', default: 1, minimum: 0, maximum: 1, description: 'Nucleus sampling' },
+                    n: { type: 'integer', default: 1, minimum: 1, maximum: 10, description: 'Number of completions' },
+                    stream: { type: 'boolean', default: false, description: 'Enable streaming responses' },
+                    stop: { oneOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }], nullable: true, description: 'Stop sequences' },
+                    presence_penalty: { type: 'number', default: 0, minimum: -2, maximum: 2 },
+                    frequency_penalty: { type: 'number', default: 0, minimum: -2, maximum: 2 }
                   }
                 }
               }
             }
           },
           responses: {
-            '200': { description: 'Success' },
-            '400': { description: 'Bad request' },
-            '401': { description: 'Unauthorized' }
+            '200': {
+              description: 'Completion generated successfully',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      id: { type: 'string' },
+                      object: { type: 'string', enum: ['text_completion'] },
+                      created: { type: 'integer' },
+                      model: { type: 'string' },
+                      choices: {
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            text: { type: 'string' },
+                            index: { type: 'integer' },
+                            logprobs: { type: 'object', nullable: true },
+                            finish_reason: { type: 'string', enum: ['stop', 'length', 'content_filter'] }
+                          }
+                        }
+                      },
+                      usage: {
+                        type: 'object',
+                        properties: {
+                          prompt_tokens: { type: 'integer' },
+                          completion_tokens: { type: 'integer' },
+                          total_tokens: { type: 'integer' }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            '400': { description: 'Invalid request', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+            '401': { description: 'Unauthorized', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } }
           }
         }
       },
       '/v1/chat/completions': {
         post: {
-          summary: 'Create chat completion',
+          summary: 'Create Chat Completion',
+          description: 'Generate chat completion using specified model (OpenAI compatible endpoint)',
+          operationId: 'createChatCompletion',
+          tags: ['Inference'],
+          security: [{ bearerAuth: [] }, { apiKeyAuth: [] }],
           requestBody: {
             required: true,
             content: {
@@ -599,30 +965,185 @@ app.get('/openapi.json', (req, res) => {
                     model: { type: 'string', default: 'llama-3.2-3b' },
                     messages: {
                       type: 'array',
+                      minItems: 1,
                       items: {
                         type: 'object',
+                        required: ['role', 'content'],
                         properties: {
                           role: { type: 'string', enum: ['system', 'user', 'assistant'] },
                           content: { type: 'string' }
                         }
                       }
                     },
-                    max_tokens: { type: 'integer', default: 100 },
-                    temperature: { type: 'number', default: 0.7 },
-                    stream: { type: 'boolean', default: false }
+                    max_tokens: { type: 'integer', default: 100, minimum: 1, maximum: 4096 },
+                    temperature: { type: 'number', default: 0.7, minimum: 0, maximum: 2 },
+                    top_p: { type: 'number', default: 1, minimum: 0, maximum: 1 },
+                    n: { type: 'integer', default: 1, minimum: 1, maximum: 10 },
+                    stream: { type: 'boolean', default: false },
+                    stop: { oneOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }], nullable: true },
+                    presence_penalty: { type: 'number', default: 0, minimum: -2, maximum: 2 },
+                    frequency_penalty: { type: 'number', default: 0, minimum: -2, maximum: 2 }
                   }
                 }
               }
             }
           },
           responses: {
-            '200': { description: 'Success' }
+            '200': {
+              description: 'Chat completion generated successfully',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      id: { type: 'string' },
+                      object: { type: 'string', enum: ['chat.completion'] },
+                      created: { type: 'integer' },
+                      model: { type: 'string' },
+                      choices: {
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            index: { type: 'integer' },
+                            message: {
+                              type: 'object',
+                              properties: {
+                                role: { type: 'string', enum: ['assistant'] },
+                                content: { type: 'string' }
+                              }
+                            },
+                            finish_reason: { type: 'string', enum: ['stop', 'length', 'content_filter'] }
+                          }
+                        }
+                      },
+                      usage: {
+                        type: 'object',
+                        properties: {
+                          prompt_tokens: { type: 'integer' },
+                          completion_tokens: { type: 'integer' },
+                          total_tokens: { type: 'integer' }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            '400': { description: 'Invalid request', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+            '401': { description: 'Unauthorized', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } }
+          }
+        }
+      },
+      '/v1/embeddings': {
+        post: {
+          summary: 'Generate Embeddings',
+          description: 'Generate text embeddings using specified model (OpenAI compatible endpoint)',
+          operationId: 'createEmbedding',
+          tags: ['Inference'],
+          security: [{ bearerAuth: [] }, { apiKeyAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['input'],
+                  properties: {
+                    model: { type: 'string', default: 'text-embedding-ada-002' },
+                    input: {
+                      oneOf: [
+                        { type: 'string' },
+                        { type: 'array', items: { type: 'string' } }
+                      ],
+                      description: 'Text to embed'
+                    },
+                    encoding_format: { type: 'string', enum: ['float', 'base64'], default: 'float' },
+                    dimensions: { type: 'integer', default: 1536, minimum: 1 }
+                  }
+                }
+              }
+            }
+          },
+          responses: {
+            '200': {
+              description: 'Embeddings generated successfully',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      object: { type: 'string', enum: ['list'] },
+                      data: {
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            object: { type: 'string', enum: ['embedding'] },
+                            embedding: { type: 'array', items: { type: 'number' } },
+                            index: { type: 'integer' }
+                          }
+                        }
+                      },
+                      model: { type: 'string' },
+                      usage: {
+                        type: 'object',
+                        properties: {
+                          prompt_tokens: { type: 'integer' },
+                          total_tokens: { type: 'integer' }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            '400': { description: 'Invalid request', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+            '401': { description: 'Unauthorized', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } }
+          }
+        }
+      },
+      '/docs': {
+        get: {
+          summary: 'API Documentation (Swagger UI)',
+          description: 'Interactive API documentation using Swagger UI',
+          operationId: 'getSwaggerUI',
+          tags: ['Documentation'],
+          security: [],
+          responses: {
+            '200': {
+              description: 'Swagger UI HTML page',
+              content: {
+                'text/html': {
+                  schema: { type: 'string' }
+                }
+              }
+            }
+          }
+        }
+      },
+      '/openapi.json': {
+        get: {
+          summary: 'OpenAPI Specification (JSON)',
+          description: 'Machine-readable OpenAPI 3.0 specification in JSON format',
+          operationId: 'getOpenAPIJSON',
+          tags: ['Documentation'],
+          security: [],
+          responses: {
+            '200': {
+              description: 'OpenAPI specification',
+              content: {
+                'application/json': {
+                  schema: { type: 'object' }
+                }
+              }
+            }
           }
         }
       }
     }
   };
-  
+
   res.json(spec);
 });
 

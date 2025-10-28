@@ -41,14 +41,18 @@ echo -e "\n${BLUE}=== Phase 1: Checking HPA Configuration ===${NC}"
 HPA_COUNT=0
 
 if kubectl get hpa -n "${NAMESPACE}" &> /dev/null; then
-    HPAS=$(kubectl get hpa -n "${NAMESPACE}" --no-headers | awk '{print $1}')
-    HPA_COUNT=$(echo "$HPAS" | wc -l)
-    log_success "Found ${HPA_COUNT} HPA(s) in namespace ${NAMESPACE}"
+    HPAS=$(kubectl get hpa -n "${NAMESPACE}" --no-headers 2>/dev/null | awk '{print $1}')
+    if [ -n "$HPAS" ]; then
+        HPA_COUNT=$(echo "$HPAS" | grep -c '^' || echo "0")
+        log_success "Found ${HPA_COUNT} HPA(s) in namespace ${NAMESPACE}"
 
-    for HPA in $HPAS; do
-        log_info "HPA: ${HPA}"
-        kubectl get hpa "${HPA}" -n "${NAMESPACE}"
-    done
+        for HPA in $HPAS; do
+            log_info "HPA: ${HPA}"
+            kubectl get hpa "${HPA}" -n "${NAMESPACE}"
+        done
+    else
+        log_warning "No HPAs found in namespace ${NAMESPACE}"
+    fi
 else
     log_warning "No HPAs found in namespace ${NAMESPACE}"
 fi
@@ -60,8 +64,14 @@ INITIAL_REPLICAS=$(kubectl get deployment "${DEPLOYMENT}" -n "${NAMESPACE}" -o j
 log_info "Initial replicas: ${INITIAL_REPLICAS}"
 
 # Parse CPU values, stripping 'm' suffix and converting to millicores
-INITIAL_CPU=$(kubectl top pods -n "${NAMESPACE}" -l "app=${DEPLOYMENT}" --no-headers 2>/dev/null | awk '{gsub(/m/,"",$2); sum+=$2} END {print sum}' || echo "0")
-log_info "Initial CPU usage: ${INITIAL_CPU}m"
+# Guard against metrics server unavailability
+if kubectl top pods -n "${NAMESPACE}" -l "app=${DEPLOYMENT}" --no-headers &> /dev/null; then
+    INITIAL_CPU=$(kubectl top pods -n "${NAMESPACE}" -l "app=${DEPLOYMENT}" --no-headers 2>/dev/null | awk '{gsub(/m/,"",$2); sum+=$2} END {print sum}' || echo "0")
+    log_info "Initial CPU usage: ${INITIAL_CPU}m"
+else
+    log_warning "Metrics Server not available; skipping CPU-based checks"
+    INITIAL_CPU=0
+fi
 
 # Phase 3: Generate Load
 echo -e "\n${BLUE}=== Phase 3: Generating Load ===${NC}"
@@ -81,11 +91,15 @@ fi
 log_info "Using service: ${SERVICE_NAME}"
 
 # Use kubectl run to create a load generator pod
-kubectl run load-generator \
+if ! kubectl run load-generator \
     --image=busybox:latest \
     --restart=Never \
     --namespace="${NAMESPACE}" \
-    --command -- /bin/sh -c "while true; do wget -q -O- http://${SERVICE_NAME}:8080/health; done" &> /dev/null &
+    --command -- /bin/sh -c "while true; do wget -q -O- http://${SERVICE_NAME}:8080/health; done" &> /dev/null; then
+    log_error "Failed to create load generator pod"
+    log_error "Check that the namespace exists and you have permissions"
+    exit 1
+fi
 
 LOAD_PID=$!
 log_success "Load generator started (PID: ${LOAD_PID})"
@@ -105,7 +119,13 @@ while [ $ELAPSED -lt $MAX_WAIT ]; do
     ELAPSED=$((ELAPSED + 10))
 
     CURRENT_REPLICAS=$(kubectl get deployment "${DEPLOYMENT}" -n "${NAMESPACE}" -o jsonpath='{.spec.replicas}' 2>/dev/null || echo "0")
-    CURRENT_CPU=$(kubectl top pods -n "${NAMESPACE}" -l "app=${DEPLOYMENT}" --no-headers 2>/dev/null | awk '{gsub(/m/,"",$2); sum+=$2} END {print sum}' || echo "0")
+
+    # Guard against metrics server unavailability
+    if kubectl top pods -n "${NAMESPACE}" -l "app=${DEPLOYMENT}" --no-headers &> /dev/null; then
+        CURRENT_CPU=$(kubectl top pods -n "${NAMESPACE}" -l "app=${DEPLOYMENT}" --no-headers 2>/dev/null | awk '{gsub(/m/,"",$2); sum+=$2} END {print sum}' || echo "0")
+    else
+        CURRENT_CPU=0
+    fi
 
     log_info "[${ELAPSED}s] Replicas: ${CURRENT_REPLICAS}, CPU: ${CURRENT_CPU}m"
 
@@ -172,7 +192,12 @@ if kubectl get hpa -n "${NAMESPACE}" &> /dev/null; then
 fi
 
 # Generate Report
-EVENTS_JSON=$(IFS=,; for event in "${SCALING_EVENTS[@]}"; do echo "\"$event\""; done | paste -sd,)
+# Guard against empty SCALING_EVENTS array
+if [ ${#SCALING_EVENTS[@]} -eq 0 ]; then
+    EVENTS_JSON=""
+else
+    EVENTS_JSON=$(IFS=,; for event in "${SCALING_EVENTS[@]}"; do echo "\"$event\""; done | paste -sd,)
+fi
 
 # Guard against uninitialized HPA_COUNT
 HPA_COUNT=${HPA_COUNT:-0}

@@ -12,7 +12,7 @@ SHELL := /bin/bash
 .PHONY: help
 
 # Variables
-GO_VERSION ?= 1.21
+GO_VERSION ?= 1.23
 BINARY_NAME ?= ollama-distributed
 BINARY_UNIX ?= $(BINARY_NAME)-linux-amd64
 DOCKER_IMAGE ?= ollama-distributed

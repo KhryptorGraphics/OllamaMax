@@ -20,6 +20,7 @@ const EventEmitter = require('events');
 const Redis = require('ioredis');
 const AgentPerformanceForecaster = require('../agents/agent-performance-forecaster');
 const PredictiveScalingSystem = require('../ml/predictive-scaling');
+const NeuralPatternTrainer = require('../agents/neural-pattern-trainer');
 
 class QueenCoordinator extends EventEmitter {
   constructor(options = {}) {
@@ -122,9 +123,18 @@ class QueenCoordinator extends EventEmitter {
       broadcastChannels: ['alerts', 'announcements', 'updates']
     };
 
-    // ML Forecaster Integration
-    this.mlForecaster = new AgentPerformanceForecaster();
-    this.predictiveScaling = new PredictiveScalingSystem();
+    // ML component instances (lazy-initialized)
+    this.performanceForecaster = null;
+    this.scalingPredictor = null;
+    this.patternTrainer = null;
+
+    // ML metrics tracking
+    this.mlMetrics = {
+      forecastsGenerated: 0,
+      mlAccuracy: 0,
+      patternsLearned: 0,
+      mlDrivenDecisions: 0
+    };
 
     this.initializeQueen();
   }
@@ -133,7 +143,7 @@ class QueenCoordinator extends EventEmitter {
     try {
       // Initialize Queen agent
       await this.createQueenAgent();
-      
+
       // Load historical swarm data
       const historicalData = await this.redis.get('swarm:queen:history');
       if (historicalData) {
@@ -141,19 +151,52 @@ class QueenCoordinator extends EventEmitter {
         this.intelligence = { ...this.intelligence, ...data.intelligence };
       }
 
+      // Initialize ML components
+      await this.initializeML();
+
       // Start coordination systems
       this.startCoordinationLoop();
       this.startStrategicPlanning();
-      
+
       console.log('Queen coordinator initialized successfully');
       this.emit('queen_initialized', {
         queenId: this.swarm.queen?.id,
         protocols: this.protocols,
-        maxCapacity: this.config.maxWorkers + this.config.maxLieutenants + this.config.maxScouts + this.config.maxGuards
+        maxCapacity: this.config.maxWorkers + this.config.maxLieutenants + this.config.maxScouts + this.config.maxGuards,
+        mlEnabled: !!(this.performanceForecaster && this.scalingPredictor && this.patternTrainer)
       });
     } catch (error) {
       console.error('Failed to initialize Queen coordinator:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Initialize ML components (lazy initialization)
+   */
+  async initializeML() {
+    try {
+      console.log('🧠 Initializing ML components for Queen coordination...');
+
+      // Initialize performance forecaster
+      this.performanceForecaster = new AgentPerformanceForecaster();
+      await this.performanceForecaster.initialize().catch(err => {
+        console.warn('⚠️ AgentPerformanceForecaster initialization warning:', err.message);
+      });
+
+      // Initialize predictive scaling
+      this.scalingPredictor = new PredictiveScalingSystem();
+
+      // Initialize pattern trainer
+      this.patternTrainer = new NeuralPatternTrainer();
+
+      console.log('✅ ML components initialized successfully');
+    } catch (error) {
+      console.error('❌ ML component initialization failed:', error.message);
+      // Continue without ML - graceful degradation
+      this.performanceForecaster = null;
+      this.scalingPredictor = null;
+      this.patternTrainer = null;
     }
   }
 
@@ -293,18 +336,27 @@ class QueenCoordinator extends EventEmitter {
       agentPredictions: new Map(),
       scalingRecommendations: null,
       predictedLoad: 0,
-      confidence: 0
+      confidence: 0,
+      patternRecommendations: []
     };
+
+    if (!this.performanceForecaster || !this.scalingPredictor) {
+      console.log('⚠️ ML components not initialized, skipping forecasts');
+      return forecasts;
+    }
 
     try {
       // Get all agent IDs
       const allAgents = await this.getAllAgents();
       const agentIds = Array.from(allAgents.keys());
 
-      // Get forecasts for each agent
+      // Get agent load forecasts using LSTM
       for (const agentId of agentIds.slice(0, 10)) { // Limit to 10 agents for performance
         const taskRequest = { type: 'general', complexity: 'medium', priority: 5 };
-        const prediction = await this.mlForecaster.predictAgentPerformance(agentId, taskRequest);
+        const prediction = await this.performanceForecaster.predictAgentPerformance(agentId, taskRequest).catch(err => {
+          console.warn(`⚠️ Prediction failed for ${agentId}:`, err.message);
+          return null;
+        });
 
         if (prediction) {
           forecasts.agentPredictions.set(agentId, {
@@ -315,9 +367,13 @@ class QueenCoordinator extends EventEmitter {
         }
       }
 
-      // Get predictive scaling recommendations
-      const scalingStatus = await this.predictiveScaling.getSystemStatus();
-      if (scalingStatus.recentPredictions && scalingStatus.recentPredictions.length > 0) {
+      // Get short-term swarm load predictions
+      const scalingStatus = await this.scalingPredictor.getSystemStatus().catch(err => {
+        console.warn('⚠️ Scaling prediction failed:', err.message);
+        return null;
+      });
+
+      if (scalingStatus && scalingStatus.recentPredictions && scalingStatus.recentPredictions.length > 0) {
         const latest = scalingStatus.recentPredictions[0];
         forecasts.scalingRecommendations = {
           predictedAgents: latest.prediction?.predicted_active_agents || 0,
@@ -327,13 +383,26 @@ class QueenCoordinator extends EventEmitter {
         forecasts.predictedLoad = latest.prediction?.predicted_queue_length || 0;
       }
 
+      // Get top pattern recommendations from NeuralPatternTrainer
+      if (this.patternTrainer) {
+        const taskContext = { agentType: 'worker', taskType: 'general', complexity: 'medium' };
+        const topPatterns = await this.patternTrainer.recommendPatterns(taskContext).catch(err => {
+          console.warn('⚠️ Pattern recommendation failed:', err.message);
+          return [];
+        });
+        forecasts.patternRecommendations = topPatterns.slice(0, 5); // Top 5 patterns
+      }
+
       // Calculate average confidence
       const confidences = Array.from(forecasts.agentPredictions.values()).map(p => p.confidence);
       forecasts.confidence = confidences.length > 0
         ? confidences.reduce((sum, c) => sum + c, 0) / confidences.length
         : 0;
 
-      console.log(`🔮 ML Forecasts gathered: ${forecasts.agentPredictions.size} agent predictions, confidence: ${(forecasts.confidence * 100).toFixed(1)}%`);
+      // Update ML metrics
+      this.mlMetrics.forecastsGenerated++;
+
+      console.log(`🔮 ML Forecasts gathered: ${forecasts.agentPredictions.size} agent predictions, ${forecasts.patternRecommendations.length} pattern recommendations, confidence: ${(forecasts.confidence * 100).toFixed(1)}%`);
 
       return forecasts;
     } catch (error) {
@@ -632,9 +701,23 @@ class QueenCoordinator extends EventEmitter {
       analysis.overall.score = performanceScore;
       analysis.overall.grade = this.calculatePerformanceGrade(performanceScore);
 
-      // Compare ML predictions with actual performance
+      // Compare ML predictions with actual performance and flag early warnings
       if (intelligence.mlForecasts && intelligence.mlForecasts.agentPredictions.size > 0) {
         analysis.mlInsights = await this.compareMLPredictionsWithActuals(intelligence);
+
+        // Track ML accuracy metric for reporting
+        if (analysis.mlInsights.predictionAccuracy > 0) {
+          this.mlMetrics.mlAccuracy = analysis.mlInsights.predictionAccuracy;
+        }
+
+        // Flag early warnings for agents predicted to degrade
+        for (const [agentId, comparison] of Object.entries(analysis.mlInsights.predictedVsActual)) {
+          if (comparison.predicted < 0.5 && comparison.deviation < -0.2) {
+            analysis.overall.issues.push(`agent_${agentId}_predicted_degradation`);
+            analysis.performance.bottlenecks.push(`ml_warning_${agentId}`);
+            console.warn(`⚠️ ML early warning: Agent ${agentId} predicted to degrade (predicted: ${(comparison.predicted * 100).toFixed(1)}%)`);
+          }
+        }
       }
       
       // Identify performance issues
@@ -806,10 +889,27 @@ class QueenCoordinator extends EventEmitter {
       structuralChanges: [],
       timeline: '1h', // Strategic plan horizon
       priority: 'medium',
-      summary: ''
+      summary: '',
+      mlDriven: false,
+      predictedImpact: 0
     };
-    
+
     try {
+      // Use ML forecasts for resource allocation, agent counts, and topology choices
+      let mlRecommendedAgents = null;
+      let mlRecommendedTopology = null;
+
+      if (analysis.mlInsights && analysis.mlInsights.recommendations && this.scalingPredictor) {
+        const scalingStatus = await this.scalingPredictor.getSystemStatus().catch(() => null);
+        if (scalingStatus && scalingStatus.recentPredictions && scalingStatus.recentPredictions.length > 0) {
+          const latest = scalingStatus.recentPredictions[0];
+          mlRecommendedAgents = latest.prediction?.predicted_active_agents || null;
+          strategy.mlDriven = true;
+
+          console.log(`🤖 ML recommends ${mlRecommendedAgents} agents for predicted workload`);
+        }
+      }
+
       // Generate objectives based on analysis
       if (analysis.overall.score < 0.7) {
         strategy.objectives.push({
@@ -819,7 +919,7 @@ class QueenCoordinator extends EventEmitter {
           timeline: '30m'
         });
       }
-      
+
       if (analysis.resources.utilization === 'overloaded') {
         strategy.objectives.push({
           type: 'resource_optimization',
@@ -828,16 +928,23 @@ class QueenCoordinator extends EventEmitter {
           timeline: '15m'
         });
       }
-      
-      // Generate specific actions
+
+      // Generate specific actions (will use ML forecasts internally)
       strategy.actions = await this.generateStrategicActions(analysis);
-      
-      // Resource allocation changes
-      strategy.resourceChanges = this.generateResourceChanges(analysis);
-      
+
+      // Resource allocation changes - informed by ML predictions
+      strategy.resourceChanges = this.generateResourceChanges(analysis, mlRecommendedAgents);
+
       // Structural changes (role assignments, promotions, etc.)
       strategy.structuralChanges = this.generateStructuralChanges(analysis);
-      
+
+      // Calculate predicted impact using ML
+      if (strategy.mlDriven && analysis.mlInsights) {
+        const avgConfidence = analysis.mlInsights.predictionAccuracy || 0;
+        const impactFactor = strategy.actions.reduce((sum, a) => sum + (a.estimatedImpact || 0), 0);
+        strategy.predictedImpact = impactFactor * avgConfidence;
+      }
+
       // Set priority based on severity of issues
       if (analysis.overall.issues.length > 3) {
         strategy.priority = 'high';
@@ -848,10 +955,10 @@ class QueenCoordinator extends EventEmitter {
         strategy.priority = 'low';
         strategy.timeline = '2h';
       }
-      
-      // Generate summary
+
+      // Generate summary including ML-driven insights
       strategy.summary = this.generateStrategySummary(strategy, analysis);
-      
+
       return strategy;
     } catch (error) {
       console.error('Strategic plan generation failed:', error);
@@ -1005,9 +1112,24 @@ class QueenCoordinator extends EventEmitter {
     return actions;
   }
 
-  generateResourceChanges(analysis) {
+  generateResourceChanges(analysis, mlRecommendedAgents = null) {
     const changes = [];
-    
+
+    // Use ML recommendations for agent count if available
+    if (mlRecommendedAgents !== null) {
+      const currentAgents = this.swarm.totalAgents;
+      const diff = mlRecommendedAgents - currentAgents;
+      if (Math.abs(diff) > 2) {
+        changes.push({
+          type: diff > 0 ? 'increase_agents' : 'decrease_agents',
+          target: 'agent_count',
+          change: `${diff > 0 ? '+' : ''}${diff} agents`,
+          justification: `ML prediction: ${mlRecommendedAgents} agents needed for predicted workload`,
+          mlDriven: true
+        });
+      }
+    }
+
     if (analysis.resources.utilization === 'overloaded') {
       changes.push({
         type: 'increase_capacity',
@@ -1015,7 +1137,7 @@ class QueenCoordinator extends EventEmitter {
         change: '+20%',
         justification: 'High CPU utilization detected'
       });
-      
+
       changes.push({
         type: 'increase_capacity',
         target: 'memory',
@@ -1023,7 +1145,7 @@ class QueenCoordinator extends EventEmitter {
         justification: 'Memory pressure relief needed'
       });
     }
-    
+
     if (analysis.resources.utilization === 'underutilized') {
       changes.push({
         type: 'decrease_capacity',
@@ -1032,7 +1154,7 @@ class QueenCoordinator extends EventEmitter {
         justification: 'Resource optimization opportunity'
       });
     }
-    
+
     return changes;
   }
 
@@ -1075,21 +1197,26 @@ class QueenCoordinator extends EventEmitter {
     const issues = analysis.overall.issues.length;
     const actions = strategy.actions.length;
     const priority = strategy.priority;
-    
+
     let summary = `Strategic plan (${priority} priority): `;
-    
+
     if (issues > 0) {
       summary += `Address ${issues} performance issues with ${actions} strategic actions. `;
     } else {
       summary += `Optimization and maintenance plan with ${actions} enhancement actions. `;
     }
-    
+
     if (strategy.structuralChanges.length > 0) {
       summary += `Includes ${strategy.structuralChanges.length} structural changes. `;
     }
-    
+
+    // Add ML-driven insights to summary
+    if (strategy.mlDriven && strategy.predictedImpact > 0) {
+      summary += `ML-predicted impact: ${(strategy.predictedImpact * 100).toFixed(1)}%. `;
+    }
+
     summary += `Expected completion: ${strategy.timeline}.`;
-    
+
     return summary;
   }
 
@@ -1256,27 +1383,47 @@ class QueenCoordinator extends EventEmitter {
       return null;
     }
 
-    // Use ML forecaster to predict agent effectiveness
-    const taskRequest = { type: specialization || 'general', complexity: 'medium', priority: 5 };
-    let mlPrediction = null;
+    // Use ML forecaster to get optimal agent configuration
+    let optimalConfig = { specialization, count: 1 };
 
-    try {
-      const agentId = `${role}_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
-      mlPrediction = await this.mlForecaster.predictAgentPerformance(agentId, taskRequest);
+    if (this.performanceForecaster) {
+      try {
+        const taskRequest = { type: specialization || 'general', complexity: 'medium', priority: 5 };
+        const optimalAgent = await this.performanceForecaster.getOptimalAgentForTask(taskRequest).catch(err => {
+          console.warn('⚠️ Optimal agent selection failed:', err.message);
+          return null;
+        });
 
-      if (mlPrediction && mlPrediction.prediction.successRate < 0.5) {
-        console.warn(`⚠️ ML forecaster predicts low success rate (${(mlPrediction.prediction.successRate * 100).toFixed(1)}%) for new ${role} agent`);
+        if (optimalAgent && optimalAgent.primary) {
+          const prediction = optimalAgent.primary.prediction;
+          const predictedWorkload = prediction?.prediction?.estimatedDuration || 0;
+
+          // Use ML recommendation for specialization and estimate count needed
+          if (prediction && prediction.behaviorInsights) {
+            optimalConfig.specialization = prediction.behaviorInsights.optimalTaskTypes?.[0] || specialization;
+          }
+
+          // Adjust count based on predicted workload
+          if (predictedWorkload > 5000) {
+            optimalConfig.count = Math.min(2, roleConfig.maxCount - currentCount);
+            console.log(`🤖 ML recommends recruiting ${optimalConfig.count} ${role} agents for high predicted workload`);
+          }
+
+          if (prediction && prediction.prediction.successRate < 0.5) {
+            console.warn(`⚠️ ML forecaster predicts low success rate (${(prediction.prediction.successRate * 100).toFixed(1)}%) for new ${role} agent`);
+          }
+        }
+      } catch (error) {
+        console.error('❌ ML prediction for recruitment failed:', error.message);
       }
-    } catch (error) {
-      console.error('❌ ML prediction for recruitment failed:', error.message);
     }
-    
+
     const agentId = `${role}_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
-    
+
     const agent = {
       id: agentId,
       role,
-      specialization,
+      specialization: optimalConfig.specialization || specialization,
       status: 'active',
       capabilities: [...roleConfig.capabilities],
       responsibilities: [...roleConfig.responsibilities],
@@ -1628,7 +1775,7 @@ class QueenCoordinator extends EventEmitter {
   // Health and status methods
   async getStatus() {
     const allAgents = await this.getAllAgents();
-    
+
     return {
       status: 'operational',
       swarmSize: this.swarm.totalAgents,
@@ -1643,7 +1790,9 @@ class QueenCoordinator extends EventEmitter {
       protocols: this.protocols,
       recentPerformance: this.swarm.queen?.performance,
       strategicGoals: this.intelligence.strategicGoals.length,
-      lastStrategicPlanning: this.swarm.queen?.lastStrategicPlanning || 0
+      lastStrategicPlanning: this.swarm.queen?.lastStrategicPlanning || 0,
+      mlMetrics: this.mlMetrics,
+      mlEnabled: !!(this.performanceForecaster && this.scalingPredictor && this.patternTrainer)
     };
   }
 
@@ -1651,11 +1800,24 @@ class QueenCoordinator extends EventEmitter {
     if (this.coordinationTimer) {
       clearInterval(this.coordinationTimer);
     }
-    
+
     if (this.strategicTimer) {
       clearInterval(this.strategicTimer);
     }
-    
+
+    // Cleanup ML components
+    if (this.performanceForecaster) {
+      await this.performanceForecaster.close().catch(err => console.warn('ML forecaster cleanup warning:', err));
+    }
+
+    if (this.scalingPredictor) {
+      await this.scalingPredictor.shutdown().catch(err => console.warn('Scaling predictor cleanup warning:', err));
+    }
+
+    if (this.patternTrainer) {
+      await this.patternTrainer.close().catch(err => console.warn('Pattern trainer cleanup warning:', err));
+    }
+
     if (this.redis) {
       await this.redis.quit();
     }
@@ -1858,6 +2020,50 @@ class QueenCoordinator extends EventEmitter {
 
   async executeRemediationAction(agent, action) {
     console.log(`Executing remediation action for ${agent.id}: ${action}`);
+
+    // Estimate success probability using ML predictions
+    let successProbability = 0.5; // Default
+    let mlRecommendation = null;
+
+    if (this.performanceForecaster) {
+      try {
+        const taskRequest = { type: agent.specialization || 'general', complexity: 'low', priority: 5 };
+        const prediction = await this.performanceForecaster.predictAgentPerformance(agent.id, taskRequest).catch(() => null);
+
+        if (prediction) {
+          successProbability = prediction.prediction.successRate;
+          mlRecommendation = prediction;
+          console.log(`🎯 ML-estimated remediation success probability: ${(successProbability * 100).toFixed(1)}%`);
+        }
+      } catch (error) {
+        console.warn('⚠️ ML success probability estimation failed:', error.message);
+      }
+    }
+
+    // Log outcome to Redis for ML retraining
+    const outcome = {
+      agentId: agent.id,
+      action,
+      predictedSuccess: successProbability,
+      mlRecommendation: mlRecommendation ? {
+        successRate: mlRecommendation.prediction.successRate,
+        confidence: mlRecommendation.confidence
+      } : null,
+      timestamp: Date.now()
+    };
+
+    try {
+      await this.redis.lpush('ml:remediation_outcomes', JSON.stringify(outcome));
+      await this.redis.ltrim('ml:remediation_outcomes', 0, 1000); // Keep last 1000
+
+      // Update ML metrics
+      if (mlRecommendation) {
+        this.mlMetrics.mlDrivenDecisions++;
+      }
+    } catch (error) {
+      console.warn('⚠️ Failed to log remediation outcome:', error.message);
+    }
+
     // Placeholder for specific remediation logic
   }
 }
