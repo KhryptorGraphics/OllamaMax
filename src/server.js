@@ -3,12 +3,20 @@
  * Sprint 1: Core API with Authentication
  */
 
+// Load environment variables
+require('dotenv').config();
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
+const http = require('http');
+const path = require('path');
 const authMiddleware = require('./middleware/auth');
 const authRoutes = require('./routes/auth');
+const WebSocketService = require('./services/websocket');
+const InferenceService = require('./services/inference');
+const OllamaConnector = require('./services/ollama-connector');
 
 // Initialize Express app
 const app = express();
@@ -52,6 +60,32 @@ app.use((req, res, next) => {
   next();
 });
 
+// Serve static files from web-interface directory with correct MIME types
+app.use(express.static(path.join(__dirname, '../web-interface'), {
+  index: false, // Don't serve index.html automatically
+  setHeaders: (res, filepath) => {
+    // Set correct MIME types
+    if (filepath.endsWith('.js')) {
+      res.setHeader('Content-Type', 'application/javascript');
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+    } else if (filepath.endsWith('.css')) {
+      res.setHeader('Content-Type', 'text/css');
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+    } else if (filepath.endsWith('.html')) {
+      res.setHeader('Content-Type', 'text/html');
+    } else if (filepath.endsWith('.png')) {
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+    } else if (filepath.endsWith('.jpg') || filepath.endsWith('.jpeg')) {
+      res.setHeader('Content-Type', 'image/jpeg');
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+    } else if (filepath.endsWith('.svg')) {
+      res.setHeader('Content-Type', 'image/svg+xml');
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+    }
+  }
+}));
+
 // Authentication routes
 app.use('/auth', authRoutes);
 
@@ -59,28 +93,41 @@ app.use('/auth', authRoutes);
 app.use('/v1', authMiddleware.apiRateLimit(60));
 app.use(authMiddleware.trackTokenUsage());
 
-// Root endpoint
+// Root endpoint - serve web interface by default
 app.get('/', (req, res) => {
-  res.json({
-    name: 'Ollamamax API',
-    version: '1.0.0',
-    status: 'running',
-    timestamp: new Date().toISOString(),
-    endpoints: {
-      authentication: '/auth',
-      inference: '/v1',
-      health: '/health',
-      metrics: '/metrics',
-      docs: '/docs'
-    },
-    features: {
-      authentication: true,
-      rate_limiting: true,
-      openai_compatibility: true,
-      streaming: true,
-      distributed_inference: false // Will be true in Sprint 3
-    }
-  });
+  // Check if this is an API request (has specific query param or JSON accept header)
+  const acceptHeader = req.get('Accept') || '';
+  const isApiRequest = req.query.api === 'true' ||
+                       (acceptHeader.includes('application/json') && !acceptHeader.includes('text/html'));
+
+  if (isApiRequest) {
+    // API request - return JSON info
+    res.json({
+      name: 'Ollamamax API',
+      version: '1.0.0',
+      status: 'running',
+      timestamp: new Date().toISOString(),
+      endpoints: {
+        web_interface: '/',
+        authentication: '/auth',
+        inference: '/v1',
+        health: '/health',
+        metrics: '/metrics',
+        docs: '/docs'
+      },
+      features: {
+        authentication: true,
+        rate_limiting: true,
+        openai_compatibility: true,
+        streaming: true,
+        distributed_inference: false // Will be true in Sprint 3
+      }
+    });
+  } else {
+    // Browser request - serve web interface
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.sendFile(path.join(__dirname, '../web-interface/index.html'));
+  }
 });
 
 // Health check endpoint
@@ -112,15 +159,37 @@ app.get('/health/live', (req, res) => {
   res.status(200).json({ status: 'alive' });
 });
 
-// Kubernetes readiness probe  
+// Kubernetes readiness probe
 app.get('/health/ready', async (req, res) => {
   try {
     // Check database connection
     const userModel = require('./models/user');
+
+    // Wait a bit for database to initialize if needed
+    if (!userModel.db) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
     // Simple database check - try to get user count
-    const users = await userModel.listUsers(1, 0);
-    
-    res.status(200).json({ 
+    try {
+      const users = await userModel.listUsers(1, 0);
+    } catch (dbError) {
+      // Database might not be fully initialized yet
+      if (process.uptime() < 5) {
+        // Give it more time during startup
+        return res.status(503).json({
+          status: 'initializing',
+          message: 'Database is initializing',
+          checks: {
+            database: false,
+            uptime: process.uptime()
+          }
+        });
+      }
+      throw dbError;
+    }
+
+    res.status(200).json({
       status: 'ready',
       database: 'connected',
       checks: {
@@ -130,7 +199,7 @@ app.get('/health/ready', async (req, res) => {
       }
     });
   } catch (error) {
-    res.status(503).json({ 
+    res.status(503).json({
       status: 'not ready',
       error: error.message,
       checks: {
@@ -238,21 +307,32 @@ app.post('/v1/completions', authMiddleware.authenticate(), async (req, res) => {
       });
     }
 
-    // Mock response for Sprint 1 - will be real inference in Sprint 3
-    const completion = generateMockCompletion(prompt, max_tokens, temperature);
-    
+    // Use InferenceService for actual inference
+    const completion = await global.inferenceService.generateCompletion({
+      model,
+      prompt,
+      max_tokens,
+      temperature,
+      top_p,
+      stream,
+      stop,
+      presence_penalty,
+      frequency_penalty
+    });
+
     if (stream) {
       res.setHeader('Content-Type', 'text/event-stream');
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
-      
+
       // Send streaming response
-      const words = completion.text.split(' ');
+      const text = completion.choices[0].text;
+      const words = text.split(' ');
       for (let i = 0; i < words.length; i++) {
         const chunk = {
-          id: `cmpl-${Date.now()}`,
+          id: completion.id,
           object: 'text_completion',
-          created: Math.floor(Date.now() / 1000),
+          created: completion.created,
           model,
           choices: [{
             text: (i === 0 ? '' : ' ') + words[i],
@@ -261,37 +341,21 @@ app.post('/v1/completions', authMiddleware.authenticate(), async (req, res) => {
             finish_reason: i === words.length - 1 ? 'stop' : null
           }]
         };
-        
+
         res.write(`data: ${JSON.stringify(chunk)}\n\n`);
         await new Promise(resolve => setTimeout(resolve, 50)); // 50ms delay between words
       }
-      
+
       res.write('data: [DONE]\n\n');
       res.end();
     } else {
-      res.json({
-        id: `cmpl-${Date.now()}`,
-        object: 'text_completion',
-        created: Math.floor(Date.now() / 1000),
-        model,
-        choices: [{
-          text: completion.text,
-          index: 0,
-          logprobs: null,
-          finish_reason: 'stop'
-        }],
-        usage: {
-          prompt_tokens: completion.prompt_tokens,
-          completion_tokens: completion.completion_tokens,
-          total_tokens: completion.total_tokens
-        }
-      });
+      res.json(completion);
     }
 
     // Track usage
     if (req.user && req.user.id !== 'api-user') {
       const userModel = require('./models/user');
-      await userModel.trackUsage(req.user.id, completion.completion_tokens, 1);
+      await userModel.trackUsage(req.user.id, completion.usage.completion_tokens, 1);
     }
 
   } catch (error) {
@@ -334,28 +398,30 @@ app.post('/v1/chat/completions', authMiddleware.authenticate(), async (req, res)
       });
     }
 
-    // Convert messages to prompt
-    const prompt = messages.map(msg => {
-      const role = msg.role === 'assistant' ? 'Assistant' : 
-                   msg.role === 'system' ? 'System' : 'User';
-      return `${role}: ${msg.content}`;
-    }).join('\n') + '\nAssistant:';
+    // Use InferenceService for actual inference
+    const completion = await global.inferenceService.generateChatCompletion({
+      model,
+      messages,
+      max_tokens,
+      temperature,
+      top_p,
+      stream,
+      stop
+    });
 
-    // Mock response for Sprint 1
-    const completion = generateMockCompletion(prompt, max_tokens, temperature);
-    
     if (stream) {
       res.setHeader('Content-Type', 'text/event-stream');
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
-      
+
       // Send streaming response
-      const words = completion.text.split(' ');
+      const content = completion.choices[0].message.content;
+      const words = content.split(' ');
       for (let i = 0; i < words.length; i++) {
         const chunk = {
-          id: `chatcmpl-${Date.now()}`,
+          id: completion.id,
           object: 'chat.completion.chunk',
-          created: Math.floor(Date.now() / 1000),
+          created: completion.created,
           model,
           choices: [{
             index: 0,
@@ -365,39 +431,21 @@ app.post('/v1/chat/completions', authMiddleware.authenticate(), async (req, res)
             finish_reason: i === words.length - 1 ? 'stop' : null
           }]
         };
-        
+
         res.write(`data: ${JSON.stringify(chunk)}\n\n`);
         await new Promise(resolve => setTimeout(resolve, 50)); // 50ms delay
       }
-      
+
       res.write('data: [DONE]\n\n');
       res.end();
     } else {
-      res.json({
-        id: `chatcmpl-${Date.now()}`,
-        object: 'chat.completion',
-        created: Math.floor(Date.now() / 1000),
-        model,
-        choices: [{
-          index: 0,
-          message: {
-            role: 'assistant',
-            content: completion.text
-          },
-          finish_reason: 'stop'
-        }],
-        usage: {
-          prompt_tokens: completion.prompt_tokens,
-          completion_tokens: completion.completion_tokens,
-          total_tokens: completion.total_tokens
-        }
-      });
+      res.json(completion);
     }
 
     // Track usage
     if (req.user && req.user.id !== 'api-user') {
       const userModel = require('./models/user');
-      await userModel.trackUsage(req.user.id, completion.completion_tokens, 1);
+      await userModel.trackUsage(req.user.id, completion.usage.completion_tokens, 1);
     }
 
   } catch (error) {
@@ -434,24 +482,14 @@ app.post('/v1/embeddings', authMiddleware.authenticate(), async (req, res) => {
       });
     }
 
-    const inputs = Array.isArray(input) ? input : [input];
-    
-    // Generate mock embeddings
-    const data = inputs.map((text, index) => ({
-      object: 'embedding',
-      embedding: Array(dimensions).fill(0).map(() => Math.random() - 0.5),
-      index
-    }));
-
-    res.json({
-      object: 'list',
-      data,
+    // Use InferenceService for embeddings
+    const result = await global.inferenceService.generateEmbeddings({
       model,
-      usage: {
-        prompt_tokens: inputs.join(' ').split(' ').length,
-        total_tokens: inputs.join(' ').split(' ').length
-      }
+      input,
+      encoding_format
     });
+
+    res.json(result);
 
   } catch (error) {
     console.error('Embeddings error:', error);
@@ -1147,6 +1185,144 @@ Generate API keys through the /auth/register endpoint.`,
   res.json(spec);
 });
 
+// Node management REST endpoints (must be before 404 handler)
+app.get('/api/nodes', (req, res) => {
+  // Will be initialized after server starts
+  if (!global.wsService) {
+    return res.status(503).json({ error: 'Service not ready' });
+  }
+  res.json({
+    nodes: global.wsService.getNodeRegistry().getAllNodes(),
+    queueLength: global.wsService.getMessageQueue().getLength(),
+    stats: global.ollamaConnector ? global.ollamaConnector.getStats() : null
+  });
+});
+
+app.post('/api/nodes', (req, res) => {
+  if (!global.wsService) {
+    return res.status(503).json({ error: 'Service not ready' });
+  }
+  const nodeId = `node-${Date.now()}`;
+  const node = global.wsService.getNodeRegistry().addNode(nodeId, req.body);
+
+  res.json({
+    id: node.id,
+    name: node.name,
+    status: node.status
+  });
+
+  global.wsService.broadcastNodeUpdate();
+});
+
+app.delete('/api/nodes/:id', (req, res) => {
+  if (!global.wsService) {
+    return res.status(503).json({ error: 'Service not ready' });
+  }
+  global.wsService.getNodeRegistry().removeNode(req.params.id);
+  res.json({ success: true });
+  global.wsService.broadcastNodeUpdate();
+});
+
+// Add new Ollama node
+app.post('/api/nodes/ollama/add', authMiddleware.authenticate(), async (req, res) => {
+  try {
+    const { url } = req.body;
+
+    if (!url) {
+      return res.status(400).json({ error: 'URL is required' });
+    }
+
+    if (!global.ollamaConnector) {
+      return res.status(503).json({ error: 'Ollama connector not available' });
+    }
+
+    // Test connection first
+    const test = await global.ollamaConnector.testConnection(url);
+
+    if (!test.success) {
+      return res.status(400).json({
+        error: 'Failed to connect to node',
+        details: test.error
+      });
+    }
+
+    // Register the node
+    await global.ollamaConnector.registerNode(url);
+
+    res.json({
+      success: true,
+      message: 'Node registered successfully',
+      info: test.info,
+      models: test.modelList
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Test node connection
+app.post('/api/nodes/ollama/test', authMiddleware.authenticate(), async (req, res) => {
+  try {
+    const { url } = req.body;
+
+    if (!url) {
+      return res.status(400).json({ error: 'URL is required' });
+    }
+
+    if (!global.ollamaConnector) {
+      return res.status(503).json({ error: 'Ollama connector not available' });
+    }
+
+    const result = await global.ollamaConnector.testConnection(url);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get detailed node information (for web interface)
+app.get('/api/nodes/detailed', (req, res) => {
+  if (!global.wsService) {
+    return res.status(503).json({ error: 'Service not ready' });
+  }
+
+  const nodes = global.wsService.getNodeRegistry().getAllNodes();
+  res.json({
+    nodes: nodes,
+    totalNodes: nodes.length,
+    healthyNodes: nodes.filter(n => n.status === 'healthy').length,
+    queueLength: global.wsService.getMessageQueue().getLength()
+  });
+});
+
+// Get models information (for web interface)
+app.get('/api/models', (req, res) => {
+  if (!global.wsService) {
+    return res.status(503).json({ error: 'Service not ready' });
+  }
+
+  const nodes = global.wsService.getNodeRegistry().getAllNodes();
+
+  // Collect all unique models from all nodes
+  const allModels = new Set();
+  nodes.forEach(node => {
+    if (node.modelsLoaded && Array.isArray(node.modelsLoaded)) {
+      node.modelsLoaded.forEach(model => allModels.add(model));
+    }
+  });
+
+  res.json({
+    availableModels: Array.from(allModels),
+    workers: nodes.map(n => ({
+      id: n.id,
+      name: n.name,
+      status: n.status,
+      models: n.modelsLoaded || []
+    })),
+    totalModels: allModels.size
+  });
+});
+
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({
@@ -1210,19 +1386,60 @@ function generateMockCompletion(prompt, maxTokens, temperature) {
   };
 }
 
+// Create HTTP server
+const httpServer = http.createServer(app);
+
+// Initialize WebSocket service
+const wsService = new WebSocketService(httpServer);
+global.wsService = wsService; // Make available to routes
+
+// Initialize Inference service
+const inferenceService = new InferenceService(wsService.getNodeRegistry());
+global.inferenceService = inferenceService; // Make available to routes
+
+// Initialize Ollama Connector
+const ollamaConnector = new OllamaConnector(wsService.getNodeRegistry());
+global.ollamaConnector = ollamaConnector; // Make available to routes
+
+// Start Ollama node discovery if enabled
+if (process.env.ENABLE_OLLAMA_DISCOVERY !== 'false') {
+  ollamaConnector.start();
+
+  // Log connector events
+  ollamaConnector.on('node-registered', (data) => {
+    console.log(`✓ Ollama node registered: ${data.url} (${data.models} models)`);
+  });
+
+  ollamaConnector.on('node-unhealthy', (data) => {
+    console.warn(`⚠ Ollama node unhealthy: ${data.url}`);
+  });
+
+  ollamaConnector.on('node-error', (data) => {
+    console.error(`✗ Ollama node error: ${data.url} - ${data.error}`);
+  });
+}
+
 // Graceful shutdown
 process.on('SIGINT', () => {
   console.log('\nReceived SIGINT. Graceful shutdown...');
-  process.exit(0);
+  wsService.getNodeRegistry().stopHealthChecks();
+  httpServer.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
 });
 
 process.on('SIGTERM', () => {
   console.log('\nReceived SIGTERM. Graceful shutdown...');
-  process.exit(0);
+  wsService.getNodeRegistry().stopHealthChecks();
+  httpServer.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
 });
 
 // Start server
-const server = app.listen(PORT, '0.0.0.0', () => {
+httpServer.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Ollamamax API Server started`);
   console.log(`📍 Server: http://localhost:${PORT}`);
   console.log(`📚 Documentation: http://localhost:${PORT}/docs`);
@@ -1230,8 +1447,14 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`🔑 Authentication: http://localhost:${PORT}/auth`);
   console.log(`🤖 OpenAI API: http://localhost:${PORT}/v1`);
   console.log(`📊 Metrics: http://localhost:${PORT}/metrics`);
+  console.log(`🔌 WebSocket: ws://localhost:${PORT}/chat`);
+  console.log(`🖥️  Nodes API: http://localhost:${PORT}/api/nodes`);
   console.log('');
-  console.log('🎯 Sprint 1: Core API & Authentication - RUNNING');
+  console.log('🎯 Integrated WebSocket & Node Management - RUNNING');
+
+  if (process.env.ENABLE_MOCK_NODES === 'true') {
+    console.log(`🤖 Mock nodes enabled: ${process.env.MOCK_NODES_COUNT || 3} nodes`);
+  }
 });
 
-module.exports = { app, server };
+module.exports = { app, server: httpServer, wsService };

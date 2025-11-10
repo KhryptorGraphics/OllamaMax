@@ -1,0 +1,126 @@
+# Alertmanager Configuration for OllamaMax
+
+global:
+  resolve_timeout: 5m
+  smtp_smarthost: '${SMTP_HOST}:${SMTP_PORT}'
+  smtp_from: '${SMTP_FROM}'
+  smtp_auth_username: '${SMTP_USERNAME}'
+  smtp_auth_password: '${SMTP_PASSWORD}'
+  smtp_require_tls: true
+
+# Templates
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# Route tree
+route:
+  receiver: 'default'
+  group_by: ['alertname', 'cluster', 'service']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 12h
+  
+  routes:
+    # Critical alerts - immediate notification
+    - match:
+        severity: critical
+      receiver: 'critical'
+      group_wait: 0s
+      repeat_interval: 5m
+      continue: true
+
+    # Warning alerts - grouped notification
+    - match:
+        severity: warning
+      receiver: 'warning'
+      group_wait: 30s
+      repeat_interval: 1h
+
+    # Info alerts - daily digest
+    - match:
+        severity: info
+      receiver: 'info'
+      group_wait: 5m
+      repeat_interval: 24h
+
+# Inhibition rules
+inhibit_rules:
+  # Inhibit warning if critical is firing
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'cluster', 'service']
+
+  # Inhibit node alerts if API server is down
+  - source_match:
+      alertname: 'APIServerDown'
+    target_match_re:
+      alertname: 'Node.*'
+    equal: ['cluster']
+
+# Receivers
+receivers:
+  # Default receiver
+  - name: 'default'
+    email_configs:
+      - to: '${ALERT_EMAIL}'
+        headers:
+          Subject: '[OllamaMax] {{ .GroupLabels.alertname }}'
+        html: '{{ template "email.default.html" . }}'
+
+  # Critical alerts
+  - name: 'critical'
+    email_configs:
+      - to: '${ALERT_EMAIL_CRITICAL}'
+        headers:
+          Subject: '🚨 [CRITICAL] OllamaMax Alert: {{ .GroupLabels.alertname }}'
+        html: '{{ template "email.default.html" . }}'
+    
+    # Slack webhook (optional)
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#ollamamax-alerts'
+        title: '🚨 Critical Alert'
+        text: '{{ range .Alerts }}{{ .Annotations.summary }}\n{{ end }}'
+        color: 'danger'
+    
+    # PagerDuty (optional)
+    pagerduty_configs:
+      - service_key: '${PAGERDUTY_SERVICE_KEY}'
+        description: '{{ .GroupLabels.alertname }}'
+
+  # Warning alerts
+  - name: 'warning'
+    email_configs:
+      - to: '${ALERT_EMAIL}'
+        headers:
+          Subject: '⚠️  [WARNING] OllamaMax Alert: {{ .GroupLabels.alertname }}'
+        html: '{{ template "email.default.html" . }}'
+    
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#ollamamax-alerts'
+        title: '⚠️ Warning Alert'
+        text: '{{ range .Alerts }}{{ .Annotations.summary }}\n{{ end }}'
+        color: 'warning'
+
+  # Info alerts
+  - name: 'info'
+    email_configs:
+      - to: '${ALERT_EMAIL}'
+        headers:
+          Subject: 'ℹ️ [INFO] OllamaMax Daily Digest'
+        html: '{{ template "email.default.html" . }}'
+
+# Example environment variables needed:
+# SMTP_HOST=smtp.gmail.com
+# SMTP_PORT=587
+# SMTP_FROM=alerts@ollamamax.com
+# SMTP_USERNAME=your-email@gmail.com
+# SMTP_PASSWORD=your-app-password
+# ALERT_EMAIL=team@company.com
+# ALERT_EMAIL_CRITICAL=oncall@company.com
+# SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+# PAGERDUTY_SERVICE_KEY=your-pagerduty-key
+

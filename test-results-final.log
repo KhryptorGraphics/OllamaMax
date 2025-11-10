@@ -1,0 +1,52 @@
+
+[34m═══════════════════════════════════════════════════════════[0m
+[34m  OllamaMax Comprehensive User Flow Testing[0m
+[34m═══════════════════════════════════════════════════════════[0m
+
+[36mAPI Base URL: http://localhost:13000[0m
+
+
+[33m━━━ Test Suite 1: Health & System Endpoints ━━━[0m
+
+[36mTesting: Health endpoint[0m ... [32m✓ PASS[0m
+[36mTesting: Liveness probe[0m ... [32m✓ PASS[0m
+[36mTesting: Readiness probe[0m ... [32m✓ PASS[0m
+[36mTesting: Metrics endpoint[0m ... [32m✓ PASS[0m
+[36mTesting: Root endpoint[0m ... [32m✓ PASS[0m
+
+[33m━━━ Test Suite 2: Authentication Flow ━━━[0m
+
+[36mTesting: User registration[0m ... [31m✗ FAIL[0m
+  [31mError: Expected 201, got 400[0m
+[36mTesting: User login[0m ... [31m✗ FAIL[0m
+  [31mError: Expected 200, got 401[0m
+[36mTesting: Invalid login[0m ... [32m✓ PASS[0m
+[36mTesting: Get user profile[0m ... [31m✗ FAIL[0m
+  [31mError: Expected 200, got 401[0m
+[36mTesting: Refresh token[0m ... [32m✓ PASS[0m
+
+[33m━━━ Test Suite 3: Model Endpoints (OpenAI Compatible) ━━━[0m
+
+[36mTesting: List models[0m ... [32m✓ PASS[0m
+[36mTesting: Text completion[0m ... [31m✗ FAIL[0m
+  [31mError: Expected 200, got 401[0m
+[36mTesting: Chat completion[0m ... [31m✗ FAIL[0m
+  [31mError: Expected 200, got 401[0m
+[36mTesting: Embeddings[0m ... [31m✗ FAIL[0m
+  [31mError: Expected 200, got 401[0m
+
+[33m━━━ Test Suite 4: Documentation Endpoints ━━━[0m
+
+[36mTesting: Swagger UI[0m ... [32m✓ PASS[0m
+[36mTesting: OpenAPI specification[0m ... [32m✓ PASS[0m
+
+[34m═══════════════════════════════════════════════════════════[0m
+[34m  Test Summary[0m
+[34m═══════════════════════════════════════════════════════════[0m
+
+  Total Tests:  16
+  [32mPassed:       10[0m
+  [31mFailed:       6[0m
+  [33mSkipped:      0[0m
+  Success Rate: 62.5%
+

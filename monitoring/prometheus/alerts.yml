@@ -1,0 +1,157 @@
+# Alert Rules for OllamaMax
+
+groups:
+  - name: ollamamax_alerts
+    interval: 30s
+    rules:
+      # API Server Alerts
+      - alert: APIServerDown
+        expr: up{job="ollamamax-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "OllamaMax API server is down"
+          description: "The API server has been down for more than 1 minute."
+
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} over the last 5 minutes."
+
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High response time detected"
+          description: "95th percentile response time is {{ $value }}s."
+
+      # Node Alerts
+      - alert: NoHealthyNodes
+        expr: count(ollama_node_status{status="healthy"}) == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "No healthy Ollama nodes available"
+          description: "All Ollama nodes are unhealthy or unavailable."
+
+      - alert: NodeUnhealthy
+        expr: ollama_node_status{status!="healthy"} == 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Ollama node {{ $labels.node_id }} is unhealthy"
+          description: "Node has been unhealthy for more than 5 minutes."
+
+      - alert: HighNodeLoad
+        expr: ollama_node_load > 0.9
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High load on node {{ $labels.node_id }}"
+          description: "Node load is {{ $value | humanizePercentage }}."
+
+      # System Resource Alerts
+      - alert: HighCPUUsage
+        expr: 100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage on {{ $labels.instance }}"
+          description: "CPU usage is {{ $value | humanize }}%."
+
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}"
+          description: "Memory usage is {{ $value | humanize }}%."
+
+      - alert: DiskSpaceLow
+        expr: (1 - (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"})) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low disk space on {{ $labels.instance }}"
+          description: "Disk usage is {{ $value | humanize }}%."
+
+      # Database Alerts
+      - alert: DatabaseConnectionsHigh
+        expr: pg_stat_database_numbackends > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High number of database connections"
+          description: "Database has {{ $value }} active connections."
+
+      - alert: DatabaseSlowQueries
+        expr: rate(pg_stat_database_tup_fetched[5m]) / rate(pg_stat_database_tup_returned[5m]) < 0.1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Slow database queries detected"
+          description: "Query efficiency is low."
+
+      # Request Queue Alerts
+      - alert: HighQueueLength
+        expr: ollama_message_queue_length > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High message queue length"
+          description: "Message queue has {{ $value }} pending messages."
+
+      - alert: QueueProcessingStalled
+        expr: rate(ollama_messages_processed_total[5m]) == 0 and ollama_message_queue_length > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Message queue processing stalled"
+          description: "Queue has messages but processing rate is zero."
+
+      # Authentication Alerts
+      - alert: HighAuthFailureRate
+        expr: rate(auth_failures_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High authentication failure rate"
+          description: "{{ $value }} auth failures per second."
+
+      # Container Alerts
+      - alert: ContainerDown
+        expr: up{job="cadvisor"} == 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container monitoring is down"
+          description: "cAdvisor is not responding."
+
+      - alert: ContainerHighMemory
+        expr: container_memory_usage_bytes / container_spec_memory_limit_bytes > 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container {{ $labels.name }} high memory usage"
+          description: "Memory usage is {{ $value | humanizePercentage }}."
+

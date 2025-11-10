@@ -680,6 +680,17 @@ class DistributedLlamaClient {
         document.getElementById('loadBalancing').value = this.settings.loadBalancing;
     }
 
+    toggleDarkMode(enabled) {
+        if (enabled) {
+            document.body.classList.add('dark-mode');
+            localStorage.setItem('darkMode', 'true');
+        } else {
+            document.body.classList.remove('dark-mode');
+            localStorage.setItem('darkMode', 'false');
+        }
+        this.showToast(enabled ? 'Dark mode enabled' : 'Dark mode disabled');
+    }
+
     // UI Event Listeners
     setupEventListeners() {
         // Tab switching
@@ -779,8 +790,57 @@ class DistributedLlamaClient {
             this.resetSettings();
         });
 
+        // Dark mode toggle
+        document.getElementById('darkMode').addEventListener('change', (e) => {
+            this.toggleDarkMode(e.target.checked);
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            // Only if keyboard shortcuts are enabled
+            if (!document.getElementById('keyboardShortcuts').checked) return;
+
+            // Ctrl/Cmd + Enter to send message
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                const messageInput = document.getElementById('messageInput');
+                if (messageInput.value.trim()) {
+                    this.sendMessage(messageInput.value);
+                }
+            }
+
+            // Ctrl/Cmd + K to focus message input
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                e.preventDefault();
+                document.getElementById('messageInput').focus();
+            }
+
+            // Ctrl/Cmd + 1-4 to switch tabs
+            if ((e.ctrlKey || e.metaKey) && ['1', '2', '3', '4'].includes(e.key)) {
+                e.preventDefault();
+                const tabs = ['chat', 'nodes', 'models', 'settings'];
+                const tabIndex = parseInt(e.key) - 1;
+                const tabButton = document.querySelector(`[data-tab="${tabs[tabIndex]}"]`);
+                if (tabButton) tabButton.click();
+            }
+
+            // Escape to close modals
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.modal.active').forEach(modal => {
+                    modal.classList.remove('active');
+                });
+            }
+        });
+
         // Apply initial settings
         this.applySettings();
+
+        // Load dark mode preference
+        const darkModeEnabled = localStorage.getItem('darkMode') === 'true';
+        document.getElementById('darkMode').checked = darkModeEnabled;
+        if (darkModeEnabled) {
+            document.body.classList.add('dark-mode');
+        }
     }
 
     // Model Management

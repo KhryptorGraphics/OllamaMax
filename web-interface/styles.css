@@ -41,6 +41,54 @@
     }
 }
 
+/* Manual dark mode toggle */
+body.dark-mode {
+    --surface: var(--surface-dark);
+    --text: var(--text-dark);
+    --muted: var(--muted-dark);
+    --bg: var(--bg-dark);
+    background: var(--bg-dark);
+    color: var(--text-dark);
+}
+
+body.dark-mode .container {
+    background: var(--surface-dark);
+}
+
+body.dark-mode .tab-button {
+    color: var(--text-dark);
+}
+
+body.dark-mode .tab-button.active {
+    background: var(--primary-dark);
+}
+
+body.dark-mode .message {
+    background: #374151;
+}
+
+body.dark-mode .message.user {
+    background: var(--primary-dark);
+}
+
+body.dark-mode .node-card {
+    background: #374151;
+    border-color: #4b5563;
+}
+
+body.dark-mode .model-card {
+    background: #374151;
+    border-color: #4b5563;
+}
+
+body.dark-mode input,
+body.dark-mode select,
+body.dark-mode textarea {
+    background: #374151;
+    border-color: #4b5563;
+    color: var(--text-dark);
+}
+
 /* Modern micro-interactions */
 .tab-button {
     transition: all var(--transition-normal);
