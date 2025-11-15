@@ -20,7 +20,7 @@ const OllamaConnector = require('./services/ollama-connector');
 
 // Initialize Express app
 const app = express();
-const PORT = process.env.PORT || 13000;
+const PORT = process.env.PORT || 13100;
 
 // Security middleware
 app.use(helmet({

@@ -18,9 +18,14 @@
                     <button class="tab-button" data-tab="models" aria-label="Model management tab" role="tab" aria-selected="false">Models</button>
                     <button class="tab-button" data-tab="settings" aria-label="Settings tab" role="tab" aria-selected="false">Settings</button>
                 </div>
-                <div class="connection-status">
-                    <span class="status-indicator" id="connectionStatus"></span>
-                    <span id="connectionText">Connecting...</span>
+                <div class="header-actions">
+                    <button id="helpButton" class="icon-button help-button" title="Help & Tour" aria-label="Help and tour">
+                        ❓
+                    </button>
+                    <div class="connection-status">
+                        <span class="status-indicator" id="connectionStatus"></span>
+                        <span id="connectionText">Connecting...</span>
+                    </div>
                 </div>
             </div>
         </header>
@@ -48,15 +53,31 @@
                         <div class="status-item">
                             <span class="status-label">Queue:</span>
                             <span class="status-value" id="queueLength">0</span>
+                            <span class="status-value" id="estimatedWaitTime" style="display: none; margin-left: 0.5rem; font-size: 0.8rem; color: var(--muted);"></span>
                         </div>
                         <div class="status-item">
                             <span class="status-label">Latency:</span>
                             <span class="status-value" id="latency">-</span>
                         </div>
                         <div class="status-item">
+                            <span class="status-label">Connection:</span>
+                            <div class="connection-quality-indicator">
+                                <span class="status-indicator" id="connectionQuality"></span>
+                                <span class="status-value" id="connectionLatency">-</span>
+                                <span class="status-value" id="packetLoss" style="display: none; margin-left: 0.5rem;"></span>
+                            </div>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Throughput:</span>
+                            <span class="status-value" id="connectionThroughput">-</span>
+                        </div>
+                        <div class="status-item">
                             <span class="status-label">Model:</span>
                             <select id="modelSelector" class="model-selector">
                                 <option value="tinyllama">TinyLlama</option>
+                                <option value="llama2">Llama 2</option>
+                                <option value="mistral">Mistral</option>
+                                <option value="claude">Claude</option>
                             </select>
                         </div>
                     </div>
@@ -70,9 +91,13 @@
                             rows="3"
                         ></textarea>
                         <div class="input-controls">
-                            <button id="attachButton" class="icon-button" title="Attach file">
-                                📎
-                            </button>
+                            <div class="attachment-container">
+                                <button id="attachButton" class="icon-button" title="Attach file">
+                                    📎
+                                </button>
+                                <input type="file" id="fileInput" class="file-input" multiple accept=".txt,.pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.mp3,.wav,.py,.js,.html,.css,.json,.xml,.csv" aria-label="Choose files to attach">
+                                <div id="attachmentPreview" class="attachment-preview" aria-live="polite"></div>
+                            </div>
                             <button id="sendButton" class="send-button">
                                 Send
                             </button>
@@ -91,10 +116,40 @@
                             <div class="view-toggles">
                                 <button id="compactView" class="view-toggle active" data-view="compact">📋 Compact</button>
                                 <button id="detailedView" class="view-toggle" data-view="detailed">📊 Detailed</button>
+                                <button id="performanceView" class="view-toggle" data-view="performance">📈 Performance</button>
                             </div>
                             <div class="refresh-controls">
                                 <button id="pauseRefresh" class="control-button">⏸️ Pause</button>
                                 <button id="refreshNodes" class="refresh-button">🔄 Refresh</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Performance Dashboard -->
+                    <div class="performance-dashboard" id="performanceDashboard" style="display: none;">
+                        <div class="dashboard-grid">
+                            <!-- System Overview Chart -->
+                            <div class="chart-container">
+                                <h3>System Overview</h3>
+                                <canvas id="systemOverviewChart" width="400" height="200"></canvas>
+                            </div>
+                            
+                            <!-- Node Performance Chart -->
+                            <div class="chart-container">
+                                <h3>Node Performance</h3>
+                                <canvas id="nodePerformanceChart" width="400" height="200"></canvas>
+                            </div>
+                            
+                            <!-- Request Latency Chart -->
+                            <div class="chart-container">
+                                <h3>Request Latency</h3>
+                                <canvas id="latencyChart" width="400" height="200"></canvas>
+                            </div>
+                            
+                            <!-- Throughput Chart -->
+                            <div class="chart-container">
+                                <h3>Throughput</h3>
+                                <canvas id="throughputChart" width="400" height="200"></canvas>
                             </div>
                         </div>
                     </div>
@@ -223,7 +278,7 @@
                         <h3>API Configuration</h3>
                         <div class="setting-item">
                             <label for="apiEndpoint">API Endpoint:</label>
-                            <input type="text" id="apiEndpoint" value="ws://localhost:13000/chat">
+                            <input type="text" id="apiEndpoint" value="ws://localhost:13100/chat">
                         </div>
                         <div class="setting-item">
                             <label for="apiKey">API Key (optional):</label>
@@ -279,11 +334,54 @@
                             <select id="loadBalancing">
                                 <option value="round-robin">Round Robin</option>
                                 <option value="least-loaded">Least Loaded</option>
-                                <option value="fastest">Fastest Response</option>
+                                <option value="fastest-response">Fastest Response</option>
+                                <option value="geographic">Geographic</option>
                             </select>
                         </div>
                         <div class="setting-item">
                             <button id="addNodeButton" class="primary-button">Add New Node</button>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <h3>Help & Support</h3>
+                        <div class="setting-item">
+                            <button id="startTourButton" class="primary-button">🚀 Start Interactive Tour</button>
+                        </div>
+                        <div class="setting-item">
+                            <label for="enableTooltips">
+                                <input type="checkbox" id="enableTooltips" checked>
+                                Show tooltips and hints
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <label for="keyboardShortcutsHelp">
+                                <input type="checkbox" id="keyboardShortcutsHelp" checked>
+                                Show keyboard shortcuts help
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <details class="keyboard-shortcuts-details">
+                                <summary>📋 Keyboard Shortcuts</summary>
+                                <div class="shortcuts-list">
+                                    <div class="shortcut-item">
+                                        <kbd>Ctrl/Cmd + Enter</kbd>
+                                        <span>Send message</span>
+                                    </div>
+                                    <div class="shortcut-item">
+                                        <kbd>Ctrl/Cmd + K</kbd>
+                                        <span>Clear chat</span>
+                                    </div>
+                                    <div class="shortcut-item">
+                                        <kbd>Ctrl/Cmd + 1-4</kbd>
+                                        <span>Switch tabs</span>
+                                    </div>
+                                    <div class="shortcut-item">
+                                        <kbd>Ctrl/Cmd + Shift + P</kbd>
+                                        <span>Open model selector</span>
+                                    </div>
+                                </div>
+                            </details>
                         </div>
                     </div>
 
@@ -514,6 +612,183 @@
         </div>
     </template>
 
+    <!-- File Attachment Preview Template -->
+    <template id="attachmentPreviewTemplate">
+        <div class="attachment-item" data-file-id="${fileId}">
+            <div class="attachment-info">
+                <span class="attachment-name">${fileName}</span>
+                <span class="attachment-size">${fileSize}</span>
+            </div>
+            <div class="attachment-actions">
+                <div class="upload-progress" style="display: none;">
+                    <div class="progress-bar">
+                        <div class="progress-fill"></div>
+                    </div>
+                    <span class="progress-text">0%</span>
+                </div>
+                <button class="remove-attachment-btn" title="Remove file">🗑️</button>
+            </div>
+        </div>
+    </template>
+
+    <!-- Help Tour Modal -->
+    <div id="helpTourModal" class="modal" role="dialog" aria-labelledby="helpTourTitle" aria-modal="true">
+        <div class="modal-content">
+            <div class="tour-header">
+                <h2 id="helpTourTitle">Welcome to Distributed Llama Chat</h2>
+                <button id="closeTourBtn" class="close-button" aria-label="Close tour">×</button>
+            </div>
+            <div class="tour-content">
+                <div class="tour-step active" data-step="1">
+                    <div class="tour-image">💬</div>
+                    <h3>Chat Interface</h3>
+                    <p>Start conversations with AI models. Use the attachment button to upload files, and the model selector to choose different AI models.</p>
+                    <div class="tour-actions">
+                        <button class="tour-skip-btn">Skip Tour</button>
+                        <button class="tour-next-btn">Next</button>
+                    </div>
+                </div>
+                <div class="tour-step" data-step="2">
+                    <div class="tour-image">🌐</div>
+                    <h3>Node Dashboard</h3>
+                    <p>Monitor your distributed inference nodes. View real-time metrics, health status, and manage node configurations.</p>
+                    <div class="tour-actions">
+                        <button class="tour-prev-btn">Back</button>
+                        <button class="tour-skip-btn">Skip Tour</button>
+                        <button class="tour-next-btn">Next</button>
+                    </div>
+                </div>
+                <div class="tour-step" data-step="3">
+                    <div class="tour-image">📦</div>
+                    <h3>Model Management</h3>
+                    <p>Download new models, propagate them across nodes, and manage your model library for distributed inference.</p>
+                    <div class="tour-actions">
+                        <button class="tour-prev-btn">Back</button>
+                        <button class="tour-skip-btn">Skip Tour</button>
+                        <button class="tour-next-btn">Next</button>
+                    </div>
+                </div>
+                <div class="tour-step" data-step="4">
+                    <div class="tour-image">⚙️</div>
+                    <h3>Settings</h3>
+                    <p>Customize your experience with API configuration, appearance settings, and advanced chat options.</p>
+                    <div class="tour-actions">
+                        <button class="tour-prev-btn">Back</button>
+                        <button class="tour-complete-btn">Complete Tour</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Enhanced Settings Panel -->
+    <div class="settings-section">
+        <h3>Advanced Settings</h3>
+        <div class="setting-item">
+            <label for="systemPrompt">
+                <input type="checkbox" id="enableSystemPrompt">
+                Enable System Prompt
+            </label>
+            <div class="system-prompt-container" style="display: none;">
+                <label for="systemPromptText">System Prompt:</label>
+                <textarea id="systemPromptText" class="system-prompt-input" rows="3" placeholder="Set the behavior and context for the AI..."></textarea>
+            </div>
+        </div>
+        <div class="setting-item">
+            <label for="contextLength">Context Length:</label>
+            <input type="range" id="contextLength" min="512" max="4096" value="2048" step="512">
+            <span id="contextLengthValue">2048</span>
+        </div>
+        <div class="setting-item">
+            <label for="routingMode">Routing Mode:</label>
+            <select id="routingMode">
+                <option value="round-robin">Round Robin</option>
+                <option value="least-loaded">Least Loaded</option>
+                <option value="fastest-response">Fastest Response</option>
+                <option value="geographic">Geographic</option>
+            </select>
+        </div>
+        <div class="setting-item">
+            <label for="autoSaveChat">
+                <input type="checkbox" id="autoSaveChat" checked>
+                Auto-save chat history
+            </label>
+        </div>
+    </div>
+
+    <!-- Enhanced Status Bar -->
+    <div class="status-bar">
+        <div class="status-item">
+            <span class="status-label">Active Node:</span>
+            <span class="status-value" id="activeNode">-</span>
+            <button class="node-details-toggle" title="Show node details" aria-label="Show node details">ℹ️</button>
+        </div>
+        <div class="status-item">
+            <span class="status-label">Queue:</span>
+            <span class="status-value" id="queueLength">0</span>
+        </div>
+        <div class="status-item">
+            <span class="status-label">Latency:</span>
+            <span class="status-value" id="latency">-</span>
+        </div>
+        <div class="status-item">
+            <span class="status-label">Model:</span>
+            <select id="modelSelector" class="model-selector">
+                <option value="tinyllama">TinyLlama</option>
+                <option value="llama2">Llama 2</option>
+                <option value="codellama">CodeLlama</option>
+                <option value="mistral">Mistral</option>
+            </select>
+        </div>
+        <div class="status-item">
+            <span class="status-label">Temperature:</span>
+            <span class="status-value" id="currentTemperature">0.7</span>
+            <button class="advanced-controls-toggle" title="Advanced controls" aria-label="Show advanced controls">🔧</button>
+        </div>
+    </div>
+
+    <!-- Advanced Controls Panel -->
+    <div class="advanced-controls-panel" style="display: none;">
+        <div class="control-group">
+            <label for="advancedTemperature">Temperature:</label>
+            <input type="range" id="advancedTemperature" min="0" max="2" step="0.1" value="0.7">
+            <span id="advancedTemperatureValue">0.7</span>
+        </div>
+        <div class="control-group">
+            <label for="advancedMaxTokens">Max Tokens:</label>
+            <input type="number" id="advancedMaxTokens" min="128" max="4096" value="2048">
+        </div>
+        <div class="control-group">
+            <label for="advancedTopP">Top P:</label>
+            <input type="range" id="advancedTopP" min="0" max="1" step="0.1" value="1.0">
+            <span id="advancedTopPValue">1.0</span>
+        </div>
+        <div class="control-group">
+            <label for="advancedFrequencyPenalty">Frequency Penalty:</label>
+            <input type="range" id="advancedFrequencyPenalty" min="-2" max="2" step="0.1" value="0">
+            <span id="advancedFrequencyPenaltyValue">0</span>
+        </div>
+        <div class="control-group">
+            <label for="advancedPresencePenalty">Presence Penalty:</label>
+            <input type="range" id="advancedPresencePenalty" min="-2" max="2" step="0.1" value="0">
+            <span id="advancedPresencePenaltyValue">0</span>
+        </div>
+        <div class="control-group">
+            <label for="advancedContextLength">Context Length:</label>
+            <input type="range" id="advancedContextLength" min="512" max="32768" step="512" value="4096">
+            <span id="advancedContextLengthValue">4096</span>
+        </div>
+        <div class="control-group">
+            <label for="repetitionPenalty">Repetition Penalty:</label>
+            <input type="range" id="repetitionPenalty" min="1.0" max="2.0" step="0.1" value="1.0">
+            <span id="repetitionPenaltyValue">1.0</span>
+        </div>
+        <div class="control-actions">
+            <button id="resetAdvancedControls" class="secondary-button">Reset to Defaults</button>
+            <button id="applyAdvancedControls" class="primary-button">Apply</button>
+        </div>
+    </div>
+
     <!-- Model Card Template -->
         <div class="model-card">
             <div class="model-header">
@@ -586,8 +861,31 @@
             <p id="loadingMessage">Loading...</p>
         </div>
     </div>
-    <!-- Notification System -->
+    <!-- Enhanced Notification System -->
     <div id="notificationContainer" class="notification-container">
         <!-- Notifications will be inserted here -->
+    </div>
+    
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container">
+        <!-- Toast notifications will be inserted here -->
+    </div>
+    
+    <!-- Context Menu -->
+    <div id="contextMenu" class="context-menu" style="display: none;">
+        <ul class="context-menu-items">
+            <li class="context-menu-item" data-action="copy">📋 Copy</li>
+            <li class="context-menu-item" data-action="copy-text">📝 Copy Text</li>
+            <li class="context-menu-item" data-action="edit">✏️ Edit</li>
+            <li class="context-menu-item" data-action="delete">🗑️ Delete</li>
+            <li class="context-menu-item" data-action="translate">🌍 Translate</li>
+            <li class="context-menu-item" data-action="search">🔍 Search</li>
+        </ul>
+    </div>
+    
+    <!-- Tooltip Container -->
+    <div id="tooltipContainer" class="tooltip-container" style="display: none;">
+        <div class="tooltip-content"></div>
+        <div class="tooltip-arrow"></div>
     </div></body>
 </html>

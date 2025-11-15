@@ -31,6 +31,7 @@ type Server struct {
 	config   *config.Config
 	db       *database.DatabaseManager
 	jwtSvc   *auth.JWTService
+	authMiddleware *auth.AuthMiddleware
 	logger   *slog.Logger
 	server   *http.Server
 	websocket *WebSocketHub
@@ -46,10 +47,16 @@ type Server struct {
 // NewServer creates a new API server instance
 func NewServer(cfg *config.Config, db *database.DatabaseManager, logger *slog.Logger) (*Server, error) {
 	// Initialize JWT service
-	jwtSvc, err := auth.NewJWTService(&cfg.Auth)
+	jwtSvc, err := auth.NewJWTService(&cfg.Auth, db.Redis)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create JWT service: %w", err)
 	}
+
+	// Initialize RBAC
+	rbac := auth.NewRBAC()
+
+	// Initialize auth middleware
+	authMiddleware := auth.NewAuthMiddleware(jwtSvc, rbac)
 
 	// Initialize WebSocket hub
 	websocketHub := NewWebSocketHub(logger)
@@ -148,6 +155,7 @@ func NewServer(cfg *config.Config, db *database.DatabaseManager, logger *slog.Lo
 		config:              cfg,
 		db:                  db,
 		jwtSvc:              jwtSvc,
+		authMiddleware:      authMiddleware,
 		logger:              logger,
 		websocket:           websocketHub,
 		registry:            registry,
@@ -271,9 +279,16 @@ func (s *Server) setupRouter() *gin.Engine {
 			auth.POST("/refresh", s.refreshTokenHandler)
 		}
 
+		// Protected auth endpoints (require authentication)
+		protectedAuth := v1.Group("/auth")
+		protectedAuth.Use(s.authMiddleware.RequireAuth())
+		{
+			protectedAuth.POST("/revoke", s.revokeTokenHandler)
+		}
+
 		// Protected endpoints (require authentication)
 		protected := v1.Group("/")
-		protected.Use(auth.JWTAuthMiddleware(s.jwtSvc))
+		protected.Use(s.authMiddleware.RequireAuth())
 		{
 			// User management
 			users := protected.Group("/users")
@@ -325,8 +340,12 @@ func (s *Server) setupRouter() *gin.Engine {
 	}
 
 	// WebSocket endpoints
-	router.GET("/ws", s.websocketHandler)
-	router.GET("/ws/inference/:id", s.inferenceWebsocketHandler)
+	ws := router.Group("/ws")
+	ws.Use(s.authMiddleware.RequireAuth())
+	{
+		ws.GET("/", s.websocketHandler)
+		ws.GET("/inference/:id", s.inferenceWebsocketHandler)
+	}
 
 	// Static file serving (for admin dashboard)
 	router.Static("/static", "./web/dist")

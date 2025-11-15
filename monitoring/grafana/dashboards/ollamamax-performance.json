@@ -1,0 +1,257 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "OllamaMax v1 Performance Dashboard",
+    "tags": ["ollamamax", "performance", "v1"],
+    "style": "dark",
+    "timezone": "browser",
+    "refresh": "30s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Service Health",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "up{job=\"ollamamax-api\"}",
+            "legendFormat": "API Service",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "green", "value": 1}
+              ]
+            },
+            "mappings": [
+              {"options": {"0": {"text": "DOWN"}}, "type": "value"},
+              {"options": {"1": {"text": "UP"}}, "type": "value"}
+            ]
+          }
+        },
+        "gridPos": {"h": 4, "w": 4, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "Request Rate",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "rate(ollama_requests_total[5m])",
+            "legendFormat": "RPS",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps",
+            "color": {"mode": "palette-classic"},
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": 0},
+                {"color": "yellow", "value": 100},
+                {"color": "red", "value": 1000}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 4, "w": 4, "x": 4, "y": 0}
+      },
+      {
+        "id": 3,
+        "title": "Error Rate",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "rate(ollama_requests_failed_total[5m]) / rate(ollama_requests_total[5m]) * 100",
+            "legendFormat": "Error %",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": 0},
+                {"color": "yellow", "value": 1},
+                {"color": "red", "value": 5}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 4, "w": 4, "x": 8, "y": 0}
+      },
+      {
+        "id": 4,
+        "title": "P95 Latency",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(ollama_request_latency_seconds_bucket[5m])) * 1000",
+            "legendFormat": "P95 ms",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ms",
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": 0},
+                {"color": "yellow", "value": 500},
+                {"color": "red", "value": 2000}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 4, "w": 4, "x": 12, "y": 0}
+      },
+      {
+        "id": 5,
+        "title": "DB Pool Usage",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "ollama_db_connections_in_use / ollama_db_connections_max * 100",
+            "legendFormat": "Pool %",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": 0},
+                {"color": "yellow", "value": 70},
+                {"color": "red", "value": 90}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 4, "w": 4, "x": 16, "y": 0}
+      },
+      {
+        "id": 6,
+        "title": "Healthy Nodes",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "ollama_nodes_healthy",
+            "legendFormat": "Healthy",
+            "refId": "A"
+          },
+          {
+            "expr": "ollama_nodes_total",
+            "legendFormat": "Total",
+            "refId": "B"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "yellow", "value": 1},
+                {"color": "green", "value": 2}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 4, "w": 4, "x": 20, "y": 0}
+      },
+      {
+        "id": 7,
+        "title": "Request Rate Over Time",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(ollama_requests_total[1m])",
+            "legendFormat": "Total RPS",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(ollama_requests_successful_total[1m])",
+            "legendFormat": "Success RPS",
+            "refId": "B"
+          },
+          {
+            "expr": "rate(ollama_requests_failed_total[1m])",
+            "legendFormat": "Error RPS",
+            "refId": "C"
+          }
+        ],
+        "yAxes": [
+          {"label": "Requests/sec", "min": 0},
+          {"show": false}
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4}
+      },
+      {
+        "id": 8,
+        "title": "Response Time Percentiles",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(ollama_request_latency_seconds_bucket[5m])) * 1000",
+            "legendFormat": "P50",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(ollama_request_latency_seconds_bucket[5m])) * 1000",
+            "legendFormat": "P95",
+            "refId": "B"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(ollama_request_latency_seconds_bucket[5m])) * 1000",
+            "legendFormat": "P99",
+            "refId": "C"
+          }
+        ],
+        "yAxes": [
+          {"label": "Milliseconds", "min": 0},
+          {"show": false}
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4}
+      }
+    ],
+    "templating": {
+      "list": [
+        {
+          "name": "instance",
+          "type": "query",
+          "query": "label_values(up{job=\"ollamamax-api\"}, instance)",
+          "refresh": 1,
+          "includeAll": true,
+          "multi": true
+        }
+      ]
+    },
+    "annotations": {
+      "list": [
+        {
+          "name": "Deployments",
+          "datasource": "Prometheus",
+          "expr": "changes(up{job=\"ollamamax-api\"}[1m]) > 0",
+          "titleFormat": "Deployment",
+          "textFormat": "Service restarted"
+        }
+      ]
+    },
+    "schemaVersion": 27,
+    "version": 1
+  }
+}

@@ -1,0 +1,213 @@
+# Database Performance Configuration
+# Optimized for high-throughput production workloads (10K+ RPS)
+# Addresses ISSUE-009: Database Connection Pool Too Small
+
+database:
+  postgresql:
+    # Connection settings
+    host: "${POSTGRES_HOST:-localhost}"
+    port: "${POSTGRES_PORT:-5432}"
+    database: "${POSTGRES_DB:-ollamamax}"
+    user: "${POSTGRES_USER:-ollama}"
+    password: "${POSTGRES_PASSWORD}"
+    ssl_mode: "${POSTGRES_SSL_MODE:-prefer}"
+    
+    # Connection pool optimization (ISSUE-009 resolution)
+    connection_pool:
+      # Increased from 25 to 100 for 10K+ RPS support
+      max_open_connections: 100
+      
+      # Increased idle connections for better pool efficiency
+      max_idle_connections: 20
+      
+      # Connection lifetime to prevent stale connections
+      connection_max_lifetime: "5m"
+      
+      # Connection idle timeout
+      connection_max_idle_time: "10m"
+      
+      # Connection timeout for new connections
+      connection_timeout: "30s"
+      
+      # Query timeout
+      query_timeout: "60s"
+      
+      # Health check interval
+      health_check_interval: "30s"
+    
+    # Performance tuning
+    performance:
+      # Prepared statement cache
+      prepared_statement_cache_size: 1000
+      
+      # Connection validation
+      validate_connections: true
+      
+      # Connection retry settings
+      max_retries: 3
+      retry_delay: "1s"
+      
+      # Slow query logging threshold
+      slow_query_threshold: "1s"
+      
+      # Enable connection pooling metrics
+      enable_metrics: true
+      
+      # Connection pool monitoring
+      monitoring:
+        enabled: true
+        metrics_interval: "15s"
+        log_pool_stats: true
+        alert_on_pool_exhaustion: true
+        pool_exhaustion_threshold: 0.9  # Alert when 90% of pool is used
+
+  redis:
+    # Connection settings
+    host: "${REDIS_HOST:-localhost}"
+    port: "${REDIS_PORT:-6379}"
+    password: "${REDIS_PASSWORD}"
+    database: "${REDIS_DB:-0}"
+    
+    # Connection pool optimization
+    connection_pool:
+      # Pool size for Redis connections
+      pool_size: 20
+      
+      # Minimum idle connections
+      min_idle_connections: 5
+      
+      # Maximum idle connections
+      max_idle_connections: 10
+      
+      # Connection timeouts
+      dial_timeout: "5s"
+      read_timeout: "3s"
+      write_timeout: "3s"
+      
+      # Pool timeout
+      pool_timeout: "4s"
+      
+      # Idle timeout
+      idle_timeout: "5m"
+      
+      # Connection lifetime
+      max_connection_age: "30m"
+      
+      # Health check
+      idle_check_frequency: "1m"
+    
+    # Performance settings
+    performance:
+      # Enable pipelining
+      enable_pipelining: true
+      
+      # Pipeline buffer size
+      pipeline_buffer_size: 1000
+      
+      # Enable connection pooling metrics
+      enable_metrics: true
+      
+      # Retry settings
+      max_retries: 3
+      min_retry_backoff: "8ms"
+      max_retry_backoff: "512ms"
+
+  # Connection pooler (PgBouncer) configuration
+  pgbouncer:
+    enabled: true
+    
+    # Pool settings
+    pool_mode: "transaction"  # transaction, session, or statement
+    max_client_connections: 200
+    default_pool_size: 25
+    min_pool_size: 5
+    reserve_pool_size: 5
+    reserve_pool_timeout: "5s"
+    
+    # Server settings
+    server_lifetime: "3600s"
+    server_idle_timeout: "600s"
+    server_connect_timeout: "15s"
+    server_login_retry: 3
+    
+    # Authentication
+    auth_type: "scram-sha-256"
+    
+    # Logging
+    log_connections: true
+    log_disconnections: true
+    log_pooler_errors: true
+    stats_period: "60s"
+    
+    # Performance
+    server_reset_query: "DISCARD ALL"
+    server_check_query: "SELECT 1"
+    server_check_delay: "30s"
+
+  # Monitoring and alerting
+  monitoring:
+    enabled: true
+    
+    # Metrics collection
+    metrics:
+      enabled: true
+      interval: "15s"
+      retention: "7d"
+      
+      # Prometheus metrics
+      prometheus:
+        enabled: true
+        port: 9090
+        path: "/metrics"
+        
+        # Custom metrics
+        custom_metrics:
+          - name: "db_connection_pool_utilization"
+            type: "gauge"
+            help: "Database connection pool utilization percentage"
+          
+          - name: "db_query_duration_seconds"
+            type: "histogram"
+            help: "Database query duration in seconds"
+            buckets: [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0, 5.0]
+          
+          - name: "db_connection_errors_total"
+            type: "counter"
+            help: "Total database connection errors"
+          
+          - name: "redis_connection_pool_utilization"
+            type: "gauge"
+            help: "Redis connection pool utilization percentage"
+    
+    # Alerting thresholds
+    alerts:
+      # Connection pool alerts
+      connection_pool_utilization_warning: 0.8   # 80%
+      connection_pool_utilization_critical: 0.95  # 95%
+      
+      # Query performance alerts
+      slow_query_threshold: "1s"
+      very_slow_query_threshold: "5s"
+      
+      # Error rate alerts
+      error_rate_warning: 0.01    # 1%
+      error_rate_critical: 0.05   # 5%
+      
+      # Connection timeout alerts
+      connection_timeout_warning: "10s"
+      connection_timeout_critical: "30s"
+
+  # Load testing configuration
+  load_testing:
+    enabled: false  # Enable for load testing scenarios
+    
+    # Simulated load settings
+    target_rps: 10000
+    duration: "5m"
+    ramp_up_time: "1m"
+    
+    # Connection pool stress test
+    stress_test:
+      max_concurrent_connections: 150
+      connection_hold_time: "100ms"
+      query_complexity: "medium"  # simple, medium, complex

@@ -608,25 +608,170 @@ func (w *SyncWorker) processSyncRequest(req *SyncRequest) {
 
 // performFullSync performs a full synchronization
 func (w *SyncWorker) performFullSync(req *SyncRequest) error {
-	// TODO: Implement full sync logic
-	// This would involve:
-	// 1. Getting the complete model from peer
-	// 2. Verifying integrity
-	// 3. Replacing local model
-	// 4. Updating sync state
+	w.manager.logger.Info("starting full sync",
+		"model", req.ModelName,
+		"peer", req.PeerID)
 
-	time.Sleep(100 * time.Millisecond) // Simulate work
+	// 1. Get remote model version and metadata
+	remoteVersion, err := w.getRemoteModelVersion(req.PeerID, req.ModelName)
+	if err != nil {
+		return fmt.Errorf("failed to get remote model version: %w", err)
+	}
 
-	// Update sync state
+	// 2. Compare with local version
+	localVersion := w.getLocalModelVersion(req.ModelName)
+	if localVersion != nil && localVersion.Version == remoteVersion.Version {
+		w.manager.logger.Info("model already in sync",
+			"model", req.ModelName,
+			"version", localVersion.Version)
+		return w.updateSyncState(req.ModelName, req.PeerID, SyncStatusInSync)
+	}
+
+	// 3. Download complete model from peer
+	err = w.downloadCompleteModel(req.PeerID, req.ModelName, remoteVersion)
+	if err != nil {
+		return fmt.Errorf("failed to download complete model: %w", err)
+	}
+
+	// 4. Verify integrity
+	err = w.verifyModelIntegrity(req.ModelName, remoteVersion)
+	if err != nil {
+		return fmt.Errorf("model integrity verification failed: %w", err)
+	}
+
+	// 5. Replace local model
+	err = w.replaceLocalModel(req.ModelName, remoteVersion)
+	if err != nil {
+		return fmt.Errorf("failed to replace local model: %w", err)
+	}
+
+	// 6. Update sync state
+	err = w.updateSyncState(req.ModelName, req.PeerID, SyncStatusInSync)
+	if err != nil {
+		return fmt.Errorf("failed to update sync state: %w", err)
+	}
+
+	w.manager.logger.Info("full sync completed successfully",
+		"model", req.ModelName,
+		"peer", req.PeerID,
+		"version", remoteVersion.Version)
+
+	return nil
+}
+
+// getRemoteModelVersion gets the model version from a remote peer
+func (w *SyncWorker) getRemoteModelVersion(peerID, modelName string) (*ModelVersion, error) {
+	// Use P2P messaging to request model version
+	if w.manager.p2p == nil {
+		return nil, fmt.Errorf("P2P node not available")
+	}
+
+	// Create version request message
+	versionReq := map[string]interface{}{
+		"type":       "model_version_request",
+		"model_name": modelName,
+		"timestamp":  time.Now().Unix(),
+	}
+
+	// Send request and wait for response
+	response, err := w.manager.p2p.SendRequestWithResponse(peerID, versionReq, 30*time.Second)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get version from peer: %w", err)
+	}
+
+	// Parse response
+	if response["type"] != "model_version_response" {
+		return nil, fmt.Errorf("invalid response type: %v", response["type"])
+	}
+
+	version := &ModelVersion{
+		ModelName: modelName,
+		Version:   response["version"].(string),
+		Checksum:  response["checksum"].(string),
+		Size:      int64(response["size"].(float64)),
+		UpdatedAt: time.Now(),
+	}
+
+	return version, nil
+}
+
+// getLocalModelVersion gets the local model version
+func (w *SyncWorker) getLocalModelVersion(modelName string) *ModelVersion {
+	w.manager.versionMutex.RLock()
+	defer w.manager.versionMutex.RUnlock()
+
+	return w.manager.modelVersions[modelName]
+}
+
+// downloadCompleteModel downloads the complete model from a peer
+func (w *SyncWorker) downloadCompleteModel(peerID, modelName string, version *ModelVersion) error {
+	// Use the manager's download functionality
+	_, err := w.manager.manager.DownloadModel(modelName, peerID)
+	return err
+}
+
+// verifyModelIntegrity verifies the integrity of a downloaded model
+func (w *SyncWorker) verifyModelIntegrity(modelName string, expectedVersion *ModelVersion) error {
+	model, err := w.manager.manager.GetModel(modelName)
+	if err != nil {
+		return fmt.Errorf("failed to get model for verification: %w", err)
+	}
+
+	// Verify checksum
+	if model.Checksum != expectedVersion.Checksum {
+		return fmt.Errorf("checksum mismatch: expected %s, got %s",
+			expectedVersion.Checksum, model.Checksum)
+	}
+
+	// Verify size
+	if model.Size != expectedVersion.Size {
+		return fmt.Errorf("size mismatch: expected %d, got %d",
+			expectedVersion.Size, model.Size)
+	}
+
+	return nil
+}
+
+// replaceLocalModel replaces the local model with the downloaded version
+func (w *SyncWorker) replaceLocalModel(modelName string, version *ModelVersion) error {
+	// Update local version tracking
+	w.manager.versionMutex.Lock()
+	w.manager.modelVersions[modelName] = version
+	w.manager.versionMutex.Unlock()
+
+	w.manager.logger.Info("local model replaced",
+		"model", modelName,
+		"version", version.Version)
+
+	return nil
+}
+
+// updateSyncState updates the synchronization state
+func (w *SyncWorker) updateSyncState(modelName, peerID string, status SyncStatus) error {
 	w.manager.syncMutex.Lock()
-	if state, exists := w.manager.syncStates[req.ModelName]; exists {
-		state.Status = SyncStatusInSync
+	defer w.manager.syncMutex.Unlock()
+
+	state, exists := w.manager.syncStates[modelName]
+	if !exists {
+		state = &SyncState{
+			ModelName:      modelName,
+			Status:         status,
+			LastSyncTime:   time.Now(),
+			RemoteVersions: make(map[string]string),
+			SyncAttempts:   1,
+		}
+		w.manager.syncStates[modelName] = state
+	} else {
+		state.Status = status
 		state.LastSyncTime = time.Now()
-		if req.PeerID != "" {
-			state.RemoteVersions[req.PeerID] = "1.0.0"
+		state.SyncAttempts++
+	}
+
+	if peerID != "" {
+		if version := w.getLocalModelVersion(modelName); version != nil {
+			state.RemoteVersions[peerID] = version.Version
 		}
 	}
-	w.manager.syncMutex.Unlock()
 
 	return nil
 }

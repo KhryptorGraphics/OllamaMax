@@ -67,6 +67,7 @@ func (am *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 		// Store claims in context for use in handlers
 		c.Set("claims", claims)
 		c.Set("user", user)
+		c.Set("token", token)
 		c.Next()
 	}
 }

@@ -3,6 +3,7 @@ package discovery
 import (
 	"context"
 	"log"
+	"math"
 	"sync"
 	"time"
 
@@ -40,6 +41,13 @@ type OptimizedConnectionInfo struct {
 	RTT         time.Duration
 	SuccessRate float64
 	Priority    int
+
+	// Resource metrics for utility scoring
+	EffectiveFLOPs    float64 // Effective FLOPs based on processing speed
+	AvailableMemory   uint64  // Available memory in bytes
+	ActiveTasks       int     // Number of active tasks
+	QueueSize         int     // Task queue size
+	EstimatedCongestion float64 // Estimated network congestion
 
 	// Connection state
 	IsConnecting     bool
@@ -230,43 +238,82 @@ func (o *OptimizedBootstrapDiscovery) selectOptimalPeers(peers []peer.AddrInfo) 
 		return peers
 	}
 
-	// Sort by priority/performance
-	peerPriorities := make(map[peer.ID]float64)
+	// Sort by priority/performance using utility scoring
+	peerScores := make(map[peer.ID]float64)
 
 	o.connectionsMux.RLock()
 	for _, peer := range peers {
-		priority := 1.0 // Base priority
+		score := 1.0 // Base score
 
 		if connInfo, exists := o.connections[peer.ID]; exists {
-			// Boost priority for successful peers
-			priority += connInfo.SuccessRate
+			// Calculate utility score: U = (effective_FLOPs × available_memory) / (latency_penalty × estimated_congestion)
+			// For backward compatibility, we'll use a simplified version based on existing metrics
 
-			// Penalize high RTT
-			if connInfo.RTT > o.config.RTTThreshold {
-				priority *= 0.5
+			// Numerator: effective processing power (simplified as success rate + RTT factor)
+			numerator := connInfo.SuccessRate
+			if connInfo.EffectiveFLOPs > 0 {
+				// Incorporate FLOPs if available
+				numerator += connInfo.EffectiveFLOPs / 1e9 // Normalize to GFLOPs
+			}
+
+			// Add memory factor if available
+			if connInfo.AvailableMemory > 0 {
+				// Normalize memory to GB and add to score
+				memoryGB := float64(connInfo.AvailableMemory) / (1024 * 1024 * 1024)
+				numerator += memoryGB / 10.0 // Scale down memory contribution
+			}
+
+			// Denominator: latency penalty and congestion
+			latencyPenalty := 1.0
+			if connInfo.RTT > 0 {
+				// Convert RTT to seconds and apply penalty
+				rttSeconds := float64(connInfo.RTT.Seconds())
+				latencyPenalty = math.Pow(rttSeconds*10, 1.5) // Exponential penalty
+				if latencyPenalty < 1.0 {
+					latencyPenalty = 1.0
+				}
+			}
+
+			congestionFactor := connInfo.EstimatedCongestion
+			if congestionFactor <= 0 {
+				congestionFactor = 1.0
+			}
+
+			denominator := latencyPenalty * congestionFactor
+
+			// Calculate final utility score
+			if denominator > 0 {
+				score = numerator / denominator
+			} else {
+				score = numerator
 			}
 
 			// Penalize recent failures
 			if connInfo.Failures > o.config.MaxFailuresBeforeBackoff {
-				priority *= 0.2
+				score *= 0.2
+			}
+
+			// Apply RTT threshold penalty
+			if connInfo.RTT > o.config.RTTThreshold {
+				score *= 0.5
 			}
 		}
 
-		peerPriorities[peer.ID] = priority
+		peerScores[peer.ID] = score
 	}
 	o.connectionsMux.RUnlock()
 
-	// Select top peers
+	// Select top peers based on utility scores
 	selected := make([]peer.AddrInfo, 0, o.config.ParallelAttempts)
 	for i := 0; i < o.config.ParallelAttempts && i < len(peers); i++ {
 		bestPeer := peers[0]
-		bestPriority := peerPriorities[bestPeer.ID]
+		bestScore := peerScores[bestPeer.ID]
 		bestIndex := 0
 
 		for j, peer := range peers {
-			if peerPriorities[peer.ID] > bestPriority {
+			if peerScores[peer.ID] > bestScore {
 				bestPeer = peer
-				bestPriority = peerPriorities[peer.ID]
+				bestScore = peerScores[peer.ID]
 				bestIndex = j
 			}
 		}

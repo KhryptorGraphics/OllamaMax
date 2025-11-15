@@ -12,13 +12,27 @@ class DistributedLlamaClient {
         this.messages = [];
         this.settings = this.loadSettings();
         this.reconnectAttempts = 0;
-        this.maxReconnectAttempts = 5;
+        this.maxReconnectAttempts = 10;
         this.reconnectDelay = 1000;
+        this.maxReconnectDelay = 30000;
         this.streamingMessage = null;
+        this.connectionQuality = {
+            latency: 0,
+            packetLoss: 0,
+            lastPing: null,
+            pingInterval: null
+        };
+        this.endpoints = [
+            this.settings.apiEndpoint || 'ws://localhost:13100/chat',
+            'ws://localhost:13101/chat',
+            'ws://localhost:13102/chat'
+        ];
+        this.currentEndpointIndex = 0;
         this.performanceData = {
             latency: [],
             throughput: [],
-            memoryUsage: []
+            memoryUsage: [],
+            connectionHistory: []
         };
         
         this.init();
@@ -29,55 +43,355 @@ class DistributedLlamaClient {
         this.connect();
         this.loadNodes();
         this.startPerformanceMonitoring();
+        this.initializeHelpTour();
+        this.setupAdvancedControls();
+        this.initializePerformanceDashboard();
+        this.setupViewToggles();
     }
 
     // WebSocket Connection Management
+    // Enhanced WebSocket Connection Management
     connect() {
-        const endpoint = this.settings.apiEndpoint || 'ws://localhost:13000/chat';
+        const endpoint = this.getCurrentEndpoint();
         this.updateConnectionStatus('connecting');
+        
+        console.log(`Attempting to connect to ${endpoint} (Attempt ${this.reconnectAttempts + 1})`);
+        this.addToConnectionHistory('connect_attempt', endpoint);
         
         try {
             this.ws = new WebSocket(endpoint);
             
+            // Set connection timeout
+            const connectionTimeout = setTimeout(() => {
+                if (this.ws.readyState === WebSocket.CONNECTING) {
+                    console.warn('WebSocket connection timeout');
+                    this.ws.close();
+                    this.handleConnectionFailure('timeout');
+                }
+            }, 10000); // 10 second connection timeout
+            
             this.ws.onopen = () => {
-                console.log('WebSocket connected');
+                clearTimeout(connectionTimeout);
+                console.log('WebSocket connected successfully');
                 this.updateConnectionStatus('connected');
                 this.reconnectAttempts = 0;
+                this.currentEndpointIndex = this.endpoints.indexOf(endpoint);
+                this.addToConnectionHistory('connected', endpoint);
+                this.startConnectionMonitoring();
                 this.processMessageQueue();
+                this.sendQueuedMessages();
             };
             
             this.ws.onmessage = (event) => {
-                this.handleMessage(JSON.parse(event.data));
+                try {
+                    const data = JSON.parse(event.data);
+                    this.recordMessageReceived();
+                    this.handleMessage(data);
+                } catch (error) {
+                    console.error('Failed to parse WebSocket message:', error);
+                }
             };
             
             this.ws.onerror = (error) => {
+                clearTimeout(connectionTimeout);
                 console.error('WebSocket error:', error);
+                this.addToConnectionHistory('error', endpoint, error);
                 this.updateConnectionStatus('error');
             };
             
-            this.ws.onclose = () => {
-                console.log('WebSocket disconnected');
+            this.ws.onclose = (event) => {
+                clearTimeout(connectionTimeout);
+                console.log('WebSocket disconnected:', event.code, event.reason);
+                this.addToConnectionHistory('disconnected', endpoint, {
+                    code: event.code,
+                    reason: event.reason,
+                    wasClean: event.wasClean
+                });
+                this.stopConnectionMonitoring();
                 this.updateConnectionStatus('disconnected');
-                this.attemptReconnect();
+                this.handleDisconnection(event);
             };
         } catch (error) {
             console.error('Failed to create WebSocket:', error);
+            this.addToConnectionHistory('creation_failed', endpoint, error);
             this.updateConnectionStatus('error');
+            this.handleConnectionFailure('creation_error');
         }
+    }
+
+    getCurrentEndpoint() {
+        return this.endpoints[this.currentEndpointIndex % this.endpoints.length];
+    }
+
+    getNextEndpoint() {
+        this.currentEndpointIndex = (this.currentEndpointIndex + 1) % this.endpoints.length;
+        return this.getCurrentEndpoint();
+    }
+
+    addToConnectionHistory(eventType, endpoint, details = null) {
+        const entry = {
+            timestamp: new Date().toISOString(),
+            event: eventType,
+            endpoint: endpoint,
+            details: details,
+            attempt: this.reconnectAttempts + 1
+        };
+        
+        this.performanceData.connectionHistory.push(entry);
+        
+        // Keep only last 50 entries
+        if (this.performanceData.connectionHistory.length > 50) {
+            this.performanceData.connectionHistory.shift();
+        }
+        
+        // Update UI with connection history
+        this.updateConnectionHistoryDisplay();
+    }
+
+    updateConnectionHistoryDisplay() {
+        const history = this.performanceData.connectionHistory;
+        const recentAttempts = history.filter(entry => 
+            entry.event === 'connect_attempt' && 
+            new Date() - new Date(entry.timestamp) < 300000 // Last 5 minutes
+        );
+        
+        const failedAttempts = recentAttempts.filter(entry => 
+            history.some(h => h.event === 'disconnected' && h.timestamp > entry.timestamp)
+        ).length;
+        
+        if (failedAttempts > 0) {
+            document.getElementById('connectionText').textContent = `Failed attempts: ${failedAttempts}`;
+        }
+    }
+
+    handleConnectionFailure(reason) {
+        this.updateConnectionStatus('error');
+        
+        if (this.reconnectAttempts < this.maxReconnectAttempts) {
+            this.reconnectAttempts++;
+            const delay = Math.min(
+                this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1),
+                this.maxReconnectDelay
+            );
+            
+            console.log(`Connection failed (${reason}), retrying in ${delay}ms...`);
+            document.getElementById('connectionText').textContent = `Retrying in ${Math.ceil(delay/1000)}s...`;
+            
+            setTimeout(() => {
+                // Try next endpoint on failure
+                if (reason === 'timeout' || reason === 'error') {
+                    this.getNextEndpoint();
+                }
+                this.connect();
+            }, delay);
+        } else {
+            this.updateConnectionStatus('error');
+            document.getElementById('connectionText').textContent = 'Max retries exceeded';
+            this.showConnectionErrorModal();
+        }
+    }
+
+    handleDisconnection(event) {
+        if (event.code === 1000) {
+            // Normal closure
+            return;
+        }
+        
+        // Check if we should attempt reconnection
+        if (this.shouldAttemptReconnect(event)) {
+            this.attemptReconnect();
+        } else {
+            this.updateConnectionStatus('error');
+            this.showConnectionErrorModal();
+        }
+    }
+
+    shouldAttemptReconnect(event) {
+        // Don't reconnect for certain error codes
+        const noReconnectCodes = [1002, 1003, 1007, 1008, 1009, 1011];
+        return !noReconnectCodes.includes(event.code) && 
+               this.reconnectAttempts < this.maxReconnectAttempts;
     }
 
     attemptReconnect() {
         if (this.reconnectAttempts < this.maxReconnectAttempts) {
             this.reconnectAttempts++;
-            const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
+            const delay = Math.min(
+                this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1),
+                this.maxReconnectDelay
+            );
             
-            console.log(`Reconnecting in ${delay}ms... (Attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+            console.log(`Attempting reconnection in ${delay}ms... (Attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
             document.getElementById('connectionText').textContent = `Reconnecting... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`;
+            
+            // Try next endpoint
+            this.getNextEndpoint();
             
             setTimeout(() => this.connect(), delay);
         } else {
             this.updateConnectionStatus('error');
             document.getElementById('connectionText').textContent = 'Connection failed';
+            this.showConnectionErrorModal();
+        }
+    }
+
+    // Connection Quality Monitoring
+    startConnectionMonitoring() {
+        this.stopConnectionMonitoring(); // Clear any existing interval
+        
+        this.connectionQuality.pingInterval = setInterval(() => {
+            this.sendPing();
+        }, 30000); // Ping every 30 seconds
+        
+        // Start throughput monitoring
+        this.startThroughputMonitoring();
+    }
+
+    stopConnectionMonitoring() {
+        if (this.connectionQuality.pingInterval) {
+            clearInterval(this.connectionQuality.pingInterval);
+            this.connectionQuality.pingInterval = null;
+        }
+        this.stopThroughputMonitoring();
+    }
+
+    sendPing() {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.connectionQuality.lastPing = Date.now();
+            this.sendMessage({
+                type: 'ping',
+                timestamp: this.connectionQuality.lastPing
+            });
+        }
+    }
+
+    recordPong(timestamp) {
+        if (this.connectionQuality.lastPing) {
+            const latency = Date.now() - this.connectionQuality.lastPing;
+            this.connectionQuality.latency = latency;
+            
+            // Update latency display
+            const latencyElement = document.getElementById('connectionLatency');
+            if (latencyElement) {
+                latencyElement.textContent = `${latency}ms`;
+                latencyElement.className = `latency ${latency > 200 ? 'high' : latency > 100 ? 'medium' : 'low'}`;
+            }
+            
+            // Add to performance data
+            this.performanceData.latency.push({
+                timestamp: Date.now(),
+                latency: latency
+            });
+            
+            // Keep only last 100 measurements
+            if (this.performanceData.latency.length > 100) {
+                this.performanceData.latency.shift();
+            }
+        }
+    }
+
+    recordMessageReceived() {
+        const now = Date.now();
+        if (!this.connectionQuality.lastMessageTime) {
+            this.connectionQuality.lastMessageTime = now;
+            return;
+        }
+        
+        const timeSinceLastMessage = now - this.connectionQuality.lastMessageTime;
+        this.connectionQuality.lastMessageTime = now;
+        
+        // Calculate throughput (messages per second)
+        const throughput = 1000 / Math.max(timeSinceLastMessage, 1);
+        this.performanceData.throughput.push({
+            timestamp: now,
+            throughput: throughput
+        });
+        
+        // Keep only last 100 measurements
+        if (this.performanceData.throughput.length > 100) {
+            this.performanceData.throughput.shift();
+        }
+    }
+
+    startThroughputMonitoring() {
+        this.throughputInterval = setInterval(() => {
+            // Calculate average throughput over last minute
+            const now = Date.now();
+            const oneMinuteAgo = now - 60000;
+            const recentData = this.performanceData.throughput.filter(
+                data => data.timestamp > oneMinuteAgo
+            );
+            
+            if (recentData.length > 0) {
+                const avgThroughput = recentData.reduce((sum, data) => sum + data.throughput, 0) / recentData.length;
+                
+                // Update throughput display
+                const throughputElement = document.getElementById('connectionThroughput');
+                if (throughputElement) {
+                    throughputElement.textContent = `${avgThroughput.toFixed(1)} msg/s`;
+                }
+            }
+        }, 5000); // Update every 5 seconds
+    }
+
+    stopThroughputMonitoring() {
+        if (this.throughputInterval) {
+            clearInterval(this.throughputInterval);
+            this.throughputInterval = null;
+        }
+    }
+
+    showConnectionErrorModal() {
+        const modal = document.createElement('div');
+        modal.className = 'modal connection-error-modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <h3>Connection Error</h3>
+                <p>Unable to connect to the server. Please check your connection and try again.</p>
+                <div class="modal-actions">
+                    <button class="btn btn-primary" onclick="window.llamaClient.retryConnection()">Retry</button>
+                    <button class="btn btn-secondary" onclick="window.llamaClient.dismissConnectionError()">Cancel</button>
+                </div>
+                <div class="connection-info">
+                    <p><strong>Connection History:</strong></p>
+                    <div id="connectionHistoryList">
+                        ${this.performanceData.connectionHistory.slice(-10).map(entry => 
+                            `<div class="history-entry">
+                                <span class="timestamp">${new Date(entry.timestamp).toLocaleTimeString()}</span>
+                                <span class="event">${entry.event}</span>
+                                <span class="endpoint">${entry.endpoint}</span>
+                            </div>`
+                        ).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Add dismiss on escape key
+        const handleEscape = (e) => {
+            if (e.key === 'Escape') {
+                this.dismissConnectionError();
+                document.removeEventListener('keydown', handleEscape);
+            }
+        };
+        document.addEventListener('keydown', handleEscape);
+    }
+
+    retryConnection() {
+        const modal = document.querySelector('.connection-error-modal');
+        if (modal) {
+            modal.remove();
+        }
+        this.reconnectAttempts = 0;
+        this.connect();
+    }
+
+    dismissConnectionError() {
+        const modal = document.querySelector('.connection-error-modal');
+        if (modal) {
+            modal.remove();
         }
     }
 
@@ -93,6 +407,7 @@ class DistributedLlamaClient {
                 text.textContent = 'Connected';
                 break;
             case 'connecting':
+                indicator.classList.add('connecting');
                 text.textContent = 'Connecting...';
                 break;
             case 'error':
@@ -103,6 +418,80 @@ class DistributedLlamaClient {
                 indicator.classList.add('error');
                 text.textContent = 'Disconnected';
                 break;
+            case 'reconnecting':
+                indicator.classList.add('reconnecting');
+                text.textContent = 'Reconnecting...';
+                break;
+        }
+        
+        // Update connection status in UI
+        this.updateConnectionStatusDisplay(status);
+    }
+
+    updateConnectionStatusDisplay(status) {
+        // Update additional status displays
+        const statusElements = document.querySelectorAll('[data-status-display]');
+        statusElements.forEach(element => {
+            element.textContent = status;
+            element.className = `status-display ${status}`;
+        });
+        
+        // Update connection quality indicators
+        if (status === 'connected') {
+            this.recordConnectionQuality();
+        }
+    }
+
+    recordConnectionQuality() {
+        const quality = {
+            timestamp: Date.now(),
+            latency: this.connectionQuality.latency,
+            status: 'connected'
+        };
+        
+        this.performanceData.connectionQuality = quality;
+        
+        // Update quality indicator
+        const qualityElement = document.getElementById('connectionQuality');
+        if (qualityElement) {
+            const qualityLevel = this.getConnectionQualityLevel(quality.latency);
+            qualityElement.className = `connection-quality ${qualityLevel}`;
+            qualityElement.title = `Connection quality: ${qualityLevel} (${quality.latency}ms)`;
+        }
+    }
+
+    getConnectionQualityLevel(latency) {
+        if (latency < 50) return 'excellent';
+        if (latency < 100) return 'good';
+        if (latency < 200) return 'fair';
+        return 'poor';
+    }
+
+    // Enhanced message queue handling
+    sendQueuedMessages() {
+        if (this.messageQueue.length > 0) {
+            console.log(`Sending ${this.messageQueue.length} queued messages`);
+            this.messageQueue.forEach(message => {
+                this.sendMessage(message);
+            });
+            this.messageQueue = [];
+        }
+    }
+
+    sendMessage(data) {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            try {
+                this.ws.send(JSON.stringify(data));
+                return true;
+            } catch (error) {
+                console.error('Failed to send message:', error);
+                return false;
+            }
+        } else {
+            // Queue message for later delivery
+            this.messageQueue.push(data);
+            console.log('Message queued for later delivery');
+            return false;
         }
     }
 
@@ -126,6 +515,20 @@ class DistributedLlamaClient {
             case 'metrics':
                 this.handleMetrics(data);
                 break;
+            case 'pong':
+                this.recordPong(data.timestamp);
+                break;
+            case 'connection_quality':
+                this.updateConnectionQuality(data);
+                break;
+            case 'system_status':
+                this.handleSystemStatus(data);
+                break;
+            case 'queue_update':
+                this.updateQueueStatus(data);
+                break;
+            default:
+                console.warn('Unknown message type:', data.type);
         }
     }
 
@@ -325,6 +728,623 @@ class DistributedLlamaClient {
 
     retryMessage(content) {
         this.sendMessage(content);
+    }
+
+    // Setup view toggles for nodes dashboard
+    setupViewToggles() {
+        const viewToggles = document.querySelectorAll('.view-toggle');
+        const performanceDashboard = document.getElementById('performanceDashboard');
+        const enhancedNodesContainer = document.getElementById('enhancedNodesContainer');
+        
+        viewToggles.forEach(toggle => {
+            toggle.addEventListener('click', () => {
+                const view = toggle.dataset.view;
+                
+                // Remove active class from all toggles
+                viewToggles.forEach(t => t.classList.remove('active'));
+                
+                // Add active class to clicked toggle
+                toggle.classList.add('active');
+                
+                // Show/hide appropriate content
+                switch(view) {
+                    case 'compact':
+                        performanceDashboard.style.display = 'none';
+                        enhancedNodesContainer.style.display = 'grid';
+                        break;
+                    case 'detailed':
+                        performanceDashboard.style.display = 'none';
+                        enhancedNodesContainer.style.display = 'grid';
+                        break;
+                    case 'performance':
+                        performanceDashboard.style.display = 'block';
+                        enhancedNodesContainer.style.display = 'none';
+                        this.updatePerformanceCharts();
+                        break;
+                }
+            });
+        });
+    }
+    
+    // Initialize performance dashboard with Chart.js
+    initializePerformanceDashboard() {
+        this.charts = {};
+        
+        // Check if Chart.js is available
+        if (typeof Chart !== 'undefined' && typeof Chart.Chart !== 'undefined') {
+            this.createCharts();
+            this.startChartUpdates();
+        } else {
+            console.warn('Chart.js not loaded, performance dashboard disabled');
+            // Hide performance view toggle if Chart.js is not available
+            const performanceToggle = document.querySelector('[data-view="performance"]');
+            if (performanceToggle) {
+                performanceToggle.style.display = 'none';
+            }
+        }
+    }
+    
+    createCharts() {
+        const chartOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top'
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: 'white',
+                    bodyColor: 'white',
+                    borderColor: 'rgba(255, 255, 255, 0.1)',
+                    borderWidth: 1
+                }
+            },
+            scales: {
+                x: {
+                    display: true,
+                    type: 'time',
+                    time: {
+                        displayFormats: {
+                            minute: 'HH:mm',
+                            hour: 'HH:mm'
+                        }
+                    }
+                },
+                y: {
+                    display: true
+                }
+            }
+        };
+        
+        // System Overview Chart
+        const systemCtx = document.getElementById('systemOverviewChart');
+        if (systemCtx) {
+            this.charts.system = new Chart(systemCtx, {
+                type: 'line',
+                data: {
+                    datasets: [
+                        {
+                            label: 'CPU Usage (%)',
+                            borderColor: '#ed8936',
+                            backgroundColor: 'rgba(237, 137, 54, 0.1)',
+                            data: [],
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Memory Usage (%)',
+                            borderColor: '#4299e1',
+                            backgroundColor: 'rgba(66, 153, 225, 0.1)',
+                            data: [],
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Active Nodes',
+                            borderColor: '#48bb78',
+                            backgroundColor: 'rgba(72, 187, 120, 0.1)',
+                            data: [],
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    ...chartOptions,
+                    plugins: {
+                        ...chartOptions.plugins,
+                        legend: {
+                            ...chartOptions.plugins.legend,
+                            labels: {
+                                color: '#2d3748'
+                            }
+                        }
+                    },
+                    scales: {
+                        ...chartOptions.scales,
+                        y: {
+                            ...chartOptions.scales.y,
+                            min: 0,
+                            max: 100,
+                            ticks: {
+                                color: '#718096'
+                            }
+                        },
+                        x: {
+                            ...chartOptions.scales.x,
+                            ticks: {
+                                color: '#718096'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Node Performance Chart
+        const nodeCtx = document.getElementById('nodePerformanceChart');
+        if (nodeCtx) {
+            this.charts.node = new Chart(nodeCtx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Requests/sec',
+                            backgroundColor: 'rgba(72, 187, 120, 0.8)',
+                            borderColor: '#48bb78',
+                            data: []
+                        },
+                        {
+                            label: 'Queue Length',
+                            backgroundColor: 'rgba(237, 137, 54, 0.8)',
+                            borderColor: '#ed8936',
+                            data: []
+                        }
+                    ]
+                },
+                options: {
+                    ...chartOptions,
+                    plugins: {
+                        ...chartOptions.plugins,
+                        legend: {
+                            ...chartOptions.plugins.legend,
+                            labels: {
+                                color: '#2d3748'
+                            }
+                        }
+                    },
+                    scales: {
+                        ...chartOptions.scales,
+                        y: {
+                            ...chartOptions.scales.y,
+                            ticks: {
+                                color: '#718096'
+                            }
+                        },
+                        x: {
+                            ...chartOptions.scales.x,
+                            ticks: {
+                                color: '#718096'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Latency Chart
+        const latencyCtx = document.getElementById('latencyChart');
+        if (latencyCtx) {
+            this.charts.latency = new Chart(latencyCtx, {
+                type: 'line',
+                data: {
+                    datasets: [
+                        {
+                            label: 'Average Latency (ms)',
+                            borderColor: '#e53e3e',
+                            backgroundColor: 'rgba(229, 62, 62, 0.1)',
+                            data: [],
+                            tension: 0.4
+                        },
+                        {
+                            label: '95th Percentile (ms)',
+                            borderColor: '#dd6b20',
+                            backgroundColor: 'rgba(221, 107, 32, 0.1)',
+                            data: [],
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    ...chartOptions,
+                    plugins: {
+                        ...chartOptions.plugins,
+                        legend: {
+                            ...chartOptions.plugins.legend,
+                            labels: {
+                                color: '#2d3748'
+                            }
+                        }
+                    },
+                    scales: {
+                        ...chartOptions.scales,
+                        y: {
+                            ...chartOptions.scales.y,
+                            ticks: {
+                                color: '#718096'
+                            }
+                        },
+                        x: {
+                            ...chartOptions.scales.x,
+                            ticks: {
+                                color: '#718096'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Throughput Chart
+        const throughputCtx = document.getElementById('throughputChart');
+        if (throughputCtx) {
+            this.charts.throughput = new Chart(throughputCtx, {
+                type: 'line',
+                data: {
+                    datasets: [
+                        {
+                            label: 'Requests/min',
+                            borderColor: '#667eea',
+                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                            data: [],
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Tokens/min',
+                            borderColor: '#764ba2',
+                            backgroundColor: 'rgba(118, 75, 162, 0.1)',
+                            data: [],
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    ...chartOptions,
+                    plugins: {
+                        ...chartOptions.plugins,
+                        legend: {
+                            ...chartOptions.plugins.legend,
+                            labels: {
+                                color: '#2d3748'
+                            }
+                        }
+                    },
+                    scales: {
+                        ...chartOptions.scales,
+                        y: {
+                            ...chartOptions.scales.y,
+                            ticks: {
+                                color: '#718096'
+                            }
+                        },
+                        x: {
+                            ...chartOptions.scales.x,
+                            ticks: {
+                                color: '#718096'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
+    
+    startChartUpdates() {
+        // Update charts every 30 seconds
+        this.chartUpdateInterval = setInterval(() => {
+            this.updatePerformanceCharts();
+        }, 30000);
+    }
+    
+    updatePerformanceCharts() {
+        if (!this.charts.system) return;
+        
+        const now = new Date();
+        
+        // Update system overview chart
+        this.updateSystemChart(now);
+        
+        // Update node performance chart
+        this.updateNodeChart();
+        
+        // Update latency chart
+        this.updateLatencyChart(now);
+        
+        // Update throughput chart
+        this.updateThroughputChart(now);
+    }
+    
+    updateSystemChart(now) {
+        if (!this.charts.system) return;
+        
+        // Add current data point
+        const systemData = this.getSystemOverviewData();
+        
+        this.charts.system.data.datasets[0].data.push({
+            x: now,
+            y: systemData.cpuAvg
+        });
+        
+        this.charts.system.data.datasets[1].data.push({
+            x: now,
+            y: systemData.memoryAvg
+        });
+        
+        this.charts.system.data.datasets[2].data.push({
+            x: now,
+            y: systemData.activeNodes
+        });
+        
+        // Keep only last 50 data points
+        if (this.charts.system.data.datasets[0].data.length > 50) {
+            this.charts.system.data.datasets.forEach(dataset => {
+                dataset.data.shift();
+            });
+        }
+        
+        this.charts.system.update('none');
+    }
+    
+    updateNodeChart() {
+        if (!this.charts.node) return;
+        
+        const healthyNodes = this.nodes.filter(node => node.status === 'healthy');
+        
+        // Update labels and data
+        this.charts.node.data.labels = healthyNodes.map(node => node.name);
+        this.charts.node.data.datasets[0].data = healthyNodes.map(node => node.requestsPerSecond || 0);
+        this.charts.node.data.datasets[1].data = healthyNodes.map(node => node.queue || 0);
+        
+        this.charts.node.update('none');
+    }
+    
+    updateLatencyChart(now) {
+        if (!this.charts.latency) return;
+        
+        // Add latency data point
+        const avgLatency = this.calculateAverageLatency();
+        const p95Latency = this.calculateP95Latency();
+        
+        this.charts.latency.data.datasets[0].data.push({
+            x: now,
+            y: avgLatency
+        });
+        
+        this.charts.latency.data.datasets[1].data.push({
+            x: now,
+            y: p95Latency
+        });
+        
+        // Keep only last 50 data points
+        if (this.charts.latency.data.datasets[0].data.length > 50) {
+            this.charts.latency.data.datasets.forEach(dataset => {
+                dataset.data.shift();
+            });
+        }
+        
+        this.charts.latency.update('none');
+    }
+    
+    updateThroughputChart(now) {
+        if (!this.charts.throughput) return;
+        
+        // Add throughput data point
+        const requestsPerMin = this.calculateRequestsPerMinute();
+        const tokensPerMin = this.calculateTokensPerMinute();
+        
+        this.charts.throughput.data.datasets[0].data.push({
+            x: now,
+            y: requestsPerMin
+        });
+        
+        this.charts.throughput.data.datasets[1].data.push({
+            x: now,
+            y: tokensPerMin
+        });
+        
+        // Keep only last 50 data points
+        if (this.charts.throughput.data.datasets[0].data.length > 50) {
+            this.charts.throughput.data.datasets.forEach(dataset => {
+                dataset.data.shift();
+            });
+        }
+        
+        this.charts.throughput.update('none');
+    }
+    
+    getSystemOverviewData() {
+        const healthyNodes = this.nodes.filter(node => node.status === 'healthy');
+        
+        if (healthyNodes.length === 0) {
+            return { cpuAvg: 0, memoryAvg: 0, activeNodes: 0 };
+        }
+        
+        const cpuSum = healthyNodes.reduce((sum, node) => sum + (node.systemInfo?.cpu?.usage || 0), 0);
+        const memorySum = healthyNodes.reduce((sum, node) => sum + (node.systemInfo?.memory?.usage || 0), 0);
+        
+        return {
+            cpuAvg: Math.round(cpuSum / healthyNodes.length),
+            memoryAvg: Math.round(memorySum / healthyNodes.length),
+            activeNodes: healthyNodes.length
+        };
+    }
+    
+    calculateAverageLatency() {
+        if (!this.performanceData.latency || this.performanceData.latency.length === 0) {
+            return 0;
+        }
+        
+        const recentLatencies = this.performanceData.latency.slice(-20);
+        const sum = recentLatencies.reduce((total, entry) => total + entry.latency, 0);
+        return Math.round(sum / recentLatencies.length);
+    }
+    
+    calculateP95Latency() {
+        if (!this.performanceData.latency || this.performanceData.latency.length === 0) {
+            return 0;
+        }
+        
+        const recentLatencies = this.performanceData.latency.slice(-20);
+        const sorted = recentLatencies.map(entry => entry.latency).sort((a, b) => a - b);
+        const p95Index = Math.ceil(sorted.length * 0.95) - 1;
+        return sorted[p95Index] || 0;
+    }
+    
+    calculateRequestsPerMinute() {
+        if (!this.performanceData.throughput || this.performanceData.throughput.length === 0) {
+            return 0;
+        }
+        
+        // Calculate requests per minute from throughput data
+        const recentData = this.performanceData.throughput.slice(-10);
+        if (recentData.length === 0) return 0;
+        
+        const avgThroughput = recentData.reduce((sum, data) => sum + data.throughput, 0) / recentData.length;
+        return Math.round(avgThroughput * 60); // Convert per-second to per-minute
+    }
+    
+    calculateTokensPerMinute() {
+        // This would need to be implemented based on actual token counting
+        // For now, return a placeholder value
+        return Math.floor(Math.random() * 1000) + 500;
+    }
+    handleSystemStatus(data) {
+        // Update system-wide status information
+        if (data.status) {
+            this.systemStatus = data.status;
+            this.updateSystemStatusDisplay(data.status);
+        }
+        
+        if (data.maintenance) {
+            this.handleMaintenanceMode(data.maintenance);
+        }
+        
+        if (data.rateLimit) {
+            this.handleRateLimit(data.rateLimit);
+        }
+    }
+    
+    updateSystemStatusDisplay(status) {
+        const statusElement = document.getElementById('systemStatus');
+        if (statusElement) {
+            statusElement.textContent = status;
+            statusElement.className = `system-status ${status}`;
+        }
+    }
+    
+    handleMaintenanceMode(maintenance) {
+        if (maintenance.enabled) {
+            this.showMaintenanceNotification(maintenance);
+        } else {
+            this.hideMaintenanceNotification();
+        }
+    }
+    
+    handleRateLimit(rateLimit) {
+        const rateLimitElement = document.getElementById('rateLimitStatus');
+        if (rateLimitElement) {
+            if (rateLimit.remaining > 0) {
+                rateLimitElement.style.display = 'none';
+            } else {
+                rateLimitElement.style.display = 'block';
+                rateLimitElement.textContent = `Rate limited. Reset in ${Math.ceil(rateLimit.resetTime / 1000)}s`;
+            }
+        }
+    }
+    
+    updateQueueStatus(data) {
+        const queueElement = document.getElementById('queueLength');
+        if (queueElement) {
+            queueElement.textContent = data.length || 0;
+            
+            // Visual feedback for queue length
+            if (data.length > 10) {
+                queueElement.style.color = 'var(--error)';
+                queueElement.title = 'High queue length - expect delays';
+            } else if (data.length > 5) {
+                queueElement.style.color = 'var(--warning)';
+                queueElement.title = 'Moderate queue length';
+            } else {
+                queueElement.style.color = 'var(--success)';
+                queueElement.title = 'Low queue length';
+            }
+        }
+        
+        // Update queue time estimate
+        if (data.estimatedWaitTime) {
+            const waitTimeElement = document.getElementById('estimatedWaitTime');
+            if (waitTimeElement) {
+                waitTimeElement.textContent = `Est. wait: ${Math.ceil(data.estimatedWaitTime / 1000)}s`;
+                waitTimeElement.style.display = 'inline';
+            }
+        }
+    }
+    
+    updateConnectionQuality(data) {
+        if (data.latency) {
+            this.connectionQuality.latency = data.latency;
+            this.recordConnectionQuality();
+        }
+        
+        if (data.packetLoss !== undefined) {
+            this.connectionQuality.packetLoss = data.packetLoss;
+            this.updatePacketLossDisplay(data.packetLoss);
+        }
+    }
+    
+    updatePacketLossDisplay(packetLoss) {
+        const packetLossElement = document.getElementById('packetLoss');
+        if (packetLossElement) {
+            packetLossElement.textContent = `${(packetLoss * 100).toFixed(2)}%`;
+            packetLossElement.className = `packet-loss ${packetLoss > 0.05 ? 'high' : packetLoss > 0.01 ? 'medium' : 'low'}`;
+        }
+    }
+    
+    showMaintenanceNotification(maintenance) {
+        const notification = document.createElement('div');
+        notification.className = 'notification maintenance-notification';
+        notification.innerHTML = `
+            <div class="notification-content">
+                <span class="notification-icon">🔧</span>
+                <span class="notification-text">
+                    ${maintenance.message || 'System maintenance in progress'}
+                    ${maintenance.estimatedDowntime ? ` (Est. downtime: ${maintenance.estimatedDowntime})` : ''}
+                </span>
+                <button class="notification-close" onclick="this.parentElement.parentElement.remove()">×</button>
+            </div>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Auto-hide after maintenance period if specified
+        if (maintenance.estimatedDowntime) {
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.remove();
+                }
+            }, maintenance.estimatedDowntime);
+        }
+    }
+    
+    hideMaintenanceNotification() {
+        const notification = document.querySelector('.maintenance-notification');
+        if (notification) {
+            notification.remove();
+        }
     }
 
     // Node Management
@@ -708,6 +1728,9 @@ class DistributedLlamaClient {
         // Message input
         const messageInput = document.getElementById('messageInput');
         const sendButton = document.getElementById('sendButton');
+        const attachButton = document.getElementById('attachButton');
+        const fileInput = document.getElementById('fileInput');
+        const attachmentPreview = document.getElementById('attachmentPreview');
         
         messageInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -718,6 +1741,39 @@ class DistributedLlamaClient {
         
         sendButton.addEventListener('click', () => {
             this.sendMessage(messageInput.value);
+        });
+
+        // File attachment handling
+        attachButton.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+            if (files.length > 0) {
+                this.handleFileAttachments(files);
+            }
+        });
+
+        // Drag and drop for file attachments
+        const inputArea = document.querySelector('.input-area');
+        inputArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            inputArea.classList.add('drag-over');
+        });
+
+        inputArea.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            inputArea.classList.remove('drag-over');
+        });
+
+        inputArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            inputArea.classList.remove('drag-over');
+            const files = Array.from(e.dataTransfer.files);
+            if (files.length > 0) {
+                this.handleFileAttachments(files);
+            }
         });
 
         // Node management
@@ -846,7 +1902,7 @@ class DistributedLlamaClient {
     // Model Management
     async loadModels() {
         try {
-            const response = await fetch('http://localhost:13000/api/models');
+            const response = await fetch('http://localhost:13100/api/models');
             const data = await response.json();
             
             this.updateModelSelector(data.availableModels);
@@ -1646,6 +2702,310 @@ class DistributedLlamaClient {
         const i = Math.floor(Math.log(bytes) / Math.log(k));
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
+
+    // File Attachment Handling
+    handleFileAttachments(files) {
+        const attachmentPreview = document.getElementById('attachmentPreview');
+        const maxSize = 25 * 1024 * 1024; // 25MB limit
+        
+        files.forEach(file => {
+            if (file.size > maxSize) {
+                this.showToast(`File ${file.name} is too large. Maximum size is 25MB.`, 'error');
+                return;
+            }
+
+            const fileId = `file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            const fileData = {
+                id: fileId,
+                name: file.name,
+                size: file.size,
+                type: file.type,
+                file: file,
+                uploadProgress: 0,
+                status: 'pending'
+            };
+
+            this.uploadedFiles = this.uploadedFiles || [];
+            this.uploadedFiles.push(fileData);
+            
+            this.renderAttachmentPreview();
+            this.uploadFile(fileData);
+        });
+    }
+
+    uploadFile(fileData) {
+        fileData.status = 'uploading';
+        this.renderAttachmentPreview();
+
+        // Simulate file upload progress
+        const uploadInterval = setInterval(() => {
+            fileData.uploadProgress += Math.random() * 20;
+            if (fileData.uploadProgress >= 100) {
+                fileData.uploadProgress = 100;
+                fileData.status = 'completed';
+                clearInterval(uploadInterval);
+                
+                // Send file to server via WebSocket
+                this.sendFileToServer(fileData);
+                this.showToast(`File ${fileData.name} uploaded successfully`, 'success');
+            }
+            this.renderAttachmentPreview();
+        }, 200);
+    }
+
+    sendFileToServer(fileData) {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const message = {
+                    type: 'file_upload',
+                    file_id: fileData.id,
+                    filename: fileData.name,
+                    content_type: fileData.type,
+                    data: e.target.result,
+                    chunk_size: 1024 * 1024 // 1MB chunks
+                };
+                this.ws.send(JSON.stringify(message));
+            };
+            reader.readAsDataURL(fileData.file);
+        }
+    }
+
+    renderAttachmentPreview() {
+        const attachmentPreview = document.getElementById('attachmentPreview');
+        if (!this.uploadedFiles || this.uploadedFiles.length === 0) {
+            attachmentPreview.innerHTML = '';
+            attachmentPreview.style.display = 'none';
+            return;
+        }
+
+        attachmentPreview.style.display = 'block';
+        attachmentPreview.innerHTML = '';
+
+        this.uploadedFiles.forEach(fileData => {
+            const template = document.getElementById('attachmentPreviewTemplate');
+            const clone = template.content.cloneNode(true);
+            
+            clone.querySelector('.attachment-name').textContent = fileData.name;
+            clone.querySelector('.attachment-size').textContent = this.formatBytes(fileData.size);
+
+            const progressContainer = clone.querySelector('.upload-progress');
+            const progressFill = clone.querySelector('.progress-fill');
+            const progressText = clone.querySelector('.progress-text');
+
+            if (fileData.status === 'uploading') {
+                progressContainer.style.display = 'flex';
+                progressFill.style.width = `${fileData.uploadProgress}%`;
+                progressText.textContent = `${Math.round(fileData.uploadProgress)}%`;
+            } else if (fileData.status === 'completed') {
+                progressContainer.style.display = 'none';
+            }
+
+            const removeBtn = clone.querySelector('.remove-attachment-btn');
+            removeBtn.addEventListener('click', () => {
+                this.removeAttachment(fileData.id);
+            });
+
+            attachmentPreview.appendChild(clone);
+        });
+    }
+
+    removeAttachment(fileId) {
+        this.uploadedFiles = this.uploadedFiles.filter(f => f.id !== fileId);
+        this.renderAttachmentPreview();
+    }
+
+    // Help Tour System
+    initializeHelpTour() {
+        this.helpTour = {
+            isActive: false,
+            currentStep: 0,
+            steps: [
+                {
+                    title: 'Welcome to Distributed Llama Chat',
+                    content: 'This is your AI chat interface. You can send messages, attach files, and interact with distributed AI models.',
+                    element: '#messageInput',
+                    position: 'bottom'
+                },
+                {
+                    title: 'Node Dashboard',
+                    content: 'Monitor your distributed inference nodes here. View real-time metrics, health status, and manage configurations.',
+                    element: '[data-tab="nodes"]',
+                    position: 'bottom'
+                },
+                {
+                    title: 'Model Management',
+                    content: 'Download new models, propagate them across nodes, and manage your model library for distributed inference.',
+                    element: '[data-tab="models"]',
+                    position: 'bottom'
+                },
+                {
+                    title: 'Settings',
+                    content: 'Customize your experience with API configuration, appearance settings, and advanced chat options.',
+                    element: '[data-tab="settings"]',
+                    position: 'bottom'
+                }
+            ]
+        };
+
+        this.setupHelpTourEvents();
+    }
+
+    setupHelpTourEvents() {
+        // Help button
+        const helpButton = document.getElementById('helpButton');
+        if (helpButton) {
+            helpButton.addEventListener('click', () => {
+                this.startHelpTour();
+            });
+        }
+
+        // Start tour button in settings
+        const startTourButton = document.getElementById('startTourButton');
+        if (startTourButton) {
+            startTourButton.addEventListener('click', () => {
+                this.startHelpTour();
+            });
+        }
+
+        // Tour modal events
+        const closeTourBtn = document.getElementById('closeTourBtn');
+        if (closeTourBtn) {
+            closeTourBtn.addEventListener('click', () => {
+                this.endHelpTour();
+            });
+        }
+    }
+
+    startHelpTour() {
+        this.helpTour.isActive = true;
+        this.helpTour.currentStep = 0;
+        
+        // Show tour modal
+        const tourModal = document.getElementById('helpTourModal');
+        if (tourModal) {
+            tourModal.style.display = 'flex';
+            this.showTourStep(1);
+        }
+
+        this.updateTourProgress();
+        this.highlightCurrentElement();
+    }
+
+    showTourStep(stepNumber) {
+        const tourSteps = document.querySelectorAll('.tour-step');
+        tourSteps.forEach(step => {
+            step.classList.remove('active');
+            if (step.dataset.step === stepNumber.toString()) {
+                step.classList.add('active');
+            }
+        });
+    }
+
+    highlightCurrentElement() {
+        if (this.helpTour.currentStep >= this.helpTour.steps.length) return;
+
+        const step = this.helpTour.steps[this.helpTour.currentStep];
+        const element = document.querySelector(step.element);
+        
+        if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            element.classList.add('tour-highlight');
+        }
+    }
+
+    nextTourStep() {
+        if (this.helpTour.currentStep < this.helpTour.steps.length - 1) {
+            this.helpTour.currentStep++;
+            this.showTourStep(this.helpTour.currentStep + 1);
+            this.updateTourProgress();
+            this.highlightCurrentElement();
+        } else {
+            this.endHelpTour();
+        }
+    }
+
+    prevTourStep() {
+        if (this.helpTour.currentStep > 0) {
+            this.helpTour.currentStep--;
+            this.showTourStep(this.helpTour.currentStep + 1);
+            this.updateTourProgress();
+            this.highlightCurrentElement();
+        }
+    }
+
+    endHelpTour() {
+        this.helpTour.isActive = false;
+        
+        // Remove highlights
+        document.querySelectorAll('.tour-highlight').forEach(el => {
+            el.classList.remove('tour-highlight');
+        });
+
+        // Hide tour modal
+        const tourModal = document.getElementById('helpTourModal');
+        if (tourModal) {
+            tourModal.style.display = 'none';
+        }
+
+        this.showToast('Thanks for exploring Distributed Llama Chat! You can always access help from the settings.', 'success');
+    }
+
+    updateTourProgress() {
+        const progress = ((this.helpTour.currentStep + 1) / this.helpTour.steps.length) * 100;
+        console.log(`Tour progress: ${progress.toFixed(1)}%`);
+    }
+
+    // Enhanced Settings with Advanced Controls
+    setupAdvancedControls() {
+        const advancedControlsToggle = document.querySelector('.advanced-controls-toggle');
+        const advancedControlsPanel = document.querySelector('.advanced-controls-panel');
+        const modelSelector = document.getElementById('modelSelector');
+        const temperatureSlider = document.getElementById('temperature');
+        const temperatureValue = document.getElementById('temperatureValue');
+        const contextLengthSlider = document.getElementById('contextLength');
+        const contextLengthValue = document.getElementById('contextLengthValue');
+
+        if (advancedControlsToggle && advancedControlsPanel) {
+            advancedControlsToggle.addEventListener('click', () => {
+                const isVisible = advancedControlsPanel.style.display === 'flex';
+                advancedControlsPanel.style.display = isVisible ? 'none' : 'flex';
+            });
+        }
+
+        if (temperatureSlider && temperatureValue) {
+            temperatureSlider.addEventListener('input', () => {
+                temperatureValue.textContent = temperatureSlider.value;
+                this.settings.temperature = parseFloat(temperatureSlider.value);
+                this.saveSettings();
+            });
+        }
+
+        if (contextLengthSlider && contextLengthValue) {
+            contextLengthSlider.addEventListener('input', () => {
+                contextLengthValue.textContent = contextLengthSlider.value;
+                this.settings.contextLength = parseInt(contextLengthSlider.value);
+                this.saveSettings();
+            });
+        }
+
+        if (modelSelector) {
+            modelSelector.addEventListener('change', () => {
+                this.settings.selectedModel = modelSelector.value;
+                this.saveSettings();
+                this.updateModelStatus();
+            });
+        }
+    }
+
+    updateModelStatus() {
+        const activeNodeElement = document.getElementById('activeNode');
+        const currentModel = this.settings.selectedModel || 'tinyllama';
+        
+        if (activeNodeElement) {
+            activeNodeElement.textContent = `${currentModel} on ${this.activeNode || 'auto-selected node'}`;
+        }
+    }
 }
 
 // Initialize application when DOM is ready
@@ -1702,6 +3062,50 @@ function setupTabNavigation() {
     }, 30000);
 }
 
+// Setup tour navigation events
+function setupTourEvents() {
+    // Next buttons
+    document.querySelectorAll('.tour-next-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (window.llamaClient && window.llamaClient.helpTour && window.llamaClient.helpTour.isActive) {
+                window.llamaClient.nextTourStep();
+            }
+        });
+    });
+
+    // Previous buttons
+    document.querySelectorAll('.tour-prev-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (window.llamaClient && window.llamaClient.helpTour && window.llamaClient.helpTour.isActive) {
+                window.llamaClient.prevTourStep();
+            }
+        });
+    });
+
+    // Skip buttons
+    document.querySelectorAll('.tour-skip-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (window.llamaClient) {
+                window.llamaClient.endHelpTour();
+            }
+        });
+    });
+
+    // Complete button
+    document.querySelectorAll('.tour-complete-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (window.llamaClient) {
+                window.llamaClient.endHelpTour();
+            }
+        });
+    });
+}
+
+// Initialize tour events after DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    setupTourEvents();
+});
+
 // Add fade out animation
 const style = document.createElement('style');
 style.textContent = `
@@ -1712,4 +3116,12 @@ style.textContent = `
         }
     }
 `;
-document.head.appendChild(style);
+// Export for testing and module usage
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = DistributedLlamaClient;
+}
+
+// Initialize the application if running in browser
+if (typeof window !== 'undefined') {
+    window.llamaClient = new DistributedLlamaClient();
+}

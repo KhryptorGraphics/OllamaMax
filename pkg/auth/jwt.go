@@ -1,14 +1,17 @@
 package auth
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/khryptorgraphics/ollamamax/internal/config"
+	"github.com/redis/go-redis/v9"
 )
 
 // JWTService handles JWT token operations
@@ -18,6 +21,7 @@ type JWTService struct {
 	issuer        string
 	expiration    time.Duration
 	refreshExpiry time.Duration
+	redis         *redis.Client // SECURITY: For token revocation (ISSUE-004)
 }
 
 // Claims represents JWT claims structure
@@ -49,7 +53,7 @@ type TokenPair struct {
 }
 
 // NewJWTService creates a new JWT service instance
-func NewJWTService(config *config.AuthConfig) (*JWTService, error) {
+func NewJWTService(config *config.AuthConfig, redisClient *redis.Client) (*JWTService, error) {
 	// Generate RSA key pair if not provided
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
@@ -62,6 +66,7 @@ func NewJWTService(config *config.AuthConfig) (*JWTService, error) {
 		issuer:        "ollamamax",
 		expiration:    24 * time.Hour, // Default 24 hours
 		refreshExpiry: 7 * 24 * time.Hour, // Default 7 days
+		redis:         redisClient, // SECURITY: For token revocation
 	}
 
 	// Override with config values if provided
@@ -173,6 +178,17 @@ func (j *JWTService) ValidateToken(tokenString string) (*Claims, error) {
 		return nil, errors.New("invalid token claims")
 	}
 
+	// SECURITY: Check if token is revoked (ISSUE-004)
+	if j.redis != nil {
+		isRevoked, err := j.IsTokenRevoked(tokenString)
+		if err != nil {
+			return nil, fmt.Errorf("failed to check token revocation: %w", err)
+		}
+		if isRevoked {
+			return nil, errors.New("token has been revoked")
+		}
+	}
+
 	return claims, nil
 }
 
@@ -205,4 +221,72 @@ func (j *JWTService) RefreshTokens(refreshToken string) (string, string, error) 
 // GetUserFromToken extracts user information from a valid token
 func (j *JWTService) GetUserFromToken(tokenString string) (*Claims, error) {
 	return j.ValidateToken(tokenString)
+}
+
+// RevokeToken adds a token to the revocation blacklist (ISSUE-004)
+func (j *JWTService) RevokeToken(tokenString string, expiry time.Duration) error {
+	if j.redis == nil {
+		return errors.New("Redis client not available for token revocation")
+	}
+
+	// Hash the token for storage (prevent storing full tokens in Redis)
+	tokenHash := fmt.Sprintf("%x", sha256.Sum256([]byte(tokenString)))
+	key := fmt.Sprintf("revoked_tokens:%s", tokenHash)
+
+	// Store with expiry matching the token's remaining lifetime
+	err := j.redis.Set(context.Background(), key, "revoked", expiry).Err()
+	if err != nil {
+		return fmt.Errorf("failed to revoke token: %w", err)
+	}
+
+	return nil
+}
+
+// IsTokenRevoked checks if a token has been revoked (ISSUE-004)
+func (j *JWTService) IsTokenRevoked(tokenString string) (bool, error) {
+	if j.redis == nil {
+		return false, nil // No Redis means no revocation possible
+	}
+
+	// Hash the token to check against stored hashes
+	tokenHash := fmt.Sprintf("%x", sha256.Sum256([]byte(tokenString)))
+	key := fmt.Sprintf("revoked_tokens:%s", tokenHash)
+
+	exists, err := j.redis.Exists(context.Background(), key).Result()
+	if err != nil {
+		return false, fmt.Errorf("failed to check token revocation: %w", err)
+	}
+
+	return exists > 0, nil
+}
+
+// RevokeUserTokens revokes all tokens for a specific user (ISSUE-004)
+func (j *JWTService) RevokeUserTokens(userID string) error {
+	if j.redis == nil {
+		return errors.New("Redis client not available for token revocation")
+	}
+
+	// Add a user-level revocation marker that expires after the longest token lifetime
+	key := fmt.Sprintf("revoked_user:%s", userID)
+	err := j.redis.Set(context.Background(), key, "revoked", j.refreshExpiry).Err()
+	if err != nil {
+		return fmt.Errorf("failed to revoke user tokens: %w", err)
+	}
+
+	return nil
+}
+
+// IsUserRevoked checks if all tokens for a user have been revoked (ISSUE-004)
+func (j *JWTService) IsUserRevoked(userID string) (bool, error) {
+	if j.redis == nil {
+		return false, nil
+	}
+
+	key := fmt.Sprintf("revoked_user:%s", userID)
+	exists, err := j.redis.Exists(context.Background(), key).Result()
+	if err != nil {
+		return false, fmt.Errorf("failed to check user revocation: %w", err)
+	}
+
+	return exists > 0, nil
 }

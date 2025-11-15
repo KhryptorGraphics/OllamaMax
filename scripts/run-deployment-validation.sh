@@ -22,6 +22,7 @@ POSTGRES_PORT="${POSTGRES_PORT:-5432}"
 REDIS_HOST="${REDIS_HOST:-localhost}"
 REDIS_PORT="${REDIS_PORT:-6379}"
 P2P_PEERS="${P2P_PEERS:-}"
+API_URL="${API_URL:-http://localhost:13100}"
 
 # Logging functions
 log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
@@ -85,10 +86,10 @@ if timeout 5 bash -c "cat < /dev/null > /dev/tcp/${REDIS_HOST}/${REDIS_PORT}" 2>
 
     # Try to ping Redis if redis-cli available
     if command -v redis-cli &> /dev/null; then
-        if redis-cli -h "${REDIS_HOST}" -p "${REDIS_PORT}" PING 2>/dev/null | grep -q "PONG"; then
+        if redis-cli -h "${REDIS_HOST}" -p "${REDIS_PORT}" -a "${REDIS_PASSWORD}" PING 2>/dev/null | grep -q "PONG"; then
             pass "Redis PING successful"
         else
-            warn "Redis PING failed (may require authentication)"
+            fail "Redis PING failed (check authentication)"
         fi
     else
         warn "redis-cli not installed - skipping PING test"
@@ -204,10 +205,42 @@ for tool in "${OPTIONAL_TOOLS[@]}"; do
     fi
 done
 
-# Section 5: Configuration Validation
+# Section 5: Credentials Validation
 log_info ""
 log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-log_info "Section 5: Configuration Validation"
+log_info "Section 5: Credentials Validation"
+log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+# Check PostgreSQL credentials
+if [ -n "${POSTGRES_USER}" ]; then
+    pass "POSTGRES_USER is configured"
+else
+    fail "POSTGRES_USER is NOT set"
+fi
+
+if [ -n "${POSTGRES_PASSWORD}" ]; then
+    pass "POSTGRES_PASSWORD is configured"
+else
+    fail "POSTGRES_PASSWORD is NOT set"
+fi
+
+if [ -n "${POSTGRES_DB}" ]; then
+    pass "POSTGRES_DB is configured"
+else
+    fail "POSTGRES_DB is NOT set"
+fi
+
+# Check Redis password
+if [ -n "${REDIS_PASSWORD}" ]; then
+    pass "REDIS_PASSWORD is configured"
+else
+    warn "REDIS_PASSWORD is NOT set (recommended for production)"
+fi
+
+# Section 6: Configuration Validation
+log_info ""
+log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+log_info "Section 6: Configuration Validation"
 log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 # Check JWT_SECRET
@@ -228,6 +261,19 @@ if [ -n "${SMTP_HOST}" ]; then
     fi
 else
     warn "SMTP not configured (email features will be disabled)"
+fi
+
+# Section 7: Smoke Test
+log_info ""
+log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+log_info "Section 7: Smoke Test"
+log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+log_info "Performing smoke test against API (${API_URL}/api/health)..."
+if curl -f -s "${API_URL}/api/health" > /dev/null; then
+    pass "API health check successful"
+else
+    fail "API health check failed"
 fi
 
 # Final Summary

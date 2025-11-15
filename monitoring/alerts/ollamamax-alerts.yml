@@ -1,0 +1,206 @@
+# OllamaMax Alerting Rules
+# Comprehensive alerts for performance, availability, and resource utilization
+
+groups:
+  # High-level service availability alerts
+  - name: ollamamax.availability
+    rules:
+      - alert: OllamaMaxServiceDown
+        expr: up{job="ollamamax-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: ollamamax
+        annotations:
+          summary: "OllamaMax API service is down"
+          description: "OllamaMax API service has been down for more than 1 minute"
+          runbook_url: "https://docs.ollamamax.com/runbooks/service-down"
+
+      - alert: OllamaMaxHighErrorRate
+        expr: rate(ollama_requests_failed_total[5m]) / rate(ollama_requests_total[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+          service: ollamamax
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} over the last 5 minutes"
+          runbook_url: "https://docs.ollamamax.com/runbooks/high-error-rate"
+
+      - alert: OllamaMaxCriticalErrorRate
+        expr: rate(ollama_requests_failed_total[5m]) / rate(ollama_requests_total[5m]) > 0.15
+        for: 1m
+        labels:
+          severity: critical
+          service: ollamamax
+        annotations:
+          summary: "Critical error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} over the last 5 minutes"
+
+  # Performance and latency alerts
+  - name: ollamamax.performance
+    rules:
+      - alert: OllamaMaxHighLatency
+        expr: histogram_quantile(0.95, rate(ollama_request_latency_seconds_bucket[5m])) > 2.0
+        for: 3m
+        labels:
+          severity: warning
+          service: ollamamax
+        annotations:
+          summary: "High response latency detected"
+          description: "95th percentile latency is {{ $value }}s over the last 5 minutes"
+          runbook_url: "https://docs.ollamamax.com/runbooks/high-latency"
+
+      - alert: OllamaMaxCriticalLatency
+        expr: histogram_quantile(0.95, rate(ollama_request_latency_seconds_bucket[5m])) > 5.0
+        for: 1m
+        labels:
+          severity: critical
+          service: ollamamax
+        annotations:
+          summary: "Critical response latency detected"
+          description: "95th percentile latency is {{ $value }}s over the last 5 minutes"
+
+      - alert: OllamaMaxSlowQueries
+        expr: histogram_quantile(0.99, rate(ollama_request_latency_seconds_bucket[10m])) > 10.0
+        for: 5m
+        labels:
+          severity: warning
+          service: ollamamax
+        annotations:
+          summary: "Very slow queries detected"
+          description: "99th percentile latency is {{ $value }}s over the last 10 minutes"
+
+  # Database connection pool alerts
+  - name: ollamamax.database
+    rules:
+      - alert: DatabaseConnectionPoolHigh
+        expr: ollama_db_connections_in_use / ollama_db_connections_max > 0.8
+        for: 2m
+        labels:
+          severity: warning
+          service: database
+        annotations:
+          summary: "Database connection pool utilization high"
+          description: "Connection pool is {{ $value | humanizePercentage }} utilized"
+          runbook_url: "https://docs.ollamamax.com/runbooks/db-pool-high"
+
+      - alert: DatabaseConnectionPoolCritical
+        expr: ollama_db_connections_in_use / ollama_db_connections_max > 0.95
+        for: 1m
+        labels:
+          severity: critical
+          service: database
+        annotations:
+          summary: "Database connection pool near exhaustion"
+          description: "Connection pool is {{ $value | humanizePercentage }} utilized"
+
+      - alert: DatabaseConnectionWaitTime
+        expr: ollama_db_connections_wait_duration_seconds > 1.0
+        for: 2m
+        labels:
+          severity: warning
+          service: database
+        annotations:
+          summary: "High database connection wait time"
+          description: "Average connection wait time is {{ $value }}s"
+
+      - alert: DatabaseConnectionErrors
+        expr: rate(ollama_db_connection_errors_total[5m]) > 0.1
+        for: 1m
+        labels:
+          severity: critical
+          service: database
+        annotations:
+          summary: "Database connection errors detected"
+          description: "{{ $value }} connection errors per second over the last 5 minutes"
+
+  # Node health and cluster alerts
+  - name: ollamamax.cluster
+    rules:
+      - alert: UnhealthyNodesHigh
+        expr: ollama_nodes_healthy / ollama_nodes_total < 0.7
+        for: 2m
+        labels:
+          severity: warning
+          service: cluster
+        annotations:
+          summary: "High number of unhealthy nodes"
+          description: "Only {{ $value | humanizePercentage }} of nodes are healthy"
+          runbook_url: "https://docs.ollamamax.com/runbooks/unhealthy-nodes"
+
+      - alert: NoHealthyNodes
+        expr: ollama_nodes_healthy == 0
+        for: 30s
+        labels:
+          severity: critical
+          service: cluster
+        annotations:
+          summary: "No healthy nodes available"
+          description: "All nodes in the cluster are unhealthy"
+
+      - alert: NodeLatencyHigh
+        expr: ollama_node_latency_seconds > 1.0
+        for: 3m
+        labels:
+          severity: warning
+          service: cluster
+        annotations:
+          summary: "High node latency detected"
+          description: "Node {{ $labels.node_name }} has latency of {{ $value }}s"
+
+  # Resource utilization alerts
+  - name: ollamamax.resources
+    rules:
+      - alert: HighCPUUsage
+        expr: ollama_node_cpu_usage > 85
+        for: 5m
+        labels:
+          severity: warning
+          service: resources
+        annotations:
+          summary: "High CPU usage on node"
+          description: "Node {{ $labels.node_name }} CPU usage is {{ $value }}%"
+
+      - alert: HighMemoryUsage
+        expr: ollama_node_memory_usage > 90
+        for: 3m
+        labels:
+          severity: warning
+          service: resources
+        annotations:
+          summary: "High memory usage on node"
+          description: "Node {{ $labels.node_name }} memory usage is {{ $value }}%"
+
+      - alert: SystemMemoryHigh
+        expr: ollama_system_memory_usage_bytes{type="heapUsed"} / ollama_system_memory_usage_bytes{type="heapTotal"} > 0.9
+        for: 2m
+        labels:
+          severity: warning
+          service: system
+        annotations:
+          summary: "High system memory usage"
+          description: "Heap memory usage is {{ $value | humanizePercentage }}"
+
+  # Model management alerts
+  - name: ollamamax.models
+    rules:
+      - alert: ModelReplicationFailures
+        expr: rate(ollama_model_replication_failures_total[10m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+          service: models
+        annotations:
+          summary: "Model replication failures detected"
+          description: "{{ $value }} model replication failures per second"
+
+      - alert: ModelDownloadFailures
+        expr: rate(ollama_model_download_failures_total[10m]) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+          service: models
+        annotations:
+          summary: "Model download failures detected"
+          description: "{{ $value }} model download failures per second"

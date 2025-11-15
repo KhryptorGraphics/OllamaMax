@@ -9,6 +9,44 @@ const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 const path = require('path');
 
+// Input sanitization utilities (ISSUE-004-XSS)
+class InputSanitizer {
+    static sanitizeString(input) {
+        if (typeof input !== 'string') return '';
+        
+        // Remove null bytes and control characters
+        let sanitized = input.replace(/[\x00-\x1F\x7F]/g, '');
+        
+        // Escape HTML entities
+        sanitized = sanitized
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#x27;')
+            .replace(/\//g, '&#x2F;');
+        
+        return sanitized;
+    }
+    
+    static validateEmail(email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email) && email.length <= 254;
+    }
+    
+    static validateUsername(username) {
+        // Allow alphanumeric, underscore, dash, min 3 chars, max 50 chars
+        const usernameRegex = /^[a-zA-Z0-9_-]{3,50}$/;
+        return usernameRegex.test(username);
+    }
+    
+    static validatePassword(password) {
+        // At least 8 characters, 1 uppercase, 1 lowercase, 1 number, 1 special char
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+        return passwordRegex.test(password);
+    }
+}
+
 class AuthSystem {
     constructor() {
         this.dbPath = path.join(__dirname, 'users.db');
@@ -70,65 +108,6 @@ class AuthSystem {
         if (!smtpPassword) {
             console.warn('⚠️  SMTP_PASSWORD not set. Email functionality will use mock transporter.');
         }
-
-        const emailConfigs = [
-            // Configuration 1: Secured SMTP (TLS)
-            {
-                name: 'Secured TLS',
-                config: {
-                    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-                    port: parseInt(process.env.SMTP_PORT || '587'),
-                    secure: false,
-                    auth: smtpPassword ? {
-                        user: smtpUser,
-                        pass: smtpPassword
-                    } : undefined,
-                    tls: {
-                        ciphers: 'SSLv3'
-                    }
-                }
-            },
-            // Configuration 2: SSL/TLS (port 465)
-            {
-                name: 'SSL/TLS 465',
-                config: {
-                    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-                    port: 465,
-                    secure: true,
-                    auth: smtpPassword ? {
-                        user: smtpUser,
-                        pass: smtpPassword
-                    } : undefined
-                }
-            },
-            // Configuration 3: Generic SMTP
-            {
-                name: 'Generic SMTP',
-                config: {
-                    host: process.env.SMTP_HOST || 'mail.giggatek.com',
-                    port: parseInt(process.env.SMTP_PORT || '587'),
-                    secure: false,
-                    auth: smtpPassword ? {
-                        user: smtpUser,
-                        pass: smtpPassword
-                    } : undefined
-                }
-            },
-            // Configuration 4: Unsecured SMTP (fallback - dev only)
-            {
-                name: 'Unsecured SMTP',
-                config: {
-                    host: 'localhost',
-                    port: 25,
-                    secure: false,
-                    ignoreTLS: true,
-                    auth: smtpPassword ? {
-                        user: smtpUser,
-                        pass: smtpPassword
-                    } : undefined
-                }
-            }
-        ];
 
         console.log('🔧 Testing email server connections...');
         
@@ -225,11 +204,27 @@ class AuthSystem {
 
     async registerUser(username, email, password) {
         return new Promise((resolve, reject) => {
+            // Input validation and sanitization (ISSUE-004-XSS)
+            const sanitizedUsername = InputSanitizer.sanitizeString(username);
+            const sanitizedEmail = email.toLowerCase().trim();
+            
+            if (!InputSanitizer.validateUsername(sanitizedUsername)) {
+                return reject(new Error('Invalid username format. Use 3-50 characters, alphanumeric, underscore, or dash.'));
+            }
+            
+            if (!InputSanitizer.validateEmail(sanitizedEmail)) {
+                return reject(new Error('Invalid email format.'));
+            }
+            
+            if (!InputSanitizer.validatePassword(password)) {
+                return reject(new Error('Password must be at least 8 characters with uppercase, lowercase, number, and special character.'));
+            }
+
             this.db.serialize(() => {
                 // Check if user already exists
                 this.db.get(
                     'SELECT id FROM users WHERE email = ? OR username = ?',
-                    [email, username],
+                    [sanitizedEmail, sanitizedUsername],
                     async (err, row) => {
                         if (err) return reject(err);
                         if (row) return reject(new Error('User already exists'));
@@ -242,7 +237,7 @@ class AuthSystem {
                             this.db.run(
                                 `INSERT INTO users (username, email, password_hash, verification_token, verification_expires)
                                  VALUES (?, ?, ?, ?, ?)`,
-                                [username, email, passwordHash, verificationToken, verificationExpires],
+                                [sanitizedUsername, sanitizedEmail, passwordHash, verificationToken, verificationExpires],
                                 function(err) {
                                     if (err) return reject(err);
                                     

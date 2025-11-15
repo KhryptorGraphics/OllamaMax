@@ -9,7 +9,7 @@ services:
     ports:
       - "11434:11434"  # API server
       - "12000:12000"  # P2P networking
-      - "13000:13000"  # Raft consensus
+      - "13102:13000"  # Raft consensus - mapped to avoid conflict
       - "14090:14090"  # Metrics
     environment:
       - NODE_ID=node-1

@@ -1155,14 +1155,124 @@ func (m *Manager) RegisterModel(modelName, modelPath string) error {
 
 // Rebalance rebalances models across the distributed network
 func (m *Manager) Rebalance() error {
-	// Stub implementation for rebalancing logic
+	if m.replicationManager == nil {
+		return fmt.Errorf("replication manager not initialized")
+	}
+
+	// Get all models and their current distribution
+	m.modelsMu.RLock()
+	models := make([]string, 0, len(m.models))
+	for modelName := range m.models {
+		models = append(models, modelName)
+	}
+	m.modelsMu.RUnlock()
+
+	// Get available peers
+	peers := m.p2p.GetConnectedPeers()
+	if len(peers) == 0 {
+		return fmt.Errorf("no connected peers available for rebalancing")
+	}
+
+	// Rebalance each model
+	var rebalanceErrors []error
+	for _, modelName := range models {
+		if err := m.rebalanceModel(modelName, peers); err != nil {
+			rebalanceErrors = append(rebalanceErrors, fmt.Errorf("failed to rebalance model %s: %w", modelName, err))
+		}
+	}
+
+	if len(rebalanceErrors) > 0 {
+		return fmt.Errorf("rebalancing completed with %d errors: %v", len(rebalanceErrors), rebalanceErrors)
+	}
+
+	return nil
+}
+
+// rebalanceModel rebalances a specific model across available peers
+func (m *Manager) rebalanceModel(modelName string, peers []string) error {
+	// Get current replicas
+	replicas := m.replicationManager.GetReplicas(modelName)
+	currentPeers := make(map[string]bool)
+	for _, replica := range replicas {
+		if replica.Status == ReplicaStatusHealthy {
+			currentPeers[replica.PeerID] = true
+		}
+	}
+
+	// Determine optimal distribution (simple strategy: ensure at least 2 replicas)
+	minReplicas := 2
+	if len(peers) < minReplicas {
+		minReplicas = len(peers)
+	}
+
+	// Add replicas if needed
+	if len(currentPeers) < minReplicas {
+		needed := minReplicas - len(currentPeers)
+		for _, peerID := range peers {
+			if needed <= 0 {
+				break
+			}
+			if !currentPeers[peerID] {
+				if err := m.replicationManager.ReplicateModel(modelName, peerID); err != nil {
+					return fmt.Errorf("failed to replicate to peer %s: %w", peerID, err)
+				}
+				needed--
+			}
+		}
+	}
+
 	return nil
 }
 
 // MigrateModel migrates a model to a different node
 func (m *Manager) MigrateModel(modelName, targetNodeID string) error {
-	// Stub implementation for model migration
-	return nil
+	// Check if model exists locally
+	m.modelsMu.RLock()
+	model, exists := m.models[modelName]
+	m.modelsMu.RUnlock()
+
+	if !exists {
+		return fmt.Errorf("model %s not found locally", modelName)
+	}
+
+	// Check if target node is available
+	peers := m.p2p.GetConnectedPeers()
+	targetAvailable := false
+	for _, peerID := range peers {
+		if peerID == targetNodeID {
+			targetAvailable = true
+			break
+		}
+	}
+
+	if !targetAvailable {
+		return fmt.Errorf("target node %s is not available", targetNodeID)
+	}
+
+	// Initiate replication to target node
+	if err := m.replicationManager.ReplicateModel(modelName, targetNodeID); err != nil {
+		return fmt.Errorf("failed to replicate model to target node: %w", err)
+	}
+
+	// Wait for replication to complete
+	timeout := time.After(10 * time.Minute)
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-timeout:
+			return fmt.Errorf("migration timeout: model replication did not complete")
+		case <-ticker.C:
+			replicas := m.replicationManager.GetReplicas(modelName)
+			for _, replica := range replicas {
+				if replica.PeerID == targetNodeID && replica.Status == ReplicaStatusHealthy {
+					// Migration successful, optionally remove from current node
+					return nil
+				}
+			}
+		}
+	}
 }
 
 // GetStats returns statistics about the distributed system

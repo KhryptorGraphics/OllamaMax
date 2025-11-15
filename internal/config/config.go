@@ -86,13 +86,18 @@ type P2PConfig struct {
 
 // DefaultConfig returns a default configuration
 func DefaultConfig() *Config {
-	// SECURITY: JWT secrets must be provided via environment variables
+	// SECURITY: JWT secrets must be provided via environment variables - no defaults allowed
 	jwtSecret := os.Getenv("JWT_SECRET_KEY")
 	if jwtSecret == "" {
 		jwtSecret = os.Getenv("JWT_SECRET") // Fallback to JWT_SECRET
 	}
 	if jwtSecret == "" {
-		panic("JWT_SECRET_KEY or JWT_SECRET environment variable is required for security")
+		panic("JWT_SECRET_KEY or JWT_SECRET environment variable is required for security - cannot use defaults")
+	}
+
+	// Validate JWT secret strength
+	if len(jwtSecret) < 32 {
+		panic("JWT_SECRET must be at least 32 characters long for security")
 	}
 
 	authSecret := os.Getenv("AUTH_SECRET_KEY")

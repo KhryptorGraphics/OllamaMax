@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -186,6 +187,52 @@ func (h *WebSocketHub) GetConnectedClients() int {
 
 // WebSocket handler for general connections
 func (s *Server) websocketHandler(c *gin.Context) {
+	// SECURITY: Require JWT authentication for WebSocket connections (ISSUE-004-WS)
+	token := c.Query("token")
+	if token == "" {
+		// Try Authorization header as fallback
+		authHeader := c.GetHeader("Authorization")
+		if strings.HasPrefix(authHeader, "Bearer ") {
+			token = strings.TrimPrefix(authHeader, "Bearer ")
+		}
+	}
+
+	if token == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Authentication required for WebSocket connections",
+			"code":  "WS_AUTH_REQUIRED",
+		})
+		return
+	}
+
+	// Validate JWT token
+	claims, err := s.jwtService.ValidateToken(token)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Invalid or expired token",
+			"code":  "WS_AUTH_INVALID",
+		})
+		return
+	}
+
+	// Check if user is active
+	user, err := s.rbac.GetUser(claims.UserID)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "User not found",
+			"code":  "WS_AUTH_USER_NOT_FOUND",
+		})
+		return
+	}
+
+	if !user.Active {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "User account is inactive",
+			"code":  "WS_AUTH_USER_INACTIVE",
+		})
+		return
+	}
+
 	// Upgrade HTTP connection to WebSocket
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
@@ -193,20 +240,14 @@ func (s *Server) websocketHandler(c *gin.Context) {
 		return
 	}
 
-	// Create new client
+	// Create new client with user ID
 	client := &WebSocketClient{
 		ID:            uuid.New().String(),
 		Conn:          conn,
 		Send:          make(chan WebSocketMessage, 256),
 		Hub:           s.websocket,
 		Subscriptions: make(map[string]bool),
-	}
-
-	// Get user ID if authenticated
-	if userID, exists := c.Get("user_id"); exists {
-		if uid, err := uuid.Parse(userID.(string)); err == nil {
-			client.UserID = &uid
-		}
+		UserID:        &claims.UserID,
 	}
 
 	// Register client
@@ -223,6 +264,52 @@ func (s *Server) inferenceWebsocketHandler(c *gin.Context) {
 	if inferenceID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "missing_inference_id",
+		})
+		return
+	}
+
+	// SECURITY: Require JWT authentication for inference WebSocket connections (ISSUE-004-WS)
+	token := c.Query("token")
+	if token == "" {
+		// Try Authorization header as fallback
+		authHeader := c.GetHeader("Authorization")
+		if strings.HasPrefix(authHeader, "Bearer ") {
+			token = strings.TrimPrefix(authHeader, "Bearer ")
+		}
+	}
+
+	if token == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Authentication required for WebSocket connections",
+			"code":  "WS_AUTH_REQUIRED",
+		})
+		return
+	}
+
+	// Validate JWT token
+	claims, err := s.jwtService.ValidateToken(token)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Invalid or expired token",
+			"code":  "WS_AUTH_INVALID",
+		})
+		return
+	}
+
+	// Check if user is active
+	user, err := s.rbac.GetUser(claims.UserID)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "User not found",
+			"code":  "WS_AUTH_USER_NOT_FOUND",
+		})
+		return
+	}
+
+	if !user.Active {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "User account is inactive",
+			"code":  "WS_AUTH_USER_INACTIVE",
 		})
 		return
 	}
@@ -244,6 +331,7 @@ func (s *Server) inferenceWebsocketHandler(c *gin.Context) {
 			MessageTypeInference: true,
 			"inference_" + inferenceID: true,
 		},
+		UserID: &claims.UserID,
 	}
 
 	// Register and start

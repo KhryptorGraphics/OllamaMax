@@ -297,7 +297,7 @@ func DefaultConfig() *Config {
 			Tags:        make(map[string]string),
 		},
 		API: APIConfig{
-			Listen:      "0.0.0.0:11434",
+			Listen:      "0.0.0.0:8080",
 			Timeout:     30 * time.Second,
 			MaxBodySize: 32 * 1024 * 1024, // 32MB
 			TLS: TLSConfig{
@@ -306,7 +306,7 @@ func DefaultConfig() *Config {
 			},
 			Cors: CorsConfig{
 				Enabled:          true,
-				AllowedOrigins:   []string{"http://localhost:8080", "https://localhost:8080"},
+				AllowedOrigins:   []string{"http://localhost:13100", "https://localhost:13100"},
 				AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 				AllowedHeaders:   []string{"Content-Type", "Authorization", "X-Requested-With"},
 				AllowCredentials: true,

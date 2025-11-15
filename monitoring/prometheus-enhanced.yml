@@ -1,0 +1,136 @@
+# Enhanced Prometheus Configuration for OllamaMax
+# Includes comprehensive metrics collection and alerting rules
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'ollamamax-v1'
+    environment: 'production'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+# Load alerting rules
+rule_files:
+  - "alerts/*.yml"
+
+# Scrape configurations
+scrape_configs:
+  # OllamaMax API Server metrics
+  - job_name: 'ollamamax-api'
+    static_configs:
+      - targets: ['api-server:13100']
+    metrics_path: '/api/metrics/prometheus'
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    honor_labels: true
+    params:
+      format: ['prometheus']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'ollamamax-api'
+      - source_labels: [__address__]
+        target_label: service
+        replacement: 'api-server'
+
+  # Node.js application metrics
+  - job_name: 'nodejs-metrics'
+    static_configs:
+      - targets: ['api-server:13100']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+    honor_labels: true
+
+  # Database metrics (PostgreSQL)
+  - job_name: 'postgres-exporter'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+    scrape_interval: 30s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: database
+        replacement: 'postgresql'
+
+  # Redis metrics
+  - job_name: 'redis-exporter'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+    scrape_interval: 30s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: database
+        replacement: 'redis'
+
+  # Nginx metrics (if using nginx-prometheus-exporter)
+  - job_name: 'nginx-exporter'
+    static_configs:
+      - targets: ['nginx-exporter:9113']
+    scrape_interval: 30s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: service
+        replacement: 'nginx'
+
+  # System metrics (node-exporter)
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 30s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'ollamamax-host'
+
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 30s
+
+  # Grafana metrics
+  - job_name: 'grafana'
+    static_configs:
+      - targets: ['grafana:3000']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+# Remote write configuration (for long-term storage)
+# remote_write:
+#   - url: "https://prometheus-remote-write-endpoint/api/v1/write"
+#     basic_auth:
+#       username: "username"
+#       password: "password"
+
+# Storage configuration
+storage:
+  tsdb:
+    path: /prometheus
+    retention.time: 30d
+    retention.size: 10GB
+    wal-compression: true
+
+# Performance tuning
+query:
+  max_concurrency: 20
+  timeout: 2m
+  max_samples: 50000000
+
+# Web configuration
+web:
+  enable_lifecycle: true
+  enable_admin_api: true
+  max_connections: 512
+  read_timeout: 30s
+  console.libraries: /etc/prometheus/console_libraries
+  console.templates: /etc/prometheus/consoles
+
+# Feature flags
+feature_flags:
+  - promql-at-modifier
+  - promql-negative-offset

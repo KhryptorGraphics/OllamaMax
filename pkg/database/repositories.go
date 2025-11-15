@@ -367,6 +367,24 @@ func (r *ModelRepository) GetReplicas(ctx context.Context, modelID uuid.UUID) ([
 	return replicas, nil
 }
 
+// GetReplicasByModelID gets all replicas for a specific model
+func (r *ModelRepository) GetReplicasByModelID(ctx context.Context, modelID uuid.UUID) ([]*ModelReplica, error) {
+	var replicas []*ModelReplica
+	query := `SELECT * FROM model_replicas WHERE model_id = $1 ORDER BY created_at`
+
+	start := time.Now()
+	err := r.db.SelectContext(ctx, &replicas, query, modelID)
+	if r.manager != nil {
+		r.manager.RecordQuery("get", "model_replicas", time.Since(start))
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get model replicas: %w", err)
+	}
+
+	return replicas, nil
+}
+
 // NewUserRepository creates a new user repository
 func NewUserRepository(db *sqlx.DB, redis *redis.Client, logger *slog.Logger, manager *DatabaseManager) *UserRepository {
 	return &UserRepository{
@@ -549,6 +567,47 @@ func NewSessionRepository(db *sqlx.DB, redis *redis.Client, logger *slog.Logger,
 }
 
 // Session repository methods would go here...
+
+// Session repository methods
+func (r *SessionRepository) Create(ctx context.Context, session *UserSession) error {
+	session.ID = uuid.New()
+	session.CreatedAt = time.Now()
+	session.LastUsedAt = time.Now()
+
+	query := `
+		INSERT INTO user_sessions (id, user_id, token_id, expires_at, ip_address, user_agent,
+		                          created_at, last_used_at)
+		VALUES (:id, :user_id, :token_id, :expires_at, :ip_address, :user_agent,
+		        :created_at, :last_used_at)`
+
+	start := time.Now()
+	_, err := r.db.NamedExecContext(ctx, query, session)
+	if r.manager != nil {
+		r.manager.RecordQuery("create", "user_sessions", time.Since(start))
+	}
+
+	if err != nil {
+		return fmt.Errorf("failed to create session: %w", err)
+	}
+
+	return nil
+}
+
+func (r *SessionRepository) RevokeUserSessions(ctx context.Context, userID uuid.UUID) error {
+	query := `DELETE FROM user_sessions WHERE user_id = $1`
+
+	start := time.Now()
+	_, err := r.db.ExecContext(ctx, query, userID)
+	if r.manager != nil {
+		r.manager.RecordQuery("delete", "user_sessions", time.Since(start))
+	}
+
+	if err != nil {
+		return fmt.Errorf("failed to revoke user sessions: %w", err)
+	}
+
+	return nil
+}
 
 // NewInferenceRepository creates a new inference repository
 func NewInferenceRepository(db *sqlx.DB, redis *redis.Client, logger *slog.Logger, manager *DatabaseManager) *InferenceRepository {

@@ -160,7 +160,7 @@ NODE_ID=node-1                    # Unique node identifier
 BOOTSTRAP=true                    # Bootstrap node flag
 API_LISTEN=0.0.0.0:11434         # API server address
 P2P_LISTEN=/ip4/0.0.0.0/tcp/12000 # P2P listen address
-RAFT_BIND_ADDR=0.0.0.0:13000     # Raft bind address
+RAFT_BIND_ADDR=0.0.0.0:13102     # Raft bind address (updated to avoid conflicts)
 LOG_LEVEL=info                    # Logging level
 ```
 

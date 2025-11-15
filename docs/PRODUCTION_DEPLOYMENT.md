@@ -65,6 +65,8 @@ nano .env.production
 
 **Critical settings to change:**
 
+For a comprehensive list of all environment variables, please refer to `docs/ENVIRONMENT_VARIABLES.md` and `docs/COMPREHENSIVE_ENV_VAR_REFERENCE.md`.
+
 ```bash
 # Server
 NODE_ENV=production
@@ -343,7 +345,16 @@ sudo systemctl reload nginx
 
 ---
 
-### Option 2: Docker Deployment
+### Option 2: Developer All-in-One Docker Deployment
+
+For a comprehensive local development environment that mirrors the production setup, you can use the main `docker-compose.yml` file. This setup includes the full monitoring stack.
+
+```bash
+# Start all services, including monitoring
+docker-compose up -d
+```
+
+### Option 3: Docker Deployment
 
 #### Step 1: Build Docker Image
 
@@ -367,6 +378,67 @@ docker-compose -f docker-compose.production.yml logs -f
 # Check status
 docker-compose -f docker-compose.production.yml ps
 ```
+
+### Option 3: Kubernetes Deployment
+
+For production-grade deployments, Kubernetes is the recommended option. The repository includes comprehensive Kubernetes manifests for a full production setup.
+
+#### Step 1: Apply Manifests
+
+The main production manifest is located at `ollama-distributed/deploy/integration/production-deployment.yaml`. This manifest includes the deployment, services, autoscaling, and security policies.
+
+```bash
+# Apply the production manifest
+kubectl apply -f ollama-distributed/deploy/integration/production-deployment.yaml
+```
+
+For a complete monitoring stack, you can also apply the monitoring manifest:
+
+```bash
+# Apply the monitoring stack
+kubectl apply -f k8s/monitoring-stack.yaml
+```
+
+#### Step 2: Verify Deployment
+
+```bash
+# Check the status of the deployment
+kubectl get pods -n ollama-system
+
+# Check the services
+kubectl get services -n ollama-system
+```
+
+---
+
+## Frontend Development
+
+To run the frontend locally for development, you'll need to have Node.js and npm installed. The frontend code is located in the `web-interface` directory.
+
+### Step 1: Install Dependencies
+
+```bash
+cd web-interface
+npm install
+```
+
+### Step 2: Configure Backend Connection
+
+The frontend needs to know the URL of the backend API. You can configure this by setting the `API_BASE_URL` environment variable. For example, if you are running the backend locally using the "Developer All-in-One Docker Deployment", the API will be available at `http://localhost:13100`.
+
+Create a `.env` file in the `web-interface` directory:
+
+```
+API_BASE_URL=http://localhost:13100
+```
+
+### Step 3: Run Development Server
+
+```bash
+npm run dev
+```
+
+This will start a local development server for the frontend, which will typically be available at `http://localhost:8080`.
 
 ---
 
@@ -450,6 +522,26 @@ docker-compose -f docker-compose.monitoring.yml restart alertmanager
 1. Open Grafana (http://your-server:3001)
 2. Go to Dashboards → Import
 3. Import dashboards from `monitoring/grafana/dashboards/`
+
+---
+
+## Monitoring
+
+The project includes a comprehensive monitoring stack. When using the `docker-compose.yml` or the Kubernetes manifests, the following services will be available:
+
+*   **Prometheus:** [http://localhost:9090](http://localhost:9090)
+*   **Grafana:** [http://localhost:3001](http://localhost:3001)
+*   **Jaeger:** [http://localhost:16686](http://localhost:16686)
+*   **Kibana:** [http://localhost:5601](http://localhost:5601)
+
+### Health Endpoints
+
+The application exposes the following health endpoints:
+
+*   `/health`: Basic health check.
+*   `/api/health`: API health check.
+
+You can use these endpoints to monitor the status of the application.
 
 ---
 

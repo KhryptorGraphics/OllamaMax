@@ -2,10 +2,17 @@ package api
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 	"github.com/khryptorgraphics/ollamamax/internal/config"
+	"github.com/khryptorgraphics/ollamamax/pkg/auth"
+	"github.com/khryptorgraphics/ollamamax/pkg/database"
 )
 
 // Basic test to verify API package compiles and server can be created
@@ -136,4 +143,94 @@ func TestPerformanceBenchmarks(t *testing.T) {
 	if duration > time.Millisecond*100 {
 		t.Logf("Config creation took %v for 1000 iterations, consider optimization", duration)
 	}
+}
+
+func TestWebSocketAuthRejection(t *testing.T) {
+	// Create test server
+	cfg := config.DefaultConfig()
+	db, err := database.NewDatabaseManager(context.Background(), &cfg.Database, nil)
+	if err != nil {
+		t.Skip("Database not available for integration test")
+		return
+	}
+
+	server, err := NewServer(cfg, db, nil)
+	if err != nil {
+		t.Fatalf("Failed to create server: %v", err)
+	}
+
+	// Create test HTTP server
+	testServer := httptest.NewServer(server.setupRouter())
+	defer testServer.Close()
+
+	// Test WebSocket connection without auth token
+	wsURL := strings.Replace(testServer.URL, "http", "ws", 1) + "/ws"
+
+	// Create WebSocket dialer
+	dialer := websocket.Dialer{}
+
+	// Try to connect without token - should fail
+	conn, _, err := dialer.Dial(wsURL, nil)
+	if err == nil {
+		conn.Close()
+		t.Error("Expected WebSocket connection to fail without authentication")
+		return
+	}
+
+	// Try to connect with invalid token - should fail
+	header := http.Header{}
+	header.Set("Authorization", "Bearer invalid-token")
+
+	conn, _, err = dialer.Dial(wsURL, header)
+	if err == nil {
+		conn.Close()
+		t.Error("Expected WebSocket connection to fail with invalid token")
+		return
+	}
+
+	t.Log("WebSocket auth rejection test passed - unauthenticated connections properly rejected")
+}
+
+func TestWebSocketInferenceAuthRejection(t *testing.T) {
+	// Create test server
+	cfg := config.DefaultConfig()
+	db, err := database.NewDatabaseManager(context.Background(), &cfg.Database, nil)
+	if err != nil {
+		t.Skip("Database not available for integration test")
+		return
+	}
+
+	server, err := NewServer(cfg, db, nil)
+	if err != nil {
+		t.Fatalf("Failed to create server: %v", err)
+	}
+
+	// Create test HTTP server
+	testServer := httptest.NewServer(server.setupRouter())
+	defer testServer.Close()
+
+	// Test inference WebSocket connection without auth token
+	wsURL := strings.Replace(testServer.URL, "http", "ws", 1) + "/ws/inference/test-id"
+
+	// Create WebSocket dialer
+	dialer := websocket.Dialer{}
+
+	// Try to connect without token - should fail
+	conn, _, err := dialer.Dial(wsURL, nil)
+	if err == nil {
+		conn.Close()
+		t.Error("Expected inference WebSocket connection to fail without authentication")
+		return
+	}
+
+	// Try to connect with invalid token in query param
+	wsURLWithInvalidToken := wsURL + "?token=invalid-token"
+	conn, _, err = dialer.Dial(wsURLWithInvalidToken, nil)
+	if err == nil {
+		conn.Close()
+		t.Error("Expected inference WebSocket connection to fail with invalid token")
+		return
+	}
+
+	t.Log("WebSocket inference auth rejection test passed - unauthenticated connections properly rejected")
 }

@@ -1,801 +1,150 @@
-In development 
+<div align="center">
+<img src="docs/imgs/logo.png" width="200">
 
-# OllamaMax: Enterprise-Grade Distributed AI Model Platform
+[![GitHub Release][release-img]][release]
+[![Test][test-img]][test]
+[![Go Report Card][go-report-img]][go-report]
+[![License: Apache-2.0][license-img]][license]
+[![GitHub Downloads][github-downloads-img]][release]
+![Docker Pulls][docker-pulls]
 
-[![Go Version](https://img.shields.io/badge/Go-1.24.5+-blue.svg)](https://golang.org)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen.svg)](https://github.com/khryptorgraphics/ollamamax)
-[![Security Review Required](https://img.shields.io/badge/Production-Security%20Review%20Required-orange.svg)](docs/SECURITY_COMPLIANCE_REVIEW.md)
+[📖 Documentation][docs]
+</div>
 
-> **Enterprise-ready distributed AI model serving platform** that transforms single-node Ollama architecture into a horizontally scalable, fault-tolerant, high-performance distributed system.
+Trivy ([pronunciation][pronunciation]) is a comprehensive and versatile security scanner.
+Trivy has *scanners* that look for security issues, and *targets* where it can find those issues.
 
-## 🚀 Overview
+Targets (what Trivy can scan):
 
-OllamaMax is a comprehensive distributed AI model platform built for enterprise-scale deployments. It provides:
+- Container Image
+- Filesystem
+- Git Repository (remote)
+- Virtual Machine Image
+- Kubernetes
+- AWS
 
-- **🌐 Distributed Architecture**: Horizontal scaling across multiple nodes with P2P networking
-- **🔄 Consensus Engine**: Raft-based consensus for cluster coordination and consistency
-- **⚡ Intelligent Scheduling**: Advanced load balancing and resource optimization
-- **🎛️ Proxy Management CLI**: Comprehensive command-line tools for proxy monitoring and control
-- **🛡️ Enterprise Security**: JWT authentication, TLS encryption, audit logging
-- **📊 Comprehensive Monitoring**: Prometheus metrics, health checks, observability
-- **🔧 Production Ready**: Kubernetes deployment, Helm charts, operational runbooks
+Scanners (what Trivy can find there):
 
-## 🏗️ Architecture
+- OS packages and software dependencies in use (SBOM)
+- Known vulnerabilities (CVEs)
+- IaC issues and misconfigurations
+- Sensitive information and secrets
+- Software licenses
 
-```mermaid
-graph TB
-    subgraph "Load Balancer Layer"
-        LB[Load Balancer]
-    end
-    
-    subgraph "API Gateway Layer" 
-        API1[API Server 1]
-        API2[API Server 2]
-        API3[API Server 3]
-    end
-    
-    subgraph "Consensus Layer"
-        RAFT[Raft Consensus Engine]
-        LEADER[Leader Election]
-    end
-    
-    subgraph "P2P Network Layer"
-        P2P1[P2P Node 1]
-        P2P2[P2P Node 2] 
-        P2P3[P2P Node 3]
-        DHT[Distributed Hash Table]
-    end
-    
-    subgraph "Scheduler Layer"
-        SCHED[Intelligent Scheduler]
-        LB_ALG[Load Balancing]
-        HEALTH[Health Checker]
-    end
-    
-    subgraph "Model Management"
-        MODELS[Model Registry]
-        REPL[Replication Manager]
-        SYNC[Sync Manager]
-        DIST[Distribution Engine]
-    end
-    
-    subgraph "Storage Layer"
-        STORAGE1[Distributed Storage 1]
-        STORAGE2[Distributed Storage 2]
-        STORAGE3[Distributed Storage 3]
-        CAS[Content-Addressed Storage]
-    end
-    
-    subgraph "Monitoring & Observability"
-        PROM[Prometheus Metrics]
-        GRAFANA[Grafana Dashboards]
-        ALERTS[Alert Manager]
-        LOGS[Centralized Logging]
-    end
+Trivy supports most popular programming languages, operating systems, and platforms. For a complete list, see the [Scanning Coverage] page.
 
-    LB --> API1
-    LB --> API2  
-    LB --> API3
-    
-    API1 --> RAFT
-    API2 --> RAFT
-    API3 --> RAFT
-    
-    RAFT --> LEADER
-    LEADER --> SCHED
-    
-    API1 --> P2P1
-    API2 --> P2P2
-    API3 --> P2P3
-    
-    P2P1 --> DHT
-    P2P2 --> DHT
-    P2P3 --> DHT
-    
-    SCHED --> LB_ALG
-    SCHED --> HEALTH
-    SCHED --> MODELS
-    
-    MODELS --> REPL
-    MODELS --> SYNC
-    MODELS --> DIST
-    
-    REPL --> STORAGE1
-    REPL --> STORAGE2
-    REPL --> STORAGE3
-    
-    SYNC --> CAS
-    
-    API1 --> PROM
-    API2 --> PROM
-    API3 --> PROM
-    PROM --> GRAFANA
-    PROM --> ALERTS
-```
+To learn more, go to the [Trivy homepage][homepage] for feature highlights, or to the [Documentation site][docs] for detailed information.
 
-### Core Components
+## Quick Start
 
-| Component | Purpose | Technology |
-|-----------|---------|------------|
-| **API Server** | REST API gateway and web interface | Gin, WebSockets, JWT |
-| **P2P Network** | Peer-to-peer networking and discovery | libp2p, DHT, PubSub |
-| **Consensus Engine** | Cluster coordination and leader election | HashiCorp Raft |
-| **Scheduler** | Intelligent request routing and load balancing | Custom algorithms |
-| **Proxy Manager** | Load balancing and instance management | HTTP reverse proxy, CLI tools |
-| **Model Manager** | Distributed model registry and replication | Content-addressed storage |
-| **Security Layer** | Authentication, authorization, encryption | RSA-256 JWT, TLS 1.3, Audit logging |
-| **Monitoring** | Metrics, health checks, observability | Prometheus, Grafana |
+### Get Trivy
 
-## 🚀 Quick Start
+Trivy is available in most common distribution channels. The full list of installation options is available in the [Installation] page. Here are a few popular examples:
 
-### Prerequisites
+- `brew install trivy`
+- `docker run aquasec/trivy`
+- Download binary from <https://github.com/aquasecurity/trivy/releases/latest/>
+- See [Installation] for more
 
-- **Go 1.24.5+**
-- **Docker & Docker Compose** (for containerized deployment)
-- **Kubernetes 1.25+** (for production deployment)
-- **Helm 3.0+** (for Kubernetes package management)
+Trivy is integrated with many popular platforms and applications. The complete list of integrations is available in the [Ecosystem] page. Here are a few popular examples:
 
-### 1. Local Development Setup
+- [GitHub Actions](https://github.com/aquasecurity/trivy-action)
+- [Kubernetes operator](https://github.com/aquasecurity/trivy-operator)
+- [VS Code plugin](https://github.com/aquasecurity/trivy-vscode-extension)
+- See [Ecosystem] for more
+
+### Canary builds
+There are canary builds ([Docker Hub](https://hub.docker.com/r/aquasec/trivy/tags?page=1&name=canary), [GitHub](https://github.com/aquasecurity/trivy/pkgs/container/trivy/75776514?tag=canary), [ECR](https://gallery.ecr.aws/aquasecurity/trivy#canary) images and [binaries](https://github.com/aquasecurity/trivy/actions/workflows/canary.yaml)) as generated every push to main branch.
+
+Please be aware: canary builds might have critical bugs, it's not recommended for use in production.
+
+### General usage
 
 ```bash
-# Clone repository
-git clone https://github.com/khryptorgraphics/ollamamax.git
-cd ollamamax/ollama-distributed
-
-# Install dependencies
-go mod download
-
-# Build the binary
-make build
-
-# Run with default configuration
-./bin/ollama-distributed start
-
-# Monitor proxy status
-./bin/ollama-distributed proxy status
-
-# View cluster instances
-./bin/ollama-distributed proxy instances
-
-# Monitor metrics in real-time
-./bin/ollama-distributed proxy metrics --watch
+trivy <target> [--scanners <scanner1,scanner2>] <subject>
 ```
 
-### 2. Docker Deployment
+Examples:
 
 ```bash
-# Build Docker image
-docker build -t ollamamax:latest .
-
-# Run single node
-docker run -p 11434:11434 -p 8080:8080 -p 9090:9090 ollamamax:latest
-
-# Run cluster with Docker Compose
-docker-compose up -d
+trivy image python:3.4-alpine
 ```
 
-### 3. Kubernetes Production Deployment
+<details>
+<summary>Result</summary>
+
+https://user-images.githubusercontent.com/1161307/171013513-95f18734-233d-45d3-aaf5-d6aec687db0e.mov
+
+</details>
 
 ```bash
-# Install with Helm
-helm repo add ollamamax https://charts.ollamamax.com
-helm install ollamamax ollamamax/ollamamax-cluster
-
-# Or deploy with kubectl
-kubectl apply -f k8s/
+trivy fs --scanners vuln,secret,misconfig myproject/
 ```
 
-## 🎛️ CLI Reference
+<details>
+<summary>Result</summary>
 
-### Core Commands
+https://user-images.githubusercontent.com/1161307/171013917-b1f37810-f434-465c-b01a-22de036bd9b3.mov
+
+</details>
 
 ```bash
-# Start a distributed node
-./ollama-distributed start [--config config.yaml] [--peers peer1,peer2]
-
-# Check node status
-./ollama-distributed status
-
-# Join existing cluster
-./ollama-distributed join --peers node1:8080,node2:8080
+trivy k8s --report summary cluster
 ```
 
-### Proxy Management
+<details>
+<summary>Result</summary>
 
-The proxy CLI provides comprehensive tools for managing the distributed Ollama proxy:
+![k8s summary](docs/imgs/trivy-k8s.png)
 
-```bash
-# Check proxy status
-./ollama-distributed proxy status [--json] [--api-url URL]
+</details>
 
-# List registered instances
-./ollama-distributed proxy instances [--json] [--api-url URL]
+## FAQ
 
-# Monitor performance metrics
-./ollama-distributed proxy metrics [--json] [--api-url URL]
+### How to pronounce the name "Trivy"?
 
-# Real-time metrics monitoring
-./ollama-distributed proxy metrics --watch [--interval 5]
-```
+`tri` is pronounced like **tri**gger, `vy` is pronounced like en**vy**.
 
-### Examples
+## Want more? Check out Aqua
 
-```bash
-# Start node and monitor proxy
-./ollama-distributed start &
-./ollama-distributed proxy status
+If you liked Trivy, you will love Aqua which builds on top of Trivy to provide even more enhanced capabilities for a complete security management offering.  
+You can find a high level comparison table specific to Trivy users [here](https://github.com/aquasecurity/resources/blob/main/trivy-aqua.md).  
+In addition check out the <https://aquasec.com> website for more information about our products and services.
+If you'd like to contact Aqua or request a demo, please use this form: <https://www.aquasec.com/demo>
 
-# Monitor cluster health
-./ollama-distributed proxy instances --json | jq '.instances[] | select(.status=="healthy")'
+## Community
 
-# Watch metrics in real-time
-./ollama-distributed proxy metrics --watch --interval 10
+Trivy is an [Aqua Security][aquasec] open source project.  
+Learn about our open source work and portfolio [here][oss].  
+Contact us about any matter by opening a GitHub Discussion [here][discussions]
+Join our [Slack community][slack] to stay up to date with community efforts.
 
-# Check specific API endpoint
-./ollama-distributed proxy status --api-url http://node2:8080
-```
+Please ensure to abide by our [Code of Conduct][code-of-conduct] during all interactions.
 
-## 🔧 Configuration
+[test]: https://github.com/aquasecurity/trivy/actions/workflows/test.yaml
+[test-img]: https://github.com/aquasecurity/trivy/actions/workflows/test.yaml/badge.svg
+[go-report]: https://goreportcard.com/report/github.com/aquasecurity/trivy
+[go-report-img]: https://goreportcard.com/badge/github.com/aquasecurity/trivy
+[release]: https://github.com/aquasecurity/trivy/releases
+[release-img]: https://img.shields.io/github/release/aquasecurity/trivy.svg?logo=github
+[github-downloads-img]: https://img.shields.io/github/downloads/aquasecurity/trivy/total?logo=github
+[docker-pulls]: https://img.shields.io/docker/pulls/aquasec/trivy?logo=docker&label=docker%20pulls%20%2F%20trivy
+[license]: https://github.com/aquasecurity/trivy/blob/main/LICENSE
+[license-img]: https://img.shields.io/badge/License-Apache%202.0-blue.svg
+[homepage]: https://trivy.dev
+[docs]: https://aquasecurity.github.io/trivy
+[pronunciation]: #how-to-pronounce-the-name-trivy
+[slack]: https://slack.aquasec.com
+[code-of-conduct]: https://github.com/aquasecurity/community/blob/main/CODE_OF_CONDUCT.md
 
-### Environment-Specific Configurations
+[Installation]:https://aquasecurity.github.io/trivy/latest/getting-started/installation/
+[Ecosystem]: https://aquasecurity.github.io/trivy/latest/ecosystem/
+[Scanning Coverage]: https://aquasecurity.github.io/trivy/latest/docs/coverage/
 
-The system supports multiple environment configurations:
+[alpine]: https://ariadne.space/2021/06/08/the-vulnerability-remediation-lifecycle-of-alpine-containers/
+[rego]: https://www.openpolicyagent.org/docs/latest/#rego
+[sigstore]: https://www.sigstore.dev/
 
-```bash
-# Development
-export OLLAMA_ENVIRONMENT=development
-export OLLAMA_LOG_LEVEL=debug
-
-# Staging  
-export OLLAMA_ENVIRONMENT=staging
-export OLLAMA_LOG_LEVEL=info
-
-# Production
-export OLLAMA_ENVIRONMENT=production
-export OLLAMA_LOG_LEVEL=warn
-export OLLAMA_TLS_ENABLED=true
-export OLLAMA_AUTH_ENABLED=true
-```
-
-### Configuration Files
-
-| Environment | Config File | Purpose |
-|-------------|-------------|---------|
-| Development | `config/dev.yaml` | Local development settings |
-| Staging | `config/staging.yaml` | Pre-production testing |
-| Production | `config/prod.yaml` | Production deployment |
-
-### Key Configuration Sections
-
-```yaml
-# Example production configuration
-node:
-  environment: production
-  region: us-west-2
-  zone: us-west-2a
-
-api:
-  listen: "0.0.0.0:11434"
-  tls:
-    enabled: true
-    cert_file: "/etc/tls/server.crt"
-    key_file: "/etc/tls/server.key"
-
-security:
-  auth:
-    enabled: true
-    method: jwt
-    token_expiry: 24h
-  
-metrics:
-  enabled: true
-  listen: "0.0.0.0:9090"
-  
-logging:
-  level: info
-  format: json
-  output: stdout
-```
-
-## 📊 API Reference
-
-### 📚 API Documentation
-
-**Authoritative API Surface**: Node.js API Gateway (port 13000)
-
-OllamaMax provides comprehensive OpenAPI 3.0 documentation for all public endpoints:
-
-#### Interactive Documentation
-- **Swagger UI**: [http://localhost:13000/docs](http://localhost:13000/docs)
-  - Interactive API explorer with request/response examples
-  - Test endpoints directly from your browser
-  - Real-time validation and error handling
-
-#### Machine-Readable Specifications
-- **OpenAPI JSON**: [http://localhost:13000/openapi.json](http://localhost:13000/openapi.json)
-  - Dynamic spec generated from running server
-  - Always reflects current API implementation
-  - Use for API client code generation
-
-- **OpenAPI YAML**: [`docs/api/openapi.yaml`](docs/api/openapi.yaml)
-  - Human-readable static specification
-  - Version-controlled and git-tracked
-  - Synchronized with JSON spec via `npm run openapi:sync`
-
-### Core Endpoint Categories
-
-#### Health & Monitoring
-```http
-GET    /health                    # Detailed system health
-GET    /health/live               # Kubernetes liveness probe
-GET    /health/ready              # Kubernetes readiness probe
-GET    /metrics                   # Prometheus metrics
-```
-
-#### Authentication
-```http
-POST   /auth/login                # User authentication (JWT tokens)
-POST   /auth/register             # New user registration
-POST   /auth/refresh              # Refresh access token
-```
-
-#### AI Inference (OpenAI Compatible)
-```http
-GET    /v1/models                 # List available models
-POST   /v1/completions            # Text completion
-POST   /v1/chat/completions       # Chat completion
-POST   /v1/embeddings             # Generate embeddings
-```
-
-#### Cluster Management (Go Backend)
-```http
-GET    /api/v1/cluster/status     # Cluster health and status
-GET    /api/v1/cluster/leader     # Current cluster leader
-POST   /api/v1/cluster/join       # Join existing cluster
-POST   /api/v1/cluster/leave      # Leave cluster gracefully
-GET    /api/v1/nodes              # List all cluster nodes
-GET    /api/v1/nodes/{id}         # Get specific node details
-```
-
-### Authentication
-
-All protected endpoints require authentication via **JWT Bearer tokens** or **API keys**:
-
-#### Obtain JWT Token
-```bash
-# Login and receive access token (1-hour expiry) and refresh token (7-day expiry)
-curl -X POST http://localhost:13000/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"user@example.com","password":"secure_password"}'
-
-# Response:
-# {
-#   "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-#   "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-#   "user": { "id": "user_123", "email": "user@example.com", "role": "user" }
-# }
-```
-
-#### Use Token in Requests
-```bash
-# Bearer token authentication
-curl -H "Authorization: Bearer <access_token>" \
-  http://localhost:13000/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -d '{"model":"llama-3.2-3b","messages":[{"role":"user","content":"Hello"}]}'
-
-# Or use API key authentication
-curl -H "x-api-key: <your_api_key>" \
-  http://localhost:13000/v1/models
-```
-
-### API Contract Testing
-
-OllamaMax implements comprehensive contract testing to ensure API stability:
-
-- **OpenAPI Validation**: All specs validated in CI/CD pipeline
-- **Schema Enforcement**: Request/response validation against OpenAPI schemas
-- **Backward Compatibility**: Semantic versioning for breaking changes
-- **Contract Tests**: Automated tests verify API contracts (see [Integration Analysis](docs/INTEGRATION_DATA_FLOW_ANALYSIS.md))
-
-### Sync OpenAPI Specifications
-
-Keep JSON and YAML specs in sync after making API changes:
-
-```bash
-# Start the API server
-npm start
-
-# In another terminal, sync specifications
-npm run openapi:sync
-
-# Validate specifications
-npm run openapi:validate
-```
-
-## 🚢 Production Deployment
-
-### Kubernetes Deployment
-
-#### 1. Install with Helm (Recommended)
-
-```bash
-# Add Helm repository
-helm repo add ollamamax https://charts.ollamamax.com
-helm repo update
-
-# Install with production values
-helm install ollamamax ollamamax/ollamamax-cluster \
-  --namespace ollamamax \
-  --create-namespace \
-  --values values-production.yaml
-```
-
-#### 2. Manual Kubernetes Deployment
-
-```bash
-# Create namespace
-kubectl create namespace ollamamax
-
-# Deploy core components
-kubectl apply -f k8s/configmap.yaml
-kubectl apply -f k8s/secret.yaml
-kubectl apply -f k8s/service.yaml
-kubectl apply -f k8s/deployment.yaml
-kubectl apply -f k8s/ingress.yaml
-
-# Deploy monitoring stack
-kubectl apply -f k8s/monitoring/
-```
-
-### Production Checklist
-
-**⚠️ SECURITY NOTICE**: Critical security issues MUST be resolved before production deployment. See [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for details.
-
-#### Critical Security Fixes (MUST FIX BEFORE PRODUCTION)
-- [ ] **CRITICAL**: Remove hardcoded SMTP credentials (ISSUE-001) - **Days 1-2**
-- [ ] **CRITICAL**: Enforce strong JWT secrets (no defaults) (ISSUE-002) - **Day 1**
-- [ ] **CRITICAL**: Secure database ports (remove external exposure) (ISSUE-003) - **Day 1**
-- [ ] **HIGH**: Implement rate limiting on auth endpoints (ISSUE-007) - **Week 1**
-- [ ] **HIGH**: Configure CORS allowlist (no wildcard origins) (ISSUE-006) - **Week 1**
-
-#### Security & Compliance
-- [ ] **Security**: TLS certificates configured and valid
-- [ ] **Authentication**: JWT RSA keys generated (4096-bit) and stored securely
-- [ ] **Token Revocation**: Implement token blacklist mechanism (ISSUE-004)
-- [ ] **WebSocket Security**: Add JWT authentication to WebSocket endpoint
-- [ ] **XSS Protection**: Add input sanitization and CSP headers
-- [ ] **Network**: Database ports not exposed (internal networking only)
-- [ ] **Secrets**: No hardcoded credentials (environment variables only)
-
-#### Monitoring & Operations
-- [ ] **Monitoring**: Prometheus metrics collection enabled
-- [ ] **Alerting**: Alert rules configured for critical metrics
-- [ ] **Backup**: Automated backup procedures in place
-- [ ] **Logging**: Centralized log aggregation configured
-- [ ] **Network**: Firewall rules and network policies applied
-- [ ] **Storage**: Persistent volumes configured for data
-- [ ] **Scaling**: Horizontal Pod Autoscaler configured
-- [ ] **Health Checks**: Liveness and readiness probes configured
-
-#### Performance & Scale
-- [ ] **Load Testing**: 1000+ RPS validated
-- [ ] **Compression**: Request/response compression enabled (Brotli/Gzip)
-- [ ] **Database Pool**: Connection pool tuned (100 max connections)
-- [ ] **Caching**: Redis maxmemory and LRU eviction configured
-
-**Status**: ⚠️ **CONDITIONAL GO** - Security fixes required (see [COMPREHENSIVE_SYSTEM_REVIEW.md](COMPREHENSIVE_SYSTEM_REVIEW.md))
-
-## 📈 Monitoring & Observability
-
-### Prometheus Metrics
-
-Key metrics exposed for monitoring:
-
-```
-# Node Metrics
-ollama_nodes_total                    # Total nodes in cluster
-ollama_nodes_online                   # Online nodes count
-ollama_nodes_offline                  # Offline nodes count
-
-# Model Metrics  
-ollama_models_total                   # Total models in registry
-ollama_models_loaded                  # Currently loaded models
-ollama_model_replicas                 # Model replication factor
-
-# Request Metrics
-ollama_requests_total                 # Total API requests
-ollama_requests_duration_seconds      # Request duration histogram
-ollama_requests_errors_total          # Request error count
-
-# System Metrics
-ollama_cpu_usage_percent              # CPU utilization
-ollama_memory_usage_bytes             # Memory usage
-ollama_network_bytes_total            # Network I/O
-ollama_disk_usage_bytes               # Disk utilization
-
-# P2P Metrics
-ollama_peers_connected                # Connected peers
-ollama_peer_connections_total         # Total P2P connections
-ollama_peer_messages_total            # P2P message count
-
-# Consensus Metrics
-ollama_consensus_leader_changes       # Leadership changes
-ollama_consensus_log_entries          # Raft log entries
-ollama_consensus_applied_entries      # Applied log entries
-```
-
-### Grafana Dashboards
-
-Pre-built dashboards available in `monitoring/grafana/`:
-
-- **Cluster Overview**: High-level cluster health and status
-- **Node Performance**: Individual node metrics and resources
-- **Model Management**: Model distribution and replication status
-- **API Performance**: Request rates, latency, and error rates
-- **P2P Network**: Peer connectivity and network health
-- **Consensus Health**: Raft consensus and leadership metrics
-
-### Alert Rules
-
-Critical alerts configured in `monitoring/alerts/`:
-
-- **Node Down**: Node becomes unreachable
-- **High CPU Usage**: CPU utilization > 80%
-- **Memory Pressure**: Memory usage > 85%
-- **Disk Full**: Disk usage > 90%
-- **API Errors**: Error rate > 5%
-- **Consensus Split**: Leadership instability
-- **Model Replication**: Under-replicated models
-
-## 🔒 Security
-
-### Production Security Features
-
-| Feature | Implementation | Status |
-|---------|----------------|--------|
-| **TLS Encryption** | TLS 1.3 with strong cipher suites | ✅ Enabled |
-| **JWT Authentication** | RSA-256 (RS256) signed tokens with 2048-bit keys | ✅ Enabled |
-| **RBAC Authorization** | Role-based access control | ✅ Enabled |
-| **Audit Logging** | Comprehensive audit trail | ✅ Enabled |
-| **Network Security** | Firewall rules and network policies | ✅ Enabled |
-| **Secret Management** | Kubernetes secrets integration | ✅ Enabled |
-| **Certificate Rotation** | Automated certificate management | ✅ Enabled |
-
-### Security Configuration
-
-```yaml
-security:
-  tls:
-    enabled: true
-    min_version: "1.3"
-    cert_file: "/etc/tls/server.crt"
-    key_file: "/etc/tls/server.key"
-    ca_file: "/etc/tls/ca.crt"
-  
-  auth:
-    enabled: true
-    method: jwt
-    token_expiry: 24h
-    secret_key: "${JWT_SECRET}"
-  
-  audit:
-    enabled: true
-    log_file: "/var/log/ollama/audit.log"
-    format: json
-  
-  firewall:
-    enabled: true
-    allowed_ips:
-      - "10.0.0.0/8"
-      - "172.16.0.0/12"
-      - "192.168.0.0/16"
-```
-
-## 🛠️ Operations & Maintenance
-
-### Operational Procedures
-
-#### Cluster Operations
-
-```bash
-# Check cluster health
-ollama-distributed status
-
-# Add new node to cluster
-ollama-distributed join --peers=node1:4001,node2:4001
-
-# Drain node for maintenance
-kubectl drain ollama-node-1 --delete-local-data --ignore-daemonsets
-
-# Scale cluster horizontally
-kubectl scale deployment ollama-cluster --replicas=5
-```
-
-#### Model Management
-
-```bash
-# Download model to cluster
-curl -X POST http://localhost:11434/api/v1/models/llama2:7b/download
-
-# Check model distribution
-curl http://localhost:11434/api/v1/models/llama2:7b
-
-# Enable auto-distribution
-curl -X POST http://localhost:11434/api/v1/distribution/auto-configure \
-  -H "Content-Type: application/json" \
-  -d '{"enabled": true}'
-```
-
-#### Backup & Recovery
-
-```bash
-# Backup cluster state
-kubectl exec -it ollama-leader -- \
-  ollama-distributed backup --output=/backup/cluster-state.tar.gz
-
-# Restore from backup
-kubectl exec -it ollama-leader -- \
-  ollama-distributed restore --input=/backup/cluster-state.tar.gz
-```
-
-### Troubleshooting
-
-#### Common Issues
-
-| Issue | Symptoms | Solution |
-|-------|----------|----------|
-| **Split Brain** | Multiple leaders elected | Check network connectivity, restart nodes |
-| **High Latency** | Slow API responses | Check node resources, scale cluster |
-| **Model Load Failure** | Models not downloading | Check storage capacity, network connectivity |
-| **Authentication Errors** | 401 responses | Verify JWT tokens, check secret configuration |
-| **Memory Issues** | Out of memory errors | Increase node memory, optimize model allocation |
-
-#### Debug Commands
-
-```bash
-# View cluster logs
-kubectl logs -f deployment/ollama-cluster
-
-# Check P2P network status
-ollama-distributed p2p-status
-
-# Validate configuration
-ollama-distributed config-validate
-
-# Run health diagnostics
-ollama-distributed diagnose --full
-```
-
-### Performance Tuning
-
-#### Resource Optimization
-
-```yaml
-# Kubernetes resource configuration
-resources:
-  requests:
-    cpu: "2"
-    memory: "4Gi"
-  limits:
-    cpu: "4" 
-    memory: "8Gi"
-
-# JVM tuning for Go runtime
-env:
-  - name: GOGC
-    value: "100"
-  - name: GOMAXPROCS
-    value: "4"
-```
-
-#### Scaling Guidelines
-
-| Metric | Scale Up Trigger | Scale Down Trigger |
-|--------|------------------|-------------------|
-| **CPU Usage** | > 70% for 5 minutes | < 30% for 10 minutes |
-| **Memory Usage** | > 80% for 3 minutes | < 40% for 15 minutes |
-| **Request Queue** | > 100 pending | < 10 pending |
-| **Response Time** | > 500ms average | < 100ms average |
-
-## 🤝 Contributing
-
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
-
-### Development Workflow
-
-```bash
-# Set up development environment
-make dev-setup
-
-# Run tests
-make test
-
-# Run integration tests
-make test-integration
-
-# Build and test locally
-make build-local
-
-# Submit pull request
-git checkout -b feature/your-feature
-git commit -am "Add your feature"
-git push origin feature/your-feature
-```
-
-### Code Quality Standards
-
-- **Test Coverage**: Minimum 80% code coverage required
-- **Code Style**: Use `gofmt` and `golint` for consistent formatting
-- **Documentation**: All public APIs must be documented
-- **Security**: Security review required for auth/crypto changes
-
-## 📚 Documentation
-
-### System Review & Production Readiness
-
-**⚠️ IMPORTANT**: Review comprehensive system assessment before production deployment.
-
-#### Comprehensive System Review
-- **[Executive Summary](COMPREHENSIVE_SYSTEM_REVIEW.md)** - Overall grade, key findings, go/no-go decision
-  - Overall Grade: **B+** (Conditional Go)
-  - Critical security blockers identified
-  - Performance targets and scalability limits
-  - Strategic recommendations and timeline
-
-#### Component Reviews
-- **[System Architecture Review](docs/SYSTEM_ARCHITECTURE_REVIEW.md)** - Architectural analysis (Grade: **A-**, 4.5/5)
-- **[Security Compliance Review](docs/SECURITY_COMPLIANCE_REVIEW.md)** - Security assessment (Grade: **C**, 2/5 - **CRITICAL FIXES REQUIRED**)
-- **[Code Quality Assessment](docs/CODE_QUALITY_ASSESSMENT.md)** - Code quality metrics (Grade: **A-**, 4/5)
-- **[Performance & Scalability Evaluation](docs/PERFORMANCE_SCALABILITY_EVALUATION.md)** - Performance benchmarks (Grade: **B+**, 4.2/5)
-- **[Testing Infrastructure Review](docs/TESTING_INFRASTRUCTURE_REVIEW.md)** - Test coverage and quality (Grade: **A-**, 4/5)
-
-#### Issue Tracking & Planning
-- **[Known Issues](KNOWN_ISSUES.md)** - **17 tracked issues** (5 Critical, 6 High, 3 Medium, 1 Low, 2 Validation Pending)
-- **[Architectural Decisions](docs/ARCHITECTURAL_DECISIONS.md)** - ADR index (10 decisions documented)
-- **[Future Enhancements Roadmap](docs/FUTURE_ENHANCEMENTS_ROADMAP.md)** - Planned features and improvements
-
-### Quick References
-- **[CLI Reference](ollama-distributed/CLI_REFERENCE.md)** - Complete command-line guide
-- **[Proxy CLI Implementation](ollama-distributed/PROXY_CLI_IMPLEMENTATION.md)** - Technical implementation details
-
-### Comprehensive Guides
-- **[Architecture Overview](docs/architecture.md)** - System design and components
-- **[API Reference](docs/api.md)** - REST API documentation
-- **[Configuration Guide](docs/configuration.md)** - Setup and configuration
-- **[Deployment Guide](docs/deployment.md)** - Production deployment
-- **[Security Guide](docs/security.md)** - Security best practices
-- **[Monitoring Guide](docs/monitoring.md)** - Observability and metrics
-- **[Troubleshooting](docs/troubleshooting.md)** - Common issues and solutions
-
-## 📞 Support
-
-### Community Support
-
-- **GitHub Issues**: [Report bugs and request features](https://github.com/khryptorgraphics/ollamamax/issues)
-- **Discussions**: [Community discussions and Q&A](https://github.com/khryptorgraphics/ollamamax/discussions)
-- **Documentation**: [Comprehensive documentation](https://docs.ollamamax.com)
-
-### Enterprise Support
-
-For enterprise support, consulting, and professional services:
-
-- **Email**: admin@giggahost.com
-- **Support Portal**: https://giggahost.com
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- **Ollama Team**: For the original single-node implementation
-- **HashiCorp**: For the excellent Raft consensus library
-- **libp2p Team**: For robust P2P networking primitives
-- **Prometheus & Grafana**: For comprehensive monitoring solutions
-- **Kubernetes Community**: For container orchestration platform
-
----
-
-**Built with ❤️ for the AI community** | [Website](https://ollamamax.com) | [Documentation](https://docs.ollamamax.com) | [Community](https://community.ollamamax.com)
+[aquasec]: https://aquasec.com
+[oss]: https://www.aquasec.com/products/open-source-projects/
+[discussions]: https://github.com/aquasecurity/trivy/discussions

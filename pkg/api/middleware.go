@@ -9,6 +9,8 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"github.com/khryptorgraphics/ollamamax/pkg/database"
 	"golang.org/x/time/rate"
 )
 
@@ -270,10 +272,12 @@ func (s *Server) auditMiddleware() gin.HandlerFunc {
 
 		// Get user ID if authenticated
 		userID, exists := c.Get("user_id")
-		var userIDStr *string
+		var userUUID *uuid.UUID
 		if exists {
 			if uid, ok := userID.(string); ok {
-				userIDStr = &uid
+				if parsedUUID, err := uuid.Parse(uid); err == nil {
+					userUUID = &parsedUUID
+				}
 			}
 		}
 
@@ -281,9 +285,9 @@ func (s *Server) auditMiddleware() gin.HandlerFunc {
 		auditEntry := &database.AuditLogEntry{
 			Operation: strings.ToUpper(c.Request.Method),
 			TableName: "api_requests",
-			UserID:    userIDStr,
-			IPAddress: &c.ClientIP,
-			UserAgent: &c.Request.UserAgent,
+			UserID:    userUUID,
+			IPAddress: func() *string { ip := c.ClientIP(); return &ip }(),
+			UserAgent: func() *string { ua := c.Request.UserAgent(); return &ua }(),
 			NewValues: &database.JSONMap{
 				"path":        c.Request.URL.Path,
 				"method":      c.Request.Method,

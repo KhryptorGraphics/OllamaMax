@@ -77,7 +77,7 @@ services:
   # PostgreSQL Database for Authentication and User Data
   postgres:
     image: postgres:15-alpine
-    # SECURITY: Removed external port exposure - use Docker network only
+    # SECURITY: Removed external port exposure - use Docker network only (ISSUE-003)
     expose:
       - "5432"
     environment:
@@ -100,7 +100,7 @@ services:
   # Redis for Session Management and Caching
   redis:
     image: redis:7-alpine
-    # SECURITY: Removed external port exposure - use Docker network only
+    # SECURITY: Removed external port exposure - use Docker network only (ISSUE-003)
     expose:
       - "6379"
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-ollama_redis_pass}

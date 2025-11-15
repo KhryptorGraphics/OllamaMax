@@ -158,6 +158,7 @@ func (s *Server) setupRouter() {
 	s.router.GET("/health", s.healthHandler) // Legacy support
 
 	// Basic API endpoints
+	s.router.GET("/", s.rootHandler)
 	api := s.router.Group("/api")
 	{
 		api.GET("/version", s.versionHandler) // Canonical: /api/version
@@ -286,6 +287,27 @@ func (s *Server) corsMiddleware() gin.HandlerFunc {
 
 		c.Next()
 	}
+}
+
+// rootHandler handles the root endpoint
+func (s *Server) rootHandler(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"name":    "Ollamamax API",
+		"version": "1.0.0",
+		"status":  "running",
+		"endpoints": gin.H{
+			"authentication": "/auth",
+			"inference":      "/v1",
+			"health":         "/health",
+			"docs":           "/docs",
+		},
+		"features": gin.H{
+			"authentication":         true,
+			"rate_limiting":          true,
+			"openai_compatibility": true,
+			"streaming":              true,
+		},
+	})
 }
 
 // healthHandler handles health check requests

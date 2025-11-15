@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/khryptorgraphics/ollamamax/pkg/auth"
 	"github.com/khryptorgraphics/ollamamax/pkg/database"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -123,8 +124,8 @@ func (s *Server) loginHandler(c *gin.Context) {
 		UserID:           user.ID,
 		TokenID:          accessToken[:32], // Use first 32 chars as token ID
 		ExpiresAt:        time.Now().Add(s.config.Auth.TokenExpiry),
-		IPAddress:        &c.ClientIP,
-		UserAgent:        &c.Request.UserAgent,
+		IPAddress:        func() *string { ip := c.ClientIP(); return &ip }(),
+		UserAgent:        func() *string { ua := c.Request.UserAgent(); return &ua }(),
 		CreatedAt:        time.Now(),
 		LastUsedAt:       time.Now(),
 	}
@@ -138,16 +139,22 @@ func (s *Server) loginHandler(c *gin.Context) {
 	}
 	sessionSpan.End()
 
+	// Set HTTP-only cookies for secure token storage
+	accessTokenExpiry := int(s.config.Auth.TokenExpiry.Seconds())
+	refreshTokenExpiry := int(s.config.Auth.RefreshTime.Seconds())
+
+	c.SetCookie("access_token", accessToken, accessTokenExpiry, "/", "", false, true)
+	c.SetCookie("refresh_token", refreshToken, refreshTokenExpiry, "/", "", false, true)
+
 	c.JSON(http.StatusOK, gin.H{
-		"access_token":  accessToken,
-		"refresh_token": refreshToken,
-		"token_type":    "Bearer",
-		"expires_in":    int(s.config.Auth.TokenExpiry.Seconds()),
+		"message": "Login successful",
+		"token_type": "Bearer",
+		"expires_in": accessTokenExpiry,
 		"user": gin.H{
-			"id":       user.ID,
+			"id": user.ID,
 			"username": user.Username,
-			"email":    user.Email,
-			"roles":    user.Roles,
+			"email": user.Email,
+			"roles": user.Roles,
 		},
 	})
 }
@@ -244,11 +251,17 @@ func (s *Server) refreshTokenHandler(c *gin.Context) {
 		return
 	}
 
+	// Set HTTP-only cookies for secure token storage
+	accessTokenExpiry := int(s.config.Auth.TokenExpiry.Seconds())
+	refreshTokenExpiry := int(s.config.Auth.RefreshTime.Seconds())
+
+	c.SetCookie("access_token", accessToken, accessTokenExpiry, "/", "", false, true)
+	c.SetCookie("refresh_token", refreshToken, refreshTokenExpiry, "/", "", false, true)
+
 	c.JSON(http.StatusOK, gin.H{
-		"access_token":  accessToken,
-		"refresh_token": refreshToken,
-		"token_type":    "Bearer",
-		"expires_in":    int(s.config.Auth.TokenExpiry.Seconds()),
+		"message": "Tokens refreshed successfully",
+		"token_type": "Bearer",
+		"expires_in": accessTokenExpiry,
 	})
 }
 
@@ -268,8 +281,82 @@ func (s *Server) logoutHandler(c *gin.Context) {
 		s.logger.Error("Failed to revoke user sessions", "error", err)
 	}
 
+	// Clear HTTP-only cookies
+	c.SetCookie("access_token", "", -1, "/", "", false, true)
+	c.SetCookie("refresh_token", "", -1, "/", "", false, true)
+
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Logged out successfully",
+	})
+}
+
+// Revoke token handler (ISSUE-004: Token revocation mechanism)
+func (s *Server) revokeTokenHandler(c *gin.Context) {
+	userClaims, exists := auth.GetCurrentClaims(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error":   "unauthorized",
+			"message": "User not authenticated",
+		})
+		return
+	}
+
+	var req struct {
+		Token string `json:"token" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "invalid_request",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	// Get token expiry from current token to calculate revocation duration
+	tokenClaims, err := s.jwtSvc.ValidateToken(req.Token)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "invalid_token",
+			"message": "Token is invalid or expired",
+		})
+		return
+	}
+
+	// Ensure user can only revoke their own tokens or admin can revoke any
+	if tokenClaims.UserID != userClaims.UserID && !userClaims.IsAdmin() {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error":   "forbidden",
+			"message": "Can only revoke your own tokens",
+		})
+		return
+	}
+
+	// Calculate remaining token lifetime
+	remainingTime := time.Until(tokenClaims.ExpiresAt.Time)
+	if remainingTime <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "token_expired",
+			"message": "Token is already expired",
+		})
+		return
+	}
+
+	// Revoke the token
+	if err := s.jwtSvc.RevokeToken(req.Token, remainingTime); err != nil {
+		s.logger.Error("Failed to revoke token", "error", err, "user_id", userClaims.UserID)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "revocation_failed",
+			"message": "Failed to revoke token",
+		})
+		return
+	}
+
+	// Log the revocation
+	s.logger.Info("Token revoked", "user_id", userClaims.UserID, "token_subject", tokenClaims.Subject)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Token revoked successfully",
 	})
 }
 

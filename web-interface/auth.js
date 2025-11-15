@@ -3,7 +3,7 @@
  * Handles login, registration, and password validation
  */
 
-const API_BASE = 'http://localhost:13000';
+const API_BASE = 'http://localhost:13100';
 
 // Tab switching
 document.querySelectorAll('.auth-tab').forEach(tab => {
@@ -118,11 +118,8 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
         const data = await response.json();
         
         if (response.ok) {
-            // Store tokens
-            localStorage.setItem('access_token', data.access_token);
-            localStorage.setItem('refresh_token', data.refresh_token);
-            localStorage.setItem('user', JSON.stringify(data.user));
-            
+            const data = await response.json();
+
             showSuccess('Login successful! Redirecting...');
             setTimeout(() => {
                 window.location.href = 'index.html';
